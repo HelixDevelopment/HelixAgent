@@ -1,0 +1,266 @@
+# HelixLLM Integration for HelixAgent
+# This compose file integrates HelixLLM as a submodule service
+# Usage: docker compose -f docker-compose.helixllm.yml up -d
+# Or use the main helixagent binary which auto-detects and starts this when USE_HELIX_LLM=true
+
+version: '3.8'
+
+services:
+  # HelixLLM Main Service
+  helixllm:
+    build:
+      context: ./HelixLLM
+      dockerfile: container/Containerfile
+    container_name: helixagent-helixllm
+    ports:
+      - "${HELIX_LLM_PORT:-8105}:8443/tcp"
+      - "${HELIX_LLM_PORT:-8105}:8443/udp"
+    environment:
+      # Mode configuration
+      HELIX_MODE: ${HELIX_LLM_MODE:-full}
+      
+      # Server configuration
+      HELIX_HOST: 0.0.0.0
+      HELIX_PORT: 8443
+      HELIX_TLS_CERT: ${HELIX_LLM_TLS_CERT:-./certs/cert.pem}
+      HELIX_TLS_KEY: ${HELIX_LLM_TLS_KEY:-./certs/key.pem}
+      
+      # Logging and observability
+      HELIX_LOG_LEVEL: ${HELIX_LLM_LOG_LEVEL:-info}
+      HELIX_LOG_FORMAT: ${HELIX_LLM_LOG_FORMAT:-json}
+      HELIX_OTEL_EXPORTER: ${HELIX_LLM_OTEL_EXPORTER:-otlp}
+      HELIX_OTEL_ENDPOINT: http://otel-collector:4317
+      
+      # Database configuration (shared with HelixAgent)
+      HELIX_DB_HOST: ${HELIX_LLM_DB_HOST:-postgres}
+      HELIX_DB_PORT: ${HELIX_LLM_DB_PORT:-5432}
+      HELIX_DB_NAME: ${HELIX_LLM_DB_NAME:-helixllm}
+      HELIX_DB_USER: ${HELIX_LLM_DB_USER:-helix}
+      HELIX_DB_PASSWORD: ${HELIX_LLM_DB_PASSWORD:-helixllm}
+      
+      # Redis configuration (shared with HelixAgent)
+      HELIX_REDIS_HOST: ${HELIX_LLM_REDIS_HOST:-redis}
+      HELIX_REDIS_PORT: ${HELIX_LLM_REDIS_PORT:-6379}
+      HELIX_REDIS_PASSWORD: ${HELIX_LLM_REDIS_PASSWORD:-}
+      
+      # Messaging
+      HELIX_KAFKA_BROKERS: ${HELIX_LLM_KAFKA_BROKERS:-kafka:9092}
+      
+      # Vector database
+      HELIX_VECTOR_DB: ${HELIX_LLM_VECTOR_DB:-qdrant}
+      
+      # LLM configuration (connected to local llama.cpp)
+      HELIX_LLM_LOCAL_MODEL: ${HELIX_LLM_LOCAL_MODEL:-llama-3.1-8b}
+      HELIX_LLM_LOCAL_RPC_PORT: ${HELIX_LLM_LOCAL_RPC_PORT:-8081}
+      HELIX_LLM_OPENAI_KEY: ${HELIX_LLM_OPENAI_KEY:-}
+      HELIX_LLM_ANTHROPIC_KEY: ${HELIX_LLM_ANTHROPIC_KEY:-}
+      HELIX_LLM_DEFAULT_PROVIDER: ${HELIX_LLM_DEFAULT_PROVIDER:-llamacpp}
+      
+      # Knowledge/RAG configuration
+      HELIX_EMBEDDING_PROVIDER: ${HELIX_LLM_EMBEDDING_PROVIDER:-local}
+      HELIX_EMBEDDING_MODEL: ${HELIX_LLM_EMBEDDING_MODEL:-all-mpnet-base-v2}
+      HELIX_RAG_CHUNK_SIZE: ${HELIX_LLM_RAG_CHUNK_SIZE:-1000}
+      HELIX_RAG_CHUNK_OVERLAP: ${HELIX_LLM_RAG_CHUNK_OVERLAP:-200}
+      HELIX_RAG_TOP_K: ${HELIX_LLM_RAG_TOP_K:-5}
+      
+      # Feature flags
+      HELIX_FEATURE_GRPC: ${HELIX_LLM_FEATURE_GRPC:-true}
+      HELIX_FEATURE_TOON: ${HELIX_LLM_FEATURE_TOON:-true}
+      HELIX_FEATURE_SELFIMPROVE: ${HELIX_LLM_FEATURE_SELFIMPROVE:-false}
+      
+      # Cluster configuration
+      HELIX_HOSTS: ${HELIX_LLM_HOSTS:-}
+      HELIX_SSH_USER: ${HELIX_LLM_SSH_USER:-}
+      HELIX_SSH_KEY: ${HELIX_LLM_SSH_KEY:-}
+      HELIX_SCHEDULE_STRATEGY: ${HELIX_LLM_SCHEDULE_STRATEGY:-auto}
+      
+      # Auth
+      HELIX_AUTH_JWT_SECRET: ${HELIX_LLM_AUTH_JWT_SECRET:-}
+      HELIX_AUTH_API_KEYS: ${HELIX_LLM_AUTH_API_KEYS:-}
+      
+      # Rate limiting
+      HELIX_RATE_PER_MINUTE: ${HELIX_LLM_RATE_PER_MINUTE:-0}
+      
+      # Analytics
+      HELIX_CLICKHOUSE_ADDR: ${HELIX_LLM_CLICKHOUSE_ADDR:-}
+      HELIX_CLICKHOUSE_DATABASE: ${HELIX_LLM_CLICKHOUSE_DATABASE:-helixllm}
+      
+      # Integration with HelixAgent
+      HELIXAGENT_ENDPOINT: http://helixagent:7061
+      HELIXAGENT_API_KEY: ${HELIXAGENT_API_KEY:-}
+    volumes:
+      - helixllm_certs:/certs:ro
+      - helixllm_models:/models
+    depends_on:
+      helixllm-postgres:
+        condition: service_healthy
+      helixllm-redis:
+        condition: service_healthy
+      helixllm-qdrant:
+        condition: service_healthy
+      helixllm-llamacpp:
+        condition: service_healthy
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-qO-", "https://localhost:8443/internal/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # HelixLLM PostgreSQL Database (isolated from HelixAgent)
+  helixllm-postgres:
+    image: docker.io/postgres:16-alpine
+    container_name: helixagent-helixllm-postgres
+    environment:
+      POSTGRES_DB: ${HELIX_LLM_DB_NAME:-helixllm}
+      POSTGRES_USER: ${HELIX_LLM_DB_USER:-helix}
+      POSTGRES_PASSWORD: ${HELIX_LLM_DB_PASSWORD:-helixllm}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - helixllm_postgres_data:/var/lib/postgresql/data
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${HELIX_LLM_DB_USER:-helix} -d ${HELIX_LLM_DB_NAME:-helixllm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # HelixLLM Redis Cache
+  helixllm-redis:
+    image: docker.io/redis:7-alpine
+    container_name: helixagent-helixllm-redis
+    command: redis-server --requirepass ${HELIX_LLM_REDIS_PASSWORD:-helixllm123} --appendonly yes
+    volumes:
+      - helixllm_redis_data:/data
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${HELIX_LLM_REDIS_PASSWORD:-helixllm123}", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # HelixLLM Vector Database (Qdrant)
+  helixllm-qdrant:
+    image: qdrant/qdrant:latest
+    container_name: helixagent-helixllm-qdrant
+    ports:
+      - "${HELIX_LLM_QDRANT_HTTP_PORT:-6333}:6333"
+      - "${HELIX_LLM_QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - helixllm_qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # HelixLLM Kafka for messaging
+  helixllm-kafka:
+    image: docker.io/bitnami/kafka:3.9.0
+    container_name: helixagent-helixllm-kafka
+    ports:
+      - "${HELIX_LLM_KAFKA_PORT:-9093}:9092"
+    environment:
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@localhost:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      ALLOW_PLAINTEXT_LISTENER: yes
+    volumes:
+      - helixllm_kafka_data:/bitnami/kafka
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Local LLM Inference via llama.cpp (built from source with optimizations)
+  helixllm-llamacpp:
+    build:
+      context: ./HelixLLM
+      dockerfile: container/Containerfile.llamacpp
+    container_name: helixagent-helixllm-llamacpp
+    ports:
+      - "${HELIX_LLM_LLAMACPP_PORT:-8081}:8080"
+    environment:
+      # Model download configuration
+      MODEL_URL: ${HELIX_LLM_MODEL_URL:-https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf}
+      MODEL_PATH: /models/model.gguf
+      # llama.cpp server configuration
+      LLAMA_HOST: 0.0.0.0
+      LLAMA_PORT: 8080
+      LLAMA_CTX_SIZE: ${HELIX_LLM_CTX_SIZE:-8192}
+      LLAMA_THREADS: ${HELIX_LLM_THREADS:-4}
+      LLAMA_THREADS_BATCH: ${HELIX_LLM_THREADS_BATCH:-4}
+      LLAMA_BATCH_SIZE: ${HELIX_LLM_BATCH_SIZE:-2048}
+      LLAMA_N_PREDICT: ${HELIX_LLM_N_PREDICT:--1}
+      LLAMA_PARALLEL: ${HELIX_LLM_PARALLEL:-1}
+    volumes:
+      - helixllm_models:/models
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    profiles:
+      - local-llm
+      - full
+
+  # HelixLLM Prometheus (shared with HelixAgent monitoring)
+  helixllm-prometheus:
+    image: docker.io/prom/prometheus:latest
+    container_name: helixagent-helixllm-prometheus
+    ports:
+      - "${HELIX_LLM_PROMETHEUS_PORT:-9091}:9090"
+    volumes:
+      - ./HelixLLM/deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - helixllm_prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+      - full
+
+volumes:
+  helixllm_postgres_data:
+  helixllm_redis_data:
+  helixllm_qdrant_data:
+  helixllm_kafka_data:
+  helixllm_certs:
+  helixllm_models:
+  helixllm_prometheus_data:
+
+networks:
+  helixagent-network:
+    external: true

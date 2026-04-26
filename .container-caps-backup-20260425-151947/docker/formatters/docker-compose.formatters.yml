@@ -1,0 +1,309 @@
+version: '3.9'
+
+# Code Formatters Services
+# Provides HTTP services for service-type formatters
+# Native formatters (black, prettier, rustfmt, etc.) run as binaries
+# Service formatters (autopep8, yapf, sqlfluff, etc.) run as HTTP services
+
+services:
+  # Python Formatters
+  autopep8:
+    build:
+      context: .
+      dockerfile: Dockerfile.autopep8
+    image: helixagent/formatter-autopep8:2.0.4
+    container_name: formatter-autopep8
+    ports:
+      - "9211:9211"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9211/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  yapf:
+    build:
+      context: .
+      dockerfile: Dockerfile.yapf
+    image: helixagent/formatter-yapf:0.40.2
+    container_name: formatter-yapf
+    ports:
+      - "9210:9210"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9210/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # SQL Formatter
+  sqlfluff:
+    build:
+      context: .
+      dockerfile: Dockerfile.sqlfluff
+    image: helixagent/formatter-sqlfluff:3.4.1
+    container_name: formatter-sqlfluff
+    ports:
+      - "9220:9220"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9220/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Ruby Formatters
+  rubocop:
+    build:
+      context: .
+      dockerfile: Dockerfile.rubocop
+    image: helixagent/formatter-rubocop:1.72.0
+    container_name: formatter-rubocop
+    ports:
+      - "9230:9230"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9230/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  standardrb:
+    build:
+      context: .
+      dockerfile: Dockerfile.standardrb
+    image: helixagent/formatter-standardrb:1.42.1
+    container_name: formatter-standardrb
+    ports:
+      - "9231:9231"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9231/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # PHP Formatters
+  php-cs-fixer:
+    build:
+      context: .
+      dockerfile: Dockerfile.php-cs-fixer
+    image: helixagent/formatter-php-cs-fixer:3.68.0
+    container_name: formatter-php-cs-fixer
+    ports:
+      - "9240:9240"
+    volumes:
+      - formatter-cache:/tmp/formatter-cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9240/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  laravel-pint:
+    build:
+      context: .
+      dockerfile: Dockerfile.laravel-pint
+    image: helixagent/formatter-laravel-pint:1.19.0
+    container_name: formatter-laravel-pint
+    ports:
+      - "9241:9241"
+    volumes:
+      - formatter-cache:/tmp/formatter-cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9241/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Perl Formatter
+  perltidy:
+    build:
+      context: .
+      dockerfile: Dockerfile.perltidy
+    image: helixagent/formatter-perltidy:20260109.01
+    container_name: formatter-perltidy
+    ports:
+      - "9250:9250"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9250/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Clojure Formatter
+  cljfmt:
+    build:
+      context: .
+      dockerfile: Dockerfile.cljfmt
+    image: helixagent/formatter-cljfmt:0.12.0
+    container_name: formatter-cljfmt
+    ports:
+      - "9260:9260"
+    volumes:
+      - formatter-cache:/tmp/formatter-cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9260/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Java/Kotlin Formatter
+  spotless:
+    build:
+      context: .
+      dockerfile: Dockerfile.spotless
+    image: helixagent/formatter-spotless:7.0.0.BETA4
+    container_name: formatter-spotless
+    ports:
+      - "9270:9270"
+    volumes:
+      - formatter-cache:/tmp/formatter-cache
+      - gradle-cache:/home/gradle/.gradle
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9270/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Groovy Formatter
+  groovy-lint:
+    build:
+      context: .
+      dockerfile: Dockerfile.groovy-lint
+    image: helixagent/formatter-groovy-lint:15.0.4
+    container_name: formatter-groovy-lint
+    ports:
+      - "9280:9280"
+    volumes:
+      - formatter-cache:/tmp/formatter-cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9280/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # R Formatters
+  styler:
+    build:
+      context: .
+      dockerfile: Dockerfile.styler
+    image: helixagent/formatter-styler:1.10.3
+    container_name: formatter-styler
+    ports:
+      - "9290:9290"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9290/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  air:
+    build:
+      context: .
+      dockerfile: Dockerfile.air
+    image: helixagent/formatter-air:0.2.0
+    container_name: formatter-air
+    ports:
+      - "9291:9291"
+    volumes:
+      - formatter-cache:/home/formatter/.cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9291/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # PowerShell Formatter
+  psscriptanalyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile.psscriptanalyzer
+    image: helixagent/formatter-psscriptanalyzer:1.23.0
+    container_name: formatter-psscriptanalyzer
+    ports:
+      - "9300:9300"
+    volumes:
+      - formatter-cache:/tmp/formatter-cache
+    networks:
+      - formatters
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9300/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  formatters:
+    name: formatters-network
+    driver: bridge
+
+volumes:
+  formatter-cache:
+    name: formatter-cache
+  gradle-cache:
+    name: gradle-cache

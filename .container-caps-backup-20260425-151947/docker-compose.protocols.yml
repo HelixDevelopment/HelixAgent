@@ -1,0 +1,944 @@
+# docker-compose.protocols.yml
+# Unified Protocol Servers Stack for HelixAgent
+# Includes: MCP servers, LSP servers, ACP servers, Embedding servers
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.protocols.yml up -d
+#
+# This file extends docker-compose.yml and starts ALL protocol servers by default.
+# CLI agents will recognize 49+ MCP servers when properly integrated.
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # HELIXAGENT MCP SERVER (New Plugin System)
+  # =============================================================================
+
+  # HelixAgent MCP Server - Central MCP server for CLI agents
+  # Provides access to ALL HelixAgent features via MCP protocol
+  helixagent-mcp:
+    build:
+      context: ./plugins/mcp-server
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-server
+    ports:
+      - "${HELIXAGENT_MCP_PORT:-9100}:9100"
+    environment:
+      - MCP_PORT=9100
+      - HELIXAGENT_URL=http://helixagent:7061
+      - MCP_SERVER_NAME=helixagent
+      - MCP_SERVER_VERSION=1.0.0
+      - LOG_LEVEL=${MCP_LOG_LEVEL:-info}
+      # Transport options
+      - ENABLE_HTTP3=${ENABLE_HTTP3:-true}
+      - ENABLE_TOON=${ENABLE_TOON:-true}
+      - ENABLE_BROTLI=${ENABLE_BROTLI:-true}
+      # Feature flags
+      - ENABLE_DEBATE=true
+      - ENABLE_RAG=true
+      - ENABLE_MEMORY=true
+      - ENABLE_TASKS=true
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  # =============================================================================
+  # MCP CORE SERVERS (Always Running)
+  # =============================================================================
+
+  # MCP Server Manager - Orchestrates all MCP servers
+  mcp-manager:
+    build:
+      context: ./docker/mcp
+      dockerfile: Dockerfile.mcp-manager
+    container_name: helixagent-mcp-manager
+    ports:
+      - "${MCP_MANAGER_PORT:-9000}:9000"
+    environment:
+      - NODE_ENV=production
+      - MCP_SERVERS_DIR=/mcp-servers
+      - LOG_LEVEL=${MCP_LOG_LEVEL:-info}
+      - HELIXAGENT_URL=http://helixagent:7061
+      # Auto-discovery settings
+      - MCP_DISCOVERY_ENABLED=true
+      - MCP_HEALTHCHECK_INTERVAL=30
+    volumes:
+      - mcp_servers_data:/mcp-servers
+      - mcp_workspace:/workspace
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # MCP Filesystem Server - Secure file operations
+  mcp-filesystem:
+    build:
+      context: ./docker/mcp/filesystem
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-filesystem
+    environment:
+      - MCP_SERVER_NAME=filesystem
+      - ALLOWED_DIRECTORIES=/workspace,/data
+      - READ_ONLY=${MCP_FS_READ_ONLY:-false}
+    volumes:
+      - mcp_workspace:/workspace:rw
+      - mcp_data:/data:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP Git Server - Repository operations
+  mcp-git:
+    build:
+      context: ./docker/mcp/git
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-git
+    environment:
+      - MCP_SERVER_NAME=git
+      - GIT_REPOS_DIR=/repos
+      - GIT_USER_NAME=${GIT_USER_NAME:-HelixAgent}
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL:-helixagent@local}
+    volumes:
+      - mcp_git_repos:/repos:rw
+      - git_config:/root/.gitconfig:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP Memory Server - Knowledge graph memory
+  mcp-memory:
+    build:
+      context: ./docker/mcp/memory
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-memory
+    environment:
+      - MCP_SERVER_NAME=memory
+      - MEMORY_STORE_PATH=/data/memory
+      - MEMORY_MAX_SIZE=${MCP_MEMORY_MAX_SIZE:-10000}
+    volumes:
+      - mcp_memory_data:/data/memory:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP Fetch Server - Web content fetching
+  mcp-fetch:
+    build:
+      context: ./docker/mcp/fetch
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-fetch
+    environment:
+      - MCP_SERVER_NAME=fetch
+      - FETCH_TIMEOUT=${MCP_FETCH_TIMEOUT:-30000}
+      - MAX_CONTENT_LENGTH=${MCP_FETCH_MAX_LENGTH:-10485760}
+      - USER_AGENT=HelixAgent/1.0
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP Time Server - Timezone operations
+  mcp-time:
+    build:
+      context: ./docker/mcp/time
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-time
+    environment:
+      - MCP_SERVER_NAME=time
+      - TZ=${TZ:-UTC}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP SQLite Server - Database operations
+  mcp-sqlite:
+    build:
+      context: ./docker/mcp/sqlite
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-sqlite
+    environment:
+      - MCP_SERVER_NAME=sqlite
+      - SQLITE_DB_PATH=/data/databases
+    volumes:
+      - mcp_sqlite_data:/data/databases:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP PostgreSQL Server - PostgreSQL operations
+  mcp-postgres:
+    build:
+      context: ./mcp-servers/postgres-mcp
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-postgres
+    environment:
+      - MCP_SERVER_NAME=postgresql
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${DB_USER:-helixagent}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-helixagent123}
+      - POSTGRES_DB=${DB_NAME:-helixagent_db}
+    networks:
+      - helixagent-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # MCP Puppeteer Server - Browser automation
+  mcp-puppeteer:
+    build:
+      context: ./docker/mcp/puppeteer
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-puppeteer
+    environment:
+      - MCP_SERVER_NAME=puppeteer
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
+    volumes:
+      - mcp_puppeteer_data:/data:rw
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+
+  # MCP Sequential Thinking Server - Problem solving
+  mcp-sequential-thinking:
+    build:
+      context: ./docker/mcp/sequential-thinking
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-sequential-thinking
+    environment:
+      - MCP_SERVER_NAME=sequential-thinking
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # MCP INTEGRATION SERVERS (From mcp-servers directory)
+  # =============================================================================
+
+  # AI Experiment Logger MCP
+  mcp-ai-experiment-logger:
+    build:
+      context: ./mcp-servers/ai-experiment-logger
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-ai-experiment
+    environment:
+      - MCP_SERVER_NAME=ai-experiment-logger
+      - DATA_DIR=/data/experiments
+    volumes:
+      - mcp_experiments_data:/data/experiments:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # API Debugger MCP
+  mcp-api-debugger:
+    build:
+      context: ./mcp-servers/conversational-api-debugger
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-api-debugger
+    environment:
+      - MCP_SERVER_NAME=api-debugger
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Design to Code MCP
+  mcp-design-to-code:
+    build:
+      context: ./mcp-servers/design-to-code
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-design-to-code
+    environment:
+      - MCP_SERVER_NAME=design-to-code
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Domain Memory Agent MCP
+  mcp-domain-memory:
+    build:
+      context: ./mcp-servers/domain-memory-agent
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-domain-memory
+    environment:
+      - MCP_SERVER_NAME=domain-memory
+      - MEMORY_PATH=/data/memory
+    volumes:
+      - mcp_domain_memory:/data/memory:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Lumera Agent Memory MCP
+  mcp-lumera-memory:
+    build:
+      context: ./mcp-servers/lumera-agent-memory
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-lumera-memory
+    environment:
+      - MCP_SERVER_NAME=lumera-memory
+      - DATA_PATH=/data/lumera
+    volumes:
+      - mcp_lumera_data:/data/lumera:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # GitMCP - Git operations via MCP
+  mcp-gitmcp:
+    build:
+      context: ./mcp-servers/GitMCP
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-gitmcp
+    environment:
+      - MCP_SERVER_NAME=gitmcp
+      - REPOS_DIR=/repos
+    volumes:
+      - mcp_git_repos:/repos:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # HuggingFace MCP
+  mcp-huggingface:
+    build:
+      context: ./mcp-servers/huggingface-mcp
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-huggingface
+    environment:
+      - MCP_SERVER_NAME=huggingface
+      - HF_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - HF_CACHE_DIR=/cache/hf
+    volumes:
+      - mcp_hf_cache:/cache/hf:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Shell Tool MCP
+  mcp-shell:
+    build:
+      context: ./mcp-servers/shell-tool-mcp
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-shell
+    environment:
+      - MCP_SERVER_NAME=shell
+      - ALLOWED_COMMANDS=${MCP_SHELL_ALLOWED:-ls,cat,grep,find,echo}
+      - WORKSPACE=/workspace
+    volumes:
+      - mcp_workspace:/workspace:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Workflow Orchestrator MCP
+  mcp-workflow:
+    build:
+      context: ./mcp-servers/workflow-orchestrator
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-workflow
+    environment:
+      - MCP_SERVER_NAME=workflow
+      - HELIXAGENT_URL=http://helixagent:7061
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Project Health Auditor MCP
+  mcp-health-auditor:
+    build:
+      context: ./mcp-servers/project-health-auditor
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-health-auditor
+    environment:
+      - MCP_SERVER_NAME=health-auditor
+      - WORKSPACE=/workspace
+    volumes:
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Wiki MCP
+  mcp-wiki:
+    build:
+      context: ./mcp-servers/mcp-wiki
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-wiki
+    environment:
+      - MCP_SERVER_NAME=wiki
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # MCP VECTOR DATABASE SERVERS
+  # =============================================================================
+
+  # MCP Chroma Server - Vector operations with ChromaDB
+  mcp-chroma:
+    build:
+      context: ./docker/mcp/chroma
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-chroma
+    environment:
+      - MCP_SERVER_NAME=chroma
+      - CHROMA_URL=http://chromadb:8000
+      - CHROMA_AUTH_TOKEN=${VECTOR_DB_KEY:-cognee_vector_key}
+    depends_on:
+      chromadb:
+        condition: service_started
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP Qdrant Server - Vector operations with Qdrant
+  mcp-qdrant:
+    build:
+      context: ./docker/mcp/qdrant
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-qdrant
+    environment:
+      - MCP_SERVER_NAME=qdrant
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+    depends_on:
+      - qdrant
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # MCP EXTERNAL SERVICE ADAPTERS
+  # =============================================================================
+
+  # Slack MCP Adapter
+  mcp-slack:
+    build:
+      context: ./docker/mcp/adapters/slack
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-slack
+    environment:
+      - MCP_SERVER_NAME=slack
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # GitHub MCP Adapter
+  mcp-github:
+    build:
+      context: ./docker/mcp/adapters/github
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-github
+    environment:
+      - MCP_SERVER_NAME=github
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Linear MCP Adapter
+  mcp-linear:
+    build:
+      context: ./docker/mcp/adapters/linear
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-linear
+    environment:
+      - MCP_SERVER_NAME=linear
+      - LINEAR_API_KEY=${LINEAR_API_KEY:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Notion MCP Adapter
+  mcp-notion:
+    build:
+      context: ./docker/mcp/adapters/notion
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-notion
+    environment:
+      - MCP_SERVER_NAME=notion
+      - NOTION_API_KEY=${NOTION_API_KEY:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Brave Search MCP Adapter
+  mcp-brave-search:
+    build:
+      context: ./docker/mcp/adapters/brave-search
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-brave-search
+    environment:
+      - MCP_SERVER_NAME=brave-search
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Sentry MCP Adapter
+  mcp-sentry:
+    build:
+      context: ./docker/mcp/adapters/sentry
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-sentry
+    environment:
+      - MCP_SERVER_NAME=sentry
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN:-}
+      - SENTRY_ORG=${SENTRY_ORG:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # MCP DESIGN & IMAGE SERVERS
+  # =============================================================================
+
+  # MCP Figma Server
+  mcp-figma:
+    build:
+      context: ./docker/mcp/figma
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-figma
+    environment:
+      - MCP_SERVER_NAME=figma
+      - FIGMA_ACCESS_TOKEN=${FIGMA_ACCESS_TOKEN:-}
+      - FIGMA_TEAM_ID=${FIGMA_TEAM_ID:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP SVGMaker Server
+  mcp-svgmaker:
+    build:
+      context: ./docker/mcp/svgmaker
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-svgmaker
+    environment:
+      - MCP_SERVER_NAME=svgmaker
+      - SVGMAKER_API_KEY=${SVGMAKER_API_KEY:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # MCP Replicate Server
+  mcp-replicate:
+    build:
+      context: ./docker/mcp/replicate
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-replicate
+    environment:
+      - MCP_SERVER_NAME=replicate
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # LSP SERVERS
+  # =============================================================================
+
+  # LSP-AI - AI-powered language server
+  lsp-ai:
+    build:
+      context: ./docker/lsp/lsp-ai
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-ai
+    ports:
+      - "${LSP_AI_PORT:-5000}:5000"
+    environment:
+      - LSP_AI_PORT=5000
+      - LSP_AI_HOST=0.0.0.0
+      - LSP_AI_BACKEND=helixagent
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LSP_AI_ENABLE_CHAT=${LSP_AI_ENABLE_CHAT:-true}
+      - LSP_AI_ENABLE_COMPLETIONS=${LSP_AI_ENABLE_COMPLETIONS:-true}
+      - LSP_AI_ENABLE_ACTIONS=${LSP_AI_ENABLE_ACTIONS:-true}
+    volumes:
+      - lsp_ai_config:/root/.config/lsp-ai:rw
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Multi-Language LSP Container
+  lsp-multi:
+    build:
+      context: ./docker/lsp/multi-language
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-multi
+    ports:
+      - "${LSP_GO_PORT:-5001}:5001"      # gopls
+      - "${LSP_RUST_PORT:-5002}:5002"    # rust-analyzer
+      - "${LSP_PYTHON_PORT:-5003}:5003"  # pylsp
+      - "${LSP_TS_PORT:-5004}:5004"      # typescript-language-server
+      - "${LSP_CPP_PORT:-5005}:5005"     # clangd
+      - "${LSP_JAVA_PORT:-5006}:5006"    # jdt.ls
+    environment:
+      - LSP_WORKSPACE=/workspace
+      - GOPLS_PORT=5001
+      - RUST_ANALYZER_PORT=5002
+      - PYLSP_PORT=5003
+      - TSSERVER_PORT=5004
+      - CLANGD_PORT=5005
+      - JDTLS_PORT=5006
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - lsp_cache:/root/.cache:rw
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    restart: unless-stopped
+
+  # LSP Manager - Orchestrates all LSP servers
+  lsp-manager:
+    build:
+      context: ./docker/lsp/manager
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-manager
+    ports:
+      - "${LSP_MANAGER_PORT:-5100}:5100"
+    environment:
+      - LSP_MANAGER_PORT=5100
+      - LSP_SERVERS_CONFIG=/config/lsp-servers.yaml
+      - LOG_LEVEL=${LSP_LOG_LEVEL:-info}
+    volumes:
+      - ./docker/lsp/config:/config:ro
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    depends_on:
+      - lsp-multi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # =============================================================================
+  # ACP (Agent Communication Protocol) SERVERS
+  # =============================================================================
+
+  # ACP Manager - Agent Communication Protocol manager
+  acp-manager:
+    build:
+      context: ./docker/acp
+      dockerfile: Dockerfile
+    container_name: helixagent-acp-manager
+    ports:
+      - "${ACP_MANAGER_PORT:-9200}:9200"
+    environment:
+      - ACP_PORT=9200
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LOG_LEVEL=${ACP_LOG_LEVEL:-info}
+      - ENABLE_AGENT_DISCOVERY=true
+      - ENABLE_AGENT_ROUTING=true
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # =============================================================================
+  # EMBEDDING SERVERS
+  # =============================================================================
+
+  # Sentence Transformers Service - Local embeddings
+  embedding-sentence-transformers:
+    build:
+      context: ./docker/rag/sentence-transformers
+      dockerfile: Dockerfile
+    container_name: helixagent-embeddings-st
+    ports:
+      - "${ST_PORT:-8016}:8016"
+    environment:
+      - ST_PORT=8016
+      - ST_DEFAULT_MODEL=${ST_DEFAULT_MODEL:-all-mpnet-base-v2}
+      - ST_CACHE_DIR=/models
+      - ST_USE_GPU=${ST_USE_GPU:-false}
+    volumes:
+      - st_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8016/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+
+  # BGE-M3 Embedding Service - Multilingual embeddings
+  embedding-bge-m3:
+    build:
+      context: ./docker/rag/bge-m3
+      dockerfile: Dockerfile
+    container_name: helixagent-embeddings-bge
+    ports:
+      - "${BGE_PORT:-8017}:8017"
+    environment:
+      - BGE_PORT=8017
+      - BGE_MODEL=BAAI/bge-m3
+      - BGE_CACHE_DIR=/models
+    volumes:
+      - bge_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8017/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+
+  # =============================================================================
+  # VECTOR DATABASES
+  # =============================================================================
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: helixagent-qdrant
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__LOG_LEVEL=${QDRANT_LOG_LEVEL:-INFO}
+    volumes:
+      - qdrant_storage:/qdrant/storage:rw
+      - qdrant_snapshots:/qdrant/snapshots:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # =============================================================================
+  # RAG SERVICES
+  # =============================================================================
+
+  # RAG Pipeline Manager - Orchestrates all RAG services
+  rag-manager:
+    build:
+      context: ./docker/rag/manager
+      dockerfile: Dockerfile
+    container_name: helixagent-rag-manager
+    ports:
+      - "${RAG_MANAGER_PORT:-8030}:8030"
+    environment:
+      - RAG_MANAGER_PORT=8030
+      - RAG_CONFIG_PATH=/config/rag-config.yaml
+      - PGVECTOR_URL=postgresql://helixagent:helixagent123@postgres:5432/helixagent_db
+      - CHROMADB_URL=http://chromadb:8000
+      - QDRANT_URL=http://qdrant:6333
+      - ST_URL=http://embedding-sentence-transformers:8016
+      - BGE_URL=http://embedding-bge-m3:8017
+      - LLM_URL=http://helixagent:7061/v1/chat/completions
+    volumes:
+      - ./docker/rag/config:/config:ro
+    networks:
+      - helixagent-network
+    depends_on:
+      - qdrant
+      - embedding-sentence-transformers
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8030/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Reranking Service - Cross-encoder reranking
+  rag-reranker:
+    build:
+      context: ./docker/rag/reranker
+      dockerfile: Dockerfile
+    container_name: helixagent-rag-reranker
+    ports:
+      - "${RERANKER_PORT:-8021}:8021"
+    environment:
+      - RERANKER_PORT=8021
+      - RERANKER_MODEL=${RERANKER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
+      - RERANKER_CACHE_DIR=/models
+    volumes:
+      - reranker_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8021/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # =============================================================================
+  # PROTOCOL DISCOVERY SERVICE
+  # =============================================================================
+
+  # Protocol Discovery Service - Central registry for all protocols
+  protocol-discovery:
+    build:
+      context: ./docker/protocol-discovery
+      dockerfile: Dockerfile
+    container_name: helixagent-protocol-discovery
+    ports:
+      - "${PROTOCOL_DISCOVERY_PORT:-9300}:9300"
+    environment:
+      - DISCOVERY_PORT=9300
+      - HELIXAGENT_URL=http://helixagent:7061
+      # MCP Servers
+      - MCP_MANAGER_URL=http://mcp-manager:9000
+      - HELIXAGENT_MCP_URL=http://helixagent-mcp:9100
+      # LSP Servers
+      - LSP_MANAGER_URL=http://lsp-manager:5100
+      - LSP_AI_URL=http://lsp-ai:5000
+      # ACP Servers
+      - ACP_MANAGER_URL=http://acp-manager:9200
+      # RAG Services
+      - RAG_MANAGER_URL=http://rag-manager:8030
+      # Enable auto-discovery
+      - ENABLE_AUTO_DISCOVERY=true
+      - DISCOVERY_INTERVAL=60
+    networks:
+      - helixagent-network
+    depends_on:
+      - mcp-manager
+      - lsp-manager
+      - acp-manager
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9300/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  # MCP Volumes
+  mcp_servers_data:
+    driver: local
+  mcp_workspace:
+    driver: local
+  mcp_data:
+    driver: local
+  mcp_git_repos:
+    driver: local
+  mcp_memory_data:
+    driver: local
+  mcp_sqlite_data:
+    driver: local
+  mcp_puppeteer_data:
+    driver: local
+  mcp_experiments_data:
+    driver: local
+  mcp_domain_memory:
+    driver: local
+  mcp_lumera_data:
+    driver: local
+  mcp_hf_cache:
+    driver: local
+  git_config:
+    driver: local
+
+  # LSP Volumes
+  lsp_ai_config:
+    driver: local
+  lsp_cache:
+    driver: local
+
+  # RAG/Embedding Volumes
+  st_models:
+    driver: local
+  bge_models:
+    driver: local
+  reranker_models:
+    driver: local
+  qdrant_storage:
+    driver: local
+  qdrant_snapshots:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

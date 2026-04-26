@@ -1,0 +1,183 @@
+# Security Scanning Infrastructure
+# This compose file provides Snyk and SonarQube for comprehensive security and code quality scanning
+#
+# Usage:
+#   podman-compose -f docker-compose.security.yml up -d
+#   ./scripts/security-scan.sh snyk
+#   ./scripts/security-scan.sh sonarqube
+#
+# Note: Snyk CLI runs as a one-shot container, SonarQube runs as a service
+
+services:
+  # SonarQube Server - Code Quality and Security Analysis
+  sonarqube:
+    image: docker.io/sonarqube:community
+    container_name: helixagent-sonarqube
+    ports:
+      - "${SONARQUBE_PORT:-9000}:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER:-sonarqube}
+      SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD:-sonarqube123}
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - security-network
+    depends_on:
+      sonarqube-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  # PostgreSQL Database for SonarQube
+  sonarqube-db:
+    image: postgres:15-alpine
+    container_name: helixagent-sonarqube-db
+    environment:
+      POSTGRES_DB: sonarqube
+      POSTGRES_USER: ${SONARQUBE_DB_USER:-sonarqube}
+      POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD:-sonarqube123}
+    volumes:
+      - sonarqube_db_data:/var/lib/postgresql/data
+    networks:
+      - security-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube -d sonarqube"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Snyk CLI Scanner (runs as one-shot container)
+  # Note: For open-source scanning without authentication, use snyk test --all-projects
+  snyk-scanner:
+    image: snyk/snyk:golang
+    container_name: helixagent-snyk-scanner
+    working_dir: /app
+    environment:
+      # SNYK_TOKEN can be set for authenticated scans (optional for OSS)
+      SNYK_TOKEN: "${SNYK_TOKEN:-}"
+      # For unauthenticated OSS scanning
+      SNYK_CFG_DISABLEANALYTICS: "1"
+    volumes:
+      - .:/app:ro
+      - snyk_cache:/root/.config/configstore
+    networks:
+      - security-network
+    # This container exits after scan - use docker-compose run
+    command: ["test", "--all-projects", "--json"]
+    profiles:
+      - scan
+
+  # Trivy Scanner - Container and Code Vulnerability Scanner (Free/OSS)
+  trivy-scanner:
+    image: aquasec/trivy:latest
+    container_name: helixagent-trivy-scanner
+    volumes:
+      - .:/app:ro
+      - trivy_cache:/root/.cache/trivy
+    networks:
+      - security-network
+    command: ["fs", "--format", "json", "--scanners", "vuln,secret,misconfig", "/app"]
+    profiles:
+      - scan
+
+  # Gosec - Go Security Checker (Free/OSS)
+  gosec-scanner:
+    image: securego/gosec:latest
+    container_name: helixagent-gosec-scanner
+    working_dir: /app
+    volumes:
+      - .:/app:rw
+    networks:
+      - security-network
+    command: ["-fmt=json", "-out=/app/reports/gosec-report.json", "./..."]
+    profiles:
+      - scan
+
+  # SonarScanner CLI for Go projects
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli:latest
+    container_name: helixagent-sonar-scanner
+    working_dir: /usr/src
+    environment:
+      SONAR_HOST_URL: "http://sonarqube:9000"
+      SONAR_TOKEN: "${SONAR_TOKEN:-}"
+    volumes:
+      - .:/usr/src:ro
+      - ./reports:/usr/src/reports
+    networks:
+      - security-network
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    profiles:
+      - scan
+
+  # Semgrep - Fast, pattern-based static analysis
+  semgrep-scanner:
+    image: returntocorp/semgrep:latest
+    container_name: helixagent-semgrep-scanner
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - ./reports/security:/reports
+    networks:
+      - security-network
+    command: ["--config", "auto", "--json", "--output", "/reports/semgrep-report.json", "--metrics", "off", "/app"]
+    profiles:
+      - scan
+
+  # KICS - Infrastructure as Code Scanner
+  kics-scanner:
+    image: checkmarx/kics:latest
+    container_name: helixagent-kics-scanner
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - ./reports/security:/reports
+    networks:
+      - security-network
+    command: ["scan", "-p", "/app", "-o", "/reports", "--report-formats", "json", "--ignore-on-exit", "all", "--silent"]
+    profiles:
+      - scan
+
+  # Grype - Vulnerability Scanner (alternative to Trivy)
+  grype-scanner:
+    image: anchore/grype:latest
+    container_name: helixagent-grype-scanner
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - ./reports/security:/reports
+    networks:
+      - security-network
+    command: ["dir:/app", "-o", "json", "--file", "/reports/grype-report.json"]
+    profiles:
+      - scan
+
+volumes:
+  sonarqube_data:
+    driver: local
+  sonarqube_logs:
+    driver: local
+  sonarqube_extensions:
+    driver: local
+  sonarqube_db_data:
+    driver: local
+  snyk_cache:
+    driver: local
+  trivy_cache:
+    driver: local
+
+networks:
+  security-network:
+    driver: bridge

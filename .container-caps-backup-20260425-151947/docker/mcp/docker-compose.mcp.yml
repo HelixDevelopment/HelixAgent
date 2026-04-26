@@ -1,0 +1,403 @@
+# docker/mcp/docker-compose.mcp.yml
+# MCP Servers Stack for HelixAgent
+# Extends main docker-compose.yml
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # MCP CORE SERVERS
+  # =============================================================================
+
+  # MCP Server Manager - Orchestrates all MCP servers
+  mcp-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-manager
+    container_name: helixagent-mcp-manager
+    ports:
+      - "${MCP_MANAGER_PORT:-9000}:9000"
+    environment:
+      - NODE_ENV=production
+      - MCP_SERVERS_DIR=/mcp-servers
+      - LOG_LEVEL=${MCP_LOG_LEVEL:-info}
+    volumes:
+      - mcp_servers_data:/mcp-servers
+      - mcp_workspace:/workspace
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Filesystem Server - Secure file operations
+  mcp-filesystem:
+    build:
+      context: ./filesystem
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-filesystem
+    environment:
+      - MCP_SERVER_NAME=filesystem
+      - ALLOWED_DIRECTORIES=/workspace,/data
+      - READ_ONLY=${MCP_FS_READ_ONLY:-false}
+    volumes:
+      - mcp_workspace:/workspace:rw
+      - mcp_data:/data:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Git Server - Repository operations
+  mcp-git:
+    build:
+      context: ./git
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-git
+    environment:
+      - MCP_SERVER_NAME=git
+      - GIT_REPOS_DIR=/repos
+      - GIT_USER_NAME=${GIT_USER_NAME:-HelixAgent}
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL:-helixagent@local}
+    volumes:
+      - mcp_git_repos:/repos:rw
+      - git_config:/root/.gitconfig:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Memory Server - Knowledge graph memory
+  mcp-memory:
+    build:
+      context: ./memory
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-memory
+    environment:
+      - MCP_SERVER_NAME=memory
+      - MEMORY_STORE_PATH=/data/memory
+      - MEMORY_MAX_SIZE=${MCP_MEMORY_MAX_SIZE:-10000}
+    volumes:
+      - mcp_memory_data:/data/memory:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Fetch Server - Web content fetching
+  mcp-fetch:
+    build:
+      context: ./fetch
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-fetch
+    environment:
+      - MCP_SERVER_NAME=fetch
+      - FETCH_TIMEOUT=${MCP_FETCH_TIMEOUT:-30000}
+      - MAX_CONTENT_LENGTH=${MCP_FETCH_MAX_LENGTH:-10485760}
+      - USER_AGENT=HelixAgent/1.0
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Time Server - Timezone operations
+  mcp-time:
+    build:
+      context: ./time
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-time
+    environment:
+      - MCP_SERVER_NAME=time
+      - TZ=${TZ:-UTC}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP SQLite Server - Database operations
+  mcp-sqlite:
+    build:
+      context: ./sqlite
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-sqlite
+    environment:
+      - MCP_SERVER_NAME=sqlite
+      - SQLITE_DB_PATH=/data/databases
+    volumes:
+      - mcp_sqlite_data:/data/databases:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Puppeteer Server - Browser automation
+  mcp-puppeteer:
+    build:
+      context: ./puppeteer
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-puppeteer
+    environment:
+      - MCP_SERVER_NAME=puppeteer
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
+    volumes:
+      - mcp_puppeteer_data:/data:rw
+    networks:
+      - helixagent-network
+    # Puppeteer needs more resources
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # MCP Sequential Thinking Server - Problem solving
+  mcp-sequential-thinking:
+    build:
+      context: ./sequential-thinking
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-sequential-thinking
+    environment:
+      - MCP_SERVER_NAME=sequential-thinking
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - full
+
+  # =============================================================================
+  # MCP VECTOR DATABASE SERVERS
+  # =============================================================================
+
+  # MCP Chroma Server - Vector operations with ChromaDB
+  mcp-chroma:
+    build:
+      context: ./chroma
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-chroma
+    environment:
+      - MCP_SERVER_NAME=chroma
+      - CHROMA_URL=http://chromadb:8000
+      - CHROMA_AUTH_TOKEN=${VECTOR_DB_KEY:-cognee_vector_key}
+    depends_on:
+      - chromadb
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - mcp-vector
+      - full
+
+  # MCP Qdrant Server - Vector operations with Qdrant
+  mcp-qdrant:
+    build:
+      context: ./qdrant
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-qdrant
+    environment:
+      - MCP_SERVER_NAME=qdrant
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+    depends_on:
+      - qdrant
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - mcp-vector
+      - full
+
+  # =============================================================================
+  # MCP DESIGN & IMAGE SERVERS
+  # =============================================================================
+
+  # MCP Figma Server - Figma design operations
+  mcp-figma:
+    build:
+      context: ./figma
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-figma
+    environment:
+      - MCP_SERVER_NAME=figma
+      - FIGMA_ACCESS_TOKEN=${FIGMA_ACCESS_TOKEN:-}
+      - FIGMA_TEAM_ID=${FIGMA_TEAM_ID:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp-design
+      - full
+
+  # MCP SVGMaker Server - SVG generation
+  mcp-svgmaker:
+    build:
+      context: ./svgmaker
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-svgmaker
+    environment:
+      - MCP_SERVER_NAME=svgmaker
+      - SVGMAKER_API_KEY=${SVGMAKER_API_KEY:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp-design
+      - full
+
+  # MCP ImageSorcery Server - Local image processing
+  mcp-imagesorcery:
+    build:
+      context: ./imagesorcery
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-imagesorcery
+    environment:
+      - MCP_SERVER_NAME=imagesorcery
+      - OUTPUT_DIR=/data/images
+    volumes:
+      - mcp_images_data:/data/images:rw
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
+    profiles:
+      - mcp-image
+      - full
+
+  # MCP Stable Diffusion Server - Local image generation
+  mcp-stable-diffusion:
+    build:
+      context: ./stable-diffusion
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-stable-diffusion
+    environment:
+      - MCP_SERVER_NAME=stable-diffusion
+      - SD_WEBUI_URL=${SD_WEBUI_URL:-http://stable-diffusion-webui:7860}
+    depends_on:
+      - stable-diffusion-webui
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp-image-gpu
+      - full-gpu
+
+  # Stable Diffusion WebUI - Backend for image generation
+  stable-diffusion-webui:
+    image: automatic1111/stable-diffusion-webui:latest
+    container_name: helixagent-sd-webui
+    ports:
+      - "${SD_PORT:-7860}:7860"
+    environment:
+      - COMMANDLINE_ARGS=--api --listen --no-half-vae
+    volumes:
+      - sd_models:/app/models:rw
+      - sd_outputs:/app/outputs:rw
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    profiles:
+      - mcp-image-gpu
+      - full-gpu
+
+  # MCP Replicate Server - Cloud image generation
+  mcp-replicate:
+    build:
+      context: ./replicate
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-replicate
+    environment:
+      - MCP_SERVER_NAME=replicate
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp-image
+      - full
+
+  # =============================================================================
+  # MCP LSP BRIDGE SERVERS
+  # =============================================================================
+
+  # MCP LSP Tools Server - Regex search and code analysis
+  mcp-lsp-tools:
+    build:
+      context: ./lsp-tools
+      dockerfile: Dockerfile
+    container_name: helixagent-mcp-lsp-tools
+    environment:
+      - MCP_SERVER_NAME=lsp-tools
+      - ALLOWED_DIRECTORIES=/workspace
+    volumes:
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+      - mcp-lsp
+      - full
+
+volumes:
+  mcp_servers_data:
+    driver: local
+  mcp_workspace:
+    driver: local
+  mcp_data:
+    driver: local
+  mcp_git_repos:
+    driver: local
+  mcp_memory_data:
+    driver: local
+  mcp_sqlite_data:
+    driver: local
+  mcp_puppeteer_data:
+    driver: local
+  mcp_images_data:
+    driver: local
+  sd_models:
+    driver: local
+  sd_outputs:
+    driver: local
+  git_config:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

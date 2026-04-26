@@ -1,0 +1,378 @@
+# NVIDIA RAG Pipeline Infrastructure for HelixAgent
+# 
+# This compose file provides the complete NVIDIA Nemotron RAG pipeline:
+# - Document Extraction (NeMo Retriever)
+# - Multimodal Embedding (Nemotron Embed VL)
+# - Cross-Encoder Reranking (Nemotron Reranker VL)
+# - Answer Generation (Nemotron Super 49B)
+#
+# COST MODEL: Freemium - Uses open-source alternatives by default
+# - Local GPU deployment: FREE (requires NVIDIA GPU with 24GB+ VRAM)
+# - NVIDIA NIM Cloud API: PAID (pay-per-use, free tier available)
+#
+# Usage:
+#   # Local deployment (free, requires GPU)
+#   docker compose -f docker-compose.nvidia-rag.yml --profile local-gpu up -d
+#
+#   # Cloud API only (no containers needed, configure API keys)
+#   # Set NVIDIA_API_KEY in your .env file
+
+version: "3.9"
+
+services:
+  # ============================================================================
+  # VECTOR DATABASE - Milvus (FREE / Open Source)
+  # ============================================================================
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: nvidia-rag-etcd
+    profiles: ["local-gpu", "hybrid", "minimal"]
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd-data:/etcd
+    command: >
+      etcd -advertise-client-urls http://127.0.0.1:2379
+      -listen-client-urls http://0.0.0.0:2379
+      --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - nvidia-rag-network
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: nvidia-rag-minio
+    profiles: ["local-gpu", "hybrid", "minimal"]
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9010:9000"
+      - "9011:9001"
+    volumes:
+      - minio-data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - nvidia-rag-network
+
+  milvus:
+    image: milvusdb/milvus:v2.4.0-rc.1
+    container_name: nvidia-rag-milvus
+    profiles: ["local-gpu", "hybrid", "minimal"]
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      - etcd
+      - minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - nvidia-rag-network
+
+  # ============================================================================
+  # DOCUMENT EXTRACTION - NeMo Retriever (FREE / Open Source)
+  # Requires: NVIDIA GPU with 24GB+ VRAM for local deployment
+  # Alternative: NVIDIA NIM Cloud API (paid, free tier available)
+  # ============================================================================
+  nemo-extraction:
+    image: nvcr.io/nvidia/nemo-retriever:24.06
+    container_name: nvidia-rag-extraction
+    profiles: ["local-gpu"]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - NEMO_RETRIEVER_MODEL=nvidia/nv-embedqa-e5-v5
+      - NEMO_RETRIEVER_TABLE_EXTRACTOR=true
+      - NEMO_RETRIEVER_CHART_EXTRACTOR=true
+      - NEMO_RETRIEVER_OCR=true
+    ports:
+      - "8100:8000"
+    volumes:
+      - nemo-models:/models
+      - ./data/documents:/documents:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    networks:
+      - nvidia-rag-network
+
+  # ============================================================================
+  # EMBEDDING SERVICE - Local Nemotron Embed VL (FREE / Open Source)
+  # Requires: NVIDIA GPU with 16GB+ VRAM
+  # Alternative: NVIDIA NIM API (paid, free tier available)
+  # ============================================================================
+  nemotron-embedding:
+    image: nvcr.io/nvidia/nemo-microservices/embedding:24.06
+    container_name: nvidia-rag-embedding
+    profiles: ["local-gpu"]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - MODEL_NAME=nvidia/llama-nemotron-embed-vl-1b-v2
+      - BATCH_SIZE=32
+      - MAX_INPUT_LENGTH=512
+    ports:
+      - "8101:8000"
+    volumes:
+      - embedding-models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    networks:
+      - nvidia-rag-network
+
+  # ============================================================================
+  # RERANKING SERVICE - Local Nemotron Reranker VL (FREE / Open Source)
+  # Requires: NVIDIA GPU with 16GB+ VRAM
+  # Alternative: NVIDIA NIM API (paid, free tier available)
+  # ============================================================================
+  nemotron-reranker:
+    image: nvcr.io/nvidia/nemo-microservices/reranking:24.06
+    container_name: nvidia-rag-reranker
+    profiles: ["local-gpu"]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - MODEL_NAME=nvidia/llama-nemotron-rerank-vl-1b-v2
+      - BATCH_SIZE=8
+      - MAX_INPUT_LENGTH=512
+    ports:
+      - "8102:8000"
+    volumes:
+      - reranker-models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    networks:
+      - nvidia-rag-network
+
+  # ============================================================================
+  # GENERATION SERVICE - Local Nemotron Super 49B (FREE / Open Source)
+  # Requires: NVIDIA GPU with 80GB+ VRAM (or multiple GPUs)
+  # Alternative: NVIDIA NIM API (paid, free tier available)
+  # ============================================================================
+  nemotron-generation:
+    image: nvcr.io/nvidia/nemo-microservices/generation:24.06
+    container_name: nvidia-rag-generation
+    profiles: ["local-gpu-large"]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0,1
+      - MODEL_NAME=nvidia/llama-3.3-nemotron-super-49b-v1.5
+      - TENSOR_PARALLEL_SIZE=2
+      - MAX_INPUT_LENGTH=8192
+      - MAX_OUTPUT_LENGTH=4096
+    ports:
+      - "8103:8000"
+    volumes:
+      - generation-models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 120s
+    networks:
+      - nvidia-rag-network
+
+  # ============================================================================
+  # OPEN SOURCE ALTERNATIVES (FREE - No GPU Required)
+  # These provide fallback when NVIDIA GPU is not available
+  # ============================================================================
+
+  # Open-source document parser (Apache Tika)
+  tika-extraction:
+    image: apache/tika:2.9.1-full
+    container_name: nvidia-rag-tika
+    profiles: ["opensource", "minimal", "hybrid"]
+    ports:
+      - "8105:9998"
+    environment:
+      - TIKA_CONFIG=/etc/tika/tika-config.xml
+    volumes:
+      - ./config/tika:/etc/tika:ro
+      - ./data/documents:/documents:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/version"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - nvidia-rag-network
+
+  # Open-source embedding (sentence-transformers)
+  sentence-embedding:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: nvidia-rag-sentence-embedding
+    profiles: ["opensource", "minimal", "hybrid"]
+    ports:
+      - "8106:80"
+    environment:
+      - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+      - MAX_BATCH_TOKENS=16384
+    volumes:
+      - sentence-models:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - nvidia-rag-network
+
+  # Ollama for local LLM generation (CPU/GPU optional)
+  ollama-generation:
+    image: ollama/ollama:latest
+    container_name: nvidia-rag-ollama
+    profiles: ["opensource", "minimal", "hybrid"]
+    ports:
+      - "8107:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    # Uncomment for GPU support
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - nvidia-rag-network
+
+  # ============================================================================
+  # HELIXAGENT RAG API BRIDGE
+  # ============================================================================
+  helixagent-rag-bridge:
+    build:
+      context: ../../
+      dockerfile: docker/nvidia-rag/Dockerfile.rag-bridge
+    container_name: nvidia-rag-bridge
+    profiles: ["local-gpu", "hybrid", "opensource", "minimal"]
+    ports:
+      - "8500:8500"
+    environment:
+      # Vector DB
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      # Extraction Service (NVIDIA or Open Source)
+      - EXTRACTION_URL=${EXTRACTION_URL:-http://tika-extraction:9998}
+      - EXTRACTION_TYPE=${EXTRACTION_TYPE:-tika}
+      # Embedding Service (NVIDIA or Open Source)
+      - EMBEDDING_URL=${EMBEDDING_URL:-http://sentence-embedding:80}
+      - EMBEDDING_TYPE=${EMBEDDING_TYPE:-sentence-transformers}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-384}
+      # Reranking Service (optional)
+      - RERANKER_URL=${RERANKER_URL:-}
+      - RERANKER_TYPE=${RERANKER_TYPE:-none}
+      # Generation Service (NVIDIA NIM or Local)
+      - GENERATION_URL=${GENERATION_URL:-http://ollama-generation:11434}
+      - GENERATION_TYPE=${GENERATION_TYPE:-ollama}
+      - GENERATION_MODEL=${GENERATION_MODEL:-llama3.2}
+      # NVIDIA NIM Cloud (optional - paid)
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - NVIDIA_BASE_URL=${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      # Processing options
+      - CHUNK_SIZE=${CHUNK_SIZE:-512}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-100}
+      - EXTRACT_TABLES=${EXTRACT_TABLES:-true}
+      - EXTRACT_CHARTS=${EXTRACT_CHARTS:-false}
+    depends_on:
+      milvus:
+        condition: service_healthy
+    networks:
+      - nvidia-rag-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  etcd-data:
+  minio-data:
+  milvus-data:
+  nemo-models:
+  embedding-models:
+  reranker-models:
+  generation-models:
+  sentence-models:
+  ollama-models:
+
+networks:
+  nvidia-rag-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

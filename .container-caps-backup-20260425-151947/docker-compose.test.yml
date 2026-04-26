@@ -1,0 +1,244 @@
+services:
+  # Mock LLM Server for testing (provides OpenAI, Claude, and Ollama compatible APIs)
+  mock-llm:
+    build:
+      context: ./tests/mock-llm-server
+      dockerfile: Dockerfile
+    container_name: helixagent-mock-llm
+    ports:
+      - "${MOCK_LLM_PORT:-18081}:8090"
+    environment:
+      PORT: "8090"
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # OAuth Mock Server for testing OAuth flows
+  oauth-mock:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.0
+    container_name: helixagent-oauth-mock
+    ports:
+      - "${OAUTH_MOCK_PORT:-18091}:7061"
+    environment:
+      - JSON_CONFIG_PATH=/config/config.json
+    volumes:
+      - ./tests/oauth-mock-config.json:/config/config.json
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7061/.well-known/openid-configuration"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: helixagent-postgres
+    environment:
+      POSTGRES_DB: helixagent_db
+      POSTGRES_USER: helixagent
+      POSTGRES_PASSWORD: helixagent123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixagent -d helixagent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: helixagent-redis
+    command: redis-server --requirepass helixagent123 --appendonly yes
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Ollama for local LLM testing (free, no API keys needed)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: helixagent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - helixagent-network
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # HelixAgent Application
+  helixagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helixagent-app
+    ports:
+      - "8080:7061"
+    environment:
+      # Server Configuration
+      PORT: 8080
+      HELIXAGENT_API_KEY: test-api-key-for-development
+
+      # JWT Configuration
+      JWT_SECRET: development-jwt-secret-key-change-in-production
+
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: helixagent
+      DB_PASSWORD: helixagent123
+      DB_NAME: helixagent_db
+
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: helixagent123
+
+      # LLM Provider Configuration (using mock server for testing)
+      # All providers point to mock-llm server for deterministic testing
+      CLAUDE_API_KEY: "mock-api-key"
+      CLAUDE_BASE_URL: http://mock-llm:8081/v1
+      DEEPSEEK_API_KEY: "mock-api-key"
+      DEEPSEEK_BASE_URL: http://mock-llm:8081/v1
+      GEMINI_API_KEY: "mock-api-key"
+      GEMINI_BASE_URL: http://mock-llm:8081/v1
+      QWEN_API_KEY: "mock-api-key"
+      QWEN_BASE_URL: http://mock-llm:8081/v1
+      ZAI_API_KEY: "mock-api-key"
+      ZAI_BASE_URL: http://mock-llm:8081/v1
+
+      # Ollama Configuration (also pointing to mock server)
+      OLLAMA_BASE_URL: http://mock-llm:8081
+      OLLAMA_MODEL: mock-llama-3
+
+      # Cognee Configuration (disabled for testing)
+      COGNEE_BASE_URL: ""
+      COGNEE_API_KEY: ""
+      COGNEE_AUTO_COGNIFY: false
+
+      # Plugin Configuration
+      PLUGIN_WATCH_PATHS: /app/plugins
+
+      # Models.dev Configuration for Testing
+      MODELSDEV_ENABLED: false
+      MODELSDEV_API_KEY: ""
+      MODELSDEV_BASE_URL: "https://api.test.models.dev/v1"
+      MODELSDEV_REFRESH_INTERVAL: "5m"
+      MODELSDEV_CACHE_TTL: "1m"
+      MODELSDEV_BATCH_SIZE: 10
+      MODELSDEV_MAX_RETRIES: 1
+      MODELSDEV_AUTO_REFRESH: false
+      MODELSDEV_TIMEOUT: 5
+      MODELSDEV_USER_AGENT: "HelixAgent-Test/1.0"
+      MODELSDEV_RATE_LIMIT: 5
+
+      # Test Environment
+      GIN_MODE: release
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-llm:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./plugins:/app/plugins
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: helixagent-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: helixagent-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docs/monitoring/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/helixagent.json
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+    networks:
+      - helixagent-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  helixagent-network:
+    driver: bridge

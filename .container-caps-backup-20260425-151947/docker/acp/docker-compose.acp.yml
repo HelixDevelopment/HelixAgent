@@ -1,0 +1,38 @@
+# docker/acp/docker-compose.acp.yml
+# Agent Communication Protocol Manager for HelixAgent
+# Handles agent discovery, routing, and inter-agent message passing
+
+version: '3.8'
+
+services:
+  acp-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helixagent-acp-manager
+    ports:
+      - "${ACP_PORT:-9320}:9320"
+    environment:
+      - ACP_PORT=9320
+      - ENABLE_AGENT_DISCOVERY=${ACP_ENABLE_DISCOVERY:-true}
+      - ENABLE_AGENT_ROUTING=${ACP_ENABLE_ROUTING:-true}
+      - HELIXAGENT_URL=${HELIXAGENT_URL:-http://helixagent:7061}
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9320/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+networks:
+  helixagent-network:
+    external: true

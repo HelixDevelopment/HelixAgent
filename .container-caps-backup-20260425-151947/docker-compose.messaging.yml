@@ -1,0 +1,209 @@
+version: '3.8'
+
+# RabbitMQ and Apache Kafka infrastructure for HelixAgent messaging
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.messaging.yml up -d
+
+services:
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: docker.io/rabbitmq:3.12-management
+    container_name: helixagent-rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"        # AMQP
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-helixagent}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-helixagent123}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-helixagent-secret-cookie}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./configs/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - messaging
+      - full
+
+  # Apache Zookeeper (required for Kafka)
+  zookeeper:
+    image: docker.io/confluentinc/cp-zookeeper:7.5.0
+    container_name: helixagent-zookeeper
+    hostname: zookeeper
+    ports:
+      - "${ZOOKEEPER_PORT:-2181}:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - messaging
+      - full
+
+  # Apache Kafka Message Broker
+  kafka:
+    image: docker.io/confluentinc/cp-kafka:7.5.0
+    container_name: helixagent-kafka
+    hostname: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+      - "${KAFKA_INTERNAL_PORT:-29092}:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_COMPRESSION_TYPE: lz4
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - messaging
+      - full
+
+  # Kafka Schema Registry
+  schema-registry:
+    image: docker.io/confluentinc/cp-schema-registry:7.5.0
+    container_name: helixagent-schema-registry
+    hostname: schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_PORT:-8081}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - messaging
+      - full
+
+  # Kafka UI (optional, for debugging)
+  kafka-ui:
+    image: docker.io/provectuslabs/kafka-ui:latest
+    container_name: helixagent-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_UI_PORT:-8080}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: helixagent
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - messaging-ui
+      - full
+
+  # Kafka Topic Initialization
+  kafka-init:
+    image: docker.io/confluentinc/cp-kafka:7.5.0
+    container_name: helixagent-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command: |
+      "
+      echo 'Creating Kafka topics...'
+
+      # Verification events
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic llmsverifier.events.verification --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic llmsverifier.events.provider --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic llmsverifier.events.model --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic llmsverifier.events.team --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic llmsverifier.events.system --partitions 3 --replication-factor 1
+
+      # HelixAgent events
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.llm.responses --partitions 6 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.debate.rounds --partitions 6 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.verification.results --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.provider.health --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.audit --partitions 6 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.metrics --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.events.errors --partitions 3 --replication-factor 1
+
+      # Streaming topics
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.stream.tokens --partitions 12 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.stream.sse --partitions 6 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic helixagent.stream.websocket --partitions 6 --replication-factor 1
+
+      echo 'Topics created successfully!'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+    networks:
+      - helixagent-network
+    profiles:
+      - messaging
+      - full
+
+volumes:
+  rabbitmq_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  kafka_data:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

@@ -1,0 +1,95 @@
+version: '3.8'
+
+# SonarQube Security Scanning Infrastructure
+# This compose file sets up SonarQube Community Edition for code quality and security scanning
+
+services:
+  sonarqube:
+    image: sonarqube:10.7-community
+    container_name: helixagent-sonarqube
+    depends_on:
+      - postgres
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+    networks:
+      - security-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9000/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+    mem_limit: 2g
+    cpus: '1.0'
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: helixagent-sonarqube-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - security-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: '0.5'
+
+  # Sonar Scanner service for automated scanning
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli:5.0
+    container_name: helixagent-sonar-scanner
+    environment:
+      SONAR_HOST_URL: http://sonarqube:9000
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    volumes:
+      - ../../..:/usr/src:ro
+      - ./sonar-project.properties:/usr/src/sonar-project.properties:ro
+    networks:
+      - security-network
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    profiles:
+      - scanner
+
+networks:
+  security-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  sonarqube_data:
+    driver: local
+  sonarqube_extensions:
+    driver: local
+  sonarqube_logs:
+    driver: local
+  postgres_data:
+    driver: local

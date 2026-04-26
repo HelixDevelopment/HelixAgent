@@ -1,0 +1,42 @@
+# docker/embeddings/docker-compose.embeddings.yml
+# Embedding Generation Service for HelixAgent
+# Provides vector embedding generation via OpenAI-compatible API
+
+version: '3.8'
+
+services:
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
+    container_name: helixagent-embeddings
+    ports:
+      - "${EMBEDDINGS_PORT:-9310}:9310"
+    environment:
+      - PORT=9310
+      - MODEL_ID=${EMBEDDINGS_MODEL:-BAAI/bge-small-en-v1.5}
+      - MAX_BATCH_TOKENS=${EMBEDDINGS_MAX_BATCH_TOKENS:-16384}
+      - MAX_CONCURRENT_REQUESTS=${EMBEDDINGS_MAX_CONCURRENT:-64}
+    volumes:
+      - embeddings_models:/data:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9310/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+volumes:
+  embeddings_models:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

@@ -1,0 +1,156 @@
+services:
+  # Main HelixCode container with all components
+  helixcode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helixcode
+    ports:
+      - "${HELIX_API_PORT:-8080}:8080"
+      - "${HELIX_SSH_PORT:-2222}:2222"
+      - "${HELIX_WEB_PORT:-3000}:3000"
+    environment:
+      - HELIX_ENV=production
+      - HELIX_DATABASE_URL=postgres://helix:helixpass@postgres:5432/helixcode_prod?sslmode=disable
+      - HELIX_DATABASE_HOST=postgres
+      - HELIX_DATABASE_PORT=5432
+      - HELIX_DATABASE_USER=helix
+      - HELIX_DATABASE_NAME=helixcode_prod
+      - HELIX_DATABASE_PASSWORD=${HELIX_DATABASE_PASSWORD:-helixpass}
+      - HELIX_REDIS_URL=redis://redis:6379
+      - HELIX_REDIS_HOST=redis
+      - HELIX_REDIS_PORT=6379
+      - HELIX_REDIS_PASSWORD=${HELIX_REDIS_PASSWORD:-redispass}
+      - HELIX_API_PORT=8080
+      - HELIX_SSH_PORT=2222
+      - HELIX_WEB_PORT=3000
+      - HELIX_NETWORK_MODE=${HELIX_NETWORK_MODE:-standalone}
+      - HELIX_AUTO_PORT=${HELIX_AUTO_PORT:-false}
+      - HELIX_AUTH_JWT_SECRET=${HELIX_AUTH_JWT_SECRET}
+    volumes:
+      - ./workspace:/workspace
+      - ./projects:/projects
+      - ./shared:/shared
+      - ./HelixCode/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - helixcode-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15
+    container_name: helixcode-postgres
+    environment:
+      - POSTGRES_DB=helixcode_prod
+      - POSTGRES_USER=helix
+      - POSTGRES_PASSWORD=${HELIX_DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./HelixCode/test/init.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - helixcode-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helix"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: helixcode-redis
+    command: redis-server --requirepass ${HELIX_REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - helixcode-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Worker nodes for distributed processing
+  worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: helixcode-worker-1
+    hostname: worker-1
+    environment:
+      - WORKER_ID=worker-1
+      - WORKER_CAPABILITIES=code-generation,testing,python-execution
+      - WORKER_MAX_TASKS=5
+      - HELIX_SERVER=helixcode:2222
+    volumes:
+      - ./HelixCode/test/ssh-keys:/root/.ssh:ro
+      - ./workspace:/workspace:ro
+      - ./projects:/projects:ro
+    depends_on:
+      helixcode:
+        condition: service_healthy
+    networks:
+      - helixcode-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: helixcode-worker-2
+    hostname: worker-2
+    environment:
+      - WORKER_ID=worker-2
+      - WORKER_CAPABILITIES=llm-inference,model-training,docker-execution
+      - WORKER_MAX_TASKS=3
+      - HELIX_SERVER=helixcode:2222
+    volumes:
+      - ./HelixCode/test/ssh-keys:/root/.ssh:ro
+      - ./workspace:/workspace:ro
+      - ./projects:/projects:ro
+    depends_on:
+      helixcode:
+        condition: service_healthy
+    networks:
+      - helixcode-network
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 2G
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  helixcode-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

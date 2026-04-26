@@ -1,0 +1,654 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: docker.io/postgres:15-alpine
+    container_name: helixagent-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-helixagent_db}
+      POSTGRES_USER: ${DB_USER:-helixagent}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-helixagent123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    network_mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-helixagent} -d ${DB_NAME:-helixagent_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: docker.io/redis:7-alpine
+    container_name: helixagent-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-helixagent123} --appendonly yes --ignore-warnings ARM64-COW-BUG
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-8102}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-helixagent123}", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # DEPRECATED: Ollama for local LLM testing
+  # NOTE: Gemini is now the primary LLM provider (verified highest score: 8.5 by LLMsVerifier)
+  # Ollama is kept for backward compatibility but should not be used in production.
+  # To use Gemini (recommended): Set GEMINI_API_KEY in .env
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    container_name: helixagent-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - helixagent-network
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - legacy  # Changed from 'ai' to 'legacy' - use Gemini instead
+      - full
+
+  # HelixAgent Application
+  # NOTE: This service is for containerized deployment only.
+  # When running ./bin/helixagent directly, this should NOT start.
+  # Use 'podman-compose --profile containerized up -d helixagent' for container mode.
+  helixagent:
+    profiles:
+      - containerized
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helixagent-app
+    ports:
+      - "${PORT:-8100}:7061"
+    environment:
+      # Server Configuration
+      PORT: ${PORT:-8100}
+      HELIXAGENT_API_KEY: ${HELIXAGENT_API_KEY:-development-key}
+      GIN_MODE: ${GIN_MODE:-release}
+
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET:-development-jwt-secret-key-change-in-production}
+      TOKEN_EXPIRY: ${TOKEN_EXPIRY:-24h}
+
+      # Database Configuration
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-8101}
+      DB_USER: ${DB_USER:-helixagent}
+      DB_PASSWORD: ${DB_PASSWORD:-helixagent123}
+      DB_NAME: ${DB_NAME:-helixagent_db}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+
+      # Redis Configuration
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-8102}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-helixagent123}
+      REDIS_DB: ${REDIS_DB:-0}
+
+      # LLM Provider API Keys (optional for production)
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      CODESTRAL_API_KEY: ${CODESTRAL_API_KEY:-}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      CHUTES_API_KEY: ${CHUTES_API_KEY:-}
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
+      KIMI_API_KEY: ${KIMI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
+      CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY:-}
+      FIREWORKS_API_KEY: ${FIREWORKS_API_KEY:-}
+      NOVITA_API_KEY: ${NOVITA_API_KEY:-}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY:-}
+      HYPERBOLIC_API_KEY: ${HYPERBOLIC_API_KEY:-}
+      REPLICATE_API_KEY: ${REPLICATE_API_KEY:-}
+      SARVAM_API_KEY: ${SARVAM_API_KEY:-}
+      VULAVULA_API_KEY: ${VULAVULA_API_KEY:-}
+      KILO_API_KEY: ${KILO_API_KEY:-}
+      MODAL_API_KEY: ${MODAL_API_KEY:-}
+      MODAL_API_KEY_ID: ${MODAL_API_KEY_ID:-}
+      INFERENCE_API_KEY: ${INFERENCE_API_KEY:-}
+      SAMBANOVA_API_KEY: ${SAMBANOVA_API_KEY:-}
+      NLP_API_KEY: ${NLP_API_KEY:-}
+      BASETEN_API_KEY: ${BASETEN_API_KEY:-}
+
+      # Ollama Configuration (DEPRECATED - use Gemini instead)
+      # Ollama is disabled by default - Gemini is the verified strongest LLM (Score: 8.5)
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama2}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+
+      # Cognee Configuration
+      COGNEE_BASE_URL: ${COGNEE_BASE_URL:-http://cognee:8000}
+      COGNEE_API_KEY: ${COGNEE_API_KEY:-}
+      COGNEE_AUTO_COGNIFY: ${COGNEE_AUTO_COGNIFY:-true}
+      COGNEE_AUTH_EMAIL: ${COGNEE_AUTH_EMAIL:-admin@helixagent.ai}
+      COGNEE_AUTH_PASSWORD: ${COGNEE_AUTH_PASSWORD:-HelixAgentPass123}
+
+      # Plugin Configuration
+      PLUGIN_WATCH_PATHS: ${PLUGIN_WATCH_PATHS:-/app/plugins}
+      PLUGIN_AUTO_RELOAD: ${PLUGIN_AUTO_RELOAD:-false}
+
+      # Models.dev Configuration
+      MODELSDEV_ENABLED: ${MODELSDEV_ENABLED:-false}
+      MODELSDEV_API_KEY: ${MODELSDEV_API_KEY:-}
+      MODELSDEV_BASE_URL: ${MODELSDEV_BASE_URL:-https://api.models.dev/v1}
+      MODELSDEV_REFRESH_INTERVAL: ${MODELSDEV_REFRESH_INTERVAL:-24h}
+      MODELSDEV_CACHE_TTL: ${MODELSDEV_CACHE_TTL:-1h}
+      MODELSDEV_BATCH_SIZE: ${MODELSDEV_BATCH_SIZE:-100}
+      MODELSDEV_MAX_RETRIES: ${MODELSDEV_MAX_RETRIES:-3}
+      MODELSDEV_AUTO_REFRESH: ${MODELSDEV_AUTO_REFRESH:-true}
+      MODELSDEV_TIMEOUT: ${MODELSDEV_TIMEOUT:-30}
+      MODELSDEV_USER_AGENT: ${MODELSDEV_USER_AGENT:-HelixAgent/1.0}
+      MODELSDEV_RATE_LIMIT: ${MODELSDEV_RATE_LIMIT:-10}
+
+      # Rate Limiting
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1m}
+
+      # Monitoring
+      METRICS_ENABLED: ${METRICS_ENABLED:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./plugins:/app/plugins
+      - ./logs:/app/logs
+    network_mode: host
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7061/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    container_name: helixagent-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-8310}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+      - full
+
+  # Grafana Dashboard
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    container_name: helixagent-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: ${GRAFANA_ALLOW_SIGNUP:-false}
+      GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS:-}
+    ports:
+      - "${GRAFANA_PORT:-8311}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docs/monitoring/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/helixagent.json
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+    networks:
+      - helixagent-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles:
+      - monitoring
+      - full
+
+  # Cognee Knowledge Graph Service - Full-featured AI Memory Engine
+  # Provides: Memory, Knowledge Graphs, Vector Search, Temporal Awareness, Code Intelligence
+  #
+  # LLM PROVIDER: DeepSeek (via OpenAI-compatible API)
+  # EMBEDDING PROVIDER: Mistral (mistral-embed, 1024 dimensions)
+  # - DeepSeek for LLM operations (knowledge extraction, reasoning)
+  # - Mistral for embedding operations (vector search, similarity)
+  # - Requires DEEPSEEK_API_KEY and MISTRAL_API_KEY in .env
+  cognee:
+    build:
+      context: ./external/cognee
+      dockerfile: Dockerfile
+      args:
+        DEBUG: ${COGNEE_DEBUG:-false}
+    image: helixagent-cognee:latest
+    container_name: helixagent-cognee
+    # Using host network for direct API access
+    environment:
+      # Core Configuration
+      - DEBUG=${COGNEE_DEBUG:-false}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=${COGNEE_ENVIRONMENT:-production}
+      - LOG_LEVEL=${COGNEE_LOG_LEVEL:-INFO}
+
+      # Disable multi-user access control (required for HelixAgent integration)
+      - ENABLE_BACKEND_ACCESS_CONTROL=false
+
+      # Disable model downloading to avoid network issues
+      - HUGGINGFACE_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+
+      # LLM Configuration - DeepSeek via OpenAI-compatible API
+      # Cognee LLMProvider enum: openai, ollama, anthropic, custom, gemini, mistral, bedrock
+      # DeepSeek provides OpenAI-compatible API, so we use "openai" provider with DeepSeek endpoint
+      - LLM_API_KEY=${CEREBRAS_API_KEY:-}
+      - LLM_PROVIDER=${COGNEE_LLM_PROVIDER:-openai}
+      - LLM_MODEL=${COGNEE_LLM_MODEL:-cerebras/llama-3.3-70b}
+      - LLM_ENDPOINT=${COGNEE_LLM_ENDPOINT:-https://api.cerebras.ai/v1}
+      # Pass through provider API keys for LiteLLM
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_API_KEY=${GEMINI_API_KEY:-}
+
+      # Embedding Configuration - Mistral for embeddings (LiteLLM format)
+      - EMBEDDING_PROVIDER=${COGNEE_EMBEDDING_PROVIDER:-mistral}
+      - EMBEDDING_API_KEY=${MISTRAL_API_KEY:-}
+      - EMBEDDING_MODEL=${COGNEE_EMBEDDING_MODEL:-mistral/mistral-embed}
+      - EMBEDDING_DIMENSIONS=${COGNEE_EMBEDDING_DIMENSIONS:-1024}
+
+      # Three-Tier Storage Architecture
+      # Graph Database - NetworkX (default) or Neo4j/Memgraph for production
+      - GRAPH_DATABASE=${COGNEE_GRAPH_DATABASE:-networkx}
+      - GRAPH_DATABASE_URL=${COGNEE_GRAPH_DATABASE_URL:-}
+      - GRAPH_DATABASE_USERNAME=${COGNEE_GRAPH_USERNAME:-neo4j}
+      - GRAPH_DATABASE_PASSWORD=${COGNEE_GRAPH_PASSWORD:-cognee123}
+
+      # Vector Database - ChromaDB for embeddings (using host network ports)
+      - VECTOR_DATABASE=${COGNEE_VECTOR_DATABASE:-chromadb}
+      - VECTOR_DATABASE_URL=http://localhost:8001
+      - VECTOR_DB_KEY=${VECTOR_DB_KEY:-cognee_vector_key}
+
+      # Relational Database - PostgreSQL with pgvector (using host network ports)
+      - RELATIONAL_DATABASE=postgresql
+      - RELATIONAL_DATABASE_URL=postgresql://${DB_USER:-helixagent}:${DB_PASSWORD:-helixagent123}@localhost:5432/${DB_NAME:-helixagent_db}
+
+      # Cache Provider - Redis for performance (using host network ports)
+      - CACHE_PROVIDER=redis
+      - CACHE_URL=redis://:${REDIS_PASSWORD:-helixagent123}@localhost:6379/0
+
+      # Cognee Feature Flags - ALL ENABLED for maximum capability
+      - COGNEE_ENABLE_TEMPORAL=true
+      - COGNEE_ENABLE_FEEDBACK=true
+      - COGNEE_ENABLE_CODE_PIPELINE=true
+      - COGNEE_ENABLE_GRAPH_REASONING=true
+      - COGNEE_ENABLE_AUTO_COGNIFY=true
+      - COGNEE_ENABLE_MULTI_HOP=true
+      - COGNEE_ENABLE_ENTITY_EXTRACTION=true
+      - COGNEE_ENABLE_RELATIONSHIP_INFERENCE=true
+
+      # Performance Optimization
+      - COGNEE_BATCH_SIZE=${COGNEE_BATCH_SIZE:-50}
+      - COGNEE_MAX_CONCURRENT=${COGNEE_MAX_CONCURRENT:-10}
+      - COGNEE_CHUNK_SIZE=${COGNEE_CHUNK_SIZE:-1024}
+      - COGNEE_OVERLAP_SIZE=${COGNEE_OVERLAP_SIZE:-128}
+      - COGNEE_EMBEDDING_BATCH_SIZE=${COGNEE_EMBEDDING_BATCH_SIZE:-32}
+
+      # Memory Configuration
+      - COGNEE_MAX_MEMORY_SIZE=${COGNEE_MAX_MEMORY_SIZE:-10000}
+      - COGNEE_MEMORY_TTL=${COGNEE_MEMORY_TTL:-0}
+      - COGNEE_MEMORY_COMPRESSION=${COGNEE_MEMORY_COMPRESSION:-true}
+
+      # Search Configuration
+      - COGNEE_DEFAULT_SEARCH_LIMIT=${COGNEE_DEFAULT_SEARCH_LIMIT:-10}
+      - COGNEE_RELEVANCE_THRESHOLD=${COGNEE_RELEVANCE_THRESHOLD:-0.7}
+      - COGNEE_SEARCH_TYPES=VECTOR,GRAPH,INSIGHTS,GRAPH_COMPLETION
+
+    volumes:
+      - cognee_data:/app/data
+      - cognee_models:/app/models
+      - cognee_database:/app/cognee/.cognee_system
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    healthcheck:
+      # Use root endpoint for health check (faster than /health which tests embeddings)
+      # Note: Using python since curl is not available in the Cognee container
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    profiles:
+      - default
+      - ai
+      - full
+
+  # ChromaDB for Vector Storage
+  chromadb:
+    image: docker.io/chromadb/chroma:0.6.3
+    container_name: helixagent-chromadb
+    command: ["--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      - IS_PERSISTENT=TRUE
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${VECTOR_DB_KEY:-cognee_vector_key}
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenConfigServerAuthCredentialsProvider
+      - CHROMA_SERVER_AUTH_TOKEN_TRANSPORT_HEADER=AUTHORIZATION
+      - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token.TokenAuthServerProvider
+    volumes:
+      - chromadb_data:/chroma/chroma/
+    network_mode: host
+    restart: unless-stopped
+    profiles:
+      - default
+      - ai
+      - full
+
+  # Neo4j Graph Database (optional, for advanced graph features)
+  neo4j:
+    image: docker.io/neo4j:latest
+    container_name: helixagent-neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/cognee123
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+    ports:
+      - "${HELIXAGENT_PORT_NEO4J_HTTP:-8123}:7474"
+      - "${HELIXAGENT_PORT_NEO4J_BOLT:-8124}:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - graph
+      - full
+
+  # Memgraph - High-performance in-memory graph database (alternative to Neo4j)
+  memgraph:
+    image: docker.io/memgraph/memgraph-mage:latest
+    container_name: helixagent-memgraph
+    ports:
+      - "7688:7687"  # Bolt protocol
+      - "7445:7444"  # Lab UI
+    environment:
+      - MEMGRAPH_USER=memgraph
+      - MEMGRAPH_PASSWORD=cognee123
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+      - memgraph_logs:/var/log/memgraph
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    profiles:
+      - graph
+      - full
+
+  # Mock LLM Server for Testing
+  mock-llm:
+    build:
+      context: ./tests/mock-llm-server
+      dockerfile: Dockerfile
+    container_name: helixagent-mock-llm
+    ports:
+      - "${MOCK_LLM_PORT:-8090}:8090"
+    environment:
+      - PORT=8090
+      - RESPONSE_DELAY=${MOCK_LLM_DELAY:-100}
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - testing
+      - full
+
+  # ============================================================================
+  # LLM Optimization Services
+  # ============================================================================
+
+  # LangChain Service - Task Decomposition and Chain Execution
+  langchain-server:
+    build:
+      context: ./services/langchain
+      dockerfile: Dockerfile
+    container_name: helixagent-langchain
+    ports:
+      - "${LANGCHAIN_PORT:-8011}:8001"
+    environment:
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    profiles:
+      - optimization
+      - full
+
+  # LlamaIndex Service - Advanced Document Retrieval
+  llamaindex-server:
+    build:
+      context: ./services/llamaindex
+      dockerfile: Dockerfile
+    container_name: helixagent-llamaindex
+    ports:
+      - "${LLAMAINDEX_PORT:-8012}:8002"
+    environment:
+      - HELIXAGENT_URL=http://helixagent:7061
+      - COGNEE_URL=http://cognee:8000
+      - EMBEDDING_ENDPOINT=http://helixagent:7061/v1/embeddings
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    profiles:
+      - optimization
+      - full
+
+  # Guidance Service - CFG-Based Constrained Generation
+  guidance-server:
+    build:
+      context: ./services/guidance
+      dockerfile: Dockerfile
+    container_name: helixagent-guidance
+    ports:
+      - "${GUIDANCE_PORT:-8013}:8003"
+    environment:
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    profiles:
+      - optimization
+      - full
+
+  # LMQL Service - Query Language for LLMs
+  lmql-server:
+    build:
+      context: ./services/lmql
+      dockerfile: Dockerfile
+    container_name: helixagent-lmql
+    ports:
+      - "${LMQL_PORT:-8014}:8004"
+    environment:
+      - HELIXAGENT_URL=http://helixagent:7061
+      - LLM_ENDPOINT=http://helixagent:7061/v1/chat/completions
+    networks:
+      - helixagent-network
+    depends_on:
+      helixagent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    profiles:
+      - optimization
+      - full
+
+  # SGLang Service - RadixAttention Prefix Caching (GPU Required)
+  sglang:
+    image: docker.io/lmsysorg/sglang:latest
+    container_name: helixagent-sglang
+    ports:
+      - "${SGLANG_PORT:-30000}:30000"
+    environment:
+      - SGLANG_MODEL=${SGLANG_MODEL:-meta-llama/Llama-2-7b-chat-hf}
+      - SGLANG_PORT=30000
+    volumes:
+      - sglang_cache:/root/.cache
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    profiles:
+      - optimization-gpu
+      - full-gpu
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  cognee_data:
+    driver: local
+  cognee_models:
+    driver: local
+  cognee_database:
+    driver: local
+  chromadb_data:
+    driver: local
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  memgraph_data:
+    driver: local
+  memgraph_logs:
+    driver: local
+  sglang_cache:
+    driver: local
+
+networks:
+  helixagent-network:
+    driver: bridge

@@ -1,0 +1,91 @@
+# HelixMemory Infrastructure Only
+# Use this if Cognee/Mem0/Letta images are not available
+# For full services, use docker-compose.memory.yml with cloud API keys
+
+version: '3.8'
+
+services:
+  qdrant:
+    image: docker.io/qdrant/qdrant:latest
+    container_name: helixmemory-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  neo4j:
+    image: docker.io/neo4j:5-community
+    container_name: helixmemory-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/helixmemory
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "helixmemory", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  redis:
+    image: docker.io/redis:7-alpine
+    container_name: helixmemory-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: docker.io/pgvector/pgvector:pg16
+    container_name: helixmemory-postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_USER=helixmemory
+      - POSTGRES_PASSWORD=helixmemory
+      - POSTGRES_DB=helixmemory
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixmemory -d helixmemory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  qdrant-data:
+  neo4j-data:
+  neo4j-logs:
+  redis-data:
+  postgres-data:
+
+networks:
+  helixmemory:
+    driver: bridge

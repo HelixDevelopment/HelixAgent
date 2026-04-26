@@ -1,0 +1,178 @@
+version: '3.8'
+
+# Analytics infrastructure for HelixAgent
+# Includes: Apache Superset for BI dashboards
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.analytics.yml up -d
+
+services:
+  # ===========================================
+  # BI DASHBOARD LAYER - Apache Superset
+  # ===========================================
+
+  superset:
+    image: apache/superset:latest
+    container_name: helixagent-superset
+    hostname: superset
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-helixagent-superset-secret-key-change-in-production}
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+      DATABASE_DB: superset
+      DATABASE_HOST: postgres
+      DATABASE_PASSWORD: ${DB_PASSWORD:-helixagent123}
+      DATABASE_USER: ${DB_USER:-helixagent}
+      DATABASE_PORT: 5432
+      DATABASE_DIALECT: postgresql
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-helixagent123}
+      REDIS_DB: 2
+      PYTHONPATH: /app/pythonpath
+      # Disable examples on first start
+      SUPERSET_LOAD_EXAMPLES: "false"
+    volumes:
+      - superset_data:/app/superset_home
+      - ./configs/superset/superset_config.py:/app/superset_config.py:ro
+      - ./configs/superset/dashboards:/app/dashboards:ro
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - analytics
+      - full
+
+  # Superset initialization (db upgrade, admin creation)
+  superset-init:
+    image: apache/superset:latest
+    container_name: helixagent-superset-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-helixagent-superset-secret-key-change-in-production}
+      DATABASE_DB: superset
+      DATABASE_HOST: postgres
+      DATABASE_PASSWORD: ${DB_PASSWORD:-helixagent123}
+      DATABASE_USER: ${DB_USER:-helixagent}
+      DATABASE_PORT: 5432
+      DATABASE_DIALECT: postgresql
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-helixagent123}
+      ADMIN_USERNAME: ${SUPERSET_ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin123}
+      ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-admin@helixagent.ai}
+    volumes:
+      - superset_data:/app/superset_home
+      - ./configs/superset/superset_config.py:/app/superset_config.py:ro
+    networks:
+      - helixagent-network
+    entrypoint: /bin/sh -c
+    command: |
+      "
+      echo 'Initializing Superset...'
+
+      # Wait for database
+      sleep 10
+
+      # Initialize database
+      superset db upgrade
+
+      # Create admin user (ignore if exists)
+      superset fab create-admin \
+        --username $${ADMIN_USERNAME} \
+        --firstname Admin \
+        --lastname User \
+        --email $${ADMIN_EMAIL} \
+        --password $${ADMIN_PASSWORD} || true
+
+      # Initialize Superset
+      superset init
+
+      echo 'Superset initialization complete!'
+      "
+    profiles:
+      - analytics
+      - full
+
+  # Superset Celery worker (for async queries)
+  superset-worker:
+    image: apache/superset:latest
+    container_name: helixagent-superset-worker
+    depends_on:
+      superset:
+        condition: service_healthy
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-helixagent-superset-secret-key-change-in-production}
+      DATABASE_DB: superset
+      DATABASE_HOST: postgres
+      DATABASE_PASSWORD: ${DB_PASSWORD:-helixagent123}
+      DATABASE_USER: ${DB_USER:-helixagent}
+      DATABASE_PORT: 5432
+      DATABASE_DIALECT: postgresql
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-helixagent123}
+      REDIS_DB: 2
+    command: celery --app=superset.tasks.celery_app:app worker -Ofair -c 2
+    volumes:
+      - superset_data:/app/superset_home
+      - ./configs/superset/superset_config.py:/app/superset_config.py:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - analytics
+      - full
+
+  # Superset Celery beat (for scheduled tasks)
+  superset-beat:
+    image: apache/superset:latest
+    container_name: helixagent-superset-beat
+    depends_on:
+      superset:
+        condition: service_healthy
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-helixagent-superset-secret-key-change-in-production}
+      DATABASE_DB: superset
+      DATABASE_HOST: postgres
+      DATABASE_PASSWORD: ${DB_PASSWORD:-helixagent123}
+      DATABASE_USER: ${DB_USER:-helixagent}
+      DATABASE_PORT: 5432
+      DATABASE_DIALECT: postgresql
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-helixagent123}
+      REDIS_DB: 2
+    command: celery --app=superset.tasks.celery_app:app beat --pidfile /tmp/celerybeat.pid -s /tmp/celerybeat-schedule
+    volumes:
+      - superset_data:/app/superset_home
+      - ./configs/superset/superset_config.py:/app/superset_config.py:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - analytics
+      - full
+
+volumes:
+  superset_data:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

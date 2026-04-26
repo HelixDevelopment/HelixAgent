@@ -1,0 +1,301 @@
+# docker/lsp/docker-compose.lsp.yml
+# LSP Servers Stack for HelixAgent
+# Extends main docker-compose.yml
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # AI-POWERED LSP SERVERS
+  # =============================================================================
+
+  # LSP-AI - AI-powered language server
+  lsp-ai:
+    build:
+      context: ./lsp-ai
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-ai
+    ports:
+      - "${LSP_AI_PORT:-5000}:5000"
+    environment:
+      - LSP_AI_PORT=5000
+      - LSP_AI_HOST=0.0.0.0
+      # LLM Backend Configuration
+      - LSP_AI_BACKEND=${LSP_AI_BACKEND:-ollama}
+      - LSP_AI_OLLAMA_URL=http://ollama:11434
+      - LSP_AI_OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LSP_AI_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LSP_AI_GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Feature Configuration
+      - LSP_AI_ENABLE_CHAT=${LSP_AI_ENABLE_CHAT:-true}
+      - LSP_AI_ENABLE_COMPLETIONS=${LSP_AI_ENABLE_COMPLETIONS:-true}
+      - LSP_AI_ENABLE_ACTIONS=${LSP_AI_ENABLE_ACTIONS:-true}
+    volumes:
+      - lsp_ai_config:/root/.config/lsp-ai:rw
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - lsp
+      - lsp-ai
+      - full
+
+  # =============================================================================
+  # LANGUAGE-SPECIFIC LSP SERVERS
+  # =============================================================================
+
+  # Multi-Language LSP Container
+  lsp-multi:
+    build:
+      context: ./multi-language
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-multi
+    ports:
+      - "${LSP_GO_PORT:-5001}:5001"      # gopls
+      - "${LSP_RUST_PORT:-5002}:5002"    # rust-analyzer
+      - "${LSP_PYTHON_PORT:-5003}:5003"  # pylsp
+      - "${LSP_TS_PORT:-5004}:5004"      # typescript-language-server
+      - "${LSP_CPP_PORT:-5005}:5005"     # clangd
+      - "${LSP_JAVA_PORT:-5006}:5006"    # jdt.ls
+    environment:
+      - LSP_WORKSPACE=/workspace
+      - GOPLS_PORT=5001
+      - RUST_ANALYZER_PORT=5002
+      - PYLSP_PORT=5003
+      - TSSERVER_PORT=5004
+      - CLANGD_PORT=5005
+      - JDTLS_PORT=5006
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - lsp_cache:/root/.cache:rw
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    restart: unless-stopped
+    profiles:
+      - lsp
+      - full
+
+  # Go LSP Server (gopls) - Standalone
+  lsp-gopls:
+    build:
+      context: ./gopls
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-gopls
+    ports:
+      - "${LSP_GOPLS_PORT:-5011}:5001"
+    environment:
+      - GOPLS_LISTEN=:5001
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - go_cache:/go:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - lsp-go
+      - full
+
+  # Rust LSP Server (rust-analyzer) - Standalone
+  lsp-rust-analyzer:
+    build:
+      context: ./rust-analyzer
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-rust-analyzer
+    ports:
+      - "${LSP_RUST_ANALYZER_PORT:-5012}:5002"
+    environment:
+      - RA_LISTEN=:5002
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - cargo_cache:/root/.cargo:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - lsp-rust
+      - full
+
+  # Python LSP Server (pylsp + pyright) - Standalone
+  lsp-python:
+    build:
+      context: ./python-lsp
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-python
+    ports:
+      - "${LSP_PYTHON_STANDALONE_PORT:-5013}:5003"
+    environment:
+      - PYLSP_LISTEN=:5003
+      - PYRIGHT_ENABLED=${LSP_PYRIGHT_ENABLED:-true}
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - pip_cache:/root/.cache/pip:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - lsp-python
+      - full
+
+  # TypeScript LSP Server - Standalone
+  lsp-typescript:
+    build:
+      context: ./typescript-lsp
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-typescript
+    ports:
+      - "${LSP_TS_STANDALONE_PORT:-5014}:5004"
+    environment:
+      - TSS_LISTEN=:5004
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - npm_cache:/root/.npm:rw
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - lsp-typescript
+      - full
+
+  # C/C++ LSP Server (clangd) - Standalone
+  lsp-clangd:
+    build:
+      context: ./clangd
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-clangd
+    ports:
+      - "${LSP_CLANGD_PORT:-5015}:5005"
+    environment:
+      - CLANGD_LISTEN=:5005
+    volumes:
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - lsp-cpp
+      - full
+
+  # Java LSP Server (eclipse.jdt.ls) - Standalone
+  lsp-java:
+    build:
+      context: ./java-lsp
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-java
+    ports:
+      - "${LSP_JAVA_PORT_STANDALONE:-5016}:5006"
+    environment:
+      - JDTLS_LISTEN=:5006
+      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+    volumes:
+      - mcp_workspace:/workspace:ro
+      - maven_cache:/root/.m2:rw
+    networks:
+      - helixagent-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
+    profiles:
+      - lsp-java
+      - full
+
+  # =============================================================================
+  # DEVOPS LSP SERVERS
+  # =============================================================================
+
+  # DevOps LSP Container (Bash, YAML, Dockerfile, Terraform)
+  lsp-devops:
+    build:
+      context: ./devops-lsp
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-devops
+    ports:
+      - "${LSP_BASH_PORT:-5020}:5020"       # bash-language-server
+      - "${LSP_YAML_PORT:-5021}:5021"       # yaml-language-server
+      - "${LSP_DOCKER_PORT:-5022}:5022"     # dockerfile-language-server
+      - "${LSP_TERRAFORM_PORT:-5023}:5023"  # terraform-ls
+      - "${LSP_XML_PORT:-5024}:5024"        # lemminx
+    environment:
+      - BASH_LSP_PORT=5020
+      - YAML_LSP_PORT=5021
+      - DOCKER_LSP_PORT=5022
+      - TERRAFORM_LSP_PORT=5023
+      - XML_LSP_PORT=5024
+    volumes:
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    restart: unless-stopped
+    profiles:
+      - lsp-devops
+      - full
+
+  # =============================================================================
+  # LSP MANAGER SERVICE
+  # =============================================================================
+
+  # LSP Manager - Orchestrates all LSP servers
+  lsp-manager:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    container_name: helixagent-lsp-manager
+    ports:
+      - "${LSP_MANAGER_PORT:-5100}:5100"
+    environment:
+      - LSP_MANAGER_PORT=5100
+      - LSP_SERVERS_CONFIG=/config/lsp-servers.yaml
+      - LOG_LEVEL=${LSP_LOG_LEVEL:-info}
+    volumes:
+      - ./config:/config:ro
+      - mcp_workspace:/workspace:ro
+    networks:
+      - helixagent-network
+    depends_on:
+      - lsp-multi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - lsp
+      - full
+
+volumes:
+  lsp_ai_config:
+    driver: local
+  lsp_cache:
+    driver: local
+  go_cache:
+    driver: local
+  cargo_cache:
+    driver: local
+  pip_cache:
+    driver: local
+  npm_cache:
+    driver: local
+  maven_cache:
+    driver: local
+  mcp_workspace:
+    external: true
+
+networks:
+  helixagent-network:
+    external: true

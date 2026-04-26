@@ -1,0 +1,82 @@
+version: '3.8'
+
+# Snyk Security Scanning Infrastructure
+# This compose file sets up Snyk CLI for comprehensive security scanning
+
+services:
+  snyk-deps:
+    build:
+      context: ../../..
+      dockerfile: docker/security/snyk/Dockerfile
+    container_name: helixagent-snyk-deps
+    environment:
+      SNYK_TOKEN: ${SNYK_TOKEN:-}
+    volumes:
+      - ../../..:/app:ro
+      - snyk-reports:/reports
+    command: /scripts/scan-dependencies.sh
+    networks:
+      - security-network
+    profiles:
+      - dependencies
+      - all
+
+  snyk-code:
+    build:
+      context: ../../..
+      dockerfile: docker/security/snyk/Dockerfile
+    container_name: helixagent-snyk-code
+    environment:
+      SNYK_TOKEN: ${SNYK_TOKEN:-}
+    volumes:
+      - ../../..:/app:ro
+      - snyk-reports:/reports
+    command: /scripts/scan-code.sh
+    networks:
+      - security-network
+    profiles:
+      - code
+      - all
+
+  snyk-iac:
+    build:
+      context: ../../..
+      dockerfile: docker/security/snyk/Dockerfile
+    container_name: helixagent-snyk-iac
+    environment:
+      SNYK_TOKEN: ${SNYK_TOKEN:-}
+    volumes:
+      - ../../..:/app:ro
+      - snyk-reports:/reports
+    command: /scripts/scan-iac.sh
+    networks:
+      - security-network
+    profiles:
+      - iac
+      - all
+
+  snyk-full:
+    build:
+      context: ../../..
+      dockerfile: docker/security/snyk/Dockerfile
+    container_name: helixagent-snyk-full
+    environment:
+      SNYK_TOKEN: ${SNYK_TOKEN:-}
+    volumes:
+      - ../../..:/app:ro
+      - snyk-reports:/reports
+    command: /scripts/scan-all.sh
+    networks:
+      - security-network
+    profiles:
+      - full
+      - all
+
+networks:
+  security-network:
+    external: true
+    name: helixagent-sonarqube_security-network
+
+volumes:
+  snyk-reports:
+    driver: local

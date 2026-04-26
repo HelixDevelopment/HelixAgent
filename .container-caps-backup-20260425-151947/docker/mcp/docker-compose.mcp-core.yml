@@ -1,0 +1,106 @@
+# Docker Compose for Core MCP Servers
+# 7 essential servers from the MCP-Servers repository
+#
+# Usage:
+#   podman-compose -f docker/mcp/docker-compose.mcp-core.yml up -d
+#   podman-compose -f docker/mcp/docker-compose.mcp-core.yml down
+#
+# Note: Images must be built first using build-mcp-images.sh
+
+version: '3.8'
+
+services:
+  # Python MCP Servers (fetch, git, time)
+  mcp-fetch:
+    image: mcp-fetch:latest
+    container_name: mcp-fetch
+    ports:
+      - "${HELIXAGENT_PORT_MCP_FETCH:-8200}:9000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp-git:
+    image: mcp-git:latest
+    container_name: mcp-git
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GIT:-8201}:9000"
+    volumes:
+      - ${HOME}:/home/user:ro  # Mount home for git operations
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp-time:
+    image: mcp-time:latest
+    container_name: mcp-time
+    ports:
+      - "${HELIXAGENT_PORT_MCP_TIME:-8202}:9000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TypeScript MCP Servers (filesystem, memory, everything, sequentialthinking)
+  mcp-filesystem:
+    image: mcp-filesystem:latest
+    container_name: mcp-filesystem
+    ports:
+      - "${HELIXAGENT_PORT_MCP_FILESYSTEM:-8203}:9000"
+    volumes:
+      - ${HOME}:/home/user:rw  # Mount home for filesystem operations
+      - /tmp:/tmp:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp-memory:
+    image: mcp-memory:latest
+    container_name: mcp-memory
+    ports:
+      - "${HELIXAGENT_PORT_MCP_MEMORY:-8204}:9000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp-everything:
+    image: mcp-everything:latest
+    container_name: mcp-everything
+    ports:
+      - "${HELIXAGENT_PORT_MCP_EVERYTHING:-8205}:9000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp-sequentialthinking:
+    image: mcp-sequentialthinking:latest
+    container_name: mcp-sequentialthinking
+    ports:
+      - "${HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING:-8206}:9000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: mcp-network

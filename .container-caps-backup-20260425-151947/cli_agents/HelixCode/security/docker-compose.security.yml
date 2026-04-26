@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: helixcode-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db:5432/sonar
+      - SONAR_JDBC_USERNAME=sonar
+      - SONAR_JDBC_PASSWORD=sonar
+      - SONAR_WEB_CONTEXT=/
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - helixcode-security
+    depends_on:
+      - sonarqube-db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  sonarqube-db:
+    image: postgres:15-alpine
+    container_name: helixcode-sonarqube-db
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonar
+      - POSTGRES_DB=sonar
+    volumes:
+      - sonarqube_db_data:/var/lib/postgresql
+    networks:
+      - helixcode-security
+    restart: unless-stopped
+
+  snyk:
+    image: snyk/snyk-cli:latest
+    container_name: helixcode-snyk
+    volumes:
+      - ../:/project
+      - snyk_data:/root/.snyk
+    working_dir: /project
+    command: tail -f /dev/null  # Keep container running
+    networks:
+      - helixcode-security
+    restart: unless-stopped
+
+  security-scanner:
+    build:
+      context: .
+      dockerfile: security-scan.Dockerfile
+    container_name: helixcode-security-scanner
+    volumes:
+      - ../:/project
+      - scan_results:/scan-results
+    working_dir: /project
+    networks:
+      - helixcode-security
+    depends_on:
+      - sonarqube
+      - snyk
+    environment:
+      - SONAR_HOST_URL=http://sonarqube:9000
+      - SNYK_TOKEN=${SNYK_TOKEN}
+      - PROJECT_KEY=helixcode
+    command: tail -f /dev/null  # Keep container running for interactive scanning
+    restart: unless-stopped
+
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  sonarqube_db_data:
+  snyk_data:
+  scan_results:
+
+networks:
+  helixcode-security:
+    driver: bridge

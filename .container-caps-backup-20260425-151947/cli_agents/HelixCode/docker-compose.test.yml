@@ -1,0 +1,182 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: helixcode_test
+      POSTGRES_USER: helixcode
+      POSTGRES_PASSWORD: helixcode123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./HelixCode/test/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixcode -d helixcode_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - helixcode_test
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - helixcode_test
+
+  cognee:
+    image: topoteretes/cognee:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - COGNEE_ENV=test
+      - COGNEE_DATABASE_URL=postgresql://helixcode:helixcode123@postgres:5432/helixcode_test
+      - COGNEE_REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - helixcode_test
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      WORKER_ID: worker1
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      SSH_PORT: 2222
+      HELIX_AUTH_JWT_SECRET: test-jwt-secret-key-for-development-only
+      DATABASE_URL: postgres://helixcode:helixcode123@postgres:5432/helixcode_test?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "2222:22"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+    networks:
+      - helixcode_test
+    volumes:
+      - ./HelixCode/test:/app/test
+      - ./test-config.yaml:/app/config.yaml
+      - ./test-config.yaml:/app/config.yaml
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      WORKER_ID: worker2
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      SSH_PORT: 2223
+      HELIX_AUTH_JWT_SECRET: test-jwt-secret-key-for-development-only
+      DATABASE_URL: postgres://helixcode:helixcode123@postgres:5432/helixcode_test?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "2223:22"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+    networks:
+      - helixcode_test
+    volumes:
+      - ./HelixCode/test:/app/test
+      - ./test-config.yaml:/app/config.yaml
+      - ./test-config.yaml:/app/config.yaml
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      WORKER_ID: worker3
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      SSH_PORT: 2224
+      HELIX_AUTH_JWT_SECRET: test-jwt-secret-key-for-development-only
+      DATABASE_URL: postgres://helixcode:helixcode123@postgres:5432/helixcode_test?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "2224:22"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+    networks:
+      - helixcode_test
+    volumes:
+      - ./HelixCode/test:/app/test
+      - ./test-config.yaml:/app/config.yaml
+      - ./test-config.yaml:/app/config.yaml
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cognee:
+        condition: service_healthy
+      worker1:
+        condition: service_started
+      worker2:
+        condition: service_started
+      worker3:
+        condition: service_started
+      worker2:
+        condition: service_started
+      worker3:
+        condition: service_started
+    networks:
+      - helixcode_test
+    volumes:
+      - ./HelixCode:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["/app/scripts/run-docker-tests.sh"]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  helixcode_test:
+    driver: bridge

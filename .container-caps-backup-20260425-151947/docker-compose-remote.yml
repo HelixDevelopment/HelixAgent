@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: helixagent-postgres
+    environment:
+      POSTGRES_DB: helixagent_db
+      POSTGRES_USER: helixagent
+      POSTGRES_PASSWORD: helixagent123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixagent -d helixagent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: helixagent-redis
+    command: redis-server --requirepass helixagent123 --appendonly yes --ignore-warnings ARM64-COW-BUG
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "helixagent123", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: helixagent-chromadb
+    environment:
+      - IS_PERSISTENT=TRUE
+      - CHROMA_SERVER_AUTH_CREDENTIALS=
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenConfigServerAuthCredentialsProvider
+      - CHROMA_SERVER_AUTH_TOKEN_TRANSPORT_HEADER=AUTHORIZATION
+      - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token.TokenAuthServerProvider
+    volumes:
+      - chromadb_data:/chroma/chroma/
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:

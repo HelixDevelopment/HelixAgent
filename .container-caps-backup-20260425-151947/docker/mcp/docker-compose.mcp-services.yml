@@ -1,0 +1,233 @@
+# MCP Services Docker Compose
+# This file provides all backend services required by MCP servers
+#
+# Usage:
+#   docker-compose -f docker/mcp/docker-compose.mcp-services.yml up -d
+#   OR
+#   podman-compose -f docker/mcp/docker-compose.mcp-services.yml up -d
+#
+# Services included:
+#   - Redis (for redis MCP)
+#   - MongoDB (for mongodb MCP)
+#   - Elasticsearch (for elasticsearch MCP)
+#   - Qdrant (for qdrant MCP)
+#   - Chroma (for chroma MCP)
+#   - PostgreSQL (already in main compose, but included for standalone use)
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Redis - Required by redis MCP
+  # ==========================================================================
+  mcp-redis:
+    image: redis:7-alpine
+    container_name: helixagent-mcp-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-helixagent123} --port 16379 --appendonly yes
+    ports:
+      - "16379:16379"
+    volumes:
+      - mcp_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "16379", "-a", "${REDIS_PASSWORD:-helixagent123}", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # MongoDB - Required by mongodb MCP
+  # ==========================================================================
+  mcp-mongodb:
+    image: mongo:7
+    container_name: helixagent-mcp-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:-helixagent}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-helixagent123}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-helixagent}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mcp_mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # Elasticsearch - Required by elasticsearch MCP
+  # ==========================================================================
+  mcp-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: helixagent-mcp-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - mcp_elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # Qdrant - Required by qdrant MCP (vector database)
+  # ==========================================================================
+  mcp-qdrant:
+    image: qdrant/qdrant:latest
+    container_name: helixagent-mcp-qdrant
+    ports:
+      - "6335:6333"
+      - "6336:6334"
+    volumes:
+      - mcp_qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/readyz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # Chroma - Required by chroma MCP (vector database)
+  # ==========================================================================
+  mcp-chroma:
+    image: chromadb/chroma:latest
+    container_name: helixagent-mcp-chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - mcp_chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - ANONYMIZED_TELEMETRY=false
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # PostgreSQL - Required by postgres MCP (if not using main compose)
+  # ==========================================================================
+  mcp-postgres:
+    image: postgres:15-alpine
+    container_name: helixagent-mcp-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-helixagent_db}
+      POSTGRES_USER: ${POSTGRES_USER:-helixagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helixagent123}
+    ports:
+      - "15432:5432"
+    volumes:
+      - mcp_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-helixagent} -d ${POSTGRES_DB:-helixagent_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # MySQL - Required by mysql MCP
+  # ==========================================================================
+  mcp-mysql:
+    image: mysql:8
+    container_name: helixagent-mcp-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-helixagent123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-helixagent}
+      MYSQL_USER: ${MYSQL_USER:-helixagent}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-helixagent123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mcp_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-helixagent123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # Minio - S3-compatible storage for aws-s3 MCP testing
+  # ==========================================================================
+  mcp-minio:
+    image: minio/minio:latest
+    container_name: helixagent-mcp-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - mcp_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ==========================================================================
+  # Puppeteer/Playwright Browser - Required by puppeteer/playwright MCPs
+  # ==========================================================================
+  mcp-browser:
+    image: browserless/chrome:latest
+    container_name: helixagent-mcp-browser
+    ports:
+      - "3333:3000"
+    environment:
+      - MAX_CONCURRENT_SESSIONS=10
+      - CONNECTION_TIMEOUT=60000
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/pressure || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+volumes:
+  mcp_redis_data:
+  mcp_mongodb_data:
+  mcp_elasticsearch_data:
+  mcp_qdrant_data:
+  mcp_chroma_data:
+  mcp_postgres_data:
+  mcp_mysql_data:
+  mcp_minio_data:
+
+networks:
+  mcp-network:
+    driver: bridge

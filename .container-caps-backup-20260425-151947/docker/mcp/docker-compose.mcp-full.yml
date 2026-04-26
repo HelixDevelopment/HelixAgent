@@ -1,0 +1,786 @@
+version: '3.8'
+
+# =============================================================================
+# COMPREHENSIVE MCP SERVERS DOCKER COMPOSE - FULL STACK
+# All 60+ MCP servers containerized using the unified MCP SSE Bridge
+# ZERO npm/npx dependencies at runtime - all wrapped via Go SSE bridge
+#
+# Port Allocation Scheme:
+#   9101-9120: Core Official MCP Servers
+#   9201-9220: Database MCP Servers
+#   9301-9320: Vector Database MCP Servers
+#   9401-9440: DevOps & Infrastructure
+#   9501-9520: Browser & Web Automation
+#   9601-9620: Communication
+#   9701-9740: Productivity & Project Management
+#   9801-9840: Search & AI
+#   9901-9920: Google Services
+#   9921-9940: Monitoring & Observability
+#   9941-9960: Finance & Business
+#   9961-9999: Design
+#
+# Usage:
+#   docker-compose -f docker/mcp/docker-compose.mcp-full.yml up -d
+#   docker-compose -f docker/mcp/docker-compose.mcp-full.yml up -d mcp-fetch mcp-git  # Start specific services
+#
+# =============================================================================
+
+# Common healthcheck configuration
+x-healthcheck: &default-healthcheck
+  test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/health"]
+  interval: 10s
+  timeout: 5s
+  start_period: 10s
+  retries: 3
+
+# Common service configuration
+x-common: &common-config
+  build:
+    context: ../..
+    dockerfile: docker/mcp/Dockerfile.mcp-bridge
+  networks:
+    - mcp-network
+  restart: unless-stopped
+  healthcheck:
+    <<: *default-healthcheck
+
+services:
+  # ===========================================================================
+  # TIER 1: CORE OFFICIAL MCP SERVERS (from MCP-Servers monorepo)
+  # Ports: 9101-9120
+  # ===========================================================================
+
+  mcp-fetch:
+    <<: *common-config
+    container_name: helixagent-mcp-fetch
+    ports:
+      - "${HELIXAGENT_PORT_MCP_FETCH:-8200}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-fetch
+
+  mcp-git:
+    <<: *common-config
+    container_name: helixagent-mcp-git
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GIT:-8201}:9000"
+    volumes:
+      - ${HOME}:/home/user:ro
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-git
+
+  mcp-time:
+    <<: *common-config
+    container_name: helixagent-mcp-time
+    ports:
+      - "${HELIXAGENT_PORT_MCP_TIME:-8202}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-time
+
+  mcp-filesystem:
+    <<: *common-config
+    container_name: helixagent-mcp-filesystem
+    ports:
+      - "${HELIXAGENT_PORT_MCP_FILESYSTEM:-8203}:9000"
+    volumes:
+      - ${HOME}:/home/user
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-filesystem /home/user
+
+  mcp-memory:
+    <<: *common-config
+    container_name: helixagent-mcp-memory
+    ports:
+      - "${HELIXAGENT_PORT_MCP_MEMORY:-8204}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-memory
+
+  mcp-everything:
+    <<: *common-config
+    container_name: helixagent-mcp-everything
+    ports:
+      - "${HELIXAGENT_PORT_MCP_EVERYTHING:-8205}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-everything
+
+  mcp-sequential-thinking:
+    <<: *common-config
+    container_name: helixagent-mcp-sequential-thinking
+    ports:
+      - "${HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING:-8206}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-sequential-thinking
+
+  mcp-sqlite:
+    <<: *common-config
+    container_name: helixagent-mcp-sqlite
+    ports:
+      - "${HELIXAGENT_PORT_MCP_SQLITE:-8207}:9000"
+    volumes:
+      - mcp-sqlite-data:/data
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-sqlite /data/helixagent.db
+
+  mcp-puppeteer:
+    <<: *common-config
+    container_name: helixagent-mcp-puppeteer
+    ports:
+      - "${HELIXAGENT_PORT_MCP_PUPPETEER:-8208}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-puppeteer
+
+  mcp-postgres:
+    <<: *common-config
+    container_name: helixagent-mcp-postgres
+    ports:
+      - "${HELIXAGENT_PORT_MCP_POSTGRES:-8209}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-postgres
+      - POSTGRES_URL=${POSTGRES_URL:-postgresql://helixagent:helixagent123@postgres:5432/helixagent_db}
+
+  # ===========================================================================
+  # TIER 2: DATABASE MCP SERVERS
+  # Ports: 9201-9220
+  # ===========================================================================
+
+  mcp-mongodb:
+    <<: *common-config
+    container_name: helixagent-mcp-mongodb
+    ports:
+      - "${HELIXAGENT_PORT_MCP_MONGODB:-8210}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-mongodb
+      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017}
+
+  mcp-redis:
+    <<: *common-config
+    container_name: helixagent-mcp-redis
+    ports:
+      - "${HELIXAGENT_PORT_MCP_REDIS:-8211}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-redis
+      - REDIS_URL=${REDIS_URL:-redis://localhost:6379}
+
+  mcp-mysql:
+    <<: *common-config
+    container_name: helixagent-mcp-mysql
+    ports:
+      - "${HELIXAGENT_PORT_MCP_MYSQL:-8212}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-mysql
+      - MYSQL_URL=${MYSQL_URL:-mysql://helixagent:helixagent123@localhost:3306/helixagent}
+
+  mcp-elasticsearch:
+    <<: *common-config
+    container_name: helixagent-mcp-elasticsearch
+    ports:
+      - "${HELIXAGENT_PORT_MCP_ELASTICSEARCH:-8213}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-elasticsearch
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://localhost:9200}
+
+  mcp-supabase:
+    <<: *common-config
+    container_name: helixagent-mcp-supabase
+    ports:
+      - "${HELIXAGENT_PORT_MCP_SUPABASE:-8214}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-supabase
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+
+  # ===========================================================================
+  # TIER 3: VECTOR DATABASE MCP SERVERS
+  # Ports: 9301-9320
+  # ===========================================================================
+
+  mcp-qdrant:
+    <<: *common-config
+    container_name: helixagent-mcp-qdrant
+    ports:
+      - "${HELIXAGENT_PORT_MCP_QDRANT:-8215}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-qdrant
+      - QDRANT_URL=${QDRANT_URL:-http://localhost:6335}
+
+  mcp-chroma:
+    <<: *common-config
+    container_name: helixagent-mcp-chroma
+    ports:
+      - "${HELIXAGENT_PORT_MCP_CHROMA:-8216}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-chroma
+      - CHROMA_URL=${CHROMA_URL:-http://localhost:8000}
+
+  mcp-pinecone:
+    <<: *common-config
+    container_name: helixagent-mcp-pinecone
+    ports:
+      - "${HELIXAGENT_PORT_MCP_PINECONE:-8217}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-pinecone
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+
+  mcp-weaviate:
+    <<: *common-config
+    container_name: helixagent-mcp-weaviate
+    ports:
+      - "${HELIXAGENT_PORT_MCP_WEAVIATE:-8218}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-weaviate
+      - WEAVIATE_URL=${WEAVIATE_URL:-http://localhost:8080}
+
+  # ===========================================================================
+  # TIER 4: DEVOPS & INFRASTRUCTURE MCP SERVERS
+  # Ports: 9401-9440
+  # ===========================================================================
+
+  mcp-github:
+    <<: *common-config
+    container_name: helixagent-mcp-github
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GITHUB:-8220}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-github
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_TOKEN}
+
+  mcp-gitlab:
+    <<: *common-config
+    container_name: helixagent-mcp-gitlab
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GITLAB:-8221}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-gitlab
+      - GITLAB_PERSONAL_ACCESS_TOKEN=${GITLAB_TOKEN}
+
+  mcp-sentry:
+    <<: *common-config
+    container_name: helixagent-mcp-sentry
+    ports:
+      - "${HELIXAGENT_PORT_MCP_SENTRY:-8222}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-sentry
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+      - SENTRY_ORG=${SENTRY_ORG}
+
+  mcp-kubernetes:
+    <<: *common-config
+    container_name: helixagent-mcp-kubernetes
+    ports:
+      - "${HELIXAGENT_PORT_MCP_KUBERNETES:-8223}:9000"
+    volumes:
+      - ${HOME}/.kube:/home/mcpbridge/.kube:ro
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-kubernetes
+
+  mcp-docker:
+    <<: *common-config
+    container_name: helixagent-mcp-docker
+    ports:
+      - "${HELIXAGENT_PORT_MCP_DOCKER:-8224}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-docker
+
+  mcp-ansible:
+    <<: *common-config
+    container_name: helixagent-mcp-ansible
+    ports:
+      - "${HELIXAGENT_PORT_MCP_ANSIBLE:-8225}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-ansible
+
+  mcp-aws:
+    <<: *common-config
+    container_name: helixagent-mcp-aws
+    ports:
+      - "${HELIXAGENT_PORT_MCP_AWS:-8226}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-aws
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+
+  mcp-gcp:
+    <<: *common-config
+    container_name: helixagent-mcp-gcp
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GCP:-8227}:9000"
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS}:/credentials.json:ro
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-gcp
+      - GOOGLE_APPLICATION_CREDENTIALS=/credentials.json
+
+  mcp-heroku:
+    <<: *common-config
+    container_name: helixagent-mcp-heroku
+    ports:
+      - "${HELIXAGENT_PORT_MCP_HEROKU:-8228}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-heroku
+      - HEROKU_API_KEY=${HEROKU_API_KEY}
+
+  mcp-cloudflare:
+    <<: *common-config
+    container_name: helixagent-mcp-cloudflare
+    ports:
+      - "${HELIXAGENT_PORT_MCP_CLOUDFLARE:-8229}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-cloudflare
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
+
+  mcp-vercel:
+    <<: *common-config
+    container_name: helixagent-mcp-vercel
+    ports:
+      - "${HELIXAGENT_PORT_MCP_VERCEL:-8230}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-vercel
+      - VERCEL_TOKEN=${VERCEL_TOKEN}
+
+  mcp-workers:
+    <<: *common-config
+    container_name: helixagent-mcp-workers
+    ports:
+      - "${HELIXAGENT_PORT_MCP_WORKERS:-8231}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @cloudflare/mcp-server-cloudflare
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+
+  mcp-jetbrains:
+    <<: *common-config
+    container_name: helixagent-mcp-jetbrains
+    ports:
+      - "${HELIXAGENT_PORT_MCP_JETBRAINS:-8232}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-jetbrains
+
+  mcp-k8s-alt:
+    <<: *common-config
+    container_name: helixagent-mcp-k8s-alt
+    ports:
+      - "${HELIXAGENT_PORT_MCP_K8S_ALT:-8233}:9000"
+    volumes:
+      - ${HOME}/.kube:/home/mcpbridge/.kube:ro
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-kubernetes
+
+  # ===========================================================================
+  # TIER 5: BROWSER & WEB AUTOMATION MCP SERVERS
+  # Ports: 9501-9520
+  # ===========================================================================
+
+  mcp-playwright:
+    <<: *common-config
+    container_name: helixagent-mcp-playwright
+    ports:
+      - "${HELIXAGENT_PORT_MCP_PLAYWRIGHT:-8234}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @playwright/mcp-server
+
+  mcp-browserbase:
+    <<: *common-config
+    container_name: helixagent-mcp-browserbase
+    ports:
+      - "${HELIXAGENT_PORT_MCP_BROWSERBASE:-8235}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @browserbase/mcp-server
+      - BROWSERBASE_API_KEY=${BROWSERBASE_API_KEY}
+      - BROWSERBASE_PROJECT_ID=${BROWSERBASE_PROJECT_ID}
+
+  mcp-firecrawl:
+    <<: *common-config
+    container_name: helixagent-mcp-firecrawl
+    ports:
+      - "${HELIXAGENT_PORT_MCP_FIRECRAWL:-8236}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @firecrawl/mcp-server
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+
+  mcp-crawl4ai:
+    <<: *common-config
+    container_name: helixagent-mcp-crawl4ai
+    ports:
+      - "${HELIXAGENT_PORT_MCP_CRAWL4AI:-8237}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-crawl4ai
+
+  # ===========================================================================
+  # TIER 6: COMMUNICATION MCP SERVERS
+  # Ports: 9601-9620
+  # ===========================================================================
+
+  mcp-slack:
+    <<: *common-config
+    container_name: helixagent-mcp-slack
+    ports:
+      - "${HELIXAGENT_PORT_MCP_SLACK:-8238}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-slack
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_TEAM_ID=${SLACK_TEAM_ID}
+
+  mcp-discord:
+    <<: *common-config
+    container_name: helixagent-mcp-discord
+    ports:
+      - "${HELIXAGENT_PORT_MCP_DISCORD:-8239}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-discord
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+
+  mcp-telegram:
+    <<: *common-config
+    container_name: helixagent-mcp-telegram
+    ports:
+      - "${HELIXAGENT_PORT_MCP_TELEGRAM:-8240}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+
+  # ===========================================================================
+  # TIER 7: PRODUCTIVITY & PROJECT MANAGEMENT MCP SERVERS
+  # Ports: 9701-9740
+  # ===========================================================================
+
+  mcp-notion:
+    <<: *common-config
+    container_name: helixagent-mcp-notion
+    ports:
+      - "${HELIXAGENT_PORT_MCP_NOTION:-8250}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @notionhq/notion-mcp-server
+      - NOTION_API_KEY=${NOTION_API_KEY}
+
+  mcp-linear:
+    <<: *common-config
+    container_name: helixagent-mcp-linear
+    ports:
+      - "${HELIXAGENT_PORT_MCP_LINEAR:-8251}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @linear/mcp-server
+      - LINEAR_API_KEY=${LINEAR_API_KEY}
+
+  mcp-jira:
+    <<: *common-config
+    container_name: helixagent-mcp-jira
+    ports:
+      - "${HELIXAGENT_PORT_MCP_JIRA:-8252}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-jira
+      - JIRA_URL=${JIRA_URL}
+      - JIRA_EMAIL=${JIRA_EMAIL}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+
+  mcp-asana:
+    <<: *common-config
+    container_name: helixagent-mcp-asana
+    ports:
+      - "${HELIXAGENT_PORT_MCP_ASANA:-8253}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-asana
+      - ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN}
+
+  mcp-trello:
+    <<: *common-config
+    container_name: helixagent-mcp-trello
+    ports:
+      - "${HELIXAGENT_PORT_MCP_TRELLO:-8254}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-trello
+      - TRELLO_API_KEY=${TRELLO_API_KEY}
+      - TRELLO_TOKEN=${TRELLO_TOKEN}
+
+  mcp-todoist:
+    <<: *common-config
+    container_name: helixagent-mcp-todoist
+    ports:
+      - "${HELIXAGENT_PORT_MCP_TODOIST:-8255}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-todoist
+      - TODOIST_API_TOKEN=${TODOIST_API_TOKEN}
+
+  mcp-monday:
+    <<: *common-config
+    container_name: helixagent-mcp-monday
+    ports:
+      - "${HELIXAGENT_PORT_MCP_MONDAY:-8256}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-monday
+      - MONDAY_API_TOKEN=${MONDAY_API_TOKEN}
+
+  mcp-airtable:
+    <<: *common-config
+    container_name: helixagent-mcp-airtable
+    ports:
+      - "${HELIXAGENT_PORT_MCP_AIRTABLE:-8257}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-airtable
+      - AIRTABLE_API_KEY=${AIRTABLE_API_KEY}
+
+  mcp-obsidian:
+    <<: *common-config
+    container_name: helixagent-mcp-obsidian
+    ports:
+      - "${HELIXAGENT_PORT_MCP_OBSIDIAN:-8258}:9000"
+    volumes:
+      - ${OBSIDIAN_VAULT_PATH:-./data/obsidian}:/vault:ro
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-obsidian /vault
+
+  mcp-atlassian:
+    <<: *common-config
+    container_name: helixagent-mcp-atlassian
+    ports:
+      - "${HELIXAGENT_PORT_MCP_ATLASSIAN:-8259}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-atlassian
+      - ATLASSIAN_URL=${ATLASSIAN_URL}
+      - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL}
+      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN}
+
+  # ===========================================================================
+  # TIER 8: SEARCH & AI MCP SERVERS
+  # Ports: 9801-9840
+  # ===========================================================================
+
+  mcp-brave-search:
+    <<: *common-config
+    container_name: helixagent-mcp-brave-search
+    ports:
+      - "${HELIXAGENT_PORT_MCP_BRAVE_SEARCH:-8260}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-brave-search
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
+
+  mcp-exa:
+    <<: *common-config
+    container_name: helixagent-mcp-exa
+    ports:
+      - "${HELIXAGENT_PORT_MCP_EXA:-8261}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-exa
+      - EXA_API_KEY=${EXA_API_KEY}
+
+  mcp-tavily:
+    <<: *common-config
+    container_name: helixagent-mcp-tavily
+    ports:
+      - "${HELIXAGENT_PORT_MCP_TAVILY:-8262}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-tavily
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+
+  mcp-perplexity:
+    <<: *common-config
+    container_name: helixagent-mcp-perplexity
+    ports:
+      - "${HELIXAGENT_PORT_MCP_PERPLEXITY:-8263}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-perplexity
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+
+  mcp-kagi:
+    <<: *common-config
+    container_name: helixagent-mcp-kagi
+    ports:
+      - "${HELIXAGENT_PORT_MCP_KAGI:-8264}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-kagi
+      - KAGI_API_KEY=${KAGI_API_KEY}
+
+  mcp-omnisearch:
+    <<: *common-config
+    container_name: helixagent-mcp-omnisearch
+    ports:
+      - "${HELIXAGENT_PORT_MCP_OMNISEARCH:-8265}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-omnisearch
+
+  mcp-context7:
+    <<: *common-config
+    container_name: helixagent-mcp-context7
+    ports:
+      - "${HELIXAGENT_PORT_MCP_CONTEXT7:-8266}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @context7/mcp-server
+
+  mcp-llamaindex:
+    <<: *common-config
+    container_name: helixagent-mcp-llamaindex
+    ports:
+      - "${HELIXAGENT_PORT_MCP_LLAMAINDEX:-8267}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-llamaindex
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+  mcp-langchain:
+    <<: *common-config
+    container_name: helixagent-mcp-langchain
+    ports:
+      - "${HELIXAGENT_PORT_MCP_LANGCHAIN:-8268}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-langchain
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+  mcp-openai:
+    <<: *common-config
+    container_name: helixagent-mcp-openai
+    ports:
+      - "${HELIXAGENT_PORT_MCP_OPENAI:-8269}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-openai
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+  # ===========================================================================
+  # TIER 9: GOOGLE SERVICES MCP SERVERS
+  # Ports: 9901-9920
+  # ===========================================================================
+
+  mcp-google-drive:
+    <<: *common-config
+    container_name: helixagent-mcp-google-drive
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GDRIVE:-8270}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-gdrive
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+  mcp-google-calendar:
+    <<: *common-config
+    container_name: helixagent-mcp-google-calendar
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GCALENDAR:-8271}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-google-calendar
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+  mcp-google-maps:
+    <<: *common-config
+    container_name: helixagent-mcp-google-maps
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GMAPS:-8272}:9000"
+    environment:
+      - MCP_COMMAND=npx -y @modelcontextprotocol/server-google-maps
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+
+  mcp-youtube:
+    <<: *common-config
+    container_name: helixagent-mcp-youtube
+    ports:
+      - "${HELIXAGENT_PORT_MCP_YOUTUBE:-8273}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-youtube
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+
+  mcp-gmail:
+    <<: *common-config
+    container_name: helixagent-mcp-gmail
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GMAIL:-8274}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-gmail
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+  # ===========================================================================
+  # TIER 10: MONITORING & OBSERVABILITY MCP SERVERS
+  # Ports: 9921-9940
+  # ===========================================================================
+
+  mcp-datadog:
+    <<: *common-config
+    container_name: helixagent-mcp-datadog
+    ports:
+      - "${HELIXAGENT_PORT_MCP_DATADOG:-8275}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-datadog
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_APP_KEY=${DD_APP_KEY}
+
+  mcp-grafana:
+    <<: *common-config
+    container_name: helixagent-mcp-grafana
+    ports:
+      - "${HELIXAGENT_PORT_MCP_GRAFANA:-8276}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-grafana
+      - GRAFANA_URL=${GRAFANA_URL}
+      - GRAFANA_TOKEN=${GRAFANA_TOKEN}
+
+  mcp-prometheus:
+    <<: *common-config
+    container_name: helixagent-mcp-prometheus
+    ports:
+      - "${HELIXAGENT_PORT_MCP_PROMETHEUS:-8277}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-prometheus
+      - PROMETHEUS_URL=${PROMETHEUS_URL:-http://localhost:9090}
+
+  # ===========================================================================
+  # TIER 11: FINANCE & BUSINESS MCP SERVERS
+  # Ports: 9941-9960
+  # ===========================================================================
+
+  mcp-stripe:
+    <<: *common-config
+    container_name: helixagent-mcp-stripe
+    ports:
+      - "${HELIXAGENT_PORT_MCP_STRIPE:-8278}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-stripe
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
+
+  mcp-hubspot:
+    <<: *common-config
+    container_name: helixagent-mcp-hubspot
+    ports:
+      - "${HELIXAGENT_PORT_MCP_HUBSPOT:-8279}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-hubspot
+      - HUBSPOT_ACCESS_TOKEN=${HUBSPOT_ACCESS_TOKEN}
+
+  mcp-zendesk:
+    <<: *common-config
+    container_name: helixagent-mcp-zendesk
+    ports:
+      - "${HELIXAGENT_PORT_MCP_ZENDESK:-8280}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-zendesk
+      - ZENDESK_SUBDOMAIN=${ZENDESK_SUBDOMAIN}
+      - ZENDESK_EMAIL=${ZENDESK_EMAIL}
+      - ZENDESK_TOKEN=${ZENDESK_TOKEN}
+
+  # ===========================================================================
+  # TIER 12: DESIGN MCP SERVERS
+  # Ports: 9961-9999
+  # ===========================================================================
+
+  mcp-figma:
+    <<: *common-config
+    container_name: helixagent-mcp-figma
+    ports:
+      - "${HELIXAGENT_PORT_MCP_FIGMA:-8281}:9000"
+    environment:
+      - MCP_COMMAND=npx -y mcp-server-figma
+      - FIGMA_API_KEY=${FIGMA_API_KEY}
+
+networks:
+  mcp-network:
+    name: helixagent-mcp-network
+    driver: bridge
+
+volumes:
+  mcp-sqlite-data:
+    name: helixagent-mcp-sqlite-data
+
+# =============================================================================
+# Total: 65 MCP servers across 12 categories
+# Port Range: 9101-9961
+# Network: helixagent-mcp-network
+# All using unified MCP SSE Bridge (Dockerfile.mcp-bridge)
+# =============================================================================

@@ -1,0 +1,86 @@
+# Full test environment for CLI Agents Porting
+version: '3.8'
+
+services:
+  # PostgreSQL for tests
+  postgres-test:
+    image: pgvector/pgvector:pg15
+    container_name: helixagent_test_postgres
+    environment:
+      POSTGRES_USER: helixagent
+      POSTGRES_PASSWORD: helixagent123
+      POSTGRES_DB: helixagent_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./sql/001_cli_agents_fusion.sql:/docker-entrypoint-initdb.d/001_schema.sql
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixagent -d helixagent_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - helixagent-test
+
+  # Redis for tests
+  redis-test:
+    image: redis:7-alpine
+    container_name: helixagent_test_redis
+    ports:
+      - "6380:6379"
+    networks:
+      - helixagent-test
+
+  # HelixAgent test instance
+  helixagent-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helixagent_test_instance
+    environment:
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USER=helixagent
+      - DB_PASSWORD=helixagent123
+      - DB_NAME=helixagent_test
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - GIN_MODE=test
+      - LOG_LEVEL=debug
+    ports:
+      - "7062:7061"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_started
+    networks:
+      - helixagent-test
+    command: ["./helixagent", "--migrate", "--seed"]
+
+  # Test runner
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: helixagent_test_runner
+    environment:
+      - TEST_DATABASE_URL=postgres://helixagent:helixagent123@postgres-test:5432/helixagent_test?sslmode=disable
+      - TEST_REDIS_URL=redis://redis-test:6379
+      - HELIXAGENT_URL=http://helixagent-test:7061
+    depends_on:
+      - helixagent-test
+    volumes:
+      - ./test-reports:/test-reports
+      - ./coverage.out:/coverage.out
+    networks:
+      - helixagent-test
+    command: ["./scripts/run-all-tests.sh"]
+
+volumes:
+  postgres_test_data:
+
+networks:
+  helixagent-test:
+    driver: bridge

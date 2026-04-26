@@ -1,0 +1,298 @@
+# HelixMemory Services - Cognee + Mem0 + Letta
+# This compose file deploys all 3 memory systems locally
+# 
+# USAGE:
+#   docker-compose -f docker-compose.memory.yml up -d
+#
+# HARDWARE REQUIREMENTS:
+#   Minimum: 4 CPU cores, 8GB RAM, 20GB disk
+#   Recommended: 8 CPU cores, 16GB RAM, 50GB disk
+#
+# Run ./scripts/check_memory_hardware.sh to verify your system
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # COGNEE - Knowledge Graph Memory
+  # ============================================================================
+  cognee:
+    image: ghcr.io/topoteretes/cognee:latest
+    container_name: helixmemory-cognee
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=false
+      - ENVIRONMENT=local
+      - API_KEY=${HELIX_MEMORY_COGNEE_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cognee
+      - DATABASE_USER=cognee
+      - DATABASE_PASSWORD=cognee
+      - VECTOR_DB_PROVIDER=qdrant
+      - VECTOR_DB_URL=http://qdrant:6333
+      - GRAPH_DB_PROVIDER=neo4j
+      - GRAPH_DB_URL=bolt://neo4j:7687
+      - GRAPH_DB_USER=neo4j
+      - GRAPH_DB_PASSWORD=helixmemory
+    depends_on:
+      - postgres
+      - qdrant
+      - neo4j
+    volumes:
+      - cognee-data:/app/data
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ============================================================================
+  # MEM0 - Semantic Memory
+  # ============================================================================
+  mem0:
+    image: docker.io/mem0/mem0:latest
+    container_name: helixmemory-mem0
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - COHERE_API_KEY=${COHERE_API_KEY:-}
+      - MEM0_API_KEY=${HELIX_MEMORY_MEM0_API_KEY:-}
+      - DATABASE_URL=postgresql://mem0:mem0@postgres:5432/mem0
+      - REDIS_URL=redis://redis:6379/0
+      - VECTOR_STORE=qdrant
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    volumes:
+      - mem0-data:/app/data
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ============================================================================
+  # LETTA - Agent Memory
+  # ============================================================================
+  letta:
+    image: docker.io/letta/letta:latest
+    container_name: helixmemory-letta
+    restart: unless-stopped
+    ports:
+      - "8283:8283"
+    environment:
+      - LETTA_API_KEY=${HELIX_MEMORY_LETTA_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DATABASE_URL=postgresql://letta:letta@postgres:5432/letta
+      - REDIS_URL=redis://redis:6379/1
+      - VECTOR_DB_URL=http://qdrant:6333
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    volumes:
+      - letta-data:/app/data
+      - letta-agents:/app/agents
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8283/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ============================================================================
+  # VECTOR DATABASE - Qdrant
+  # ============================================================================
+  qdrant:
+    image: docker.io/qdrant/qdrant:latest
+    container_name: helixmemory-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ============================================================================
+  # GRAPH DATABASE - Neo4j
+  # ============================================================================
+  neo4j:
+    image: docker.io/neo4j:5-community
+    container_name: helixmemory-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/helixmemory
+      - NEO4J_PLUGINS=["apoc", "gds"]
+      - NEO4J_dbms_memory_heap_initial__size=1G
+      - NEO4J_dbms_memory_heap_max__size=2G
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "helixmemory", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ============================================================================
+  # CACHE - Redis
+  # ============================================================================
+  redis:
+    image: docker.io/redis:7-alpine
+    container_name: helixmemory-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ============================================================================
+  # SQL DATABASE - PostgreSQL
+  # ============================================================================
+  postgres:
+    image: docker.io/pgvector/pgvector:pg16
+    container_name: helixmemory-postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_USER=helixmemory
+      - POSTGRES_PASSWORD=helixmemory
+      - POSTGRES_DB=helixmemory
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - helixmemory
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixmemory -d helixmemory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+volumes:
+  cognee-data:
+    driver: local
+  mem0-data:
+    driver: local
+  letta-data:
+    driver: local
+  letta-agents:
+    driver: local
+  qdrant-data:
+    driver: local
+  neo4j-data:
+    driver: local
+  neo4j-logs:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  helixmemory:
+    driver: bridge
+    name: helixmemory

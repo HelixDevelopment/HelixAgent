@@ -1,0 +1,372 @@
+# docker/rag/docker-compose.rag.yml
+# RAG & Vector Database Stack for HelixAgent
+# Extends main docker-compose.yml
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # VECTOR DATABASES
+  # =============================================================================
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: helixagent-qdrant
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__LOG_LEVEL=${QDRANT_LOG_LEVEL:-INFO}
+    volumes:
+      - qdrant_storage:/qdrant/storage:rw
+      - qdrant_snapshots:/qdrant/snapshots:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    profiles:
+      - rag
+      - vector
+      - full
+
+  # Weaviate Vector Database
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    container_name: helixagent-weaviate
+    ports:
+      - "${WEAVIATE_PORT:-8081}:8080"
+      - "${WEAVIATE_GRPC_PORT:-50051}:50051"
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+      - DEFAULT_VECTORIZER_MODULE=none
+      - ENABLE_MODULES=text2vec-openai,generative-openai
+      - CLUSTER_HOSTNAME=weaviate
+    volumes:
+      - weaviate_data:/var/lib/weaviate:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    profiles:
+      - rag
+      - vector
+      - full
+
+  # FAISS Server - CPU/GPU optimized vector search
+  faiss-server:
+    build:
+      context: ./faiss
+      dockerfile: Dockerfile
+    container_name: helixagent-faiss
+    ports:
+      - "${FAISS_PORT:-8015}:8015"
+    environment:
+      - FAISS_PORT=8015
+      - FAISS_INDEX_PATH=/data/indexes
+      - FAISS_USE_GPU=${FAISS_USE_GPU:-false}
+    volumes:
+      - faiss_indexes:/data/indexes:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8015/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - rag
+      - vector
+      - full
+
+  # =============================================================================
+  # EMBEDDING SERVICES
+  # =============================================================================
+
+  # Sentence Transformers Service - Local embeddings
+  sentence-transformers:
+    build:
+      context: ./sentence-transformers
+      dockerfile: Dockerfile
+    container_name: helixagent-sentence-transformers
+    ports:
+      - "${ST_PORT:-8016}:8016"
+    environment:
+      - ST_PORT=8016
+      - ST_DEFAULT_MODEL=${ST_DEFAULT_MODEL:-all-mpnet-base-v2}
+      - ST_CACHE_DIR=/models
+      - ST_USE_GPU=${ST_USE_GPU:-false}
+    volumes:
+      - st_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8016/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    profiles:
+      - rag
+      - embeddings
+      - full
+
+  # BGE-M3 Embedding Service - Multilingual embeddings
+  bge-m3:
+    build:
+      context: ./bge-m3
+      dockerfile: Dockerfile
+    container_name: helixagent-bge-m3
+    ports:
+      - "${BGE_PORT:-8017}:8017"
+    environment:
+      - BGE_PORT=8017
+      - BGE_MODEL=BAAI/bge-m3
+      - BGE_CACHE_DIR=/models
+    volumes:
+      - bge_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8017/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    profiles:
+      - rag
+      - embeddings
+      - full
+
+  # =============================================================================
+  # RAG SERVICES
+  # =============================================================================
+
+  # RAGatouille - ColBERT-based retrieval
+  ragatouille:
+    build:
+      context: ./ragatouille
+      dockerfile: Dockerfile
+    container_name: helixagent-ragatouille
+    ports:
+      - "${RAGATOUILLE_PORT:-8018}:8018"
+    environment:
+      - RAGATOUILLE_PORT=8018
+      - RAGATOUILLE_INDEX_PATH=/data/indexes
+      - RAGATOUILLE_MODEL=${RAGATOUILLE_MODEL:-colbert-ir/colbertv2.0}
+    volumes:
+      - ragatouille_indexes:/data/indexes:rw
+      - ragatouille_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8018/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    profiles:
+      - rag
+      - rag-advanced
+      - full
+
+  # HyDE Service - Hypothetical Document Embeddings
+  hyde-service:
+    build:
+      context: ./hyde
+      dockerfile: Dockerfile
+    container_name: helixagent-hyde
+    ports:
+      - "${HYDE_PORT:-8019}:8019"
+    environment:
+      - HYDE_PORT=8019
+      - HYDE_LLM_URL=http://helixagent:7061/v1/chat/completions
+      - HYDE_EMBEDDING_URL=http://sentence-transformers:8016/encode
+    networks:
+      - helixagent-network
+    depends_on:
+      - sentence-transformers
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8019/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - rag
+      - rag-advanced
+      - full
+
+  # Multi-Query Retrieval Service
+  multi-query:
+    build:
+      context: ./multi-query
+      dockerfile: Dockerfile
+    container_name: helixagent-multi-query
+    ports:
+      - "${MULTI_QUERY_PORT:-8020}:8020"
+    environment:
+      - MQ_PORT=8020
+      - MQ_LLM_URL=http://helixagent:7061/v1/chat/completions
+      - MQ_VECTOR_URL=http://qdrant:6333
+    networks:
+      - helixagent-network
+    depends_on:
+      - qdrant
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8020/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - rag
+      - rag-advanced
+      - full
+
+  # Reranking Service - Cross-encoder reranking
+  reranker:
+    build:
+      context: ./reranker
+      dockerfile: Dockerfile
+    container_name: helixagent-reranker
+    ports:
+      - "${RERANKER_PORT:-8021}:8021"
+    environment:
+      - RERANKER_PORT=8021
+      - RERANKER_MODEL=${RERANKER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
+      - RERANKER_CACHE_DIR=/models
+    volumes:
+      - reranker_models:/models:rw
+    networks:
+      - helixagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8021/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    profiles:
+      - rag
+      - rag-advanced
+      - full
+
+  # =============================================================================
+  # RAG ORCHESTRATION
+  # =============================================================================
+
+  # RAG Pipeline Manager - Orchestrates all RAG services
+  rag-manager:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    container_name: helixagent-rag-manager
+    ports:
+      - "${RAG_MANAGER_PORT:-8030}:8030"
+    environment:
+      - RAG_MANAGER_PORT=8030
+      - RAG_CONFIG_PATH=/config/rag-config.yaml
+      # Vector Database URLs
+      - PGVECTOR_URL=postgresql://helixagent:helixagent123@postgres:5432/helixagent_db
+      - CHROMADB_URL=http://chromadb:8000
+      - QDRANT_URL=http://qdrant:6333
+      - WEAVIATE_URL=http://weaviate:8080
+      # Embedding Service URLs
+      - ST_URL=http://sentence-transformers:8016
+      - BGE_URL=http://bge-m3:8017
+      # RAG Service URLs
+      - RAGATOUILLE_URL=http://ragatouille:8018
+      - HYDE_URL=http://hyde-service:8019
+      - MQ_URL=http://multi-query:8020
+      - RERANKER_URL=http://reranker:8021
+      # LLM URL
+      - LLM_URL=http://helixagent:7061/v1/chat/completions
+    volumes:
+      - ./config:/config:ro
+    networks:
+      - helixagent-network
+    depends_on:
+      - qdrant
+      - sentence-transformers
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8030/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - rag
+      - full
+
+volumes:
+  qdrant_storage:
+    driver: local
+  qdrant_snapshots:
+    driver: local
+  weaviate_data:
+    driver: local
+  faiss_indexes:
+    driver: local
+  st_models:
+    driver: local
+  bge_models:
+    driver: local
+  ragatouille_indexes:
+    driver: local
+  ragatouille_models:
+    driver: local
+  reranker_models:
+    driver: local
+
+networks:
+  helixagent-network:
+    external: true

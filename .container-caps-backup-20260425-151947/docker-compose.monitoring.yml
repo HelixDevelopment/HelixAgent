@@ -1,0 +1,246 @@
+# Unified Monitoring Stack for HelixAgent
+# Includes: Prometheus, Grafana, Loki, Promtail, Alertmanager, and exporters
+#
+# Usage:
+#   podman-compose -f docker-compose.monitoring.yml up -d
+#   # Or with Docker
+#   docker-compose -f docker-compose.monitoring.yml up -d
+#
+# Access Points:
+#   - Grafana:      http://localhost:3000 (admin/admin123)
+#   - Prometheus:   http://localhost:9090
+#   - Loki:         http://localhost:3100
+#   - Alertmanager: http://localhost:9093
+
+services:
+  # Prometheus - Metrics Collection and Alerting
+  prometheus:
+    image: docker.io/prom/prometheus:v2.47.0
+    container_name: helixagent-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-8310}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+      - helixagent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana - Visualization and Dashboards
+  grafana:
+    image: docker.io/grafana/grafana:10.2.0
+    container_name: helixagent-grafana
+    ports:
+      - "${GRAFANA_PORT:-8311}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-piechart-panel
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+    volumes:
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Loki - Log Aggregation
+  loki:
+    image: docker.io/grafana/loki:2.9.2
+    container_name: helixagent-loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Promtail - Log Collection Agent
+  promtail:
+    image: docker.io/grafana/promtail:2.9.2
+    container_name: helixagent-promtail
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /tmp:/tmp/host:ro
+      - /run/user/1000/podman/podman.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  # Alertmanager - Alert Routing and Notification
+  alertmanager:
+    image: docker.io/prom/alertmanager:v0.26.0
+    container_name: helixagent-alertmanager
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Node Exporter - System Metrics
+  node-exporter:
+    image: docker.io/prom/node-exporter:v1.7.0
+    container_name: helixagent-node-exporter
+    ports:
+      - "${NODE_EXPORTER_PORT:-9100}:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # cAdvisor - Container Metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: helixagent-cadvisor
+    ports:
+      - "${CADVISOR_PORT:-8081}:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/containers:/var/lib/containers:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Redis Exporter
+  redis-exporter:
+    image: docker.io/oliver006/redis_exporter:v1.55.0
+    container_name: helixagent-redis-exporter
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    environment:
+      REDIS_ADDR: "host.containers.internal:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-helixagent123}"
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: docker.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: helixagent-postgres-exporter
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USER:-helixagent}:${DB_PASSWORD:-helixagent123}@host.containers.internal:5432/${DB_NAME:-helixagent}?sslmode=disable"
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Blackbox Exporter - HTTP/TCP/ICMP Probing
+  blackbox-exporter:
+    image: docker.io/prom/blackbox-exporter:v0.24.0
+    container_name: helixagent-blackbox-exporter
+    ports:
+      - "${BLACKBOX_EXPORTER_PORT:-9115}:9115"
+    volumes:
+      - ./monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Custom HelixAgent Service Exporter
+  helixagent-exporter:
+    image: docker.io/library/python:3.11-slim
+    container_name: helixagent-service-exporter
+    ports:
+      - "${HELIXAGENT_EXPORTER_PORT:-9200}:9200"
+    volumes:
+      - ./monitoring/helixagent-exporter.py:/app/exporter.py:ro
+    command: ["python", "/app/exporter.py"]
+    environment:
+      HELIXAGENT_URL: "http://host.containers.internal:7061"
+      CHROMADB_URL: "http://host.containers.internal:8001"
+      COGNEE_URL: "http://host.containers.internal:8000"
+      EXPORTER_PORT: "9200"
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+networks:
+  monitoring:
+    driver: bridge
+    name: helixagent-monitoring
+  helixagent-network:
+    external: true
+    name: helixagent_default
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+  alertmanager_data:
+    driver: local

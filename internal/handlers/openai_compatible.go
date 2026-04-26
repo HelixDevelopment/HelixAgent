@@ -26,6 +26,22 @@ import (
 	"digital.vasic.debate/orchestrator"
 )
 
+// Provider name + model alias constants. Centralized so tests, the
+// router, and any new code path use the same identifier — no string
+// literals scattered across the package per the user directive
+// "all fixes MUST BE universal! No hardcoding allowed!"
+//
+// PrimaryProviderName is the registry key for the local-first provider
+// that the helix-llm chain tries first. Changing it here is the only
+// edit needed to switch the chain's primary.
+const (
+	PrimaryProviderName = "helixllm"
+
+	ModelHelixLLM         = "helix-llm"
+	ModelHelixDebate      = "helix-debate"
+	ModelHelixAgentDebate = "helixagent-debate"
+)
+
 // UnifiedHandler provides 100% OpenAI-compatible API with automatic ensemble support
 type UnifiedHandler struct {
 	providerRegistry        *services.ProviderRegistry
@@ -2526,7 +2542,7 @@ func (h *UnifiedHandler) processWithDirectProvider(
 
 	// Try HelixLLM first when configured as primary local inference
 	if os.Getenv("USE_HELIX_LLM") == "true" {
-		provider, err := h.providerRegistry.GetProvider("helixllm")
+		provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
 		if err == nil {
 			response, provErr := provider.Complete(ctx, req)
 			if provErr == nil {
@@ -2537,7 +2553,7 @@ func (h *UnifiedHandler) processWithDirectProvider(
 					VotingMethod: "direct_provider",
 					Scores:       map[string]float64{response.ID: 1.0},
 					Metadata: map[string]any{
-						"provider":    "helixllm",
+						"provider": PrimaryProviderName,
 						"route":       "direct",
 						"tools_count": len(req.Tools),
 					},
@@ -2550,7 +2566,7 @@ func (h *UnifiedHandler) processWithDirectProvider(
 	// Fallback: iterate providers ordered by verification score (highest first)
 	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
 	for _, name := range providerNames {
-		if name == "helixllm" {
+		if name == PrimaryProviderName {
 			continue // already tried or disabled
 		}
 		provider, err := h.providerRegistry.GetProvider(name)
@@ -2592,7 +2608,7 @@ func (h *UnifiedHandler) processWithDirectProviderStream(
 
 	// Try HelixLLM first when configured as primary local inference
 	if os.Getenv("USE_HELIX_LLM") == "true" {
-		provider, err := h.providerRegistry.GetProvider("helixllm")
+		provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
 		if err == nil {
 			streamChan, provErr := provider.CompleteStream(ctx, req)
 			if provErr == nil {
@@ -2607,7 +2623,7 @@ func (h *UnifiedHandler) processWithDirectProviderStream(
 	// Fallback: iterate providers ordered by verification score (highest first)
 	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
 	for _, name := range providerNames {
-		if name == "helixllm" {
+		if name == PrimaryProviderName {
 			continue
 		}
 		provider, err := h.providerRegistry.GetProvider(name)
@@ -2634,7 +2650,7 @@ func (h *UnifiedHandler) processWithHelixLLM(c *gin.Context, req *OpenAIChatRequ
 		return
 	}
 
-	provider, err := h.providerRegistry.GetProvider("helixllm")
+	provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
 	if err != nil {
 		logrus.WithError(err).Warn("HelixLLM provider not found")
 		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_found", "HelixLLM provider not configured", err.Error())
@@ -2664,7 +2680,7 @@ func (h *UnifiedHandler) streamWithHelixLLM(c *gin.Context, req *OpenAIChatReque
 		return
 	}
 
-	provider, err := h.providerRegistry.GetProvider("helixllm")
+	provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
 	if err != nil {
 		logrus.WithError(err).Warn("HelixLLM provider not found for streaming")
 		h.sendOpenAIError(c, http.StatusServiceUnavailable, "provider_not_found", "HelixLLM provider not configured", err.Error())
@@ -2881,7 +2897,7 @@ func (h *UnifiedHandler) processWithProviderChain(c *gin.Context, req *OpenAICha
 	internalReq := h.convertOpenAIChatRequest(req, c)
 
 	// Try helixllm first (local inference)
-	provider, err := h.providerRegistry.GetProvider("helixllm")
+	provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
 	if err == nil {
 		response, provErr := provider.Complete(c.Request.Context(), internalReq)
 		if provErr == nil {
@@ -2896,7 +2912,7 @@ func (h *UnifiedHandler) processWithProviderChain(c *gin.Context, req *OpenAICha
 	// Fallback: try providers ordered by verification score
 	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
 	for _, name := range providerNames {
-		if name == "helixllm" {
+		if name == PrimaryProviderName {
 			continue
 		}
 		provider, err := h.providerRegistry.GetProvider(name)
@@ -2944,12 +2960,12 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
 
 	// Try helixllm first
-	provider, err := h.providerRegistry.GetProvider("helixllm")
+	provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
 	if err == nil {
 		streamChan, provErr := provider.CompleteStream(c.Request.Context(), internalReq)
 		if provErr == nil {
 			logrus.Info("[Provider Chain Stream] helixllm streaming")
-			if h.tryStreamWithContentCheck(c, streamChan, streamID, req.Model, "helixllm") {
+			if h.tryStreamWithContentCheck(c, streamChan, streamID, req.Model, PrimaryProviderName) {
 				return
 			}
 			logrus.Warn("[Provider Chain Stream] helixllm produced no content — falling through")
@@ -2961,7 +2977,7 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 	// Fallback: try providers by score
 	providerNames := h.providerRegistry.ListProvidersOrderedByScore()
 	for _, name := range providerNames {
-		if name == "helixllm" {
+		if name == PrimaryProviderName {
 			continue
 		}
 		provider, err := h.providerRegistry.GetProvider(name)
@@ -3021,9 +3037,9 @@ func (h *UnifiedHandler) streamToolCallViaNonStreaming(c *gin.Context, req *Open
 		return true
 	}
 
-	if !tryProvider("helixllm") {
+	if !tryProvider(PrimaryProviderName) {
 		for _, name := range h.providerRegistry.ListProvidersOrderedByScore() {
-			if name == "helixllm" {
+			if name == PrimaryProviderName {
 				continue
 			}
 			if tryProvider(name) {

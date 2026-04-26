@@ -89,8 +89,17 @@ Post-restart success criterion (1h sample):
 - **amber.local**: 0 containers (was blocked by runtime mismatch — Finding
   #38, fixed; will populate on next binary restart)
 
+## Findings discovered during restart (13:01-13:06)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 41 | HTTP shutdown deadline too tight; binary exited `level=fatal` instead of clean (forcing a `context deadline exceeded` on `HTTP server shutdown`) during graceful SIGTERM | Open. Increase shutdown grace period in `cmd/helixagent/main.go`. Low-priority cosmetic. |
+| 42 | Intent classifier sends full user message (9635 chars observed) to Cerebras → `context_length_exceeded` (400). Cooldown introduced in #28 only handles 429s; this is a 400. | Open. Add prompt-side truncation (e.g. cap user message at 4000 chars before classification) in `llm_intent_classifier.go:buildIntentClassificationPrompt`. The classifier doesn't need the full message to decide intent. |
+| 43 | **USER-VISIBLE PAIN**: binary takes ~2:18 to bind port 8100 because remote-distribution SCPs 12 build contexts to thinker.local sequentially on every restart, blocking server start. Liveness probe binds 8111 immediately, but CLI agents talk to 8100 and see "Cannot connect" with retry loop until distribution finishes. Reproduced 2026-04-26 13:02:46 → 13:06:03. | High-priority architectural fix. Two complementary changes: (a) hash-skip in `internal/adapters/containers/adapter.go:copyBuildContexts` — read remote checksum, only copy on diff; (b) make `BootAll` non-blocking — start HTTP server first, run distribution async with status endpoint surfacing partial readiness. Today's early-bind 8111 probe was the first half of (b); now extend it to 8100. |
+
 ## Next steps
 
-1. Restart binary to activate cooldown + amber runtime fix.
+1. ~~Restart binary to activate cooldown + amber runtime fix.~~ DONE (13:02:46 → 13:06:03 ready).
 2. Wait 1 h, re-run this report's "Verification of code fixes" grep.
-3. Address Stage-3 carryover findings (#20-#27) per user priority.
+3. Address Findings #41 (low), #42 (medium), #43 (high — user pain).
+4. Address Stage-3 carryover findings (#20-#27) per user priority.

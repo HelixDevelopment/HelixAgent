@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -448,6 +449,18 @@ func TestLLMIntentClassifier_buildIntentClassificationPrompt(t *testing.T) {
 		prompt := lic.buildIntentClassificationPrompt("Yes", "previous messages")
 		assert.Contains(t, prompt, "Yes")
 		assert.Contains(t, prompt, "CONVERSATION CONTEXT")
+	})
+
+	t.Run("truncates oversized user message to fit provider context", func(t *testing.T) {
+		// Finding #42: Cerebras qwen-3-235b returns 400 context_length_exceeded
+		// when full chat messages with code blocks exceed the classifier model's
+		// 8192-token window. Cap user message at maxClassifierUserMessageChars.
+		huge := strings.Repeat("a", maxClassifierUserMessageChars+1000)
+		prompt := lic.buildIntentClassificationPrompt(huge, "")
+		assert.Less(t, len(prompt), maxClassifierUserMessageChars+500,
+			"prompt should be bounded near maxClassifierUserMessageChars")
+		assert.Contains(t, prompt, "...[truncated]",
+			"truncation marker should be present")
 	})
 }
 

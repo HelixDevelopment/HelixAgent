@@ -255,12 +255,28 @@ This works in ANY human language. Analyze the semantic meaning, not just keyword
 Respond with ONLY the JSON object, no other text.`
 }
 
-// buildIntentClassificationPrompt builds the prompt for classification
+// maxClassifierUserMessageChars caps the user message slice that goes
+// into the classification prompt. Cerebras qwen-3-235b's classifier
+// model has an 8192-token context; full chat messages with code blocks
+// or long pastes blow past it (observed 9635 chars triggering 400
+// "context_length_exceeded" — Finding #42). Intent of a message is
+// fully recoverable from its leading characters; we don't need the
+// whole payload.
+const maxClassifierUserMessageChars = 4000
+
+// buildIntentClassificationPrompt builds the prompt for classification.
+// The user message is truncated to maxClassifierUserMessageChars to
+// stay safely under provider context windows.
 func (lic *LLMIntentClassifier) buildIntentClassificationPrompt(userMessage string, context string) string {
 	var sb strings.Builder
 
+	classifyMessage := userMessage
+	if len(classifyMessage) > maxClassifierUserMessageChars {
+		classifyMessage = classifyMessage[:maxClassifierUserMessageChars] + "...[truncated]"
+	}
+
 	sb.WriteString("Classify the intent of this user message:\n\n")
-	sb.WriteString(fmt.Sprintf("USER MESSAGE: \"%s\"\n\n", userMessage))
+	sb.WriteString(fmt.Sprintf("USER MESSAGE: \"%s\"\n\n", classifyMessage))
 
 	if context != "" {
 		sb.WriteString("CONVERSATION CONTEXT:\n")

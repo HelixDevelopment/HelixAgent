@@ -384,7 +384,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			SecretKey:   cfg.Server.JWTSecret,
 			TokenExpiry: 24 * time.Hour,
 			Issuer:      "helixagent",
-			SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login", "/v1/auth/register", "/v1/chat/completions", "/v1/completions", "/v1/messages", "/v1/models", "/v1/ensemble", "/v1/acp", "/v1/vision", "/v1/mcp", "/v1/lsp", "/v1/embeddings", "/v1/cognee"},
+			SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login", "/v1/auth/register", "/v1/chat/completions", "/v1/completions", "/v1/messages", "/v1beta/models", "/v1/models", "/v1/ensemble", "/v1/acp", "/v1/vision", "/v1/mcp", "/v1/lsp", "/v1/embeddings", "/v1/cognee"},
 			Required:    false,
 		}
 		auth, err = middleware.NewAuthMiddleware(authConfig, nil)
@@ -640,6 +640,14 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// HelixAgent's ensemble without a wrapper. Delegates to
 		// ChatCompletions internally, then re-shapes the response.
 		unifiedHandler.RegisterAnthropicRoutes(protected, func(c *gin.Context) {
+			c.Next()
+		})
+
+		// Google Gemini-compatible /v1beta/models/:model:generateContent
+		// translator (Finding #21). Same dispatch pattern as Anthropic;
+		// registered on the root engine because Google's URL contract is
+		// /v1beta/... outside HelixAgent's /v1 namespace.
+		unifiedHandler.RegisterGoogleRoutes(r, func(c *gin.Context) {
 			c.Next()
 		})
 

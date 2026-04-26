@@ -313,6 +313,72 @@ test_full_load_followup() {
     fi
 }
 
+# ----- Test 5: brainstorming skill follow-up (the actual user pain) ----
+# Reproduces OpenCode's exact "Skill brainstorming" flow: large system
+# prompt + 160 tools + an assistant tool_call invoking use_skill +
+# a multi-KB tool result containing the skill's brainstorming output.
+# This is the shape that produced 503 in the user's CLI even though
+# the smaller test_full_load_followup case passes.
+test_brainstorming_skill_followup() {
+    log_info "Test 5: brainstorming-skill follow-up (multi-KB tool result, OpenCode shape)..."
+    local body
+    body=$(STREAM_FLAG=true python3 -c '
+import json, os
+# Generate 160 fake skills.
+tools = []
+for i in range(160):
+    tools.append({"type":"function","function":{
+        "name": f"skill_{i:03d}",
+        "description": f"Skill #{i}: " + ("specialized task " * 6),
+        "parameters": {"type":"object","properties":{"input":{"type":"string"}},"required":["input"]}
+    }})
+# Multi-KB system prompt (mirrors OpenCode'"'"'s system prompt size).
+system_prompt = "You are an OpenCode AI assistant. " + ("Follow these guidelines carefully and thoroughly. " * 80)
+# Multi-KB tool result content (mirrors a brainstorming skill output).
+brainstorm_output = "Brainstorming session results:\n\n" + "\n".join(
+    f"{i+1}. Idea: " + ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 4)
+    for i in range(40)
+)
+print(json.dumps({
+    "model": "helix-llm",
+    "messages": [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "",
+         "tool_calls": [{"id":"call_brain_001","type":"function",
+                         "function":{"name":"skill_005","arguments":"{\"input\":\"brainstorming\"}"}}]},
+        {"role": "tool", "tool_call_id":"call_brain_001", "content": brainstorm_output},
+        {"role": "user", "content": "Summarize the brainstorming output in two sentences."}
+    ],
+    "max_tokens": 200,
+    "stream": True,
+    "tools": tools
+}))
+')
+    local body_size=${#body}
+    log_info "  Request body size: $body_size bytes"
+
+    local raw status
+    raw=$(curl -s -m 120 -N -w "\n___STATUS:%{http_code}" "$BASE_URL/v1/chat/completions" \
+        -H "Content-Type: application/json" \
+        -H "Accept: text/event-stream" \
+        -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
+        -d "$body" 2>&1)
+    status=$(echo "$raw" | grep -oE "^___STATUS:[0-9]+" | tail -1 | cut -d: -f2)
+    body_only=$(echo "$raw" | sed '$d')
+
+    log_info "  Status: $status"
+    log_info "  Body (first 400): ${body_only:0:400}"
+
+    if [[ "$status" == "200" ]]; then
+        record_assertion "brainstorm" "skill_followup_200" "true" \
+            "brainstorming-skill follow-up (${body_size} bytes) returned 200"
+    else
+        record_assertion "brainstorm" "skill_followup_200" "false" \
+            "brainstorming-skill follow-up (${body_size} bytes) returned $status — exact OpenCode pain reproduced"
+    fi
+}
+
 main() {
     log_info "Starting OpenCode Tool-Result Follow-up Challenge"
     if ! curl -s -m 5 "$BASE_URL/health" > /dev/null 2>&1; then
@@ -323,6 +389,7 @@ main() {
     test_streaming_followup
     test_missing_tool_call_id_clear_error
     test_full_load_followup
+    test_brainstorming_skill_followup
 
     local failed_count
     failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)

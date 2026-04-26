@@ -3001,12 +3001,18 @@ func (h *UnifiedHandler) streamToolCallViaNonStreaming(c *gin.Context, req *Open
 	tryProvider := func(name string) bool {
 		provider, err := h.providerRegistry.GetProvider(name)
 		if err != nil {
+			logrus.WithError(err).WithField("provider", name).
+				Warn("[Provider Chain Stream/Tools] GetProvider failed — provider not registered")
 			return false
 		}
 		r, err := provider.Complete(c.Request.Context(), internalReq)
 		if err != nil {
+			// Bumped from Debug → Warn so operators can see WHY each
+			// provider rejected the request. Without this every silent
+			// failure rolls up into a generic "All providers failed"
+			// 503 with no diagnostic information.
 			logrus.WithError(err).WithField("provider", name).
-				Debug("[Provider Chain Stream/Tools] provider failed")
+				Warn("[Provider Chain Stream/Tools] provider failed")
 			return false
 		}
 		resp = r

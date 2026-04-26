@@ -42,6 +42,46 @@ type JunieCLIProvider struct {
 	availableModels     []string
 	modelsDiscovered    bool
 	modelsDiscoveryOnce sync.Once
+
+	// terminalErrMu / terminalErr capture an unrecoverable auth/subscription
+	// error (e.g. "403 Forbidden: No active JetBrains AI subscription found").
+	// Once set, HealthCheck returns it directly without re-invoking the CLI —
+	// retrying produces the same answer and floods logs. Cleared only by
+	// process restart.
+	terminalErrMu sync.RWMutex
+	terminalErr   error
+}
+
+// isJunieTerminalAuthError reports whether stderr indicates an unrecoverable
+// auth/subscription condition. These messages come from the junie CLI
+// itself and indicate the user must take action (renew subscription,
+// rotate API key) before the provider can possibly work again.
+func isJunieTerminalAuthError(s string) bool {
+	low := strings.ToLower(s)
+	return strings.Contains(low, "no active jetbrains ai subscription") ||
+		strings.Contains(low, "403 forbidden") && strings.Contains(low, "jetbrains") ||
+		strings.Contains(low, "401 unauthorized") ||
+		(strings.Contains(low, "subscription") && strings.Contains(low, "expired"))
+}
+
+// markTerminalError records an unrecoverable auth error so future
+// HealthCheck calls short-circuit.
+func (p *JunieCLIProvider) markTerminalError(err error) {
+	if err == nil {
+		return
+	}
+	p.terminalErrMu.Lock()
+	if p.terminalErr == nil {
+		p.terminalErr = err
+	}
+	p.terminalErrMu.Unlock()
+}
+
+// terminalError returns the recorded terminal error, or nil.
+func (p *JunieCLIProvider) terminalError() error {
+	p.terminalErrMu.RLock()
+	defer p.terminalErrMu.RUnlock()
+	return p.terminalErr
 }
 
 // junieJSONResponse represents the JSON output from Junie CLI
@@ -439,10 +479,17 @@ func (p *JunieCLIProvider) CompleteStream(ctx context.Context, req *models.LLMRe
 	return responseChan, nil
 }
 
-// HealthCheck checks if Junie CLI is available and working
+// HealthCheck checks if Junie CLI is available and working.
+// If a previous call recorded a terminal auth/subscription error
+// (Finding #45 — no active JetBrains AI subscription), this short-circuits
+// without spawning another CLI invocation that we already know will fail.
 func (p *JunieCLIProvider) HealthCheck() error {
 	if !p.IsCLIAvailable() {
 		return p.cliCheckErr
+	}
+
+	if termErr := p.terminalError(); termErr != nil {
+		return termErr
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -455,6 +502,9 @@ func (p *JunieCLIProvider) HealthCheck() error {
 		},
 	})
 	if err != nil {
+		if isJunieTerminalAuthError(err.Error()) {
+			p.markTerminalError(err)
+		}
 		return err
 	}
 

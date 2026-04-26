@@ -305,3 +305,55 @@ func TestCanUseQwenOAuth(t *testing.T) {
 		CanUseQwenOAuth()
 	})
 }
+
+// TestIsQwenTerminalAuthError covers the regex-free string matchers used to
+// short-circuit health checks (Finding #44).
+func TestIsQwenTerminalAuthError(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		in   string
+		want bool
+	}{
+		{"discontinued tier", "qwen CLI failed: Qwen OAuth free tier was discontinued on 2026-04-15. Run /auth to switch to Coding Plan", true},
+		{"401", "remote returned 401 Unauthorized", true},
+		{"403", "remote returned 403 Forbidden", true},
+		{"subscription expired", "no active subscription found", true},
+		{"benign network error", "dial tcp: i/o timeout", false},
+		{"empty", "", false},
+	}
+	for _, tc := range cases {
+		got := isQwenTerminalAuthError(tc.in)
+		assert.Equal(t, tc.want, got, "%s: %q", tc.name, tc.in)
+	}
+}
+
+// TestQwenCLIProvider_HealthCheck_ShortCircuitsAfterTerminalError verifies
+// that once markTerminalError records an unrecoverable auth failure, every
+// subsequent HealthCheck returns the same error without re-invoking the CLI.
+func TestQwenCLIProvider_HealthCheck_ShortCircuitsAfterTerminalError(t *testing.T) {
+	t.Parallel()
+	provider := NewQwenCLIProvider(QwenCLIConfig{Model: "qwen-max"})
+	// Force the cliCheckOnce path so IsCLIAvailable returns true without
+	// actually probing for the binary.
+	provider.cliAvailable = true
+	provider.cliCheckOnce.Do(func() {})
+
+	terminal := assertErr(t, "Qwen OAuth free tier was discontinued on 2026-04-15")
+	provider.markTerminalError(terminal)
+
+	got := provider.HealthCheck()
+	assert.ErrorIs(t, got, terminal,
+		"HealthCheck should return the recorded terminal error without re-invoking the CLI")
+}
+
+// assertErr returns an error wrapping msg; small helper so the test stays
+// readable without dragging in fmt.Errorf inline.
+func assertErr(t *testing.T, msg string) error {
+	t.Helper()
+	return &qwenTestErr{msg: msg}
+}
+
+type qwenTestErr struct{ msg string }
+
+func (e *qwenTestErr) Error() string { return e.msg }

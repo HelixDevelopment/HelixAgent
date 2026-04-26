@@ -32,6 +32,47 @@ type QwenCLIProvider struct {
 	availableModels     []string
 	modelsDiscovered    bool
 	modelsDiscoveryOnce sync.Once
+
+	// terminalErrMu / terminalErr capture an unrecoverable auth/subscription
+	// error reported by the CLI (e.g. "Qwen OAuth free tier was discontinued").
+	// Once set, HealthCheck returns it directly without re-invoking the CLI —
+	// retrying produces the same answer and floods logs. Cleared only by
+	// process restart.
+	terminalErrMu sync.RWMutex
+	terminalErr   error
+}
+
+// isQwenTerminalAuthError reports whether stderr indicates an unrecoverable
+// auth/subscription condition. These messages come from the qwen CLI itself
+// and indicate the user must take action (rotate credentials, switch plan)
+// before the provider can possibly work again.
+func isQwenTerminalAuthError(s string) bool {
+	low := strings.ToLower(s)
+	return strings.Contains(low, "oauth free tier was discontinued") ||
+		strings.Contains(low, "no active") && strings.Contains(low, "subscription") ||
+		strings.Contains(low, "run /auth to switch") ||
+		strings.Contains(low, "401 unauthorized") ||
+		strings.Contains(low, "403 forbidden")
+}
+
+// markTerminalError records an unrecoverable auth error so future
+// HealthCheck calls short-circuit instead of re-invoking the CLI.
+func (p *QwenCLIProvider) markTerminalError(err error) {
+	if err == nil {
+		return
+	}
+	p.terminalErrMu.Lock()
+	if p.terminalErr == nil {
+		p.terminalErr = err
+	}
+	p.terminalErrMu.Unlock()
+}
+
+// terminalError returns the recorded terminal error, or nil.
+func (p *QwenCLIProvider) terminalError() error {
+	p.terminalErrMu.RLock()
+	defer p.terminalErrMu.RUnlock()
+	return p.terminalErr
 }
 
 // Known Qwen models (fallback if discovery fails)
@@ -355,10 +396,17 @@ func (p *QwenCLIProvider) CompleteStream(ctx context.Context, req *models.LLMReq
 	return responseChan, nil
 }
 
-// HealthCheck checks if Qwen CLI is available and working
+// HealthCheck checks if Qwen CLI is available and working.
+// If a previous call recorded a terminal auth/subscription error
+// (Finding #44 — Qwen OAuth free tier discontinued), this short-circuits
+// without spawning another CLI invocation that we already know will fail.
 func (p *QwenCLIProvider) HealthCheck() error {
 	if !p.IsCLIAvailable() {
 		return p.cliCheckErr
+	}
+
+	if termErr := p.terminalError(); termErr != nil {
+		return termErr
 	}
 
 	// Try a minimal prompt to verify it works
@@ -372,6 +420,9 @@ func (p *QwenCLIProvider) HealthCheck() error {
 		},
 	})
 	if err != nil {
+		if isQwenTerminalAuthError(err.Error()) {
+			p.markTerminalError(err)
+		}
 		return err
 	}
 

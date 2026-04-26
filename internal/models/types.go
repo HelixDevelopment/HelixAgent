@@ -106,6 +106,14 @@ type Message struct {
 	Content   string                 `json:"content" db:"content"`
 	Name      *string                `json:"name" db:"name"`
 	ToolCalls map[string]interface{} `json:"tool_calls" db:"tool_calls"`
+	// ToolCallID is the id of the assistant tool_call that this
+	// message is responding to. REQUIRED by every upstream provider
+	// (OpenAI, Cerebras, Mistral, …) when role="tool". Without it
+	// providers reject the request with errors like
+	// "messages.N.tool.tool_call_id: Field required" or
+	// "Tool call id has to be defined." (CONST-032 reproduction:
+	// challenges/scripts/opencode_tool_result_followup_challenge.sh).
+	ToolCallID string `json:"tool_call_id,omitempty" db:"tool_call_id"`
 }
 
 type ModelParameters struct {

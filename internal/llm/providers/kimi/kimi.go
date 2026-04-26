@@ -51,6 +51,7 @@ type KimiRequest struct {
 type KimiMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 }
 
 type KimiResponse struct {
@@ -287,7 +288,7 @@ func (p *KimiProvider) convertRequest(req *models.LLMRequest) KimiRequest {
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, KimiMessage{Role: msg.Role, Content: msg.Content})
+		messages = append(messages, KimiMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

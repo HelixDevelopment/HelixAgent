@@ -51,9 +51,10 @@ type DeepSeekRequest struct {
 }
 
 type DeepSeekMessage struct {
-	Role      string             `json:"role"`
-	Content   string             `json:"content"`
-	ToolCalls []DeepSeekToolCall `json:"tool_calls,omitempty"`
+	Role       string             `json:"role"`
+	Content    string             `json:"content"`
+	ToolCalls  []DeepSeekToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string             `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 }
 
 // DeepSeekTool represents a tool definition for DeepSeek API
@@ -336,8 +337,9 @@ func (p *DeepSeekProvider) convertRequest(req *models.LLMRequest) DeepSeekReques
 	// Add conversation messages
 	for _, msg := range req.Messages {
 		messages = append(messages, DeepSeekMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
+			Role:       msg.Role,
+			Content:    msg.Content,
+			ToolCallID: msg.ToolCallID,
 		})
 	}
 

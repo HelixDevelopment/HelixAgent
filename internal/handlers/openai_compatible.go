@@ -366,6 +366,51 @@ func (h *UnifiedHandler) RegisterOpenAIRoutes(r *gin.RouterGroup, auth gin.Handl
 	}
 }
 
+// validateChatRequest enforces structural rules that EVERY upstream
+// provider in our chain enforces. Catching them here lets us return a
+// specific, actionable 400 instead of a vague 503 after every provider
+// has independently rejected the request.
+//
+// Currently checked:
+//   - Each role="tool" message MUST carry tool_call_id (matched against
+//     a prior assistant tool_call). OpenAI, Cerebras, Mistral, Groq,
+//     and others reject tool messages without it.
+//   - role="tool" without a corresponding prior assistant tool_call.id
+//     in the message history (orphaned tool result).
+func validateChatRequest(req *OpenAIChatRequest) error {
+	if req == nil {
+		return nil
+	}
+	// Build set of known tool_call IDs from prior assistant turns.
+	knownIDs := make(map[string]bool)
+	for _, msg := range req.Messages {
+		if msg.Role == "assistant" {
+			for _, tc := range msg.ToolCalls {
+				if tc.ID != "" {
+					knownIDs[tc.ID] = true
+				}
+			}
+		}
+	}
+	// Validate tool messages.
+	for i, msg := range req.Messages {
+		if msg.Role != "tool" {
+			continue
+		}
+		if msg.ToolCallID == "" {
+			return fmt.Errorf(
+				"messages[%d]: role=\"tool\" message is missing required tool_call_id field "+
+					"(must reference a prior assistant tool_calls[].id)", i)
+		}
+		if len(knownIDs) > 0 && !knownIDs[msg.ToolCallID] {
+			return fmt.Errorf(
+				"messages[%d]: tool_call_id %q does not match any prior assistant tool_calls[].id "+
+					"in this conversation (orphaned tool result)", i, msg.ToolCallID)
+		}
+	}
+	return nil
+}
+
 // ChatCompletions handles OpenAI chat completions with automatic ensemble
 // Supports both streaming and non-streaming modes based on the "stream" parameter
 func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
@@ -375,6 +420,19 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 	var req OpenAIChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.sendOpenAIError(c, http.StatusBadRequest, "invalid_request", "Invalid request format", err.Error())
+		return
+	}
+
+	// Pre-flight validation: catch malformed tool messages BEFORE
+	// passing to the provider chain. Without this, requests with
+	// missing tool_call_id propagate to every provider, all 4xx-reject
+	// them, and the client sees a generic 503 "all providers failed"
+	// — masking the real issue (CONST-032 reproduction:
+	// challenges/scripts/opencode_tool_result_followup_challenge.sh
+	// Test 3).
+	if err := validateChatRequest(&req); err != nil {
+		h.sendOpenAIError(c, http.StatusBadRequest, "invalid_request",
+			err.Error(), "request validation failed before provider dispatch")
 		return
 	}
 
@@ -2265,10 +2323,11 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 		}
 
 		messages = append(messages, models.Message{
-			Role:      msg.Role,
-			Content:   msg.Content,
-			Name:      msg.Name,
-			ToolCalls: toolCalls,
+			Role:       msg.Role,
+			Content:    msg.Content,
+			Name:       msg.Name,
+			ToolCalls:  toolCalls,
+			ToolCallID: msg.ToolCallID,
 		})
 	}
 

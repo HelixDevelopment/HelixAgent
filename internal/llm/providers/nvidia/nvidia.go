@@ -51,6 +51,7 @@ type NvidiaRequest struct {
 type NvidiaMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 }
 
 type NvidiaResponse struct {
@@ -285,7 +286,7 @@ func (p *NvidiaProvider) convertRequest(req *models.LLMRequest) NvidiaRequest {
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, NvidiaMessage{Role: msg.Role, Content: msg.Content})
+		messages = append(messages, NvidiaMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

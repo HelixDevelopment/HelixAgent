@@ -51,6 +51,7 @@ type HyperbolicRequest struct {
 type HyperbolicMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 }
 
 type HyperbolicResponse struct {
@@ -284,7 +285,7 @@ func (p *HyperbolicProvider) convertRequest(req *models.LLMRequest) HyperbolicRe
 	}
 
 	for _, msg := range req.Messages {
-		messages = append(messages, HyperbolicMessage{Role: msg.Role, Content: msg.Content})
+		messages = append(messages, HyperbolicMessage{Role: msg.Role, Content: msg.Content, ToolCallID: msg.ToolCallID})
 	}
 
 	maxTokens := req.ModelParams.MaxTokens

@@ -51,8 +51,12 @@ type CerebrasRequest struct {
 }
 
 type CerebrasMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string `json:"role"`
+	Content    string `json:"content"`
+	// ToolCallID is required when role="tool" — Cerebras rejects
+	// follow-up messages without it (CONST-032 reproduction:
+	// challenges/scripts/opencode_tool_result_followup_challenge.sh).
+	ToolCallID string `json:"tool_call_id,omitempty"`
 }
 
 type CerebrasResponse struct {
@@ -405,8 +409,9 @@ func (p *CerebrasProvider) convertRequest(req *models.LLMRequest) CerebrasReques
 	// Add conversation messages
 	for _, msg := range req.Messages {
 		messages = append(messages, CerebrasMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
+			Role:       msg.Role,
+			Content:    msg.Content,
+			ToolCallID: msg.ToolCallID,
 		})
 	}
 

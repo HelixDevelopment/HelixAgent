@@ -56,6 +56,11 @@ type MistralMessage struct {
 	Role      string            `json:"role"`
 	Content   string            `json:"content"`
 	ToolCalls []MistralToolCall `json:"tool_calls,omitempty"`
+	// ToolCallID is required when role="tool" — Mistral rejects
+	// follow-ups with "Tool call id has to be defined." otherwise
+	// (CONST-032 reproduction:
+	// challenges/scripts/opencode_tool_result_followup_challenge.sh).
+	ToolCallID string `json:"tool_call_id,omitempty"`
 }
 
 // MistralTool represents a tool definition for Mistral API
@@ -436,8 +441,9 @@ func (p *MistralProvider) convertRequest(req *models.LLMRequest) MistralRequest 
 	// Add conversation messages
 	for _, msg := range req.Messages {
 		messages = append(messages, MistralMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
+			Role:       msg.Role,
+			Content:    msg.Content,
+			ToolCallID: msg.ToolCallID,
 		})
 	}
 

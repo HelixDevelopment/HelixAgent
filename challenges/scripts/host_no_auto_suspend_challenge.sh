@@ -34,10 +34,16 @@ init_challenge "host_no_auto_suspend" \
 load_env
 
 # --- Test 1: sleep targets masked ---
+# `systemctl is-enabled` may emit two lines (state + an "unknown"
+# warning on some distros); take the FIRST line only.
 declare -i unmasked=0
 unmasked_list=""
 for tgt in sleep.target suspend.target hibernate.target hybrid-sleep.target; do
-    state=$(systemctl is-enabled "$tgt" 2>/dev/null || echo "unknown")
+    # systemctl is-enabled returns non-zero for masked units; trap
+    # via `|| true` so set -e (inherited from challenge_framework.sh)
+    # doesn't kill the loop after the first iteration.
+    state=$( { systemctl is-enabled "$tgt" 2>/dev/null || true; } | head -n1 | tr -d '[:space:]')
+    [[ -z "$state" ]] && state="unknown"
     log_info "  $tgt: $state"
     if [[ "$state" != "masked" ]]; then
         unmasked+=1
@@ -54,16 +60,23 @@ else
 fi
 
 # --- Test 2: sleep.conf forbids suspend ---
-if grep -qE "^AllowSuspend\s*=\s*no" /etc/systemd/sleep.conf 2>/dev/null; then
+# Check both the main file AND any drop-in under sleep.conf.d/ —
+# the fix script writes the drop-in form which systemd merges.
+sleep_conf_files="/etc/systemd/sleep.conf /etc/systemd/sleep.conf.d/*.conf"
+if grep -shqE "^AllowSuspend\s*=\s*no" $sleep_conf_files 2>/dev/null; then
     record_assertion "systemd_sleep_conf" "allow_suspend_no" "true" \
-        "/etc/systemd/sleep.conf has AllowSuspend=no"
+        "AllowSuspend=no found in sleep.conf or a drop-in"
 else
     record_assertion "systemd_sleep_conf" "allow_suspend_no" "false" \
-        "/etc/systemd/sleep.conf does NOT have AllowSuspend=no — second-line defense missing"
+        "AllowSuspend=no NOT found in sleep.conf or any sleep.conf.d/ drop-in — second-line defense missing"
 fi
 
 # --- Test 3: logind ignores idle ---
-idle_action=$(grep -E "^IdleAction\s*=" /etc/systemd/logind.conf 2>/dev/null | cut -d= -f2 | tr -d ' ' | head -1)
+# Same drop-in story: check both main + drop-ins.
+logind_conf_files="/etc/systemd/logind.conf /etc/systemd/logind.conf.d/*.conf"
+# `|| true` because grep returns 1 when nothing matches and `set -e`
+# from the framework would otherwise kill the script.
+idle_action=$( { grep -shE "^IdleAction\s*=" $logind_conf_files 2>/dev/null || true; } | tail -n1 | cut -d= -f2 | tr -d ' ')
 idle_action=${idle_action:-"<unset (default: ignore)>"}
 log_info "  logind IdleAction: $idle_action"
 if [[ "$idle_action" == "ignore" ]] || [[ "$idle_action" == "<unset"* ]]; then
@@ -74,22 +87,34 @@ else
         "logind IdleAction=$idle_action — could trigger suspend on idle"
 fi
 
-# --- Test 4: no recent unexpected suspend in journal ---
-recent_suspends=$(journalctl --since "2 days ago" 2>/dev/null \
-    | grep -c "The system will suspend now" || true)
-log_info "  Recent 'will suspend' broadcasts: $recent_suspends"
-if [[ "$recent_suspends" -eq 0 ]]; then
-    record_assertion "history" "no_recent_suspends" "true" \
-        "no suspend events in last 2 days"
+# --- Test 4: no suspend events since the fix was applied ---
+# The drop-in conf written by scripts/disable-host-suspend.sh is the
+# anchor for "fix was applied at time T". We assert no suspend events
+# in the journal AFTER that mtime. Past events from before the fix
+# are history and not a regression — only new suspends post-fix
+# indicate the masking didn't take.
+fix_marker="/etc/systemd/sleep.conf.d/00-no-suspend.conf"
+if [[ -f "$fix_marker" ]]; then
+    fix_mtime_iso=$(date -d "@$(stat -c %Y "$fix_marker")" -Iseconds 2>/dev/null \
+        || stat -c %y "$fix_marker" | head -c 19 | tr ' ' 'T')
+    log_info "  Fix applied at: $fix_mtime_iso"
+    suspends_since_fix=$( { journalctl --since "$fix_mtime_iso" 2>/dev/null || true; } \
+        | { grep -c "The system will suspend now" || true; })
+    log_info "  'Will suspend' broadcasts since fix: $suspends_since_fix"
+    if [[ "$suspends_since_fix" -eq 0 ]]; then
+        record_assertion "history" "no_suspends_since_fix" "true" \
+            "no suspend events since fix was applied at $fix_mtime_iso"
+    else
+        record_assertion "history" "no_suspends_since_fix" "false" \
+            "$suspends_since_fix suspend events since the fix was applied — masking didn't take"
+    fi
 else
-    # Informational — we still want to flag it but not fail outright
-    # (the fix prevents future ones; past events are history)
-    record_assertion "history" "no_recent_suspends" "false" \
-        "$recent_suspends suspend events in last 2 days — fix is needed (this is the bug being fixed)"
+    record_assertion "history" "no_suspends_since_fix" "false" \
+        "fix marker $fix_marker not found — fix script hasn't been run yet"
 fi
 
 record_metric "unmasked_sleep_targets" "$unmasked"
-record_metric "recent_suspends_2d" "$recent_suspends"
+record_metric "suspends_since_fix" "${suspends_since_fix:-0}"
 
 main() {
     local failed_count

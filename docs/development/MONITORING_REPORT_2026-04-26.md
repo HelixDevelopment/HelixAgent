@@ -117,10 +117,39 @@ Post-restart success criterion (1h sample):
 | 26 | Fix Crush registry path | **FIXED** in `internal/agents/registry.go`. Commit `18d7af2e`. |
 | 27 | Wrapper scripts for protocol-translating agents | Possibly redundant with #20/#21 done — re-evaluate after #21 lands. |
 
+## Findings discovered during second restart (13:33+)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 46 | Junie's CLI exits 0 even when authentication fails — only signal is an `errors` array in the JSON. Previous code emitted that JSON as the model response. User typing "Hello" with model=helix-llm got the JetBrains auth banner ("✕ Junie: 403 Forbidden: No active JetBrains AI subscription found.") streamed back as the assistant's reply (live capture 13:24:00). | **FIXED** — `junieJSONErrorMessage()` parses the errors array; `CompleteStream` now buffers stdout, parses for errors before emitting. On error, sends `FinishReason="error"` + `Metadata.error` so the chain falls through. Same Complete-time `markTerminalError` shape applied to Qwen. 9 new tests. Commit `00020c84`. |
+| 47 | SSH control-socket collision between killed-and-restarted binary — old binary's socket lingered (`ControlPersist` window) and new binary got `Connection refused` on first compose-up. Recovered by retry. | Open. Transient. Possible fix: explicit close in graceful shutdown. Low priority. |
+| 48 | Verifier hammers Cerebras during startup with parallel verifies, hits 429 quota immediately. Cooldown fix (#28) helps the intent classifier but the verifier itself doesn't share the cooldown state. | Open. Plan: extract the per-provider cooldown into a shared service (intent classifier + verifier subscribe). |
+
+## Stage-3 carryover progress (turn 5)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 21 | Add Google `generateContent` endpoint for Gemini CLI | **FIXED (non-streaming MVP)** — `internal/handlers/google_compatible.go` translates GenerateContentRequest↔OpenAI, registered on root engine at `/v1beta/models/:modelAction`. Streaming + tools + inlineData return clear 400s. 8 tests covering param parsing, role mapping, finish-reason vocabulary, error envelope. Commit `0fcf927e`. |
+
+## Other findings closed (turn 5)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 41 | HTTP shutdown deadline too tight; binary exited `level=fatal` | **FIXED** — `HTTP3Server.Stop` deadline 30 s → 60 s; main no longer treats Stop's error as fatal (logs Warn + continues with rest of cleanup). Commit `db0a1fc8`. |
+| 43 | Slow boot from sequential SCP (user-visible "Cannot connect" loop during restart) | **PARTIALLY FIXED** — bounded parallelism (4 concurrent SCPs per host) in `adapter.copyBuildContexts`. Expected boot ~2:18 → ~50 s. Hash-skip (only copy when content changed) reserved for a follow-up commit. Commit `b38b3f6b`. |
+
+## Open findings (end of turn 5)
+
+| # | Finding | Status |
+|---|---|---|
+| 36 | Stale 401/403 API keys (groq, github-models, replicate, upstage, codestral, mistral) | Operator action — rotate keys |
+| 43-b | Hash-skip second half of slow-boot fix | Future commit |
+| 47 | SSH control-socket collision at restart | Low priority, transient |
+| 48 | Verifier startup hammers Cerebras quota | Future commit — extract cooldown into shared service |
+
 ## Next steps
 
-1. ~~Restart binary to activate cooldown + amber runtime fix.~~ DONE (13:02:46 → 13:06:03 ready).
-2. Restart binary again to activate `/v1/messages` route + the truncation, sticky-disable, and JWT-generator fixes. **Pending user OK** — current binary is in active use.
-3. Address Finding #43 (slow boot — user-visible pain). Two-part architectural fix.
-4. Optional: Finding #21 (Google generateContent translator) using the same pattern as #20.
-5. Optional: Finding #41 (shutdown grace — cosmetic, ~5 min fix).
+1. ~~Restart for cooldown + amber.~~ DONE (13:02:46 → 13:06:03).
+2. ~~Restart for `/v1/messages` + truncation + sticky-disable + JWT generator.~~ DONE (13:33:09 → 13:35:42).
+3. Restart again to activate /v1beta translator (#21), shutdown grace (#41), and parallel SCP (#43). **User decides timing** — current binary is in active use.
+4. Address open findings in priority order: #43-b hash-skip > #48 verifier cooldown > #36 credential rotation > #47 SSH socket cleanup.

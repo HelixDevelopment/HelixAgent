@@ -97,3 +97,76 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// TestConvertChunkToSSE_EmitsToolCalls covers the CONST-032 reproduction
+// guard for the streaming tool-call drop bug.
+//
+// Pre-fix: convertChunkToSSE only included delta.content in the SSE
+// envelope. Even when the upstream provider streamed tool_call deltas,
+// our wire format dropped them — the client (OpenCode, Claude Code)
+// saw text-only chunks and hung forever waiting for the tool invocation
+// that never arrived.
+func TestConvertChunkToSSE_EmitsToolCalls(t *testing.T) {
+	t.Parallel()
+	h := &UnifiedHandler{}
+
+	chunk := &models.LLMResponse{
+		ToolCalls: []models.ToolCall{
+			{
+				ID:   "call_xyz",
+				Type: "function",
+				Function: models.ToolCallFunction{
+					Name:      "get_current_time",
+					Arguments: `{"timezone":"UTC"}`,
+				},
+			},
+		},
+	}
+
+	line := h.convertChunkToSSE(chunk, "stream-id", "helix-llm")
+	payload := strings.TrimSuffix(strings.TrimPrefix(line, "data: "), "\n\n")
+
+	var got map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(payload), &got))
+
+	choices := got["choices"].([]interface{})
+	require.Len(t, choices, 1)
+	delta := choices[0].(map[string]interface{})["delta"].(map[string]interface{})
+
+	tcs, ok := delta["tool_calls"].([]interface{})
+	require.True(t, ok, "delta.tool_calls must be present in the envelope when chunk has tool_calls")
+	require.Len(t, tcs, 1)
+
+	tc := tcs[0].(map[string]interface{})
+	assert.EqualValues(t, 0, tc["index"])
+	assert.Equal(t, "call_xyz", tc["id"])
+	assert.Equal(t, "function", tc["type"])
+
+	fn := tc["function"].(map[string]interface{})
+	assert.Equal(t, "get_current_time", fn["name"])
+	assert.Equal(t, `{"timezone":"UTC"}`, fn["arguments"])
+
+	// When chunk has tool_calls and no content, content field must be
+	// omitted entirely (not present as empty string) — matches OpenAI
+	// spec where pure tool_call deltas don't carry content.
+	_, hasContent := delta["content"]
+	assert.False(t, hasContent,
+		"pure tool_call delta must omit content field; got delta=%v", delta)
+}
+
+// TestConvertChunkToSSE_OmitsToolCallsWhenAbsent verifies the inverse:
+// a text-only chunk emits delta.content but no delta.tool_calls field.
+func TestConvertChunkToSSE_OmitsToolCallsWhenAbsent(t *testing.T) {
+	t.Parallel()
+	h := &UnifiedHandler{}
+	line := h.convertChunkToSSE(
+		&models.LLMResponse{Content: "Hello"}, "stream-id", "helix-llm")
+	payload := strings.TrimSuffix(strings.TrimPrefix(line, "data: "), "\n\n")
+	var got map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(payload), &got))
+	delta := got["choices"].([]interface{})[0].(map[string]interface{})["delta"].(map[string]interface{})
+	assert.Equal(t, "Hello", delta["content"])
+	_, hasToolCalls := delta["tool_calls"]
+	assert.False(t, hasToolCalls,
+		"text-only chunk must omit tool_calls field; got delta=%v", delta)
+}

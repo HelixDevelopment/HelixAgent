@@ -2707,53 +2707,102 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 	}
 }
 
+// sseChunkEnvelope mirrors the OpenAI chat.completion.chunk wire shape.
+// Defined as a named type (rather than inline anonymous struct) so the
+// nested types are reusable + serialize identically across the package.
+//
+// `delta.tool_calls` and `delta.content` are pointer-typed so that
+// json.Marshal omits the field when the chunk doesn't carry that
+// signal — text-only chunks emit `{"delta":{"content":"..."}}` with
+// no tool_calls key, and tool_call deltas emit
+// `{"delta":{"tool_calls":[...]}}` with no content key. This matches
+// the OpenAI spec (clients accumulate fields across chunks rather than
+// expecting both on every chunk).
+type sseChunkEnvelope struct {
+	ID      string             `json:"id"`
+	Object  string             `json:"object"`
+	Created int64              `json:"created"`
+	Model   string             `json:"model"`
+	Choices []sseChunkChoice   `json:"choices"`
+}
+type sseChunkChoice struct {
+	Index        int           `json:"index"`
+	Delta        sseChunkDelta `json:"delta"`
+	FinishReason interface{}   `json:"finish_reason"`
+}
+type sseChunkDelta struct {
+	Content   *string                `json:"content,omitempty"`
+	ToolCalls []sseChunkToolCallItem `json:"tool_calls,omitempty"`
+}
+type sseChunkToolCallItem struct {
+	Index    int                  `json:"index"`
+	ID       string               `json:"id,omitempty"`
+	Type     string               `json:"type,omitempty"`
+	Function sseChunkToolFunction `json:"function"`
+}
+type sseChunkToolFunction struct {
+	Name      string `json:"name,omitempty"`
+	Arguments string `json:"arguments,omitempty"`
+}
+
 // convertChunkToSSE wraps a streaming chunk in the OpenAI SSE envelope.
 //
-// The previous implementation used fmt.Sprintf with chunk.Content
+// The original implementation used fmt.Sprintf with chunk.Content
 // interpolated directly into a JSON string field — any content
 // containing a `"`, `\`, control char, or newline produced malformed
 // JSON that broke client parsers (CONST-032 reproduction:
-// challenges/scripts/sse_chunk_json_validity_challenge.sh observed
-// 24/39 chunks failing JSON.parse on prompts that elicited quoted
-// text). The fix uses json.Marshal so the standard library does the
-// escaping; the marshalled struct mirrors the OpenAI chat.completion.chunk
-// shape exactly so downstream clients see identical JSON aside from
-// the now-correctly-escaped content.
+// challenges/scripts/sse_chunk_json_validity_challenge.sh). The
+// json.Marshal-based encoder fixed escape semantics.
+//
+// This version additionally surfaces chunk.ToolCalls into
+// delta.tool_calls so streaming clients (OpenCode, Claude Code) can
+// see the model invoking a tool — without this, models that stream
+// tool_call deltas appear to the client as text-only ("I'll use the
+// X tool to do Y") with no actual call ever delivered, and the
+// client hangs forever waiting (CONST-032 reproduction:
+// challenges/scripts/opencode_streaming_tool_call_challenge.sh).
 func (h *UnifiedHandler) convertChunkToSSE(chunk *models.LLMResponse, streamID, model string) string {
-	envelope := struct {
-		ID      string `json:"id"`
-		Object  string `json:"object"`
-		Created int64  `json:"created"`
-		Model   string `json:"model"`
-		Choices []struct {
-			Index        int `json:"index"`
-			Delta        struct {
-				Content string `json:"content"`
-			} `json:"delta"`
-			FinishReason interface{} `json:"finish_reason"`
-		} `json:"choices"`
-	}{
+	envelope := sseChunkEnvelope{
 		ID:      streamID,
 		Object:  "chat.completion.chunk",
 		Created: time.Now().Unix(),
 		Model:   model,
+		Choices: []sseChunkChoice{{Index: 0}},
 	}
-	envelope.Choices = []struct {
-		Index        int `json:"index"`
-		Delta        struct {
-			Content string `json:"content"`
-		} `json:"delta"`
-		FinishReason interface{} `json:"finish_reason"`
-	}{{Index: 0}}
-	envelope.Choices[0].Delta.Content = chunk.Content
-	// FinishReason intentionally left as nil interface{} — marshals as null.
+
+	// Always include delta.content (pointer-typed so empty string is
+	// distinguishable from "no content field"). Most legacy clients
+	// expect a content field on every text chunk even when empty.
+	contentCopy := chunk.Content
+	envelope.Choices[0].Delta.Content = &contentCopy
+
+	if len(chunk.ToolCalls) > 0 {
+		items := make([]sseChunkToolCallItem, 0, len(chunk.ToolCalls))
+		for i, tc := range chunk.ToolCalls {
+			items = append(items, sseChunkToolCallItem{
+				Index: i,
+				ID:    tc.ID,
+				Type:  tc.Type,
+				Function: sseChunkToolFunction{
+					Name:      tc.Function.Name,
+					Arguments: tc.Function.Arguments,
+				},
+			})
+		}
+		envelope.Choices[0].Delta.ToolCalls = items
+		// When emitting tool_calls and there's no content, drop the
+		// content field entirely — OpenAI's wire spec doesn't include
+		// content on a pure tool_call delta.
+		if chunk.Content == "" {
+			envelope.Choices[0].Delta.Content = nil
+		}
+	}
 
 	b, err := json.Marshal(envelope)
 	if err != nil {
-		// json.Marshal can fail only for unrepresentable values
-		// (NaN/Inf floats, recursive types). chunk.Content is a string;
-		// the only realistic failure is OOM. Fall back to an empty
-		// safe envelope so we never emit a half-built line.
+		// json.Marshal failure means OOM (only realistic cause for
+		// strings + slices). Fall back to a safe empty envelope so we
+		// never emit a half-built line.
 		return fmt.Sprintf(
 			"data: {\"id\":%q,\"object\":\"chat.completion.chunk\",\"created\":%d,\"model\":%q,\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\n",
 			streamID, time.Now().Unix(), model,
@@ -2815,6 +2864,23 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 		return
 	}
 
+	// CONST-032: when stream=true AND tools are present, the upstream
+	// fallback chain (deepseek, huggingface, etc.) often does not
+	// stream tool_call deltas — clients get text-only chunks even when
+	// the model wants to invoke a tool, and hang waiting for tool
+	// invocation that never arrives. The non-streaming path
+	// (processWithProviderChain) is verified by
+	// challenges/scripts/opencode_tool_call_response_challenge.sh to
+	// produce a complete tool_calls envelope. Route stream+tools
+	// requests through it and wrap the result in a single SSE frame
+	// so the client sees a proper tool envelope.
+	if len(req.Tools) > 0 {
+		logrus.WithField("tool_count", len(req.Tools)).Info(
+			"[Provider Chain Stream] tools present — routing through non-streaming path then SSE-wrapping")
+		h.streamToolCallViaNonStreaming(c, req)
+		return
+	}
+
 	internalReq := h.convertOpenAIChatRequest(req, c)
 	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
 
@@ -2856,6 +2922,98 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 	}
 
 	h.sendOpenAIError(c, http.StatusServiceUnavailable, "no_provider_available", "All streaming providers failed", "")
+}
+
+// streamToolCallViaNonStreaming runs the request through the
+// non-streaming provider chain (which correctly preserves tool_calls
+// in the response — see convertSingleResponseToOpenAI) and frames the
+// result as a single SSE chunk + [DONE]. Used when the client asked
+// for streaming but the request carries `tools` — the cloud providers
+// in our chain often don't stream tool_call deltas, so this guarantees
+// the client receives a complete tool envelope instead of text-only
+// chunks that talk ABOUT calling the tool.
+func (h *UnifiedHandler) streamToolCallViaNonStreaming(c *gin.Context, req *OpenAIChatRequest) {
+	internalReq := h.convertOpenAIChatRequest(req, c)
+	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+
+	// Try helixllm first, then fallback chain — same priority as
+	// non-streaming processWithProviderChain.
+	var resp *models.LLMResponse
+	tryProvider := func(name string) bool {
+		provider, err := h.providerRegistry.GetProvider(name)
+		if err != nil {
+			return false
+		}
+		r, err := provider.Complete(c.Request.Context(), internalReq)
+		if err != nil {
+			logrus.WithError(err).WithField("provider", name).
+				Debug("[Provider Chain Stream/Tools] provider failed")
+			return false
+		}
+		resp = r
+		logrus.WithField("provider", name).
+			Info("[Provider Chain Stream/Tools] provider succeeded")
+		return true
+	}
+
+	if !tryProvider("helixllm") {
+		for _, name := range h.providerRegistry.ListProvidersOrderedByScore() {
+			if name == "helixllm" {
+				continue
+			}
+			if tryProvider(name) {
+				break
+			}
+		}
+	}
+
+	if resp == nil {
+		h.sendOpenAIError(c, http.StatusServiceUnavailable,
+			"no_provider_available", "All providers failed for tool-call request", "")
+		return
+	}
+
+	// Frame as SSE: emit one chunk carrying tool_calls (and content if
+	// any), then a final chunk with finish_reason, then [DONE].
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	chunk := h.convertChunkToSSE(resp, streamID, req.Model)
+	c.Writer.Write([]byte(chunk))
+	c.Writer.Flush()
+
+	// Final chunk with finish_reason — clients accumulate tool_calls
+	// then this signals the end of message construction. Use the same
+	// reclassification logic as convertSingleResponseToOpenAI: if
+	// finish_reason claims tool_calls but none are present, reclassify
+	// to stop/error so the client never sees the legacy hang shape.
+	finishReason := resp.FinishReason
+	if finishReason == "" {
+		finishReason = "stop"
+	}
+	if finishReason == "tool_calls" && len(resp.ToolCalls) == 0 {
+		if strings.TrimSpace(resp.Content) != "" {
+			finishReason = "stop"
+		} else {
+			finishReason = "error"
+		}
+	}
+	finalEnvelope := sseChunkEnvelope{
+		ID:      streamID,
+		Object:  "chat.completion.chunk",
+		Created: time.Now().Unix(),
+		Model:   req.Model,
+		Choices: []sseChunkChoice{{Index: 0, FinishReason: finishReason}},
+	}
+	if b, err := json.Marshal(finalEnvelope); err == nil {
+		c.Writer.Write([]byte("data: " + string(b) + "\n\n"))
+		c.Writer.Flush()
+	}
+
+	c.Writer.Write([]byte("data: [DONE]\n\n"))
+	c.Writer.Flush()
 }
 
 // tryStreamWithContentCheck buffers the first chunk to verify the upstream
@@ -2907,8 +3065,16 @@ func (h *UnifiedHandler) tryStreamWithContentCheck(
 }
 
 // peekFirstContent reads chunks from streamChan, skipping any with
-// empty content, until it finds one with content (returns chunk + true)
-// or the channel closes / 5s timeout fires (returns nil + false).
+// empty signal, until it finds one with REAL content (text OR
+// tool_calls) and returns that chunk + true. If the channel closes or
+// the 5s timeout fires before any meaningful chunk, returns nil + false
+// (caller should try the next provider — current chunk source produced
+// no useful output).
+//
+// Tool-call chunks count as "real signal" too — without this, models
+// that stream pure tool-invocation deltas (no preamble text) are
+// treated as empty by the fall-through logic and routed away from a
+// perfectly working provider.
 func (h *UnifiedHandler) peekFirstContent(
 	streamChan <-chan *models.LLMResponse,
 	ctx context.Context,
@@ -2925,6 +3091,9 @@ func (h *UnifiedHandler) peekFirstContent(
 				continue
 			}
 			if strings.TrimSpace(chunk.Content) != "" {
+				return chunk, true
+			}
+			if len(chunk.ToolCalls) > 0 {
 				return chunk, true
 			}
 		case <-timeout.C:

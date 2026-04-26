@@ -1534,17 +1534,30 @@ func (r *ProviderRegistry) createProviderFromConfig(cfg ProviderConfig) (llm.LLM
 
 	case "helixllm":
 		if cfg.Enabled {
+			// HELIX_LLM_USE_LLAMACPP defaults to false — when the local
+			// llama.cpp container isn't running (the common case during
+			// development), HelixLLM should rely on its cloud chain
+			// (Chutes, OpenRouter, HuggingFace, Nvidia, Cerebras,
+			// SambaNova, Together) instead of timing out on a local
+			// backend that doesn't exist. Operators who want llama.cpp
+			// in the rotation set HELIX_LLM_USE_LLAMACPP=true.
+			useLlamaCpp := strings.EqualFold(os.Getenv("HELIX_LLM_USE_LLAMACPP"), "true")
 			config := helixllm.Config{
 				Endpoint:      getEnv("HELIX_LLM_ENDPOINT", "https://localhost:8443"),
 				APIKey:        cfg.APIKey,
 				Model:         model,
 				TLSSkipVerify: os.Getenv("HELIX_LLM_TLS_SKIP_VERIFY") == "true",
+				UseLlamaCpp:   useLlamaCpp,
 			}
 			if baseURL != "" {
 				config.Endpoint = baseURL
 			}
 			provider := helixllm.NewProvider(config)
-			logrus.WithField("provider", cfg.Name).Info("Created HelixLLM provider")
+			logrus.WithFields(logrus.Fields{
+				"provider":      cfg.Name,
+				"use_llamacpp":  useLlamaCpp,
+				"endpoint":      config.Endpoint,
+			}).Info("Created HelixLLM provider")
 			return provider, nil
 		}
 		return nil, fmt.Errorf("HelixLLM provider not available: disabled (set USE_HELIX_LLM=true to enable)")

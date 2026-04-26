@@ -2105,18 +2105,29 @@ func (h *UnifiedHandler) CompletionsStream(c *gin.Context) {
 // HelixAgent exposes a single unified model that internally uses AI debate ensemble
 // Backend provider models are implementation details and not exposed to clients
 func (h *UnifiedHandler) Models(c *gin.Context) {
-	// HelixAgent exposes only ONE virtual model: helixagent-debate
-	// This model internally uses AI debate ensemble with multiple LLMs
-	helixagentModel := OpenAIModel{
-		ID:      "helixagent-debate",
-		Object:  "model",
-		Created: time.Now().Unix(),
-		OwnedBy: "helixagent",
-		Permission: []OpenAIModelPermission{
-			{
-				ID:                 "helixagent-debate-permission",
+	// HelixAgent exposes three model IDs that the CLI agent configs
+	// (OpenCode, Crush, HelixCode) reference:
+	//   - helixagent-debate: AI debate ensemble (canonical name)
+	//   - helix-debate:      same ensemble, alias used by HelixCode config
+	//   - helix-llm:         provider chain with HelixLLM-first fallback;
+	//                        used by OpenCode/HelixCode for "fast" routing
+	//
+	// All three are listed so CLI agents that pre-validate against
+	// /v1/models (instead of just sending the request) see them as
+	// available. Reproduction guard:
+	// challenges/scripts/opencode_helixllm_hello_challenge.sh asserts
+	// helix-llm is present (CONST-032).
+	now := time.Now().Unix()
+	makeModel := func(id string) OpenAIModel {
+		return OpenAIModel{
+			ID:      id,
+			Object:  "model",
+			Created: now,
+			OwnedBy: "helixagent",
+			Permission: []OpenAIModelPermission{{
+				ID:                 id + "-permission",
 				Object:             "model_permission",
-				Created:            time.Now().Unix(),
+				Created:            now,
 				AllowCreateEngine:  true,
 				AllowSampling:      true,
 				AllowLogprobs:      true,
@@ -2125,15 +2136,19 @@ func (h *UnifiedHandler) Models(c *gin.Context) {
 				AllowFineTuning:    false,
 				Organization:       "helixagent",
 				IsBlocking:         false,
-			},
-		},
-		Root:   "helixagent-debate",
-		Parent: nil,
+			}},
+			Root:   id,
+			Parent: nil,
+		}
 	}
 
 	response := OpenAIModelsResponse{
 		Object: "list",
-		Data:   []OpenAIModel{helixagentModel},
+		Data: []OpenAIModel{
+			makeModel("helixagent-debate"),
+			makeModel("helix-debate"),
+			makeModel("helix-llm"),
+		},
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -2716,10 +2731,13 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 		streamChan, provErr := provider.CompleteStream(c.Request.Context(), internalReq)
 		if provErr == nil {
 			logrus.Info("[Provider Chain Stream] helixllm streaming")
-			h.streamResponse(c, streamChan, streamID, req.Model)
-			return
+			if h.tryStreamWithContentCheck(c, streamChan, streamID, req.Model, "helixllm") {
+				return
+			}
+			logrus.Warn("[Provider Chain Stream] helixllm produced no content — falling through")
+		} else {
+			logrus.WithError(provErr).Warn("[Provider Chain Stream] helixllm failed")
 		}
-		logrus.WithError(provErr).Warn("[Provider Chain Stream] helixllm failed")
 	}
 
 	// Fallback: try providers by score
@@ -2733,14 +2751,95 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 			continue
 		}
 		streamChan, err := provider.CompleteStream(c.Request.Context(), internalReq)
-		if err == nil {
-			logrus.WithField("provider", name).Info("[Provider Chain Stream] Fallback streaming")
-			h.streamResponse(c, streamChan, streamID, req.Model)
+		if err != nil {
+			continue
+		}
+		logrus.WithField("provider", name).Info("[Provider Chain Stream] Fallback streaming")
+		if h.tryStreamWithContentCheck(c, streamChan, streamID, req.Model, name) {
 			return
 		}
+		logrus.WithField("provider", name).Warn(
+			"[Provider Chain Stream] produced no content — trying next provider")
 	}
 
 	h.sendOpenAIError(c, http.StatusServiceUnavailable, "no_provider_available", "All streaming providers failed", "")
+}
+
+// tryStreamWithContentCheck buffers the first chunk to verify the upstream
+// produced ANY non-empty content before committing to that provider.
+// Returns true if real content was streamed to the client (provider
+// "won"); false if the upstream closed without content or with only
+// empty chunks (caller should try the next provider in the chain).
+//
+// Without this guard, providers like Hugging Face that occasionally
+// return a single empty content chunk on cold start propagate to the
+// client as "empty SSE response" — which the user sees as the CLI
+// hanging or showing no answer (Finding #50, reproduced by
+// challenges/scripts/opencode_helixllm_hello_challenge.sh).
+//
+// The guard waits up to 5s for the first chunk. If the first chunk has
+// non-empty content, headers + chunks are streamed normally. If the
+// upstream closes with everything empty, no headers / no DONE marker
+// are sent (the response is uncommitted) and the caller can try the
+// next provider.
+func (h *UnifiedHandler) tryStreamWithContentCheck(
+	c *gin.Context,
+	streamChan <-chan *models.LLMResponse,
+	streamID, model, providerName string,
+) bool {
+	// Drain leading empty chunks until we find content OR the channel
+	// closes / timeout expires.
+	firstContent, ok := h.peekFirstContent(streamChan, c.Request.Context())
+	if !ok {
+		return false
+	}
+
+	// Real content exists — commit headers + replay first chunk + drain.
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	c.Writer.Write([]byte(h.convertChunkToSSE(firstContent, streamID, model)))
+	c.Writer.Flush()
+
+	for chunk := range streamChan {
+		sseData := h.convertChunkToSSE(chunk, streamID, model)
+		c.Writer.Write([]byte(sseData))
+		c.Writer.Flush()
+	}
+	c.Writer.Write([]byte("data: [DONE]\n\n"))
+	c.Writer.Flush()
+	return true
+}
+
+// peekFirstContent reads chunks from streamChan, skipping any with
+// empty content, until it finds one with content (returns chunk + true)
+// or the channel closes / 5s timeout fires (returns nil + false).
+func (h *UnifiedHandler) peekFirstContent(
+	streamChan <-chan *models.LLMResponse,
+	ctx context.Context,
+) (*models.LLMResponse, bool) {
+	timeout := time.NewTimer(5 * time.Second)
+	defer timeout.Stop()
+	for {
+		select {
+		case chunk, open := <-streamChan:
+			if !open {
+				return nil, false
+			}
+			if chunk == nil {
+				continue
+			}
+			if strings.TrimSpace(chunk.Content) != "" {
+				return chunk, true
+			}
+		case <-timeout.C:
+			return nil, false
+		case <-ctx.Done():
+			return nil, false
+		}
+	}
 }
 
 // streamResponse helper to stream SSE response

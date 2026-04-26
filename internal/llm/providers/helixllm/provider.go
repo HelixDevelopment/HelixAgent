@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,7 @@ type Provider struct {
 	model         string
 	timeout       time.Duration
 	tlsSkipVerify bool
+	useLlamaCpp   bool
 	httpClient    *http.Client
 
 	mu          sync.RWMutex
@@ -51,6 +53,14 @@ type Config struct {
 	Model         string
 	Timeout       time.Duration
 	TLSSkipVerify bool
+	// UseLlamaCpp toggles HelixLLM's local llama.cpp backend. When false,
+	// HelixLLM will only use cloud providers (Chutes, OpenRouter,
+	// HuggingFace, Nvidia, Cerebras, SambaNova, Together). When true (or
+	// unset), HelixLLM may fall back to local llama.cpp as the last
+	// resort. Sourced from HELIX_LLM_USE_LLAMACPP env var (default false).
+	// Communicated to the HelixLLM backend via the
+	// X-Helix-LLM-Use-LlamaCpp HTTP header.
+	UseLlamaCpp bool
 }
 
 // NewProvider creates a new HelixLLM provider
@@ -71,12 +81,18 @@ func NewProvider(cfg Config) *Provider {
 		},
 	}
 
+	useLlamaCpp := cfg.UseLlamaCpp
+	if v := os.Getenv("HELIX_LLM_USE_LLAMACPP"); v != "" {
+		useLlamaCpp = strings.EqualFold(v, "true") || v == "1"
+	}
+
 	return &Provider{
 		endpoint:      cfg.Endpoint,
 		apiKey:        cfg.APIKey,
 		model:         cfg.Model,
 		timeout:       cfg.Timeout,
 		tlsSkipVerify: cfg.TLSSkipVerify,
+		useLlamaCpp:   useLlamaCpp,
 		httpClient: &http.Client{
 			Timeout:   cfg.Timeout,
 			Transport: transport,
@@ -140,6 +156,12 @@ func (p *Provider) Complete(ctx context.Context, req *models.LLMRequest) (*model
 	httpReq.Header.Set("Content-Type", "application/json")
 	if p.apiKey != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
+	}
+	// HELIX_LLM_USE_LLAMACPP — when false, instruct HelixLLM backend to
+	// skip its local llama.cpp link and only use cloud providers. The
+	// backend treats absence as the legacy default (llama.cpp included).
+	if !p.useLlamaCpp {
+		httpReq.Header.Set("X-Helix-LLM-Use-LlamaCpp", "false")
 	}
 
 	resp, err := p.httpClient.Do(httpReq)

@@ -533,6 +533,46 @@ Mandatory Container Orchestration Flow.
 Snapshot reflects `.env` state at that date; N scales freely to any number of
 hosts ≥ 1.
 
+### CONST-032: Reproduction-Before-Fix
+
+**Mandatory.** Every reported error, defect, or unexpected behavior MUST be
+reproduced by a Challenge script BEFORE any fix is attempted.
+
+**Sequence (no shortcuts):**
+
+1. **Write the Challenge first.** Create
+   `challenges/scripts/<bug>_challenge.sh` (or extend an existing one) that
+   exercises the exact failing scenario against the running binary. The
+   challenge MUST exit non-zero when the bug is present.
+
+2. **Run the Challenge to confirm reproduction.** Paste the failing output
+   into the bug ticket / commit message / Claude reply. If the challenge
+   passes before the fix, it doesn't reproduce the bug — fix the challenge
+   first.
+
+3. **Then write the fix.** No code change to the product is permitted before
+   steps 1 and 2 are complete.
+
+4. **Re-run the Challenge to confirm the fix.** Paste the green output. The
+   challenge becomes the regression guard for that bug forever.
+
+5. **Commit Challenge + fix together.** Same commit, same PR. Reverting the
+   fix without reverting the challenge is not allowed; the challenge
+   protects future commits from re-introducing the same defect.
+
+**Why:** drainage cycles keep re-discovering bugs that pass `go test` and
+re-appear in production because the unit test missed the code path that
+actually breaks. A Challenge runs against the real binary with real
+infrastructure (per CONST-030), so "challenge passes" is evidence the
+product works for the real scenario, not just that the code's mental model
+of itself is consistent.
+
+**Worked example:**
+`challenges/scripts/opencode_helixllm_hello_challenge.sh` was created
+BEFORE the `HELIX_LLM_USE_LLAMACPP` fix on 2026-04-26. It failed
+pre-fix and passes post-fix; any future regression that breaks the same
+OpenCode→helix-llm flow will be caught by the same script.
+
 <!-- BEGIN_CONSTITUTION -->
 # Project Constitution
 

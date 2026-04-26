@@ -98,9 +98,17 @@ log_error() {
     echo "$msg" >> "$LOG_FILE"
 }
 
-# Load environment variables
+# Load environment variables.
+# Uses `set +u` while sourcing because production .env files can contain
+# bash-variable substitutions like `FOO=$Bar` where `Bar` is intentionally
+# unset on this host (treated as empty by HelixAgent's env loader). Under
+# `set -u`, sourcing those lines would fatally fail. We restore the
+# caller's `-u` setting after.
 load_env() {
     local env_file="$PROJECT_ROOT/.env"
+    local prev_u
+    case "$-" in *u*) prev_u=1 ;; *) prev_u=0 ;; esac
+    set +u
     if [[ -f "$env_file" ]]; then
         set -a
         source "$env_file"
@@ -117,6 +125,8 @@ load_env() {
             log_warning "No .env file found"
         fi
     fi
+    [[ "$prev_u" == "1" ]] && set -u
+    return 0
 }
 
 # Detect container runtime

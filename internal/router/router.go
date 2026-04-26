@@ -384,7 +384,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			SecretKey:   cfg.Server.JWTSecret,
 			TokenExpiry: 24 * time.Hour,
 			Issuer:      "helixagent",
-			SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login", "/v1/auth/register", "/v1/chat/completions", "/v1/completions", "/v1/models", "/v1/ensemble", "/v1/acp", "/v1/vision", "/v1/mcp", "/v1/lsp", "/v1/embeddings", "/v1/cognee"},
+			SkipPaths:   []string{"/health", "/v1/health", "/metrics", "/v1/auth/login", "/v1/auth/register", "/v1/chat/completions", "/v1/completions", "/v1/messages", "/v1/models", "/v1/ensemble", "/v1/acp", "/v1/vision", "/v1/mcp", "/v1/lsp", "/v1/embeddings", "/v1/cognee"},
 			Required:    false,
 		}
 		auth, err = middleware.NewAuthMiddleware(authConfig, nil)
@@ -603,6 +603,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			"/v1/models",           // Model list - public for challenge tests
 			"/v1/chat/completions", // Chat - required for challenges
 			"/v1/completions",      // Completions - required for challenges
+			"/v1/messages",         // Anthropic Messages translator (Finding #20)
 			"/v1/acp",              // ACP endpoints - public for CLI agents
 			"/v1/vision",           // Vision endpoints - public for CLI agents
 			"/v1/mcp",              // MCP endpoints - public for CLI agents (OpenCode, Crush, etc.)
@@ -631,6 +632,14 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// Register OpenAI-compatible routes for seamless integration
 		// This handles /completions, /chat/completions, /models
 		unifiedHandler.RegisterOpenAIRoutes(protected, func(c *gin.Context) {
+			c.Next()
+		})
+
+		// Anthropic-compatible /v1/messages translator (Finding #20).
+		// Lets Claude Code and other Anthropic-protocol CLIs talk to
+		// HelixAgent's ensemble without a wrapper. Delegates to
+		// ChatCompletions internally, then re-shapes the response.
+		unifiedHandler.RegisterAnthropicRoutes(protected, func(c *gin.Context) {
 			c.Next()
 		})
 

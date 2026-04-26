@@ -42,7 +42,7 @@ var CLIAgentRegistry = map[string]*CLIAgent{
 		Features:       []string{"shell-commands", "terminal-integration", "streaming"},
 		ToolSupport:    []string{"Bash", "Read", "Write", "Glob", "Grep"},
 		Protocols:      []string{"OpenAI"},
-		ConfigLocation: "~/.config/crush/config.json",
+		ConfigLocation: "~/.config/crush/crush.json",
 		SystemPrompt:   "You are Crush, a terminal-based AI assistant. You help with shell commands and system tasks.",
 	},
 	"HelixCode": {

@@ -1067,9 +1067,16 @@ func TestLatencyBasedStrategy_WithMetrics(t *testing.T) {
 			"unknown": &MockLLMProviderForRequest{name: "unknown"},
 		}
 
-		// Should sometimes select unknown provider for exploration
+		// Should sometimes select unknown provider for exploration.
+		// Strategy picks best-known 90% of the time; in the remaining
+		// 10% it picks uniformly from all providers (so unknown is
+		// chosen ≈ 5% overall). With 100 iterations the probability of
+		// zero unknown picks is 0.95^100 ≈ 0.6%, which surfaced as a
+		// flake in CI sweeps. Bumping to 2 000 iterations drives that
+		// probability to 0.95^2000 ≈ 7e-45 — effectively never. The
+		// test still runs in <1 s so there's no cost.
 		selections := make(map[string]int)
-		for i := 0; i < 100; i++ {
+		for i := 0; i < 2000; i++ {
 			name, err := strategy.SelectProvider(providers, nil)
 			assert.NoError(t, err)
 			selections[name]++

@@ -21,6 +21,13 @@ import (
 // uses the verified provider instance when available instead of looking up
 // from the registry.
 func TestDebateService_UsesVerifiedProviderInstance(t *testing.T) {
+	// CONST-035: NewProviderRegistry(nil, nil) below kicks off
+	// full provider auto-discovery against whatever API keys live
+	// in the dev shell. This is a unit test for ParticipantConfig
+	// instance preference, not a discovery test — scrub the env so
+	// the registry constructor returns in milliseconds.
+	clearProviderEnvVarsForTest(t)
+
 	logger := logrus.New()
 	_ = context.Background()
 

@@ -1293,8 +1293,13 @@ func TestIntegrationOrchestrator_executeLLMStep_UnknownOperation(t *testing.T) {
 	ctx := context.Background()
 	io := NewIntegrationOrchestrator(nil, nil, nil, nil)
 
-	// Create provider registry with mock provider
-	registry := NewProviderRegistry(&RegistryConfig{
+	// CONST-035: this is a unit test for the LLM step's
+	// "unknown operation" error path. It registers a mock provider
+	// itself; auto-discovery against the dev host's real API keys
+	// is unrelated and adds 23+ s of work. Use the explicit
+	// WithoutAutoDiscovery constructor (matches sibling tests in
+	// this file e.g. TestIntegrationOrchestrator_executeLLMStep_DefaultProvider).
+	registry := NewProviderRegistryWithoutAutoDiscovery(&RegistryConfig{
 		DefaultTimeout: 30 * time.Second,
 		CircuitBreaker: CircuitBreakerConfig{Enabled: false},
 		Providers:      make(map[string]*ProviderConfig),

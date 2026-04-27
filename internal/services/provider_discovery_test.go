@@ -131,6 +131,13 @@ func TestProviderMappingURLsAreValid(t *testing.T) {
 
 // TestProviderDiscoveryWithoutEnvVars tests discovery returns empty list without env vars
 func TestProviderDiscoveryWithoutEnvVars(t *testing.T) {
+	// CONST-035: the test name promises an empty environment, so
+	// scrub every provider env-var first. Without this, on a
+	// developer host the test silently exercises real auto-discovery
+	// (24+ s, 25 providers, HTTPS calls) instead of the empty-env
+	// branch it claims to verify.
+	clearProviderEnvVarsForTest(t)
+
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
@@ -420,6 +427,13 @@ func TestProviderDiscoveryFindsZAIFromEnv(t *testing.T) {
 
 // TestProviderDiscoveryFindsDeepSeekFromAlternativeEnv tests DeepSeek discovery from ApiKey_DeepSeek
 func TestProviderDiscoveryFindsDeepSeekFromAlternativeEnv(t *testing.T) {
+	// CONST-035: scrub every other provider env-var so the test
+	// observes ONLY the DeepSeek-via-alternative-name code path it
+	// claims to exercise. Otherwise it triggers full discovery (12+ s)
+	// which both inflates runtime and obscures whether the assertion
+	// actually exercised the alternative-env branch.
+	clearProviderEnvVarsForTest(t)
+
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 

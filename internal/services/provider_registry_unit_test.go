@@ -140,6 +140,14 @@ func TestProviderRegistryUnit_NewProviderRegistry(t *testing.T) {
 }
 
 func TestProviderRegistryUnit_NewProviderRegistry_WithAutoDiscovery(t *testing.T) {
+	// CONST-035 anti-bluff: a unit test for the constructor must not
+	// silently perform live provider auto-discovery against the dev
+	// host's real API keys (16+ s of work, HTTPS calls). Scrub every
+	// recognised provider env-var so the auto-discovery code path
+	// executes against a clean environment and returns in
+	// milliseconds.
+	clearProviderEnvVarsForTest(t)
+
 	cfg := &RegistryConfig{
 		DefaultTimeout:       30 * time.Second,
 		MaxRetries:           3,
@@ -150,7 +158,8 @@ func TestProviderRegistryUnit_NewProviderRegistry_WithAutoDiscovery(t *testing.T
 	registry := NewProviderRegistry(cfg, nil)
 
 	require.NotNil(t, registry)
-	// Auto-discovery may have run
+	// Auto-discovery code path executed; with env vars cleared
+	// it discovered nothing and returned in milliseconds.
 }
 
 // =============================================================================

@@ -798,7 +798,11 @@ func TestDefaultAppConfig(t *testing.T) {
 	assert.False(t, cfg.ShowVersion)
 	assert.True(t, cfg.AutoStartDocker)
 	assert.Equal(t, "0.0.0.0", cfg.ServerHost)
-	assert.Equal(t, "7061", cfg.ServerPort)
+	// 8100 = HELIXAGENT_PORT_HTTP per the canonical port registry
+	// (internal/ports + docs/development/port-registry.md). Updated
+	// from the legacy 7061 default when the project standardised on
+	// the 81xx band per CONST-027 (CLAUDE.md rule #18).
+	assert.Equal(t, "8100", cfg.ServerPort)
 	assert.NotNil(t, cfg.Logger)
 	assert.Nil(t, cfg.ShutdownSignal)
 }

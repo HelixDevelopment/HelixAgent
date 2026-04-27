@@ -281,8 +281,13 @@ func TestOffsets_WithinExpectedBands(t *testing.T) {
 		HelixAgentHTTP:  {}, PostgresPrimary: {}, RedisDefault: {},
 		MCPBridge:       {}, MCPRouterAlt: {}, HelixLLM: {},
 		MockLLM:         {}, PostgresReplica: {}, PostgresExtra: {},
-		PostgresTest:    {}, RedisMCP: {}, Cognee: {},
-		ChromaDB:        {}, Qdrant: {}, Neo4jHTTP: {}, Neo4jBolt: {},
+		PostgresTest:    {}, RedisMCP: {},
+		// HelixAgentLiveness — early-bind liveness probe (offset 111),
+		// added 2026-04-25 alongside the verification-window /health
+		// fix. Belongs in the core band, not MCP.
+		HelixAgentLiveness: {},
+		Cognee:             {},
+		ChromaDB:           {}, Qdrant: {}, Neo4jHTTP: {}, Neo4jBolt: {},
 	}
 	observability := map[Service]struct{}{
 		ACPManager: {}, ElasticsearchAlt: {}, OpenSearch: {},

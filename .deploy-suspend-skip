@@ -1,5 +1,9 @@
 # CONST-033 deploy: skip third-party submodules per HelixAgent rule #10
+# (NEVER commit/push changes to these read-only deps)
 cli_agents
 MCP
 MCP_Module/submodules
+MCP-Servers
 vendor
+HelixQA/tools/opensource
+HelixQA/tools/test-apps

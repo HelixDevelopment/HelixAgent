@@ -1,0 +1,5 @@
+# CONST-033 deploy: skip third-party submodules per HelixAgent rule #10
+cli_agents
+MCP
+MCP_Module/submodules
+vendor

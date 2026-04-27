@@ -1044,7 +1044,27 @@ func (a *Adapter) deployComposeToHost(
 		return fmt.Errorf("create remote dir: %w", err)
 	}
 
-	remoteFile := remoteDir + "/" + filepath.Base(absFile)
+	// Preserve the compose file's position relative to the project
+	// root so `context: ../../X` references land on the correct
+	// directory on remote. The MCP servers compose lives at
+	// `docker/mcp/docker-compose.mcp-servers.yml` and uses
+	// `../../MCP-Servers` etc.; flattening to `<remoteDir>/<basename>`
+	// would break those references (BUGFIXES.md Issue #51). The main
+	// docker-compose.yml at project root is unaffected — its relPath
+	// is just the basename.
+	relCompose, relErr := filepath.Rel(a.projectDir, absFile)
+	if relErr != nil || strings.HasPrefix(relCompose, "..") {
+		// Fall back to flat layout for anything outside the project.
+		relCompose = filepath.Base(absFile)
+	}
+	remoteFile := filepath.Join(remoteDir, relCompose)
+	remoteFileParent := filepath.Dir(remoteFile)
+	if remoteFileParent != remoteDir {
+		mkParent := fmt.Sprintf("mkdir -p %s", remoteFileParent)
+		if _, err := a.executor.Execute(ctx, host, mkParent); err != nil {
+			return fmt.Errorf("create remote compose dir %s: %w", remoteFileParent, err)
+		}
+	}
 	if err := a.executor.CopyFile(
 		ctx, host, absFile, remoteFile,
 	); err != nil {

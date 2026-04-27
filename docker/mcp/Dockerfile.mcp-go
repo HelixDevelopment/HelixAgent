@@ -3,7 +3,6 @@
 
 FROM golang:1.25-alpine AS builder
 
-ARG SOURCE_DIR
 
 # Install build dependencies
 RUN apk add --no-cache git make
@@ -11,7 +10,7 @@ RUN apk add --no-cache git make
 WORKDIR /app
 
 # Copy the submodule source from the specified directory
-COPY ${SOURCE_DIR} .
+COPY . .
 
 # Ensure /app/bin exists before building
 RUN mkdir -p /app/bin

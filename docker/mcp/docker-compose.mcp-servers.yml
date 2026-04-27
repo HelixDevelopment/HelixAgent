@@ -22,11 +22,10 @@ services:
 
   mcp-fetch:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: fetch
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-fetch
     mem_limit: 1g
     memswap_limit: 1g
@@ -43,11 +42,10 @@ services:
 
   mcp-git:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: git
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-git
     mem_limit: 1g
     memswap_limit: 1g
@@ -66,11 +64,10 @@ services:
 
   mcp-time:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: time
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-time
     mem_limit: 1g
     memswap_limit: 1g
@@ -87,11 +84,10 @@ services:
 
   mcp-filesystem:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: filesystem
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-filesystem
     mem_limit: 1g
     memswap_limit: 1g
@@ -110,11 +106,10 @@ services:
 
   mcp-memory:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: memory
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-memory
     mem_limit: 1g
     memswap_limit: 1g
@@ -131,11 +126,10 @@ services:
 
   mcp-everything:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: everything
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-everything
     mem_limit: 1g
     memswap_limit: 1g
@@ -152,11 +146,10 @@ services:
 
   mcp-sequentialthinking:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-server
+      context: ../../MCP-Servers
+      dockerfile: ../docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: sequentialthinking
-        SOURCE_DIR: MCP-Servers
     container_name: helixagent-mcp-sequentialthinking
     mem_limit: 1g
     memswap_limit: 1g
@@ -177,10 +170,8 @@ services:
 
   mcp-redis:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-python
-      args:
-        SOURCE_DIR: MCP/submodules/redis-mcp
+      context: ../../MCP/submodules/redis-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
     container_name: helixagent-mcp-redis-server
     mem_limit: 1g
     memswap_limit: 1g
@@ -210,10 +201,8 @@ services:
 
   mcp-mongodb:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/mongodb-mcp
+      context: ../../MCP/submodules/mongodb-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-mongodb-server
     mem_limit: 1g
     memswap_limit: 1g
@@ -245,10 +234,8 @@ services:
 
   mcp-supabase:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/supabase-mcp
+      context: ../../MCP/submodules/supabase-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-supabase
     mem_limit: 1g
     memswap_limit: 1g
@@ -267,10 +254,8 @@ services:
 
   mcp-qdrant:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-python
-      args:
-        SOURCE_DIR: MCP/submodules/qdrant-mcp
+      context: ../../MCP/submodules/qdrant-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
     container_name: helixagent-mcp-qdrant-server
     mem_limit: 1g
     memswap_limit: 1g
@@ -304,10 +289,8 @@ services:
 
   mcp-kubernetes:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-go
-      args:
-        SOURCE_DIR: MCP/submodules/kubernetes-mcp
+      context: ../../MCP/submodules/kubernetes-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-go
     container_name: helixagent-mcp-kubernetes
     mem_limit: 1g
     memswap_limit: 1g
@@ -321,10 +304,8 @@ services:
 
   mcp-github:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-go
-      args:
-        SOURCE_DIR: MCP/submodules/github-mcp-server
+      context: ../../MCP/submodules/github-mcp-server
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-go
     container_name: helixagent-mcp-github
     mem_limit: 1g
     memswap_limit: 1g
@@ -338,10 +319,8 @@ services:
 
   mcp-cloudflare:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/cloudflare-mcp
+      context: ../../MCP/submodules/cloudflare-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-cloudflare
     mem_limit: 1g
     memswap_limit: 1g
@@ -356,10 +335,8 @@ services:
 
   mcp-heroku:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/heroku-mcp
+      context: ../../MCP/submodules/heroku-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-heroku
     mem_limit: 1g
     memswap_limit: 1g
@@ -373,10 +350,8 @@ services:
 
   mcp-sentry:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/sentry-mcp
+      context: ../../MCP/submodules/sentry-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-sentry
     mem_limit: 1g
     memswap_limit: 1g
@@ -395,10 +370,8 @@ services:
 
   mcp-playwright:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-playwright
-      args:
-        SOURCE_DIR: MCP/submodules/playwright-mcp
+      context: ../../MCP/submodules/playwright-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-playwright
     container_name: helixagent-mcp-playwright
     mem_limit: 3g
     memswap_limit: 3g
@@ -410,10 +383,8 @@ services:
 
   mcp-browserbase:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/browserbase-mcp
+      context: ../../MCP/submodules/browserbase-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-browserbase
     mem_limit: 3g
     memswap_limit: 3g
@@ -428,10 +399,8 @@ services:
 
   mcp-firecrawl:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/firecrawl-mcp
+      context: ../../MCP/submodules/firecrawl-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-firecrawl
     mem_limit: 2g
     memswap_limit: 2g
@@ -449,10 +418,8 @@ services:
 
   mcp-slack:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-go
-      args:
-        SOURCE_DIR: MCP/submodules/slack-mcp
+      context: ../../MCP/submodules/slack-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-go
     container_name: helixagent-mcp-slack
     mem_limit: 1g
     memswap_limit: 1g
@@ -467,10 +434,8 @@ services:
 
   mcp-telegram:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-python
-      args:
-        SOURCE_DIR: MCP/submodules/telegram-mcp
+      context: ../../MCP/submodules/telegram-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
     container_name: helixagent-mcp-telegram
     mem_limit: 1g
     memswap_limit: 1g
@@ -488,10 +453,8 @@ services:
 
   mcp-notion:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/notion-mcp-server
+      context: ../../MCP/submodules/notion-mcp-server
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-notion
     mem_limit: 1g
     memswap_limit: 1g
@@ -505,10 +468,8 @@ services:
 
   mcp-trello:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/trello-mcp
+      context: ../../MCP/submodules/trello-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-trello
     mem_limit: 1g
     memswap_limit: 1g
@@ -523,10 +484,8 @@ services:
 
   mcp-airtable:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/airtable-mcp
+      context: ../../MCP/submodules/airtable-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-airtable
     mem_limit: 1g
     memswap_limit: 1g
@@ -540,10 +499,8 @@ services:
 
   mcp-obsidian:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/obsidian-mcp
+      context: ../../MCP/submodules/obsidian-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-obsidian
     mem_limit: 1g
     memswap_limit: 1g
@@ -557,10 +514,8 @@ services:
 
   mcp-atlassian:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-python
-      args:
-        SOURCE_DIR: MCP/submodules/atlassian-mcp
+      context: ../../MCP/submodules/atlassian-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
     container_name: helixagent-mcp-atlassian
     mem_limit: 1g
     memswap_limit: 1g
@@ -580,10 +535,8 @@ services:
 
   mcp-brave-search:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/brave-search
+      context: ../../MCP/submodules/brave-search
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-brave-search
     mem_limit: 1g
     memswap_limit: 1g
@@ -597,10 +550,8 @@ services:
 
   mcp-perplexity:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/perplexity-mcp
+      context: ../../MCP/submodules/perplexity-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-perplexity
     mem_limit: 1g
     memswap_limit: 1g
@@ -614,10 +565,8 @@ services:
 
   mcp-omnisearch:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/omnisearch-mcp
+      context: ../../MCP/submodules/omnisearch-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-omnisearch
     mem_limit: 1g
     memswap_limit: 1g
@@ -629,10 +578,8 @@ services:
 
   mcp-context7:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/context7-mcp
+      context: ../../MCP/submodules/context7-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-context7
     mem_limit: 1g
     memswap_limit: 1g
@@ -644,10 +591,8 @@ services:
 
   mcp-llamaindex:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/llamaindex-mcp
+      context: ../../MCP/submodules/llamaindex-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-llamaindex
     mem_limit: 1g
     memswap_limit: 1g
@@ -665,10 +610,8 @@ services:
 
   mcp-workers:
     build:
-      context: ../..
-      dockerfile: docker/mcp/Dockerfile.mcp-submodule
-      args:
-        SOURCE_DIR: MCP/submodules/workers-mcp
+      context: ../../MCP/submodules/workers-mcp
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
     container_name: helixagent-mcp-workers
     mem_limit: 1g
     memswap_limit: 1g

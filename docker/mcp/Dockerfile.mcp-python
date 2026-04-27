@@ -3,7 +3,6 @@
 
 FROM python:3.11-slim
 
-ARG SOURCE_DIR
 
 # Install system dependencies and socat for TCP wrapper
 RUN apt-get update && apt-get install -y \
@@ -16,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy the submodule source from the specified directory
-COPY ${SOURCE_DIR} .
+COPY . .
 
 # Install Python dependencies
 RUN if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \

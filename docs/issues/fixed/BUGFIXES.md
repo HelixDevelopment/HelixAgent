@@ -1656,3 +1656,143 @@ ok  dev.helix.agent/internal/adapters/containers  0.017s
 - `challenges/scripts/compose_resource_limits_challenge.sh` (new, CONST-032 guard)
 - `internal/adapters/containers/compose_resources_test.go` (new, in-process invariant)
 - `docs/development/container-resource-policy.md` (new, tier table)
+
+---
+
+## Issue #51: MCP servers compose used `context: ../..` — orchestrator skipped the build context, remote MCP deploys failed (FIXED 2026-04-27)
+
+### Issue
+
+Boot of HelixAgent with `CONTAINERS_REMOTE_ENABLED=true` shipped the
+main `docker-compose.yml` correctly to thinker.local + amber.local but
+failed to ship the MCP servers compose
+(`docker/mcp/docker-compose.mcp-servers.yml`) on every cycle:
+
+- thinker.local (podman-compose):
+  ```text
+  OSError: Dockerfile not found in /home/milosvasic/docker/mcp/Dockerfile.mcp-server
+  ```
+- amber.local (docker compose v2):
+  ```text
+  resolve : lstat /home/milosvasic/docker: no such file or directory
+  ```
+
+Result: 32 MCP servers (ports 9101–9999) — `mcp-fetch`, `mcp-git`,
+`mcp-filesystem`, `mcp-memory`, `mcp-sequentialthinking`,
+`mcp-redis`/`mcp-mongodb`/`mcp-supabase`/`mcp-qdrant` plus 23 more —
+were unavailable on every boot. CLI agents that depend on remote MCPs
+(opencode, crush, claude-code with helixagent backend) lost half their
+tool surface area.
+
+### Root cause
+
+Every service in `docker-compose.mcp-servers.yml` declared:
+```yaml
+build:
+  context: ../..                              # project root
+  dockerfile: docker/mcp/Dockerfile.mcp-server
+  args:
+    SOURCE_DIR: MCP-Servers       # or MCP/submodules/<name>
+```
+
+The orchestrator's main adapter
+(`internal/adapters/containers/adapter.go::extractBuildContexts`)
+deliberately SKIPS any build context that resolves to the project root
+to avoid scp'ing the 27 GB tree (vendor, releases, cli_agents, model
+files) to every remote host. The skip is correct for the `helixagent`
+service (orchestrator stays local), but it silently drops every MCP
+service's build context too.
+
+Without the contexts shipped, the compose file landed alone at
+`/home/<user>/helixagent/deploy/docker-compose.mcp-servers.yml`. From
+there, `context: ../..` resolved to `/home/<user>/`, where
+`docker/mcp/Dockerfile.mcp-server` does not exist. Hence the failure.
+
+The compose file ALSO landed at the wrong relative depth: the original
+sat at `<project>/docker/mcp/...` (2 levels deep), but the remote put
+it at `<deploy>/...` (0 levels deep), which would have broken the
+relative-path math even if the contexts had shipped.
+
+### Fix
+
+Three coordinated changes (all in main repo, single commit per
+CONST-032):
+
+1. **`docker/mcp/docker-compose.mcp-servers.yml`** — every service's
+   `build:` block was rewritten to a focused per-service sub-context:
+   - `MCP-Servers/<name>` services →
+     `context: ../../MCP-Servers`,
+     `dockerfile: ../docker/mcp/Dockerfile.mcp-server`
+   - `MCP/submodules/<name>` services →
+     `context: ../../MCP/submodules/<name>`,
+     `dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule`
+     (and `Dockerfile.mcp-python`/`mcp-go`/`mcp-playwright` per type).
+   `args.SOURCE_DIR` removed (the context IS the source dir now).
+   Empty `args:` blocks dropped to keep the YAML clean.
+2. **5 Dockerfiles** (`docker/mcp/Dockerfile.mcp-server`,
+   `mcp-submodule`, `mcp-python`, `mcp-go`, `mcp-playwright`) — replaced
+   `COPY ${SOURCE_DIR} .` with `COPY . .`. The `ARG SOURCE_DIR`
+   declaration removed.
+3. **`internal/adapters/containers/adapter.go::deployComposeToHost`** —
+   preserves the compose file's project-relative position on remote.
+   Was: `<deploy>/<basename>`. Now:
+   `<deploy>/<rel-from-project>` (e.g.
+   `<deploy>/docker/mcp/docker-compose.mcp-servers.yml`). The parent
+   directory is created before copy. Behaviour for the main
+   `docker-compose.yml` is unchanged (its rel-path is just the
+   basename).
+
+The combined effect: compose file lands at
+`<deploy>/docker/mcp/docker-compose.mcp-servers.yml`. Each service's
+`context: ../../MCP-Servers` from there resolves to `<deploy>/MCP-Servers`,
+where the adapter HAS shipped that subdirectory because it's no longer
+the project root.
+
+Reproduction-and-fix script: `scripts/restructure-mcp-compose.py`
+(idempotent — re-running on a clean file is a no-op). Run it whenever
+adding a new MCP service so the build form stays canonical.
+
+### Verification
+
+`challenges/scripts/mcp_servers_distribution_challenge.sh` — written
+BEFORE the fix per CONST-032. Reproduces the defect (32 violations,
+exit 1) on the pre-fix compose; passes (exit 0) on the post-fix
+compose. Runs static analysis: parses every service's
+`build.{context,dockerfile}` and asserts each is shippable
+(non-project-root, exists on disk, not in a forbidden heavy dir).
+
+`internal/adapters/containers/compose_buildctx_test.go::TestComposeBuildContextsAreShippable`
+— in-process invariant under `go test ./...`. Same checks plus an
+allowlist for `helixagent` (the one service that intentionally builds
+in the project root because the orchestrator runs locally).
+
+Pasted output (post-fix):
+
+```text
+$ challenges/scripts/mcp_servers_distribution_challenge.sh
+=== mcp_servers_distribution_challenge ===
+PASS: every build context in MCP servers compose is shippable +
+  every dockerfile resolves (35 services checked)
+exit=0
+
+$ go test -count=1 -run 'TestComposeBuildContextsAreShippable' ./internal/adapters/containers/
+ok  dev.helix.agent/internal/adapters/containers  0.012s
+
+$ ssh milosvasic@amber.local 'cd /tmp/mcp-validate/docker/mcp && \
+    docker compose -f docker-compose.mcp-servers.yml config -q'
+(only env-var defaulting warnings; no schema/path errors)
+exit=0
+```
+
+### Affected files
+
+- `docker/mcp/docker-compose.mcp-servers.yml` (32 services, 121 surgical changes)
+- `docker/mcp/Dockerfile.mcp-server` / `Dockerfile.mcp-submodule` /
+  `Dockerfile.mcp-python` / `Dockerfile.mcp-go` /
+  `Dockerfile.mcp-playwright` (5 files, COPY refactor)
+- `internal/adapters/containers/adapter.go` (preserve compose-file
+  project-relative position on remote)
+- `scripts/restructure-mcp-compose.py` (new, idempotent rewriter)
+- `challenges/scripts/mcp_servers_distribution_challenge.sh` (new, CONST-032 guard)
+- `internal/adapters/containers/compose_buildctx_test.go` (new, in-process invariant)
+

@@ -3,7 +3,6 @@
 
 FROM mcr.microsoft.com/playwright:v1.40.0-jammy
 
-ARG SOURCE_DIR=MCP/submodules/playwright-mcp
 
 # Install socat for TCP wrapper
 RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
@@ -11,7 +10,7 @@ RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib
 WORKDIR /app
 
 # Copy the submodule source from the specified directory
-COPY ${SOURCE_DIR} .
+COPY . .
 
 # Install dependencies and build
 RUN npm install && npm run build 2>/dev/null || true

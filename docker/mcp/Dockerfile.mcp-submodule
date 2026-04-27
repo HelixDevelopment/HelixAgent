@@ -3,7 +3,6 @@
 
 FROM node:20-alpine
 
-ARG SOURCE_DIR
 
 # Install build dependencies and socat for TCP wrapper
 RUN apk add --no-cache python3 make g++ socat netcat-openbsd git
@@ -11,7 +10,7 @@ RUN apk add --no-cache python3 make g++ socat netcat-openbsd git
 WORKDIR /app
 
 # Copy the submodule source from the specified directory
-COPY ${SOURCE_DIR} .
+COPY . .
 
 # Try different package managers and build approaches
 RUN if [ -f "package.json" ]; then \

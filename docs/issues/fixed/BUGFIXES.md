@@ -1796,3 +1796,118 @@ exit=0
 - `challenges/scripts/mcp_servers_distribution_challenge.sh` (new, CONST-032 guard)
 - `internal/adapters/containers/compose_buildctx_test.go` (new, in-process invariant)
 
+---
+
+## Issue #52: Replicated container distribution caused divergent state across hosts (FIXED 2026-04-27)
+
+### Issue
+
+`globalContainerAdapter.RemoteComposeUp(...)` broadcast every compose
+file to EVERY remote host in the
+`CONTAINERS_REMOTE_HOST_N_*` set. With two hosts configured
+(`thinker.local`, `amber.local`), each host received and ran the full
+`docker-compose.yml` plus the full `docker-compose.mcp-servers.yml`.
+
+Effect:
+- Two postgres instances (one per host), each with its own database
+  directory and write-ahead log.
+- Two redis instances with independent caches.
+- Two chromadb instances with independent vector stores.
+- Two cognee instances writing to whichever postgres their host had.
+- 35 MCP servers replicated 2× (70 containers running for 35 logical
+  services).
+
+When the gateway routed a write to host A's postgres and a subsequent
+read landed on host B's postgres, the read missed the write entirely.
+Every multi-step debate / RAG / memory operation would see
+intermittent "data not found" failures depending on which host
+serviced the request. Worse: there was no consistency between the two
+copies of any state — postgres data on amber and thinker permanently
+diverged from the moment they started receiving writes.
+
+### Root cause
+
+`Containers/pkg/scheduler` (placement strategies + scorer + GPU
+support), `Containers/pkg/distribution.Distributor` (Distribute() /
+Rebalance() / Status()), `Containers/pkg/serviceregistry`, and
+`Containers/pkg/remote.Prober` were all already implemented. They
+just weren't wired into the deploy flow. `RemoteComposeUp` predated
+the scheduler and remained in use.
+
+### Fix
+
+New package `internal/placement/` (main repo) provides the wiring:
+
+1. `parser.go` — `ParseCompose(file, profile)` walks compose YAML,
+   produces `[]scheduler.ContainerRequirements`. Reads
+   `deploy.resources` (with `${VAR:-default}` env-var unwrap),
+   `depends_on` (list + map forms), `profiles`, GPU device
+   reservations. Computes co-location groups via union-find over
+   `depends_on` so cognee + postgres + redis + chromadb stay together.
+2. `emitter.go` — `EmitPerHostCompose(src, services, dst)` writes a
+   filtered compose containing only `services`, preserving networks,
+   volumes, and top-level keys.
+3. `planner.go` — `PlanCompose(ctx, file, profile, hostManager,
+   opts...)` groups requirements by co-location, schedules each group
+   as one atomic unit using the existing `scheduler.NewScheduler`,
+   returns `[]HostAssignment`.
+4. `persist.go` — JSON plan persistence at
+   `<project>/.placement-plan-<basename>.json` for operators and the
+   verification Challenge.
+5. `cmd/helixagent/placement_deploy.go::deployComposePartitioned`
+   replaces the broadcast `RemoteComposeUp` calls in `main.go`.
+   Stages per-host filtered composes inside the project tree (so
+   build contexts like `context: ../..` still resolve), exports
+   `SVC_<SERVICE>_HOST=<addr>` env vars after each successful deploy
+   so the gateway connects to the right host at runtime.
+6. `internal/adapters/containers/adapter.go` adds two minimal public
+   methods: `HostManager()` getter and `DeployComposeToHost(ctx,
+   hostName, file, profile)` wrapping the existing private
+   `deployComposeToHost`.
+
+The Containers submodule is **NOT modified** — we use what's already
+there via the public API.
+
+### Verification
+
+`challenges/scripts/partitioned_distribution_challenge.sh` reproduces
+the defect (4 duplicates: postgres, redis, chromadb, cognee on both
+hosts) on the pre-fix state, exits 0 on the post-fix state.
+
+`internal/placement/*_test.go` covers in-process invariants without
+SSH (uses a fake `RemoteExecutor` returning canned `/proc/stat` etc.):
+
+- `TestPlanCompose_CoLocationStaysTogether` — cognee + postgres +
+  redis + chromadb land on the same host.
+- `TestPlanCompose_NoDuplicates` — every service appears in exactly
+  one HostAssignment.
+- `TestPlanCompose_AllServicesPlaced` — no service is silently
+  dropped.
+- `TestParseCompose_DependsOnFormsCoLocationGroup`,
+  `TestParseCompose_GPUDetection`,
+  `TestParseCompose_EnvVarInterpolation`,
+  `TestParseCompose_ProfileFiltering`,
+  `TestParseCompose_RealMainCompose`,
+  `TestEmitPerHostCompose_KeepsOnlyRequested`, etc.
+
+13 tests, all PASS.
+
+### Affected files
+
+- `internal/placement/parser.go` (new)
+- `internal/placement/emitter.go` (new)
+- `internal/placement/planner.go` (new)
+- `internal/placement/persist.go` (new)
+- `internal/placement/parser_test.go` (new)
+- `internal/placement/emitter_test.go` (new)
+- `internal/placement/planner_test.go` (new)
+- `cmd/helixagent/placement_deploy.go` (new)
+- `cmd/helixagent/main.go` (RemoteComposeUp → deployComposePartitioned)
+- `internal/adapters/containers/adapter.go` (`HostManager()`,
+  `DeployComposeToHost()`)
+- `challenges/scripts/partitioned_distribution_challenge.sh` (new,
+  CONST-032 guard)
+- `docs/development/container-placement.md` (new, architecture +
+  rationale)
+
+

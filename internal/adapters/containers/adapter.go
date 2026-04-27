@@ -1125,6 +1125,42 @@ func (a *Adapter) ProbeHost(
 	return a.hostManager.ProbeHost(ctx, name)
 }
 
+// HostManager exposes the adapter's underlying remote.HostManager so
+// callers (e.g. internal/placement.PlanCompose) can run scheduling
+// against the live host registry. Returns nil if remote distribution
+// is disabled.
+func (a *Adapter) HostManager() remote.HostManager {
+	return a.hostManager
+}
+
+// DeployComposeToHost ships a compose file to ONE specific named host
+// and runs `compose up -d` with the given profile. This is the
+// partitioned counterpart of RemoteComposeUp (which fans out to every
+// host). Used by the placement-aware deploy flow that ships a
+// per-host filtered compose file produced by
+// internal/placement.EmitPerHostCompose.
+func (a *Adapter) DeployComposeToHost(
+	ctx context.Context, hostName, composeFile, profile string,
+) error {
+	if a.hostManager == nil || a.executor == nil {
+		return fmt.Errorf("remote distribution not configured")
+	}
+	hosts := a.hostManager.ListHosts()
+	for _, h := range hosts {
+		if h.Name == hostName {
+			absFile := composeFile
+			if !filepath.IsAbs(absFile) {
+				absFile = filepath.Join(a.projectDir, absFile)
+			}
+			if _, err := os.Stat(absFile); err != nil {
+				return fmt.Errorf("compose file not found: %s", absFile)
+			}
+			return a.deployComposeToHost(ctx, h, absFile, profile)
+		}
+	}
+	return fmt.Errorf("host %q not registered", hostName)
+}
+
 // Shutdown gracefully shuts down all container operations:
 // closes tunnels, unmounts volumes, stops distributed containers.
 func (a *Adapter) Shutdown(ctx context.Context) error {

@@ -16,6 +16,17 @@ import (
 )
 
 func TestPreconditionContainersBoot(t *testing.T) {
+	// CONST-030: this is a non-unit precondition that talks to real
+	// remote SSH hosts, real running HelixAgent containers and reads
+	// the user's live OpenCode config. Under `go test -short` it must
+	// skip rather than fail — `-short` is the unit-test gate, and a
+	// precondition that fails because the binary hasn't been built or
+	// the OpenCode config is stale would falsely block unit-test
+	// pipelines that have nothing to do with infrastructure state.
+	if testing.Short() {
+		t.Skip("SKIP-OK: #const030 — precondition needs the running HelixAgent + remote container infra; `-short` is unit-tests-only")
+	}
+
 	t.Log("╔══════════════════════════════════════════════════════════════════╗")
 	t.Log("║     PRECONDITION TEST: Container Boot Verification              ║")
 	t.Log("║     This test MUST pass before any other test can execute        ║")

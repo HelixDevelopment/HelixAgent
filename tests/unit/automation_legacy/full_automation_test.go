@@ -102,6 +102,17 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m,
 		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"),
 		goleak.IgnoreTopFunction("google.golang.org/grpc/internal/transport.(*http2Client).keepalive"),
+		// HTTP keep-alive goroutines (read/write loops) outlive the test
+		// by IdleConnTimeout (default 90s). When this suite hits a real
+		// running HelixAgent — which it does whenever the binary is up
+		// for development — the persistConn goroutines are still parked
+		// when goleak runs. The TOP of the stack on the read side is
+		// internal/poll.runtime_pollWait (the netpoll syscall), not
+		// readLoop, so use IgnoreAnyFunction. Writes are select-based
+		// and report writeLoop as the top frame.
+		goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
+		goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
+		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"),
 	)
 
 	// Print summary (runs after VerifyTestMain returns)

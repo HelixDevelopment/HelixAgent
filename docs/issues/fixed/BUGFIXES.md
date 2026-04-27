@@ -1533,3 +1533,126 @@ an AccountID field not yet surfaced through `ProviderMapping`.
 - boot16 (post-fix): **16/25 healthy providers** (+2). cli_agents_challenge
   42/42 PASSED; content_generation_challenge 10/10 PASSED — both of which
   failed on boot15.
+
+---
+
+## Issue #50: docker-compose.yml mixes legacy `mem_limit` / `pids_limit` with `deploy.resources` — Docker Compose v2 rejects entire project (FIXED 2026-04-27)
+
+### Issue
+
+Boot of HelixAgent on remote distribution host **amber.local** (docker
+runtime) failed at the `compose up` step with:
+
+```text
+services.cognee: can't set distinct values on 'mem_limit' and
+  'deploy.resources.limits.memory': invalid compose project
+```
+
+After the cognee fix surfaced, a second instance of the same conflict
+class appeared on `pids_limit`:
+
+```text
+services.postgres: can't set distinct values on 'pids_limit' and
+  'deploy.resources.limits.pids': invalid compose project
+```
+
+`docker-compose.yml` carried two parallel resource-budget vocabularies:
+
+- **Legacy v1**: top-level `mem_limit` / `memswap_limit` / `pids_limit`
+  (set on every service from a 2024-era seed file).
+- **Compose v2/v3 canonical**: `deploy.resources.limits.{memory,cpus,pids}`
+  + `deploy.resources.reservations.*` (set on a handful of services
+  during partial migrations: cognee, memgraph, langchain-server,
+  llamaindex-server, guidance-server, lmql-server, sglang).
+
+When both forms appear on the same service AND their values disagree,
+Docker Compose v2 rejects the entire project. The mismatches were:
+
+| service           | mem_limit | deploy.resources.limits.memory |
+|-------------------|-----------|--------------------------------|
+| cognee            | 2g        | 4G                             |
+| langchain-server  | 2g        | 1G                             |
+| llamaindex-server | 2g        | 1G                             |
+| guidance-server   | 2g        | 512M                           |
+| lmql-server       | 2g        | 512M                           |
+
+Even where values matched (memgraph: 2g vs 2G), Compose still warned —
+and Compose v2 will eventually reject the dual form entirely.
+
+Podman 4.x silently tolerated the mismatch (legacy form won), so the
+local + thinker.local boots succeeded and the bug was masked until the
+docker-runtime amber.local host tried to participate.
+
+### Root cause
+
+Two-way ownership: every service was edited piecemeal over time. Some
+authors moved to the v2/v3 form, others didn't, no automated invariant
+caught the drift. There was also no resource floor for ~50% of services
+(no limits at all under the legacy keys means no real limit either, just
+"whatever the host has"), so distributed runs had unpredictable
+performance.
+
+### Fix
+
+Commit landing 2026-04-27. Three artifacts:
+
+1. `scripts/normalize-compose-resources.py` — text-surgical YAML
+   rewriter (preserves comments + every unrelated key) that strips the
+   three legacy keys (`mem_limit`, `memswap_limit`, `pids_limit`) and
+   writes a canonical `deploy.resources` block to every service. Each
+   field uses Compose env-var interpolation (`${SERVICE_FIELD:-default}`)
+   so production scaling is a pure env-var override — no YAML edits.
+   Idempotent; re-running it on a clean file is a no-op. The
+   `oom_score_adj` legacy hint is intentionally preserved (Compose v2
+   accepts it alongside `deploy:`; it has no `deploy.resources`
+   counterpart and is a kernel-priority hint, not a constraint).
+2. `docker-compose.scale.yml` + `.env.scale.example` — production
+   overlay. Layered with `docker compose -f docker-compose.yml -f
+   docker-compose.scale.yml up -d` it bumps every tier to its production
+   budget (~2× dev for tiny/small, +50–100% for medium databases, +50%
+   RAM for ollama). Operators who want a third tier (e.g. soak testing)
+   write another overlay; the base file never has to change.
+3. Tier table in `docs/development/container-resource-policy.md` —
+   16 services classified into Tiny / Small / Medium / XL with
+   per-service rationale.
+
+### Verification
+
+`challenges/scripts/compose_resource_limits_challenge.sh` — created
+BEFORE the fix per CONST-032. Reproduces the defect (exit 1, 58
+violations) on the pre-fix file; passes on the post-fix file.
+Asserts: (1) no service mixes legacy/canonical forms, (2) every
+required service has memory + cpu + pids limits, (3) every required
+service has matching reservations, (4) reservations ≤ limits, (5) every
+field uses the env-var-driven form.
+
+`internal/adapters/containers/compose_resources_test.go` —
+`TestComposeResourceInvariants` runs under `go test ./...` with the same
+invariants. Catches future regressions in CI without needing a Docker
+environment.
+
+Pasted output (post-fix):
+
+```text
+$ challenges/scripts/compose_resource_limits_challenge.sh
+=== compose_resource_limits_challenge ===
+PASS: all 16 required services have valid resource configs
+exit=0
+
+$ ssh milosvasic@amber.local 'docker compose -f /tmp/docker-compose.yml config -q' ; echo $?
+(only the obsolete `version` key warning — informational)
+0
+
+$ go test -count=1 -run TestComposeResourceInvariants ./internal/adapters/containers/
+ok  dev.helix.agent/internal/adapters/containers  0.017s
+```
+
+### Affected files
+
+- `docker-compose.yml` (16 services, 39 surgical changes)
+- `scripts/normalize-compose-resources.py` (new, idempotent rewriter)
+- `docker-compose.scale.yml` (new, production overlay)
+- `.env.scale.example` (new, env reference)
+- `challenges/scripts/compose_resource_limits_challenge.sh` (new, CONST-032 guard)
+- `internal/adapters/containers/compose_resources_test.go` (new, in-process invariant)
+- `docs/development/container-resource-policy.md` (new, tier table)

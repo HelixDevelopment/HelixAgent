@@ -1,0 +1,182 @@
+# docker-compose.scale.yml — production scaling overlay.
+#
+# Layers on top of docker-compose.yml to bump every service to its
+# production-tier resource budget. Pure env-var overrides — no structural
+# changes — so the same base file works for dev, staging, and prod.
+#
+# Use:
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d
+#
+# Each value is overridable per-environment. Set
+# `<SERVICE_UPPER>_MEM_LIMIT` etc. in your shell or in Containers/.env to
+# override. See docs/development/container-resource-policy.md for the full
+# tier table and the rationale behind these numbers.
+#
+# Defaults below: ~2x dev for tiny/small services, +50–100% for medium
+# databases, +50% RAM for ollama (the biggest consumer).
+
+services:
+  # --- Tier: Tiny -> production ---
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEM_LIMIT:-2G}
+          cpus: "${REDIS_CPU_LIMIT:-1.00}"
+        reservations:
+          memory: ${REDIS_MEM_RESERVE:-512M}
+          cpus: "${REDIS_CPU_RESERVE:-0.25}"
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: ${GRAFANA_MEM_LIMIT:-2G}
+          cpus: "${GRAFANA_CPU_LIMIT:-1.00}"
+        reservations:
+          memory: ${GRAFANA_MEM_RESERVE:-512M}
+          cpus: "${GRAFANA_CPU_RESERVE:-0.25}"
+
+  mock-llm:
+    deploy:
+      resources:
+        limits:
+          memory: ${MOCK_LLM_MEM_LIMIT:-2G}
+          cpus: "${MOCK_LLM_CPU_LIMIT:-1.00}"
+        reservations:
+          memory: ${MOCK_LLM_MEM_RESERVE:-512M}
+          cpus: "${MOCK_LLM_CPU_RESERVE:-0.25}"
+
+  # --- Tier: Small -> production ---
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: ${PROMETHEUS_MEM_LIMIT:-4G}
+          cpus: "${PROMETHEUS_CPU_LIMIT:-2.00}"
+        reservations:
+          memory: ${PROMETHEUS_MEM_RESERVE:-1G}
+          cpus: "${PROMETHEUS_CPU_RESERVE:-0.50}"
+
+  langchain-server:
+    deploy:
+      resources:
+        limits:
+          memory: ${LANGCHAIN_SERVER_MEM_LIMIT:-4G}
+          cpus: "${LANGCHAIN_SERVER_CPU_LIMIT:-2.00}"
+        reservations:
+          memory: ${LANGCHAIN_SERVER_MEM_RESERVE:-1G}
+          cpus: "${LANGCHAIN_SERVER_CPU_RESERVE:-0.50}"
+
+  llamaindex-server:
+    deploy:
+      resources:
+        limits:
+          memory: ${LLAMAINDEX_SERVER_MEM_LIMIT:-4G}
+          cpus: "${LLAMAINDEX_SERVER_CPU_LIMIT:-2.00}"
+        reservations:
+          memory: ${LLAMAINDEX_SERVER_MEM_RESERVE:-1G}
+          cpus: "${LLAMAINDEX_SERVER_CPU_RESERVE:-0.50}"
+
+  guidance-server:
+    deploy:
+      resources:
+        limits:
+          memory: ${GUIDANCE_SERVER_MEM_LIMIT:-4G}
+          cpus: "${GUIDANCE_SERVER_CPU_LIMIT:-2.00}"
+        reservations:
+          memory: ${GUIDANCE_SERVER_MEM_RESERVE:-1G}
+          cpus: "${GUIDANCE_SERVER_CPU_RESERVE:-0.50}"
+
+  lmql-server:
+    deploy:
+      resources:
+        limits:
+          memory: ${LMQL_SERVER_MEM_LIMIT:-4G}
+          cpus: "${LMQL_SERVER_CPU_LIMIT:-2.00}"
+        reservations:
+          memory: ${LMQL_SERVER_MEM_RESERVE:-1G}
+          cpus: "${LMQL_SERVER_CPU_RESERVE:-0.50}"
+
+  # --- Tier: Medium -> production ---
+  postgres:
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEM_LIMIT:-8G}
+          cpus: "${POSTGRES_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${POSTGRES_MEM_RESERVE:-2G}
+          cpus: "${POSTGRES_CPU_RESERVE:-1.00}"
+
+  chromadb:
+    deploy:
+      resources:
+        limits:
+          memory: ${CHROMADB_MEM_LIMIT:-8G}
+          cpus: "${CHROMADB_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${CHROMADB_MEM_RESERVE:-2G}
+          cpus: "${CHROMADB_CPU_RESERVE:-1.00}"
+
+  memgraph:
+    deploy:
+      resources:
+        limits:
+          memory: ${MEMGRAPH_MEM_LIMIT:-8G}
+          cpus: "${MEMGRAPH_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${MEMGRAPH_MEM_RESERVE:-2G}
+          cpus: "${MEMGRAPH_CPU_RESERVE:-1.00}"
+
+  neo4j:
+    deploy:
+      resources:
+        limits:
+          memory: ${NEO4J_MEM_LIMIT:-8G}
+          cpus: "${NEO4J_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${NEO4J_MEM_RESERVE:-2G}
+          cpus: "${NEO4J_CPU_RESERVE:-1.00}"
+
+  cognee:
+    deploy:
+      resources:
+        limits:
+          memory: ${COGNEE_MEM_LIMIT:-8G}
+          cpus: "${COGNEE_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${COGNEE_MEM_RESERVE:-2G}
+          cpus: "${COGNEE_CPU_RESERVE:-1.00}"
+
+  helixagent:
+    deploy:
+      resources:
+        limits:
+          memory: ${HELIXAGENT_MEM_LIMIT:-8G}
+          cpus: "${HELIXAGENT_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${HELIXAGENT_MEM_RESERVE:-2G}
+          cpus: "${HELIXAGENT_CPU_RESERVE:-1.00}"
+
+  sglang:
+    deploy:
+      resources:
+        limits:
+          memory: ${SGLANG_MEM_LIMIT:-8G}
+          cpus: "${SGLANG_CPU_LIMIT:-4.00}"
+        reservations:
+          memory: ${SGLANG_MEM_RESERVE:-2G}
+          cpus: "${SGLANG_CPU_RESERVE:-1.00}"
+          # GPU device reservation inherited from base file via overlay merge.
+
+  # --- Tier: XL (local LLM) -> production ---
+  ollama:
+    deploy:
+      resources:
+        limits:
+          memory: ${OLLAMA_MEM_LIMIT:-24G}
+          cpus: "${OLLAMA_CPU_LIMIT:-8.00}"
+        reservations:
+          memory: ${OLLAMA_MEM_RESERVE:-8G}
+          cpus: "${OLLAMA_CPU_RESERVE:-2.00}"

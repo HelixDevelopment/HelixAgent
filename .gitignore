@@ -27,6 +27,7 @@ coverage/
 !.env.example
 !.env.mcp.example
 !.env.mcps.example
+!.env.scale.example
 *.swp
 *.tmp
 *.bak

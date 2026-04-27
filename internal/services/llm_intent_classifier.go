@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
+
+	"digital.vasic.concurrency/pkg/safe"
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
@@ -26,8 +27,11 @@ type LLMIntentClassifier struct {
 	logger             *logrus.Logger
 	fallbackClassifier *IntentClassifier // Fallback if LLM unavailable
 
-	cooldownMu sync.RWMutex
-	cooldowns  map[string]time.Time
+	// cooldowns: provider name (lowercased) → expiry instant.
+	// Uses safe.Store per CONST-029 (the previous bare
+	// sync.RWMutex + map[string]time.Time pattern was flagged by
+	// scripts/concurrency-audit.sh as a Pattern-A violation).
+	cooldowns *safe.Store[string, time.Time]
 }
 
 // NewLLMIntentClassifier creates a new LLM-based intent classifier
@@ -36,22 +40,18 @@ func NewLLMIntentClassifier(registry *ProviderRegistry, logger *logrus.Logger) *
 		providerRegistry:   registry,
 		logger:             logger,
 		fallbackClassifier: NewIntentClassifier(), // Fallback only
-		cooldowns:          make(map[string]time.Time),
+		cooldowns:          safe.NewStore[string, time.Time](),
 	}
 }
 
 // markProviderCooldown puts a provider on the bench for providerCooldownDuration.
 func (lic *LLMIntentClassifier) markProviderCooldown(name string) {
-	lic.cooldownMu.Lock()
-	lic.cooldowns[strings.ToLower(name)] = time.Now().Add(providerCooldownDuration)
-	lic.cooldownMu.Unlock()
+	lic.cooldowns.Put(strings.ToLower(name), time.Now().Add(providerCooldownDuration))
 }
 
 // isProviderCooledDown reports whether a provider is currently on cooldown.
 func (lic *LLMIntentClassifier) isProviderCooledDown(name string) bool {
-	lic.cooldownMu.RLock()
-	until, ok := lic.cooldowns[strings.ToLower(name)]
-	lic.cooldownMu.RUnlock()
+	until, ok := lic.cooldowns.Get(strings.ToLower(name))
 	return ok && time.Now().Before(until)
 }
 

@@ -983,9 +983,17 @@ func (a *Adapter) RemoteComposeUp(
 	// kept atomic. Pre-fix, this method broadcast every compose file
 	// to every host, producing replicated postgres/redis/etc. with
 	// divergent state.
+	// StrategySpread minimises per-host density by tracking how many
+	// containers it has already placed and steering new placements
+	// toward less-loaded hosts. This is the right default when both
+	// hosts have similar capacity — StrategyResourceAware ties on
+	// score with identical snapshots and routes everything to one
+	// host, leaving the other idle. Spread also degrades gracefully
+	// when one host fills up (the load-aware fallback inside the
+	// strategy still respects available memory).
 	plan, err := placement.PlanCompose(
 		ctx, absFile, profile, a.hostManager,
-		scheduler.WithStrategy(scheduler.StrategyResourceAware),
+		scheduler.WithStrategy(scheduler.StrategySpread),
 	)
 	if err != nil {
 		return fmt.Errorf("plan compose: %w", err)

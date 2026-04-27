@@ -222,10 +222,10 @@ func (bm *BootManager) BootAll() error {
 
 			start := time.Now()
 
-			// For remote deployment, we assume compose files are pre-deployed on the remote host
-			// in /home/<user>/helixagent/deploy/ directory
-			// This avoids copying the entire project directory (7.6GB+) on every boot
-			// The RemoteComposeUp method will handle the deployment
+			// adapter.RemoteComposeUp internally uses placement-aware
+			// partitioned distribution (CONST-034 / BUGFIXES #52) so
+			// every service in the compose lands on EXACTLY one host
+			// across the registered remote-host set.
 			err := adapter.RemoteComposeUp(ctx, composeFile, profile)
 			duration := time.Since(start)
 

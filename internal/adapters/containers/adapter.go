@@ -44,6 +44,7 @@ import (
 	"digital.vasic.containers/pkg/volume"
 
 	"dev.helix.agent/internal/config"
+	"dev.helix.agent/internal/placement"
 	"gopkg.in/yaml.v3"
 )
 
@@ -976,12 +977,67 @@ func (a *Adapter) RemoteComposeUp(
 		)
 	}
 
+	// PARTITIONED distribution (CONST-034 / BUGFIXES #52): plan first
+	// so every service lands on EXACTLY one host across the
+	// registered remote-host set, with depends_on co-location groups
+	// kept atomic. Pre-fix, this method broadcast every compose file
+	// to every host, producing replicated postgres/redis/etc. with
+	// divergent state.
+	plan, err := placement.PlanCompose(
+		ctx, absFile, profile, a.hostManager,
+		scheduler.WithStrategy(scheduler.StrategyResourceAware),
+	)
+	if err != nil {
+		return fmt.Errorf("plan compose: %w", err)
+	}
+	if len(plan.Assignments) == 0 {
+		a.logger.Info(
+			"placement plan is empty for %s (profile=%q); nothing to deploy",
+			absFile, profile,
+		)
+		return nil
+	}
+
+	planFile := filepath.Join(
+		filepath.Dir(absFile),
+		fmt.Sprintf(".placement-plan-%s.json",
+			sanitizePlanName(filepath.Base(absFile))),
+	)
+	if err := placement.WritePlanJSON(planFile, plan); err != nil {
+		a.logger.Warn("persist placement plan failed: %v", err)
+	}
+
+	stageDir, err := os.MkdirTemp(filepath.Dir(absFile), ".placement-")
+	if err != nil {
+		return fmt.Errorf("create placement staging dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(stageDir) }()
+
 	var (
 		deployFailures []string
 		deploySuccess  int
 	)
 
-	for _, host := range hosts {
+	for _, assign := range plan.Assignments {
+		hostName := assign.HostName
+		var host remote.RemoteHost
+		var found bool
+		for _, h := range hosts {
+			if h.Name == hostName {
+				host, found = h, true
+				break
+			}
+		}
+		if !found {
+			a.logger.Error(
+				"placement targeted unknown host %q for compose %s; skipping",
+				hostName, filepath.Base(absFile),
+			)
+			deployFailures = append(deployFailures,
+				fmt.Sprintf("%s: host %q not registered", hostName, hostName))
+			continue
+		}
+
 		effectiveProfile := profile
 		if labelProfile := host.Labels[deployProfileLabel]; labelProfile != "" {
 			effectiveProfile = labelProfile
@@ -992,16 +1048,53 @@ func (a *Adapter) RemoteComposeUp(
 			)
 		}
 
+		// Emit per-host filtered compose at the SAME relative
+		// position in the project tree so build contexts (e.g.
+		// `context: ../..` in the MCP compose) resolve correctly on
+		// remote.
+		stagedAtCanonical := filepath.Join(
+			filepath.Dir(absFile),
+			fmt.Sprintf(".placement-%s-%s",
+				host.Name, filepath.Base(absFile)),
+		)
+		if _, err := placement.EmitPerHostCompose(
+			absFile, assign.ServiceList, stagedAtCanonical,
+		); err != nil {
+			deployFailures = append(deployFailures,
+				fmt.Sprintf("%s: emit per-host compose: %v", host.Name, err))
+			continue
+		}
+
+		a.logger.Info(
+			"placement: deploying %d service(s) to %s via %s",
+			len(assign.ServiceList), host.Name,
+			filepath.Base(stagedAtCanonical),
+		)
+
 		if err := a.deployComposeToHost(
-			ctx, host, absFile, effectiveProfile,
+			ctx, host, stagedAtCanonical, effectiveProfile,
 		); err != nil {
 			a.logger.Error(
 				"deploy to %s failed: %v", host.Name, err,
 			)
 			deployFailures = append(deployFailures,
 				fmt.Sprintf("%s: %v", host.Name, err))
+			_ = os.Remove(stagedAtCanonical)
 			continue
 		}
+		_ = os.Remove(stagedAtCanonical)
+
+		// Export SVC_<SERVICE>_HOST for the gateway's runtime
+		// routing (internal/config picks these up).
+		for _, svc := range assign.ServiceList {
+			envKey := serviceHostEnvKey(svc)
+			hostAddr := host.Address
+			if hostAddr == "" {
+				hostAddr = host.Name
+			}
+			_ = os.Setenv(envKey, hostAddr)
+		}
+		_ = ctx // satisfy any linter
 		deploySuccess++
 	}
 
@@ -1123,6 +1216,48 @@ func (a *Adapter) ProbeHost(
 		return nil, fmt.Errorf("host manager not configured")
 	}
 	return a.hostManager.ProbeHost(ctx, name)
+}
+
+// sanitizePlanName turns a compose-file basename into something safe
+// for use in a sibling JSON filename.
+func sanitizePlanName(s string) string {
+	out := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c >= 'a' && c <= 'z',
+			c >= 'A' && c <= 'Z',
+			c >= '0' && c <= '9',
+			c == '-' || c == '_' || c == '.':
+			out = append(out, c)
+		default:
+			out = append(out, '_')
+		}
+	}
+	return string(out)
+}
+
+// serviceHostEnvKey turns "helixagent-postgres" / "postgres" into
+// "SVC_POSTGRES_HOST" matching internal/config's override mechanism.
+func serviceHostEnvKey(serviceName string) string {
+	name := serviceName
+	if strings.HasPrefix(name, "helixagent-") {
+		name = name[len("helixagent-"):]
+	}
+	out := []byte("SVC_")
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		switch {
+		case c >= 'a' && c <= 'z':
+			out = append(out, c-32)
+		case c >= 'A' && c <= 'Z',
+			c >= '0' && c <= '9':
+			out = append(out, c)
+		default:
+			out = append(out, '_')
+		}
+	}
+	return string(out) + "_HOST"
 }
 
 // HostManager exposes the adapter's underlying remote.HostManager so

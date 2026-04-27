@@ -141,3 +141,8 @@ scripts/cli-agents/configs/backups/
 **/*backup*.json
 /audit
 /cognee-mock
+
+# placement plans are runtime artifacts, regenerated each boot
+.placement-plan-*.json
+.placement-*-*.yml
+.placement-*/

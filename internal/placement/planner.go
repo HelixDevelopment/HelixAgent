@@ -133,12 +133,21 @@ func PlanCompose(
 // aggregateRequirements produces the strictest constraint across a
 // co-location group so the scheduler picks a host that fits the whole
 // group, not just one member.
+//
+// Labels are intentionally LEFT EMPTY here: scheduler.ContainerRequirements.Labels
+// are interpreted by the scheduler as REQUIRED host labels (the host
+// must carry every label-value to be eligible). The placement.group
+// label we attached during ParseCompose has served its purpose
+// (grouping members for this aggregation step) and must NOT be passed
+// through, otherwise the scheduler filters out every host because no
+// host carries our synthetic group label and every Schedule() returns
+// an empty HostName. (BUGFIXES.md Issue #52 — initial fix forgot this
+// and produced "host \"\" not registered" on every deploy.)
 func aggregateRequirements(
 	gid string, members []scheduler.ContainerRequirements,
 ) scheduler.ContainerRequirements {
 	out := scheduler.ContainerRequirements{
-		Name:   "group:" + gid,
-		Labels: map[string]string{CoLocationLabel: gid},
+		Name: "group:" + gid,
 	}
 	var totalCPU float64
 	var totalMem uint64

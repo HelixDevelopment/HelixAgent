@@ -304,18 +304,16 @@ func ensureRequiredContainersWithConfig(logger *logrus.Logger, cfg *ContainerCon
 	ctx := context.Background()
 
 	if globalContainerAdapter.RemoteEnabled() {
-		// PARTITIONED distribution: each service runs on EXACTLY ONE
-		// host (no replication). Co-location groups (cognee +
-		// postgres + redis + chromadb via depends_on) stay together
-		// on whichever host the scheduler picks for the group. The
-		// gateway connects to each service's placed host via the
-		// SVC_<SERVICE>_HOST overrides set inside
-		// deployComposePartitioned. See BUGFIXES.md Issue #52 for
-		// the rationale (data consistency under remote distribution
-		// requires a single source of truth per service).
+		// adapter.RemoteComposeUp internally uses partitioned placement
+		// (CONST-034 / BUGFIXES Issue #52): each service runs on
+		// EXACTLY one host across the registered remote-host set.
+		// Co-location groups (cognee + postgres + redis + chromadb
+		// via depends_on) stay together. SVC_<SERVICE>_HOST is set
+		// after each successful deploy so the gateway connects to
+		// the right host.
 		logger.Info("Deploying required containers via partitioned placement")
-		if _, err := deployComposePartitioned(
-			ctx, globalContainerAdapter, composeFile, "default", logger,
+		if err := globalContainerAdapter.RemoteComposeUp(
+			ctx, composeFile, "default",
 		); err != nil {
 			logger.WithError(err).Warn(
 				"Partitioned remote deploy failed, falling back to local",
@@ -403,13 +401,13 @@ func ensureMCPServers(logger *logrus.Logger) error {
 
 		if globalContainerAdapter.RemoteEnabled() {
 			// PARTITIONED + strict-remote (CONST-031 + Issue #52):
-			// MCP servers split across hosts with no duplicates.
-			// The scheduler decides where each MCP service lands;
-			// services with mongodb-backend ↔ mongodb-server (and
-			// similar) co-location pairs stay together via
-			// depends_on. No local fallback per CONST-031.
-			if _, err := deployComposePartitioned(
-				ctx, globalContainerAdapter, mcpComposeFile, "", logger,
+			// adapter.RemoteComposeUp partitions placement
+			// internally — each MCP service runs on EXACTLY one
+			// host. Co-location pairs (mongodb-backend ↔
+			// mongodb-server, etc.) stay together via depends_on.
+			// No local fallback per CONST-031.
+			if err := globalContainerAdapter.RemoteComposeUp(
+				ctx, mcpComposeFile, "",
 			); err != nil {
 				logger.WithError(err).Error(
 					"MCP servers partitioned deploy failed; " +

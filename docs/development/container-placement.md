@@ -176,10 +176,17 @@ single SSH round-trip per host, and collects:
 | `HasGPU` + vendor + count | `nvidia-smi` / `rocm-smi` / `lspci` fallback | hard constraint `require.gpu` |
 | `MemoryTotalMB` / `MemoryFreeMB` | `/proc/meminfo` | hard constraint memory-fit + auto-derived `MemoryClass` |
 | `CPUCores` | `nproc` | informational |
-| `DiskFreeMB` | `df -BM /` | informational |
-| `StorageClass` | `/sys/block/*/queue/rotational` (any non-rotational ⇒ "fast") | soft preference `prefer.storage` |
+| `CPUMhz` | `lscpu` "CPU max MHz" or `/proc/cpuinfo` "cpu MHz" | auto-derived `CPUClass` |
+| `DiskFreeMB` | `df -BM /` | auto-derived `DiskSpaceClass` |
+| `DiskTotalMB` | `df -BM --output=size /` | informational (capacity audit) |
+| `StorageType` | `/sys/block/nvme*` exists ⇒ `nvme`; non-rotational sd*/vd* ⇒ `ssd`; rotational ⇒ `hdd` | soft preference `prefer.storage_type` |
+| `StorageClass` | derived from `StorageType`: nvme/ssd ⇒ "fast", hdd ⇒ "slow" | soft preference `prefer.storage` (legacy/coarse axis) |
 | `MemoryClass` | derived: ≥32 GiB high, ≥8 GiB medium, else low | soft preference `prefer.memory` |
-| Operator labels | `CONTAINERS_REMOTE_HOST_N_LABELS` (`storage=fast,memory=high,network=high`) | override the auto-derived classes |
+| `NetworkSpeedMbps` | max of `/sys/class/net/*/speed` for non-loopback/non-virtual interfaces | auto-derived `NetworkClass` |
+| `NetworkClass` | derived: ≥10000 Mbps high, ≥1000 medium, else low | soft preference `prefer.network` |
+| `CPUClass` | derived: ≥3000 MHz fast, ≥2000 medium, else slow | soft preference `prefer.cpu` |
+| `DiskSpaceClass` | derived: ≥500 GB free large, ≥100 GB medium, else small | soft preference `prefer.disk_space` |
+| Operator labels | `CONTAINERS_REMOTE_HOST_N_LABELS` (`storage=fast,storage_type=nvme,memory=high,network=high,cpu=fast,disk_space=large`) | override the auto-derived classes |
 
 Operator labels always win over probed values — useful when probing
 gets fooled (e.g., a SAN-mounted disk that reports `rotational=1` but
@@ -210,9 +217,12 @@ services:
 | `require.gpu` | hard | `true`, `false`, `nvidia`, `amd`, `intel` | Hosts without this GPU vendor are excluded |
 | `require.runtime` | hard | `docker`, `podman`, `any` | Hosts with a different runtime are excluded |
 | `require.arch` | hard | `amd64`, `arm64`, `any` | Hosts with a different arch are excluded |
-| `prefer.storage` | soft | `fast`, `medium`, `slow` | Adds +10 to score on matching host |
-| `prefer.memory` | soft | `high`, `medium`, `low` | Adds +8 to score on matching host (tolerant: asking medium is satisfied by high) |
-| `prefer.network` | soft | `high`, `medium`, `low` | Adds +5 to score on matching host (exact match) |
+| `prefer.storage` | soft | `fast`, `medium`, `slow` | Adds +10 to score on matching host (legacy/coarse axis) |
+| `prefer.storage_type` | soft | `nvme`, `ssd`, `hdd` | Adds +9 to score (nvme > ssd > hdd, tolerant upgrade — asking ssd is satisfied by nvme) |
+| `prefer.memory` | soft | `high`, `medium`, `low` | Adds +8 to score (tolerant upgrade — asking medium is satisfied by high) |
+| `prefer.cpu` | soft | `fast`, `medium`, `slow` | Adds +7 to score (tolerant upgrade) |
+| `prefer.disk_space` | soft | `large`, `medium`, `small` | Adds +6 to score (tolerant upgrade — asking medium is satisfied by large) |
+| `prefer.network` | soft | `high`, `medium`, `low`, `fast` (alias for high) | Adds +5 to score (tolerant upgrade) |
 
 **Auto-derived requirements** (no manual label needed):
 
@@ -238,9 +248,12 @@ For each (group, host) pair the scorer in
    If any fails → host INELIGIBLE for this group, regardless of soft prefs.
 
 2. Soft preferences (additive to score):
-   prefer.storage match → +10
-   prefer.memory match  → +8 (tolerant upgrade: medium-pref OK on high host)
-   prefer.network match → +5 (exact match)
+   prefer.storage match       → +10  (legacy fast/medium/slow)
+   prefer.storage_type match  → +9   (nvme/ssd/hdd — more specific)
+   prefer.memory match        → +8   (tolerant upgrade)
+   prefer.cpu match           → +7   (tolerant upgrade)
+   prefer.disk_space match    → +6   (tolerant upgrade)
+   prefer.network match       → +5   (tolerant upgrade; "fast" aliases to "high")
 
 3. Load penalty (subtractive):
    −3 × host.PlacementCount
@@ -249,6 +262,9 @@ For each (group, host) pair the scorer in
 
 4. Tie-break: alphabetical host name (deterministic across reboots).
 ```
+
+The exact weights are exported as `placement.ScoringWeights` so tests
+and docs reference one source of truth.
 
 The exact weights live in `ScoringWeights` in `capability.go` so they
 can be tuned (and tests reference one source of truth).

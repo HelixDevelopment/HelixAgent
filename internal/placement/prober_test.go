@@ -32,7 +32,8 @@ func (*fakeExec) IsReachable(context.Context, remote.RemoteHost) bool           
 func (*fakeExec) Close() error                                                       { return nil }
 
 // TestProbe_DockerHostWithNvidia exercises the happy path: an x86_64
-// Linux box running docker with one nvidia GPU and an NVMe SSD.
+// Linux box running docker with one nvidia GPU, NVMe SSD, fast CPU,
+// 10 GbE.
 func TestProbe_DockerHostWithNvidia(t *testing.T) {
 	canned := strings.Join([]string{
 		"x86_64",
@@ -43,12 +44,16 @@ func TestProbe_DockerHostWithNvidia(t *testing.T) {
 		"1",
 		"nvidia",
 		"---SECTION-4---",
-		"33554432", // MemTotal kB ≈ 32 GiB
-		"16777216", // MemAvailable kB ≈ 16 GiB
-		"100000",   // disk MB
-		"8",        // nproc
+		"33554432",  // MemTotal kB ≈ 32 GiB
+		"16777216",  // MemAvailable kB ≈ 16 GiB
+		"600000",    // disk free MB (≥500 GB → large)
+		"1000000",   // disk total MB
+		"8",         // nproc
+		"3500",      // CPU max MHz (3.5 GHz → fast)
 		"---SECTION-5---",
-		"0", // non-rotational present
+		"nvme",      // storage type
+		"---SECTION-6---",
+		"10000",     // network speed Mbps (10 GbE → high)
 	}, "\n")
 
 	prober := NewCapabilityProber(&fakeExec{stdout: canned})
@@ -87,10 +92,31 @@ func TestProbe_DockerHostWithNvidia(t *testing.T) {
 	if caps.MemoryClass != "high" {
 		t.Errorf("MemoryClass=%q want high (32 GiB)", caps.MemoryClass)
 	}
+	if caps.StorageType != "nvme" {
+		t.Errorf("StorageType=%q want nvme", caps.StorageType)
+	}
+	if caps.CPUMhz != 3500 {
+		t.Errorf("CPUMhz=%d want 3500", caps.CPUMhz)
+	}
+	if caps.CPUClass != "fast" {
+		t.Errorf("CPUClass=%q want fast (3500 MHz)", caps.CPUClass)
+	}
+	if caps.DiskTotalMB != 1_000_000 {
+		t.Errorf("DiskTotalMB=%d want 1000000", caps.DiskTotalMB)
+	}
+	if caps.DiskSpaceClass != "large" {
+		t.Errorf("DiskSpaceClass=%q want large (600 GB free)", caps.DiskSpaceClass)
+	}
+	if caps.NetworkSpeedMbps != 10000 {
+		t.Errorf("NetworkSpeedMbps=%d want 10000", caps.NetworkSpeedMbps)
+	}
+	if caps.NetworkClass != "high" {
+		t.Errorf("NetworkClass=%q want high (10 GbE)", caps.NetworkClass)
+	}
 }
 
-// TestProbe_PodmanHostNoGPU exercises a podman host without a GPU
-// — confirms HasGPU=false propagates and runtime is detected.
+// TestProbe_PodmanHostNoGPU exercises a slower podman host: HDD, no
+// GPU, modest CPU, 1 GbE — confirms degraded classes propagate.
 func TestProbe_PodmanHostNoGPU(t *testing.T) {
 	canned := strings.Join([]string{
 		"x86_64",
@@ -101,12 +127,16 @@ func TestProbe_PodmanHostNoGPU(t *testing.T) {
 		"0",
 		"none",
 		"---SECTION-4---",
-		"8388608", // MemTotal kB ≈ 8 GiB
+		"8388608",  // MemTotal kB ≈ 8 GiB
 		"4194304",
-		"50000",
-		"4",
+		"80000",    // disk free MB (<100 GB → small)
+		"500000",   // disk total MB
+		"4",        // nproc
+		"2400",     // CPU MHz (2.4 GHz → medium)
 		"---SECTION-5---",
-		"1", // rotational only
+		"hdd",      // rotational only
+		"---SECTION-6---",
+		"1000",     // 1 GbE → medium network class
 	}, "\n")
 
 	prober := NewCapabilityProber(&fakeExec{stdout: canned})
@@ -121,18 +151,33 @@ func TestProbe_PodmanHostNoGPU(t *testing.T) {
 	if caps.Runtime != "podman" {
 		t.Errorf("Runtime=%q want podman", caps.Runtime)
 	}
+	if caps.StorageType != "hdd" {
+		t.Errorf("StorageType=%q want hdd", caps.StorageType)
+	}
 	if caps.StorageClass != "slow" {
-		t.Errorf("StorageClass=%q want slow", caps.StorageClass)
+		t.Errorf("StorageClass=%q want slow (derived from hdd)", caps.StorageClass)
 	}
 	if caps.MemoryClass != "medium" {
 		t.Errorf("MemoryClass=%q want medium (8 GiB)", caps.MemoryClass)
 	}
+	if caps.CPUClass != "medium" {
+		t.Errorf("CPUClass=%q want medium (2400 MHz)", caps.CPUClass)
+	}
+	if caps.DiskSpaceClass != "small" {
+		t.Errorf("DiskSpaceClass=%q want small (80 GB free)", caps.DiskSpaceClass)
+	}
+	if caps.NetworkClass != "medium" {
+		t.Errorf("NetworkClass=%q want medium (1 GbE)", caps.NetworkClass)
+	}
 }
 
 // TestProbe_HostLabelOverride asserts operator-set labels in
-// CONTAINERS_REMOTE_HOST_N_LABELS override probed values.
+// CONTAINERS_REMOTE_HOST_N_LABELS override probed values across
+// every dimension.
 func TestProbe_HostLabelOverride(t *testing.T) {
-	// Host probe says rotational/slow, but label says storage=fast.
+	// Host probe says hdd / slow CPU / small disk, but operator
+	// labels paint it as a high-spec node (e.g. SAN-mounted fast
+	// disk, custom hardware).
 	canned := strings.Join([]string{
 		"x86_64",
 		"---SECTION-2---",
@@ -144,24 +189,44 @@ func TestProbe_HostLabelOverride(t *testing.T) {
 		"---SECTION-4---",
 		"33554432",
 		"16777216",
-		"100000",
+		"50000",   // small disk per probe
+		"500000",
 		"8",
+		"1500",    // slow CPU per probe
 		"---SECTION-5---",
-		"1", // rotational only
+		"hdd",     // probe says rotational
+		"---SECTION-6---",
+		"100",     // probe says 100 Mbps
 	}, "\n")
 
 	prober := NewCapabilityProber(&fakeExec{stdout: canned})
 	host := remote.RemoteHost{Name: "h", Address: "h.local", User: "u",
-		Labels: map[string]string{"storage": "fast", "memory": "high", "network": "high"}}
+		Labels: map[string]string{
+			"storage":      "fast",
+			"storage_type": "nvme",
+			"memory":       "high",
+			"network":      "high",
+			"cpu":          "fast",
+			"disk_space":   "large",
+		}}
 	caps, err := prober.Probe(context.Background(), host)
 	if err != nil {
 		t.Fatalf("Probe: %v", err)
 	}
 	if caps.StorageClass != "fast" {
-		t.Errorf("operator override storage=fast lost; got %q", caps.StorageClass)
+		t.Errorf("storage override lost; got %q", caps.StorageClass)
+	}
+	if caps.StorageType != "nvme" {
+		t.Errorf("storage_type override lost; got %q", caps.StorageType)
 	}
 	if caps.NetworkClass != "high" {
-		t.Errorf("operator override network=high lost; got %q", caps.NetworkClass)
+		t.Errorf("network override lost; got %q", caps.NetworkClass)
+	}
+	if caps.CPUClass != "fast" {
+		t.Errorf("cpu override lost; got %q (probe MHz=%d)", caps.CPUClass, caps.CPUMhz)
+	}
+	if caps.DiskSpaceClass != "large" {
+		t.Errorf("disk_space override lost; got %q", caps.DiskSpaceClass)
 	}
 }
 

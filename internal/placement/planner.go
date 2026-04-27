@@ -248,18 +248,27 @@ func aggregateRequirementsForCapability(
 			switch k {
 			case LabelRequireGPU, LabelRequireRuntime, LabelRequireArch:
 				if existing, ok := out.Labels[k]; ok && existing != "" && existing != v {
-					// Conflicting hard constraint — pick the
-					// stricter one (non-"any" wins; otherwise the
-					// existing one).
 					if v != "any" && v != "" {
 						out.Labels[k] = v
 					}
 				} else {
 					out.Labels[k] = v
 				}
-			case LabelPreferStorage, LabelPreferMemory, LabelPreferNetwork:
+			case LabelPreferStorage, LabelPreferMemory, LabelPreferNetwork, LabelPreferCPU:
 				existing := out.Labels[k]
 				if classRank[v] > classRank[existing] {
+					out.Labels[k] = v
+				}
+			case LabelPreferDiskSpace:
+				existing := out.Labels[k]
+				sizeRank := map[string]int{"small": 1, "medium": 2, "large": 3}
+				if sizeRank[v] > sizeRank[existing] {
+					out.Labels[k] = v
+				}
+			case LabelPreferStorageType:
+				existing := out.Labels[k]
+				typeRank := map[string]int{"hdd": 1, "ssd": 2, "nvme": 3}
+				if typeRank[v] > typeRank[existing] {
 					out.Labels[k] = v
 				}
 			}

@@ -34,11 +34,50 @@ import (
 type HostCapabilities struct {
 	Name string
 
-	// Resources (from /proc/* via Containers/pkg/remote.Prober).
-	CPUCores      int
+	// CPU.
+	CPUCores int
+	// CPUMhz is the maximum advertised clock (MHz) read from
+	// /proc/cpuinfo "cpu MHz" or, when available, lscpu "Max MHz".
+	// 0 when the prober couldn't determine it.
+	CPUMhz int
+	// CPUClass is auto-derived from CPUMhz: ≥3000 fast, ≥2000 medium,
+	// else slow. Operator label cpu=fast|medium|slow overrides.
+	CPUClass string
+
+	// Memory.
 	MemoryTotalMB uint64
 	MemoryFreeMB  uint64
-	DiskFreeMB    uint64
+	// MemoryClass auto-derived: ≥32 GiB high, ≥8 GiB medium, else low.
+	// Operator label memory=high|medium|low overrides.
+	MemoryClass string
+
+	// Disk.
+	DiskTotalMB uint64
+	DiskFreeMB  uint64
+	// DiskSpaceClass auto-derived from DiskFreeMB: ≥500 GB large,
+	// ≥100 GB medium, else small. Operator label disk_space=...
+	// overrides.
+	DiskSpaceClass string
+	// StorageType: "nvme" | "ssd" | "hdd" | "network" | "".
+	// Detected by probing /sys/block/*: nvme* devices ⇒ nvme; non-
+	// rotational sd*/vd* ⇒ ssd; rotational ⇒ hdd. Operator label
+	// storage_type=... overrides.
+	StorageType string
+	// StorageClass is the legacy/coarser preference axis (fast |
+	// medium | slow). Auto-derived from StorageType: nvme/ssd ⇒ fast,
+	// hdd ⇒ slow. Operator label storage=fast|medium|slow overrides.
+	// Kept alongside StorageType for backward-compat with existing
+	// compose annotations and tests.
+	StorageClass string
+
+	// Network.
+	// NetworkSpeedMbps is the highest physical-interface link speed
+	// (max of /sys/class/net/*/speed for non-loopback). 0 when
+	// undetectable (virtualized hosts often report -1).
+	NetworkSpeedMbps int
+	// NetworkClass auto-derived: ≥10000 high, ≥1000 medium, else low.
+	// Operator label network=high|medium|low overrides.
+	NetworkClass string
 
 	// Container runtime.
 	Runtime        string // "docker" | "podman" | ""
@@ -51,18 +90,6 @@ type HostCapabilities struct {
 	HasGPU    bool
 	GPUVendor string // "nvidia" | "amd" | "intel" | ""
 	GPUCount  int
-
-	// Storage class — derived from /sys/block/*/queue/rotational.
-	// "fast" if any non-rotational device present, else "slow".
-	// Operator override via host label storage=fast|medium|slow wins.
-	StorageClass string // "fast" | "medium" | "slow" | ""
-
-	// Memory class — labels memory=high|medium|low (operator).
-	// Auto-derived: ≥32 GiB → high, ≥8 GiB → medium, else low.
-	MemoryClass string
-
-	// Network class — operator-only via label network=high|medium|low.
-	NetworkClass string
 
 	// Operator labels (from Containers/.env CONTAINERS_REMOTE_HOST_N_LABELS).
 	Labels map[string]string
@@ -77,27 +104,36 @@ type HostCapabilities struct {
 // parser maps `service.labels.helixagent.placement.X` into the
 // ContainerRequirements.Labels map; the scorer here reads them back.
 const (
-	LabelRequireGPU     = "helixagent.placement.require.gpu"
-	LabelRequireRuntime = "helixagent.placement.require.runtime"
-	LabelRequireArch    = "helixagent.placement.require.arch"
-	LabelPreferStorage  = "helixagent.placement.prefer.storage"
-	LabelPreferMemory   = "helixagent.placement.prefer.memory"
-	LabelPreferNetwork  = "helixagent.placement.prefer.network"
+	LabelRequireGPU         = "helixagent.placement.require.gpu"
+	LabelRequireRuntime     = "helixagent.placement.require.runtime"
+	LabelRequireArch        = "helixagent.placement.require.arch"
+	LabelPreferStorage      = "helixagent.placement.prefer.storage"
+	LabelPreferStorageType  = "helixagent.placement.prefer.storage_type"
+	LabelPreferMemory       = "helixagent.placement.prefer.memory"
+	LabelPreferNetwork      = "helixagent.placement.prefer.network"
+	LabelPreferCPU          = "helixagent.placement.prefer.cpu"
+	LabelPreferDiskSpace    = "helixagent.placement.prefer.disk_space"
 )
 
 // ScoringWeights exposes the soft-preference weights. Made package-level
 // so tests + docs can reference one source of truth. Tweak with care —
 // the relative ordering matters more than the absolute values.
 var ScoringWeights = struct {
-	StorageMatch float64
-	MemoryMatch  float64
-	NetworkMatch float64
-	LoadPenalty  float64
+	StorageMatch     float64 // legacy fast/medium/slow axis
+	StorageTypeMatch float64 // nvme/ssd/hdd — more specific than Storage
+	MemoryMatch      float64
+	NetworkMatch     float64
+	CPUMatch         float64
+	DiskSpaceMatch   float64
+	LoadPenalty      float64
 }{
-	StorageMatch: 10,
-	MemoryMatch:  8,
-	NetworkMatch: 5,
-	LoadPenalty:  3,
+	StorageMatch:     10,
+	StorageTypeMatch: 9,  // slightly less than Storage so explicit prefer.storage still dominates
+	MemoryMatch:      8,
+	CPUMatch:         7,
+	DiskSpaceMatch:   6,
+	NetworkMatch:     5,
+	LoadPenalty:      3,
 }
 
 // ScoreResult is the output of ScoreHost: a numeric score plus a
@@ -216,12 +252,63 @@ func ScoreHost(groupReq Requirement, host *HostCapabilities) ScoreResult {
 		}
 	}
 
-	// SOFT PREFERENCES — network class
+	// SOFT PREFERENCES — network class (auto-derived from line speed
+	// or operator label).
 	if want := groupReq.Labels[LabelPreferNetwork]; want != "" {
-		if classMatches(want, host.NetworkClass) {
+		// "fast" maps to "high" so legacy fast/medium/slow values in
+		// existing composes still match high-class hosts.
+		alias := want
+		if alias == "fast" {
+			alias = "high"
+		} else if alias == "slow" {
+			alias = "low"
+		}
+		if classMatches(alias, host.NetworkClass) {
 			res.Score += ScoringWeights.NetworkMatch
 			res.Reasons = append(res.Reasons,
 				fmt.Sprintf("network match (+%.0f)", ScoringWeights.NetworkMatch))
+		}
+	}
+
+	// SOFT PREFERENCES — CPU class
+	if want := groupReq.Labels[LabelPreferCPU]; want != "" {
+		if classMatches(want, host.CPUClass) {
+			res.Score += ScoringWeights.CPUMatch
+			res.Reasons = append(res.Reasons,
+				fmt.Sprintf("cpu match (+%.0f)", ScoringWeights.CPUMatch))
+		} else {
+			res.Reasons = append(res.Reasons,
+				fmt.Sprintf("cpu prefers %s, host is %s (no bonus)",
+					want, host.CPUClass))
+		}
+	}
+
+	// SOFT PREFERENCES — disk free-space class
+	if want := groupReq.Labels[LabelPreferDiskSpace]; want != "" {
+		// disk_space uses the size axis: small/medium/large with the
+		// same upgrade-tolerance rule as memory (asking medium is
+		// satisfied by large).
+		if classMatchesSize(want, host.DiskSpaceClass) {
+			res.Score += ScoringWeights.DiskSpaceMatch
+			res.Reasons = append(res.Reasons,
+				fmt.Sprintf("disk_space match (+%.0f)", ScoringWeights.DiskSpaceMatch))
+		} else {
+			res.Reasons = append(res.Reasons,
+				fmt.Sprintf("disk_space prefers %s, host is %s (no bonus)",
+					want, host.DiskSpaceClass))
+		}
+	}
+
+	// SOFT PREFERENCES — storage device type (nvme > ssd > hdd)
+	if want := groupReq.Labels[LabelPreferStorageType]; want != "" {
+		if storageTypeMatches(want, host.StorageType) {
+			res.Score += ScoringWeights.StorageTypeMatch
+			res.Reasons = append(res.Reasons,
+				fmt.Sprintf("storage_type match (+%.0f)", ScoringWeights.StorageTypeMatch))
+		} else {
+			res.Reasons = append(res.Reasons,
+				fmt.Sprintf("storage_type prefers %s, host is %s (no bonus)",
+					want, host.StorageType))
 		}
 	}
 
@@ -244,10 +331,8 @@ func ScoreHost(groupReq Requirement, host *HostCapabilities) ScoreResult {
 
 // classMatches treats class hierarchies tolerantly: a service
 // preferring "high" memory is satisfied by a host classed "high",
-// and vice versa exact match is required for storage and network.
-// Memory tolerates upgrade (asking medium, getting high is fine).
-// Storage tolerates upgrade (asking medium, getting fast is fine).
-// Network is exact match.
+// and asking for medium is satisfied by high. Same logic for
+// storage (fast/medium/slow) and CPU (fast/medium/slow).
 func classMatches(want, have string) bool {
 	want = strings.ToLower(want)
 	have = strings.ToLower(have)
@@ -257,10 +342,52 @@ func classMatches(want, have string) bool {
 	if want == have {
 		return true
 	}
-	// Tolerant upgrades for storage and memory: higher class
-	// satisfies a lower-class preference.
-	rank := map[string]int{"low": 1, "medium": 2, "high": 3, "slow": 1, "fast": 3}
+	// Tolerant upgrades: higher class satisfies a lower-class
+	// preference. The mapping unifies all three axes (low/medium/
+	// high, slow/medium/fast) onto a single 1–3 scale.
+	rank := map[string]int{
+		"low": 1, "slow": 1,
+		"medium": 2,
+		"high": 3, "fast": 3,
+	}
 	return rank[have] >= rank[want] && rank[want] > 0
+}
+
+// classMatchesSize is the same idea but for size-flavored classes
+// (small/medium/large). Upgrades are tolerated (asking medium is OK
+// on a large-disk host).
+func classMatchesSize(want, have string) bool {
+	want = strings.ToLower(want)
+	have = strings.ToLower(have)
+	if want == "" || have == "" {
+		return false
+	}
+	if want == have {
+		return true
+	}
+	rank := map[string]int{"small": 1, "medium": 2, "large": 3}
+	return rank[have] >= rank[want] && rank[want] > 0
+}
+
+// storageTypeMatches handles the nvme > ssd > hdd hierarchy.
+// Asking for "ssd" is satisfied by either "ssd" or "nvme" (NVMe is
+// strictly better). Asking for "nvme" requires NVMe specifically.
+// "network" attached storage is its own bucket and only matches
+// itself.
+func storageTypeMatches(want, have string) bool {
+	want = strings.ToLower(want)
+	have = strings.ToLower(have)
+	if want == "" || have == "" {
+		return false
+	}
+	if want == have {
+		return true
+	}
+	rank := map[string]int{"hdd": 1, "ssd": 2, "nvme": 3}
+	if rank[want] == 0 || rank[have] == 0 {
+		return false
+	}
+	return rank[have] >= rank[want]
 }
 
 // PickBestHost runs ScoreHost across `hosts` and returns the highest-

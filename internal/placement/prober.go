@@ -57,15 +57,39 @@ func (p *CapabilityProber) Probe(
 			"elif command -v lspci >/dev/null 2>&1; then lspci 2>/dev/null | grep -iE 'vga|3d|display' | grep -ciE 'nvidia|amd|intel' || echo 0; lspci 2>/dev/null | grep -iE 'vga|3d|display' | head -1 | grep -oiE 'nvidia|amd|intel' | head -1 | tr 'A-Z' 'a-z' || echo none; " +
 			"else echo 0; echo none; fi",
 		"echo '---SECTION-4---'",
-		// 4. Memory + Disk + CPU cores in one go.
+		// 4. Memory (total + free in kB) + disk free (MB on /) +
+		// CPU core count + max CPU MHz. CPU MHz comes from lscpu
+		// when available (`Max MHz`), falling back to
+		// /proc/cpuinfo's first "cpu MHz" entry. lscpu's value is
+		// the boost-locked maximum which is the right number for
+		// scheduling decisions.
 		"awk '/MemTotal:/ {print $2} /MemAvailable:/ {print $2}' /proc/meminfo",
 		"df -BM --output=avail / 2>/dev/null | tail -1 | tr -d 'M' || echo 0",
+		"df -BM --output=size / 2>/dev/null | tail -1 | tr -d 'M' || echo 0",
 		"nproc 2>/dev/null || echo 1",
+		"(lscpu 2>/dev/null | awk -F: '/CPU max MHz/ {gsub(/^[ \\t]+/,\"\",$2); print int($2); exit} /Max MHz/ {gsub(/^[ \\t]+/,\"\",$2); print int($2); exit}') || " +
+			"awk -F: '/cpu MHz/ {gsub(/^[ \\t]+/,\"\",$2); print int($2); exit}' /proc/cpuinfo || echo 0",
 		"echo '---SECTION-5---'",
-		// 5. Storage class — any non-rotational device present?
-		"for d in /sys/block/sd? /sys/block/nvme?n? /sys/block/vd?; do " +
-			"  [ -r \"$d/queue/rotational\" ] && cat \"$d/queue/rotational\" 2>/dev/null; " +
-			"done | sort -u || echo 1",
+		// 5. Storage type detection. We classify by walking
+		// /sys/block: if any nvme*n* device exists ⇒ nvme; else if
+		// any sd*/vd*/xvd* with rotational=0 exists ⇒ ssd; else
+		// hdd. Network-attached storage isn't auto-detectable here
+		// — operators set storage_type=network via host labels.
+		"if ls /sys/block/nvme*n* 2>/dev/null | head -1 | grep -q .; then echo nvme; " +
+			"elif for d in /sys/block/sd? /sys/block/vd? /sys/block/xvd?; do [ -r \"$d/queue/rotational\" ] && [ \"$(cat \"$d/queue/rotational\" 2>/dev/null)\" = \"0\" ] && echo found && break; done | grep -q found; then echo ssd; " +
+			"else echo hdd; fi",
+		"echo '---SECTION-6---'",
+		// 6. Network speed. Walk /sys/class/net/* skipping
+		// loopback, virtual interfaces (lo, docker*, veth*, br-*,
+		// virbr*). Take the max valid speed (kernel reports -1 for
+		// down/virtual interfaces; we filter those out).
+		"max=0; for ifc in /sys/class/net/*; do " +
+			"  name=$(basename \"$ifc\"); " +
+			"  case \"$name\" in lo|docker*|veth*|br-*|virbr*|cni*|flannel*|tun*|tap*) continue;; esac; " +
+			"  [ -r \"$ifc/speed\" ] || continue; " +
+			"  s=$(cat \"$ifc/speed\" 2>/dev/null); " +
+			"  if [ \"$s\" -gt 0 ] 2>/dev/null && [ \"$s\" -gt \"$max\" ]; then max=$s; fi; " +
+			"done; echo $max",
 	}, " && ")
 
 	result, err := p.exec.Execute(ctx, host, cmd)
@@ -131,7 +155,8 @@ func parseCapabilityProbeOutput(caps *HostCapabilities, output string) {
 		}
 	}
 
-	// 4: memory + disk + cpu
+	// 4: memory(total kB) + memory(free kB) + disk(free MB) +
+	// disk(total MB) + cpu cores + max cpu MHz
 	if len(sections) >= 4 {
 		lines := splitNonEmpty(sections[3])
 		if len(lines) >= 1 {
@@ -150,19 +175,48 @@ func parseCapabilityProbeOutput(caps *HostCapabilities, output string) {
 			}
 		}
 		if len(lines) >= 4 {
-			if n, err := strconv.Atoi(strings.TrimSpace(lines[3])); err == nil {
+			if mb, err := strconv.ParseUint(strings.TrimSpace(lines[3]), 10, 64); err == nil {
+				caps.DiskTotalMB = mb
+			}
+		}
+		if len(lines) >= 5 {
+			if n, err := strconv.Atoi(strings.TrimSpace(lines[4])); err == nil {
 				caps.CPUCores = n
+			}
+		}
+		if len(lines) >= 6 {
+			if mhz, err := strconv.Atoi(strings.TrimSpace(lines[5])); err == nil {
+				caps.CPUMhz = mhz
 			}
 		}
 	}
 
-	// 5: storage class — any "0" line means non-rotational present.
+	// 5: storage type — direct value from probe (nvme/ssd/hdd).
 	if len(sections) >= 5 {
-		raw := sections[4]
-		if strings.Contains(raw, "0") {
-			caps.StorageClass = "fast"
-		} else if strings.Contains(raw, "1") {
-			caps.StorageClass = "slow"
+		val := strings.TrimSpace(sections[4])
+		// Take the first non-empty token; older shells echo empty
+		// lines on else branches.
+		for _, ln := range strings.Split(val, "\n") {
+			t := strings.TrimSpace(ln)
+			if t == "nvme" || t == "ssd" || t == "hdd" {
+				caps.StorageType = t
+				break
+			}
+		}
+	}
+
+	// 6: network speed (Mbps; 0 if undetectable).
+	if len(sections) >= 6 {
+		val := strings.TrimSpace(sections[5])
+		// Find the first integer token (the script ends with the
+		// max value but earlier sections may have leaked content
+		// when the shell builtin behaved unexpectedly).
+		for _, ln := range strings.Split(val, "\n") {
+			t := strings.TrimSpace(ln)
+			if n, err := strconv.Atoi(t); err == nil {
+				caps.NetworkSpeedMbps = n
+				break
+			}
 		}
 	}
 }
@@ -178,20 +232,71 @@ func deriveClassesFromCaps(caps *HostCapabilities) {
 			caps.MemoryClass = "low"
 		}
 	}
+	if caps.CPUClass == "" {
+		switch {
+		case caps.CPUMhz >= 3000:
+			caps.CPUClass = "fast"
+		case caps.CPUMhz >= 2000:
+			caps.CPUClass = "medium"
+		case caps.CPUMhz > 0:
+			caps.CPUClass = "slow"
+		}
+	}
+	if caps.DiskSpaceClass == "" {
+		switch {
+		case caps.DiskFreeMB >= 500_000:
+			caps.DiskSpaceClass = "large"
+		case caps.DiskFreeMB >= 100_000:
+			caps.DiskSpaceClass = "medium"
+		case caps.DiskFreeMB > 0:
+			caps.DiskSpaceClass = "small"
+		}
+	}
+	// Coarse StorageClass kept in sync with the more specific
+	// StorageType so existing prefer.storage labels keep working.
+	if caps.StorageClass == "" {
+		switch caps.StorageType {
+		case "nvme", "ssd":
+			caps.StorageClass = "fast"
+		case "hdd":
+			caps.StorageClass = "slow"
+		}
+	}
+	if caps.NetworkClass == "" {
+		switch {
+		case caps.NetworkSpeedMbps >= 10000:
+			caps.NetworkClass = "high"
+		case caps.NetworkSpeedMbps >= 1000:
+			caps.NetworkClass = "medium"
+		case caps.NetworkSpeedMbps > 0:
+			caps.NetworkClass = "low"
+		}
+	}
 }
 
 // overrideFromHostLabels lets operators force a class via
 // CONTAINERS_REMOTE_HOST_N_LABELS. Already-parsed labels at the
-// adapter level appear here as host.Labels.
+// adapter level appear here as host.Labels. Every dimension is
+// override-able so an operator can correct probe misclassification
+// (e.g. SAN-mounted disk that reports rotational=1 but is fast).
 func overrideFromHostLabels(caps *HostCapabilities, labels map[string]string) {
 	if v, ok := labels["storage"]; ok && v != "" {
 		caps.StorageClass = strings.ToLower(v)
+	}
+	if v, ok := labels["storage_type"]; ok && v != "" {
+		caps.StorageType = strings.ToLower(v)
 	}
 	if v, ok := labels["memory"]; ok && v != "" {
 		caps.MemoryClass = strings.ToLower(v)
 	}
 	if v, ok := labels["network"]; ok && v != "" {
 		caps.NetworkClass = strings.ToLower(v)
+	}
+	if v, ok := labels["cpu"]; ok && v != "" {
+		caps.CPUClass = strings.ToLower(v)
+	}
+	if v, ok := labels["disk_space"]; ok && v != "" {
+		caps.DiskSpaceClass = strings.ToLower(v)
 	}
 }
 

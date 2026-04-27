@@ -7,12 +7,15 @@ services:
     container_name: helixagent-postgres
     oom_score_adj: 500
     labels:
-      # Placement hints (CONST-035): postgres is the source of truth for
-      # HelixAgent state — prefers fast SSD storage and high-memory
-      # hosts. Hard constraints intentionally not set; postgres runs on
-      # any architecture/runtime.
+      # Placement hints: postgres is the source of truth for
+      # HelixAgent state — prefers NVMe storage (fastest disk for
+      # WAL writes), large free disk (DB grows with workload), and
+      # fast CPU (query planning + index scans are CPU-bound).
       helixagent.placement.prefer.storage: "fast"
+      helixagent.placement.prefer.storage_type: "nvme"
       helixagent.placement.prefer.memory: "high"
+      helixagent.placement.prefer.disk_space: "large"
+      helixagent.placement.prefer.cpu: "fast"
     environment:
       POSTGRES_DB: ${DB_NAME:-helixagent_db}
       POSTGRES_USER: ${DB_USER:-helixagent}
@@ -78,12 +81,15 @@ services:
     container_name: helixagent-ollama
     oom_score_adj: 500
     labels:
-      # Placement hints: ollama serves local LLMs, requires high
-      # memory (12 GiB+ for Q4 quantized 7B models). GPU strongly
-      # preferred but tolerated absent (CPU-only inference is slower
-      # but works) — declared as soft preference, not hard constraint.
+      # Placement hints: ollama serves local LLMs, needs large RAM
+      # (12 GiB+ for Q4 quantized 7B models), NVMe (model weights
+      # are 4-8 GiB read on first load), and fast CPU (token
+      # generation is CPU-bound when no GPU is present).
       helixagent.placement.prefer.memory: "high"
       helixagent.placement.prefer.storage: "fast"
+      helixagent.placement.prefer.storage_type: "nvme"
+      helixagent.placement.prefer.cpu: "fast"
+      helixagent.placement.prefer.disk_space: "large"
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     volumes:
@@ -336,6 +342,9 @@ services:
       # propagates the strictest preference across the group.
       helixagent.placement.prefer.memory: "high"
       helixagent.placement.prefer.storage: "fast"
+      helixagent.placement.prefer.storage_type: "nvme"
+      helixagent.placement.prefer.cpu: "fast"
+      helixagent.placement.prefer.disk_space: "large"
     environment:
       # Core Configuration
       - DEBUG=${COGNEE_DEBUG:-false}
@@ -460,10 +469,14 @@ services:
     container_name: helixagent-chromadb
     oom_score_adj: 500
     labels:
-      # Placement hints: chromadb persists vector embeddings on disk.
-      # Prefers fast storage. Memory pref derived automatically from
-      # 4 GiB limit (medium tier).
+      # Placement hints: chromadb persists vector embeddings on disk
+      # (small per-vector, but a typical RAG corpus is 100K+ vectors
+      # = many GB on disk). Prefers NVMe for low-latency reads,
+      # large free disk for the corpus itself. Memory pref auto-
+      # derived from 4 GiB limit (medium tier).
       helixagent.placement.prefer.storage: "fast"
+      helixagent.placement.prefer.storage_type: "nvme"
+      helixagent.placement.prefer.disk_space: "large"
     command: ["--host", "0.0.0.0", "--port", "8001"]
     environment:
       - IS_PERSISTENT=TRUE
@@ -741,11 +754,12 @@ services:
     oom_score_adj: 500
     labels:
       # Placement hints: sglang serves LLM traffic via RadixAttention
-      # and REQUIRES nvidia GPU. The deploy.resources.reservations.devices
-      # entry below already declares this for Docker Compose, but the
-      # explicit label here is what the placement scheduler reads.
+      # and REQUIRES nvidia GPU. Also benefits from fast network
+      # (clients stream tokens) and high memory (KV cache).
       helixagent.placement.require.gpu: "nvidia"
       helixagent.placement.prefer.memory: "high"
+      helixagent.placement.prefer.network: "fast"
+      helixagent.placement.prefer.cpu: "fast"
     ports:
       - "${SGLANG_PORT:-30000}:30000"
     environment:

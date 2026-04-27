@@ -325,6 +325,41 @@ Every reported error, defect, or unexpected behavior MUST be reproduced by a Cha
 
 **Enforcement:** all bug-fix commits MUST cite the Challenge that reproduces the issue (in the commit message or PR body). The Challenge MUST be in the same commit as the fix.
 
+### Anti-Bluff Tests & Challenges **[MANDATORY]** (Priority: 1)
+
+**ID:** CONST-035
+
+Tests and Challenges MUST verify the product, not the LLM's mental model of the product. A test that passes when the feature is broken is worse than a missing test — it gives false confidence and lets defects ship to users.
+
+**Every test and Challenge MUST be both:**
+
+1. **Functional** — exercises the real code path the user will hit (real running binary, real infrastructure per CONST-030).
+2. **Strict** — fails when the feature doesn't actually work end-to-end.
+
+**No soft passes.** A reachability check that "trusts the gateway is reachable so we don't probe the backend" passes when the backend is broken. If a service is supposed to listen on a port, the test MUST connect to that port AND verify a real protocol response. TCP-open is the FLOOR, not the ceiling:
+
+- Postgres → execute `SELECT 1` and verify the returned value is `1`.
+- Redis → send `PING` and verify the reply is `PONG`.
+- ChromaDB → `GET /api/v1/heartbeat` and verify HTTP 200 with valid JSON.
+- MCP server → TCP connect + valid MCP/JSON-RPC handshake.
+- Gateway → `POST /v1/chat/completions` with a real prompt and verify a non-empty completion comes back.
+
+If a test cannot exercise the real behavior (e.g. depends on an external service that isn't available in the test environment), it MUST be marked `t.Skip("…SKIP-OK: #<reason>")` per the Definition of Done. Never silently pass — silent passes are how broken features survive audit.
+
+**No mocks or fakes outside unit tests.** Already governed by CONST-030; CONST-035 escalates a "feature passes test but doesn't work" defect to the same severity as a regression. Integration / E2E / Challenge tests MUST hit real running instances. Mocking the database in an integration test is the single biggest source of "tests pass, product broken."
+
+**Container `Up` is not application healthy.** Just because `docker ps` reports a container as `Up` doesn't mean the application inside it is serving traffic. Functional tests probe the application layer.
+
+**Re-verify after every change.** Don't assume a previously-passing test still verifies the same scope after a refactor. When code is edited, the maintainer re-reads the affected tests to confirm they still cover the user-visible behavior — not just the structural shape that happened to pass.
+
+**Apply to all submodules.** Every submodule's `CONSTITUTION.md` / `CLAUDE.md` / `AGENTS.md` inherits this rule. Submodules SHOULD reference CONST-035 when adding new test/challenge guidance; they MUST NOT contradict it.
+
+**Verification of CONST-035 itself:** run any test or Challenge in this repo, deliberately break the underlying feature (e.g. `kill helixagent-postgres`, swap a redis password, edit a port), and verify the test FAILS. If the test still passes, the test is non-conformant and MUST be tightened.
+
+**Worked example:** the partitioned-distribution Challenge originally trusted `/v1/health` for redis reachability and probed the wrong port for chromadb. With CONST-035 in force, the rewrite (commit `1354d02d` + later) now executes `redis-cli PING` over SSH on the placed host and `GET /api/v1/heartbeat` against chromadb's real port — that strict version immediately revealed that postgres on thinker was accepting TCP but sending no protocol reply, a real bug the soft Challenge had been hiding for multiple boots.
+
+**Enforcement:** any new test or Challenge added to the repo is subject to CONST-035 review. PRs that add a test relying on a fake/stub outside `*_test.go` (CONST-030 territory) OR that rely on container-up status as a proxy for application health (CONST-035 territory) MUST be rejected.
+
 <!-- BEGIN host-power-management addendum (CONST-033) -->
 
 ### CONST-033 — Host Power Management is Forbidden

@@ -383,6 +383,35 @@ hosts ≥ 1.
 4. Re-run the Challenge to confirm the fix. The challenge becomes the regression guard forever.
 5. Commit Challenge + fix together.
 
+### CONST-035: Anti-Bluff Tests & Challenges
+
+**Mandatory across HelixAgent and every submodule.** Tests and Challenges MUST verify the product, not the LLM's mental model of the product. A test that passes when the feature is broken is worse than a missing test — it gives false confidence and lets defects ship.
+
+**Every test and Challenge MUST be:**
+
+- **Functional** — exercises the real code path the user will hit (real binary, real infrastructure per CONST-030).
+- **Strict** — fails when the feature doesn't actually work end-to-end.
+
+**No soft passes.** TCP-open is the FLOOR, not the ceiling. Probe at the protocol layer:
+
+| Service | Floor (insufficient) | Ceiling (required) |
+|---------|---------------------|--------------------|
+| Postgres | TCP connect to 5432 | `SELECT 1` returns `1` |
+| Redis | TCP connect to 6379 | `PING` returns `PONG` |
+| ChromaDB | TCP connect to 8001 | `GET /api/v1/heartbeat` returns 200 + valid JSON |
+| MCP server | container `Up` | TCP connect + valid MCP/JSON-RPC handshake |
+| Gateway | `/v1/health` healthy | `POST /v1/chat/completions` returns non-empty completion |
+
+**Container `Up` is not application healthy.** A `docker ps` `Up` status only means the container's PID 1 is running; the application may be crash-looping internally. Functional tests MUST probe the application layer.
+
+**No mocks or fakes outside unit tests** (already CONST-030; CONST-035 makes the cost of a mock-driven false pass explicit).
+
+**Submodule inheritance:** every submodule's `CONSTITUTION.md` / `CLAUDE.md` / `AGENTS.md` inherits CONST-035. Submodules SHOULD reference it; they MUST NOT contradict it.
+
+**Verification of CONST-035 itself:** deliberately break a feature (e.g. `kill helixagent-postgres`, swap a redis password). The test MUST FAIL. If it still passes, the test is non-conformant and MUST be tightened.
+
+**Worked example:** the partitioned-distribution Challenge originally trusted `/v1/health` for redis and probed the wrong port for chromadb. The strict rewrite (`redis-cli PING` over SSH on the placed host + `GET /api/v1/heartbeat` against chromadb's real port) immediately revealed postgres on thinker was accepting TCP but sending no protocol reply — a real bug the soft Challenge had been hiding.
+
 <!-- BEGIN_CONSTITUTION -->
 # Project Constitution
 

@@ -991,6 +991,14 @@ func (a *Adapter) RemoteComposeUp(
 	// host, leaving the other idle. Spread also degrades gracefully
 	// when one host fills up (the load-aware fallback inside the
 	// strategy still respects available memory).
+	// Install the capability prober for this PlanCompose call so the
+	// planner runs a deep probe per host (architecture, runtime, GPU,
+	// storage class, free memory) and uses capability scoring to
+	// decide placement. Cleared after the call so subsequent calls
+	// in tests / re-entry cleanly install their own.
+	placement.SetCapabilityProber(placement.NewCapabilityProber(a.executor))
+	defer placement.SetCapabilityProber(nil)
+
 	plan, err := placement.PlanCompose(
 		ctx, absFile, profile, a.hostManager,
 		scheduler.WithStrategy(scheduler.StrategySpread),

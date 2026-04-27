@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"digital.vasic.containers/pkg/remote"
 	"digital.vasic.containers/pkg/scheduler"
@@ -82,35 +83,35 @@ func PlanCompose(
 	}
 	sort.Strings(groupIDs)
 
-	// Custom spread across REGISTERED remote hosts only. The Containers
-	// scheduler injects its LocalHostName ("local" by default) into
-	// every strategy's candidate set and there's no clean option to
-	// suppress it; under our deployment model the orchestrator binary
-	// stays on the local host and never receives containers, so any
-	// PlacementDecision pointing at "local" is invalid. Doing
-	// per-group round-robin over `hosts` directly here gives:
-	//   - deterministic placement (sorted host order + group order),
-	//   - even distribution (least-loaded host wins, ties broken by
-	//     name),
-	//   - explicit exclusion of local (we never add it to the
-	//     candidate list).
+	// Capability-aware placement: per group, evaluate every
+	// registered remote host using ScoreHost (capability.go).
+	// HARD constraints (gpu/runtime/arch/memory-fit) gate
+	// eligibility; SOFT preferences (storage/memory/network class)
+	// add to score; load penalty (placement count × weight) breaks
+	// ties toward less-loaded hosts. Local is excluded by
+	// construction — we only consider ListHosts().
+	//
 	// `opts` is accepted for forward compatibility (e.g. when the
-	// scheduler grows a "no local" option) but not consumed today.
+	// Containers scheduler grows a "no-local" option that would let
+	// us delegate again) but not consumed today.
 	_ = opts
 
 	hosts := hostManager.ListHosts()
 	if len(hosts) == 0 {
 		return nil, fmt.Errorf("no remote hosts registered")
 	}
-	hostNames := make([]string, len(hosts))
-	for i, h := range hosts {
-		hostNames[i] = h.Name
-	}
-	sort.Strings(hostNames)
 
-	hostLoad := make(map[string]int, len(hostNames))
-	for _, h := range hostNames {
-		hostLoad[h] = 0
+	// Build HostCapabilities for every registered host. If a
+	// CapabilityProber is configured on the planner (set via
+	// SetProber from the adapter at boot), probe live; otherwise
+	// fall back to label-only capabilities (workable for tests and
+	// when SSH is briefly unavailable — the scorer degrades to load
+	// balancing across eligible hosts).
+	caps := buildHostCapabilities(ctx, hosts)
+
+	hostByName := make(map[string]*HostCapabilities, len(caps))
+	for _, c := range caps {
+		hostByName[c.Name] = c
 	}
 
 	hostServices := make(map[string][]string)
@@ -118,47 +119,51 @@ func PlanCompose(
 
 	for _, gid := range groupIDs {
 		members := groups[gid]
-		// Aggregate group-level requirement (informational; the
-		// scoring isn't used by our custom spread but kept so the
-		// PlacementDecision still records the group's resource
-		// footprint for operators reading the persisted plan).
-		_ = aggregateRequirements(gid, members)
+		groupReq := aggregateRequirementsForCapability(gid, members)
 
-		// Pick the registered host with the fewest already-placed
-		// services; tie-break alphabetically for deterministic
-		// plans across reboots.
-		picked := hostNames[0]
-		for _, h := range hostNames {
-			if hostLoad[h] < hostLoad[picked] {
-				picked = h
+		picked, scoreResults := PickBestHost(groupReq, caps)
+		if picked == "" {
+			// No eligible host. Record the failure on every member
+			// so the persisted plan shows operators why nothing was
+			// scheduled.
+			reason := summarizeIneligibility(scoreResults)
+			for _, m := range members {
+				allDecisions = append(allDecisions, scheduler.PlacementDecision{
+					Requirement: m,
+					HostName:    "",
+					Score:       0,
+					Reason:      reason,
+				})
+			}
+			continue
+		}
+
+		// Update load on the picked host so subsequent groups see
+		// the new placement when scoring.
+		if c, ok := hostByName[picked]; ok {
+			c.PlacementCount += len(members)
+		}
+
+		// Build a single reason string from the winning ScoreResult
+		// for audit. (Other hosts' results omitted from the
+		// per-member decision; the full breakdown is logged at INFO
+		// once per group in adapter.RemoteComposeUp.)
+		var reason string
+		for _, sr := range scoreResults {
+			if sr.HostName == picked {
+				reason = sr.String()
+				break
 			}
 		}
-		hostLoad[picked] += len(members)
 
-		decision := &scheduler.PlacementDecision{
-			HostName: picked,
-			Score:    1.0,
-			Reason: fmt.Sprintf(
-				"spread (registered hosts only): fewest containers, %d after this group",
-				hostLoad[picked],
-			),
-		}
-		// Allow err handling parity with scheduler-based path even
-		// though our custom path can't return one.
-		var err error
-		_ = err
-		// Record one decision per actual member so the per-service
-		// audit trail is complete.
 		for _, m := range members {
 			allDecisions = append(allDecisions, scheduler.PlacementDecision{
 				Requirement: m,
-				HostName:    decision.HostName,
-				Score:       decision.Score,
-				Reason:      decision.Reason,
+				HostName:    picked,
+				Score:       0,
+				Reason:      reason,
 			})
-			hostServices[decision.HostName] = append(
-				hostServices[decision.HostName], m.Name,
-			)
+			hostServices[picked] = append(hostServices[picked], m.Name)
 		}
 	}
 
@@ -213,5 +218,97 @@ func aggregateRequirements(
 	}
 	out.CPUCores = totalCPU
 	out.MemoryMB = totalMem
+	return out
+}
+
+// aggregateRequirementsForCapability produces the placement.Requirement
+// fed into capability.ScoreHost. Labels are unioned across members
+// using "strictest wins" semantics:
+//
+//  - require.gpu / require.runtime / require.arch — any member's hard
+//    constraint propagates to the whole group (placing on a host that
+//    fails any member's constraint would break that member).
+//  - prefer.* — strictest preference wins (e.g. one member preferring
+//    "high" memory pulls the group toward high-memory hosts even if
+//    others ask "medium").
+func aggregateRequirementsForCapability(
+	gid string, members []scheduler.ContainerRequirements,
+) Requirement {
+	out := Requirement{
+		Name:   "group:" + gid,
+		Labels: map[string]string{},
+	}
+	classRank := map[string]int{
+		"low": 1, "medium": 2, "high": 3, "slow": 1, "fast": 3,
+	}
+	for _, m := range members {
+		out.MemoryMB += m.MemoryMB
+		out.CPUCores += m.CPUCores
+		for k, v := range m.Labels {
+			switch k {
+			case LabelRequireGPU, LabelRequireRuntime, LabelRequireArch:
+				if existing, ok := out.Labels[k]; ok && existing != "" && existing != v {
+					// Conflicting hard constraint — pick the
+					// stricter one (non-"any" wins; otherwise the
+					// existing one).
+					if v != "any" && v != "" {
+						out.Labels[k] = v
+					}
+				} else {
+					out.Labels[k] = v
+				}
+			case LabelPreferStorage, LabelPreferMemory, LabelPreferNetwork:
+				existing := out.Labels[k]
+				if classRank[v] > classRank[existing] {
+					out.Labels[k] = v
+				}
+			}
+		}
+	}
+	return out
+}
+
+// summarizeIneligibility builds a single string explaining why no
+// host accepted the group. Sorts by host name so the message is
+// stable across reboots.
+func summarizeIneligibility(results []ScoreResult) string {
+	parts := make([]string, 0, len(results))
+	for _, r := range results {
+		parts = append(parts, r.String())
+	}
+	return "no eligible host: " + strings.Join(parts, " | ")
+}
+
+// buildHostCapabilities returns one HostCapabilities per registered
+// remote host. When a CapabilityProber has been configured on the
+// package via SetCapabilityProber (called from
+// adapter.go::RemoteComposeUp), each host is probed live; otherwise
+// a label-only HostCapabilities is returned (workable for tests and
+// when the executor is unavailable).
+func buildHostCapabilities(ctx context.Context, hosts []remote.RemoteHost) []*HostCapabilities {
+	out := make([]*HostCapabilities, 0, len(hosts))
+	for _, h := range hosts {
+		var caps *HostCapabilities
+		if proberMu.RLock(); globalCapabilityProber != nil {
+			c, err := globalCapabilityProber.Probe(ctx, h)
+			proberMu.RUnlock()
+			if err == nil && c != nil {
+				caps = c
+			}
+		} else {
+			proberMu.RUnlock()
+		}
+		if caps == nil {
+			// Label-only fallback. The scorer still works — it just
+			// can't honor preferences whose host class is unknown.
+			caps = &HostCapabilities{
+				Name:   h.Name,
+				Labels: copyLabels(h.Labels),
+			}
+			overrideFromHostLabels(caps, h.Labels)
+			deriveClassesFromCaps(caps)
+		}
+		out = append(out, caps)
+	}
 	return out
 }

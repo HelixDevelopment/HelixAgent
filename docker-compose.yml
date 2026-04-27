@@ -6,6 +6,13 @@ services:
     image: docker.io/postgres:15-alpine
     container_name: helixagent-postgres
     oom_score_adj: 500
+    labels:
+      # Placement hints (CONST-035): postgres is the source of truth for
+      # HelixAgent state — prefers fast SSD storage and high-memory
+      # hosts. Hard constraints intentionally not set; postgres runs on
+      # any architecture/runtime.
+      helixagent.placement.prefer.storage: "fast"
+      helixagent.placement.prefer.memory: "high"
     environment:
       POSTGRES_DB: ${DB_NAME:-helixagent_db}
       POSTGRES_USER: ${DB_USER:-helixagent}
@@ -70,6 +77,13 @@ services:
     image: docker.io/ollama/ollama:latest
     container_name: helixagent-ollama
     oom_score_adj: 500
+    labels:
+      # Placement hints: ollama serves local LLMs, requires high
+      # memory (12 GiB+ for Q4 quantized 7B models). GPU strongly
+      # preferred but tolerated absent (CPU-only inference is slower
+      # but works) — declared as soft preference, not hard constraint.
+      helixagent.placement.prefer.memory: "high"
+      helixagent.placement.prefer.storage: "fast"
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     volumes:
@@ -315,6 +329,13 @@ services:
     container_name: helixagent-cognee
     # Using host network for direct API access
     oom_score_adj: 500
+    labels:
+      # Placement hints: cognee orchestrates LLM calls and writes a
+      # knowledge graph. Heavy memory + storage. Co-located with
+      # postgres/redis/chromadb via depends_on so the placement scorer
+      # propagates the strictest preference across the group.
+      helixagent.placement.prefer.memory: "high"
+      helixagent.placement.prefer.storage: "fast"
     environment:
       # Core Configuration
       - DEBUG=${COGNEE_DEBUG:-false}
@@ -438,6 +459,11 @@ services:
     image: docker.io/chromadb/chroma:0.6.3
     container_name: helixagent-chromadb
     oom_score_adj: 500
+    labels:
+      # Placement hints: chromadb persists vector embeddings on disk.
+      # Prefers fast storage. Memory pref derived automatically from
+      # 4 GiB limit (medium tier).
+      helixagent.placement.prefer.storage: "fast"
     command: ["--host", "0.0.0.0", "--port", "8001"]
     environment:
       - IS_PERSISTENT=TRUE
@@ -713,6 +739,13 @@ services:
     image: docker.io/lmsysorg/sglang:latest
     container_name: helixagent-sglang
     oom_score_adj: 500
+    labels:
+      # Placement hints: sglang serves LLM traffic via RadixAttention
+      # and REQUIRES nvidia GPU. The deploy.resources.reservations.devices
+      # entry below already declares this for Docker Compose, but the
+      # explicit label here is what the placement scheduler reads.
+      helixagent.placement.require.gpu: "nvidia"
+      helixagent.placement.prefer.memory: "high"
     ports:
       - "${SGLANG_PORT:-30000}:30000"
     environment:

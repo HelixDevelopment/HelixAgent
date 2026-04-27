@@ -1910,4 +1910,134 @@ SSH (uses a fake `RemoteExecutor` returning canned `/proc/stat` etc.):
 - `docs/development/container-placement.md` (new, architecture +
   rationale)
 
+---
+
+## Issue #53: Placement was structurally correct but semantically blind — no capability awareness (FIXED 2026-04-27)
+
+### Issue
+
+After Issue #52 partitioning landed, every container ran on exactly
+one host (no duplicates, no divergent state). But the scheduler used
+a simple least-loaded-host heuristic — it had no knowledge of what
+each host could actually run. Concrete consequences if hosts had been
+heterogeneous:
+
+- `sglang` (requires nvidia GPU, declared via
+  `deploy.resources.reservations.devices`) could land on a CPU-only
+  host and crash-loop because the GPU pass-through fails.
+- `postgres`/`chromadb` (heavy disk I/O) could land on a host with
+  rotational storage while a faster host had nothing — wasting the
+  fast host and bottlenecking the slow one.
+- `ollama` (12 GiB RAM minimum for quantized 7B models) could land on
+  a low-memory host and OOM at first prompt.
+
+In our specific test environment both hosts (thinker, amber) happen
+to be similarly capable, so Issue #52's heuristic produced workable
+plans by luck. The moment a third asymmetric host joins (e.g., an
+arm64 worker, a GPU node, a memory-light edge box), the same heuristic
+goes from "lucky" to "broken."
+
+### Fix
+
+New capability layer in `internal/placement/`:
+
+1. **`capability.go`** — `HostCapabilities` struct (Arch, Runtime,
+   GPU presence + vendor + count, MemoryFreeMB, StorageClass,
+   MemoryClass, NetworkClass, operator labels, current placement
+   count). `ScoreHost(req, host)` returns an eligibility flag + score
+   + human-readable reason chain. `PickBestHost(req, hosts)` picks
+   the highest-scoring eligible host, alphabetical tie-break.
+2. **`prober.go`** — `CapabilityProber.Probe(host)` runs ONE compound
+   SSH command per host (`uname -m && docker version --format ... &&
+   nvidia-smi --query-gpu=count ... && cat /proc/meminfo && nproc &&
+   cat /sys/block/*/queue/rotational`), parses each section,
+   populates HostCapabilities. Operator labels in
+   `CONTAINERS_REMOTE_HOST_N_LABELS` (`storage=fast,memory=high`)
+   override probed values.
+3. **`parser.go`** — extended to read `helixagent.placement.*` keys
+   from compose `services.<name>.labels`. Auto-derives
+   `require.gpu` from `deploy.resources.reservations.devices` and
+   `prefer.memory` from `deploy.resources.limits.memory ≥ 8 GiB`.
+4. **`planner.go`** — replaces simple least-loaded with capability-
+   aware: aggregates per group (strictest hard constraint wins,
+   highest soft-preference class wins), calls `PickBestHost`,
+   propagates the scoring reason into the persisted plan for
+   operator audit.
+5. **`adapter.go::RemoteComposeUp`** — installs the
+   `CapabilityProber` for the duration of the call so the planner
+   probes live; cleared after.
+
+Compose annotations added to: postgres (prefer.storage=fast,
+prefer.memory=high), redis (none — small tier), chromadb
+(prefer.storage=fast), cognee (prefer.memory=high,
+prefer.storage=fast), ollama (prefer.memory=high,
+prefer.storage=fast), sglang (require.gpu=nvidia,
+prefer.memory=high).
+
+### Verification
+
+`challenges/scripts/capability_aware_placement_challenge.sh` — written
+BEFORE this fix per CONST-032. Live-probes each registered remote
+host (GPU presence via `nvidia-smi`/`lspci`, storage class via
+`/sys/block/*/queue/rotational`, memory class from
+`/proc/meminfo`), reads each persisted plan, and asserts every
+service with placement labels was placed on a host that satisfies
+its hard constraints + uses fast/high-tier hosts when available for
+soft preferences.
+
+`internal/placement/*_test.go` — 11 new unit tests covering:
+
+- `TestScoreHost_GPUHardConstraint` — GPU-required service rejected
+  on CPU host.
+- `TestScoreHost_GPUVendorMismatch` — nvidia-required service
+  rejected on amd-only host.
+- `TestScoreHost_RuntimeConstraint` — docker-required service
+  rejected on podman host.
+- `TestScoreHost_MemoryFitConstraint` — service rejected when group
+  memory exceeds 90% of host's free.
+- `TestScoreHost_StoragePreferenceBonus` — fast-storage host
+  outranks slow when service prefers fast.
+- `TestScoreHost_MemoryClassUpgradeTolerance` — service preferring
+  "medium" satisfied by "high" host.
+- `TestScoreHost_LoadPenalty` — empty host outranks loaded host
+  with otherwise-equal score.
+- `TestPickBestHost_GPUServiceLandsOnGPU` — GPU service goes to GPU
+  host even when CPU host has load advantage.
+- `TestPickBestHost_NoEligibleReturnsEmpty` — empty pick + reason
+  list when no host eligible.
+- `TestPickBestHost_DeterministicTieBreak` — alphabetical
+  tie-break, stable across reboots.
+- `TestClassMatches` — class-upgrade tolerance rules.
+
+Plus 4 prober tests (`TestProbe_DockerHostWithNvidia`,
+`TestProbe_PodmanHostNoGPU`, `TestProbe_HostLabelOverride`,
+`TestProbe_ExecutorErrorPropagates`) using a fake executor with
+canned `/proc/stat` etc. output.
+
+Plus 2 benchmarks (`BenchmarkPickBestHost_ScaleAcrossHosts`,
+`BenchmarkPickBestHost_GPURequired`) ensuring placement stays
+sub-millisecond up to 16 hosts.
+
+### Affected files
+
+- `internal/placement/capability.go` (new)
+- `internal/placement/prober.go` (new)
+- `internal/placement/prober_global.go` (new)
+- `internal/placement/capability_test.go` (new, 11 unit tests)
+- `internal/placement/prober_test.go` (new, 4 unit tests)
+- `internal/placement/capability_bench_test.go` (new, 2 benchmarks)
+- `internal/placement/parser.go` (read placement labels, auto-derive)
+- `internal/placement/planner.go` (capability scoring replaces
+  least-loaded)
+- `internal/adapters/containers/adapter.go` (install prober before
+  PlanCompose)
+- `docker-compose.yml` (postgres/redis/cognee/chromadb/ollama/sglang
+  capability labels)
+- `challenges/scripts/capability_aware_placement_challenge.sh` (new,
+  CONST-032 guard)
+- `docs/development/container-placement.md` (capability-aware
+  section + Mermaid flow diagram)
+- `CLAUDE.md` (CONST rule #26 — capability-aware placement)
+
+
 

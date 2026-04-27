@@ -154,3 +154,197 @@ cat .placement-plan-docker-compose.mcp-servers.yml.json | jq
 - **Operator-overridable per-service pinning** via env var
   `HELIXAGENT_PLACE_<SERVICE>=<host>` for emergencies. Today the
   scheduler's choice is final.
+
+---
+
+# Capability-aware placement (Issue #53)
+
+The previous section established the **structural** invariant — every
+service runs on exactly one host. This section adds the **semantic**
+invariant: each service is placed on a host that can actually run it
+well, taking into account the host's measured capabilities.
+
+## What gets measured per host
+
+A `CapabilityProber` runs once per `RemoteComposeUp` invocation, in a
+single SSH round-trip per host, and collects:
+
+| Field | Source | Used for |
+|-------|--------|----------|
+| `Arch` | `uname -m` | hard constraint `require.arch` |
+| `Runtime` + version | `docker version` / `podman version` | hard constraint `require.runtime` |
+| `HasGPU` + vendor + count | `nvidia-smi` / `rocm-smi` / `lspci` fallback | hard constraint `require.gpu` |
+| `MemoryTotalMB` / `MemoryFreeMB` | `/proc/meminfo` | hard constraint memory-fit + auto-derived `MemoryClass` |
+| `CPUCores` | `nproc` | informational |
+| `DiskFreeMB` | `df -BM /` | informational |
+| `StorageClass` | `/sys/block/*/queue/rotational` (any non-rotational ⇒ "fast") | soft preference `prefer.storage` |
+| `MemoryClass` | derived: ≥32 GiB high, ≥8 GiB medium, else low | soft preference `prefer.memory` |
+| Operator labels | `CONTAINERS_REMOTE_HOST_N_LABELS` (`storage=fast,memory=high,network=high`) | override the auto-derived classes |
+
+Operator labels always win over probed values — useful when probing
+gets fooled (e.g., a SAN-mounted disk that reports `rotational=1` but
+behaves like a fast SSD).
+
+## How services declare their needs
+
+Services use Docker Compose `labels:` with the
+`helixagent.placement.{require,prefer}.X` keys:
+
+```yaml
+services:
+  postgres:
+    labels:
+      helixagent.placement.prefer.storage: fast    # soft preference
+      helixagent.placement.prefer.memory:  high
+  sglang:
+    labels:
+      helixagent.placement.require.gpu:    nvidia  # hard constraint
+      helixagent.placement.prefer.memory:  high
+  cpu-only:
+    labels:
+      helixagent.placement.require.arch:   amd64
+```
+
+| Label | Type | Values | Meaning |
+|-------|------|--------|---------|
+| `require.gpu` | hard | `true`, `false`, `nvidia`, `amd`, `intel` | Hosts without this GPU vendor are excluded |
+| `require.runtime` | hard | `docker`, `podman`, `any` | Hosts with a different runtime are excluded |
+| `require.arch` | hard | `amd64`, `arm64`, `any` | Hosts with a different arch are excluded |
+| `prefer.storage` | soft | `fast`, `medium`, `slow` | Adds +10 to score on matching host |
+| `prefer.memory` | soft | `high`, `medium`, `low` | Adds +8 to score on matching host (tolerant: asking medium is satisfied by high) |
+| `prefer.network` | soft | `high`, `medium`, `low` | Adds +5 to score on matching host (exact match) |
+
+**Auto-derived requirements** (no manual label needed):
+
+- A `deploy.resources.reservations.devices` entry with `capabilities: [gpu]` ⇒ `require.gpu = <driver>` (nvidia/amd/intel).
+- `deploy.resources.limits.memory ≥ 8 GiB` ⇒ `prefer.memory = high`.
+- `deploy.resources.limits.memory ≥ 2 GiB` ⇒ `prefer.memory = medium`.
+
+So even composes that don't carry the new labels still benefit from
+auto-derived hints based on their resource budgets.
+
+## Scoring formula
+
+For each (group, host) pair the scorer in
+`internal/placement/capability.go::ScoreHost` evaluates:
+
+```
+1. Hard constraints (eligibility gate):
+   require.gpu       — host.HasGPU AND vendor match required vendor
+   require.runtime   — host.Runtime == required
+   require.arch      — host.Arch == required
+   memory fit        — group.MemoryMB ≤ 0.9 × host.MemoryFreeMB
+
+   If any fails → host INELIGIBLE for this group, regardless of soft prefs.
+
+2. Soft preferences (additive to score):
+   prefer.storage match → +10
+   prefer.memory match  → +8 (tolerant upgrade: medium-pref OK on high host)
+   prefer.network match → +5 (exact match)
+
+3. Load penalty (subtractive):
+   −3 × host.PlacementCount
+
+   Less-loaded hosts win when other factors tie.
+
+4. Tie-break: alphabetical host name (deterministic across reboots).
+```
+
+The exact weights live in `ScoringWeights` in `capability.go` so they
+can be tuned (and tests reference one source of truth).
+
+## Placement flow at boot
+
+```mermaid
+flowchart TD
+    A[bin/helixagent boots] --> B[adapter.RemoteComposeUp]
+    B --> C[Install CapabilityProber]
+    C --> D[placement.PlanCompose]
+    D --> E[ParseCompose]
+    E -->|"reads service.labels.helixagent.placement.*<br/>+ deploy.resources.reservations.devices<br/>+ deploy.resources.limits.memory"| F[ContainerRequirements + CoLocationGroups]
+    F --> G["For each group:<br/>aggregateRequirementsForCapability"]
+    G --> H["For each registered remote host:<br/>CapabilityProber.Probe (SSH)"]
+    H --> I["uname -m, runtime --version,<br/>nvidia-smi, /proc/meminfo,<br/>/sys/block/*/queue/rotational"]
+    I --> J[HostCapabilities + operator labels]
+    J --> K[ScoreHost + PickBestHost]
+    K --> L[HostAssignment list]
+    L --> M[EmitPerHostCompose per assignment]
+    M --> N[adapter.deployComposeToHost]
+    N --> O[ssh + docker/podman compose up -d]
+    O --> P[Persist .placement-plan-*.json]
+    P --> Q[Set SVC_*_HOST env vars for gateway routing]
+```
+
+## How to add a new service with capability needs
+
+1. Add the service to the appropriate compose file with proper
+   `deploy.resources.{limits,reservations}` per the tier table in
+   `container-resource-policy.md`.
+2. Declare any HARD constraints via `labels:`:
+   ```yaml
+   services:
+     gpu-vision:
+       labels:
+         helixagent.placement.require.gpu: nvidia
+   ```
+3. Declare any SOFT preferences:
+   ```yaml
+       labels:
+         helixagent.placement.prefer.storage: fast
+         helixagent.placement.prefer.memory:  high
+   ```
+4. If the service has `depends_on` ties to others, the placement
+   layer automatically co-locates them — no separate group label
+   needed.
+5. Re-run `go test ./internal/placement/...` and the
+   `capability_aware_placement_challenge.sh` to confirm placement
+   matches expectations.
+
+## How to configure host capabilities
+
+For each remote host in `Containers/.env`:
+
+```bash
+CONTAINERS_REMOTE_HOST_1_NAME=thinker
+CONTAINERS_REMOTE_HOST_1_ADDRESS=thinker.local
+CONTAINERS_REMOTE_HOST_1_USER=milosvasic
+CONTAINERS_REMOTE_HOST_1_RUNTIME=podman
+# Operator class overrides — wins over auto-detected values.
+CONTAINERS_REMOTE_HOST_1_LABELS=storage=fast,memory=high,network=high
+```
+
+If you want the prober to drive everything, omit the `LABELS` line —
+classes are derived from `/proc/meminfo` (memory) and
+`/sys/block/*/queue/rotational` (storage). Network class is always
+manual; the prober has no reliable way to infer LAN throughput.
+
+## Verification
+
+```bash
+# Unit + benchmark (no SSH required):
+go test -count=1 ./internal/placement/...
+go test -bench=. ./internal/placement/...
+
+# After a fresh boot:
+challenges/scripts/partitioned_distribution_challenge.sh    # structural
+challenges/scripts/capability_aware_placement_challenge.sh  # semantic
+cat .placement-plan-docker-compose.yml.json | jq            # plan audit
+cat .placement-plan-docker-compose.mcp-servers.yml.json | jq
+```
+
+## Where each piece of code lives
+
+| File | Responsibility |
+|------|---------------|
+| `internal/placement/capability.go` | `HostCapabilities` struct, `ScoreHost`, `PickBestHost`, `ScoringWeights` constants |
+| `internal/placement/prober.go` | `CapabilityProber` — SSH round-trip + parsing into `HostCapabilities` |
+| `internal/placement/prober_global.go` | `SetCapabilityProber` package-singleton wiring |
+| `internal/placement/parser.go` | Reads `helixagent.placement.*` labels from compose; auto-derives `require.gpu` from device reservations and `prefer.memory` from limits |
+| `internal/placement/planner.go` | Aggregates per group, calls `PickBestHost`, builds `Plan` with reasons |
+| `internal/placement/persist.go` | `WritePlanJSON` — operator-readable plan record |
+| `internal/adapters/containers/adapter.go` | `RemoteComposeUp` installs prober, runs `PlanCompose`, deploys per-host |
+| `challenges/scripts/capability_aware_placement_challenge.sh` | Asserts the live placement matches the host capabilities |
+| `internal/placement/capability_test.go` | Unit tests for every constraint and preference combination |
+| `internal/placement/prober_test.go` | Unit tests for the SSH probe parser (uses fake executor) |
+| `internal/placement/capability_bench_test.go` | Benchmarks for `PickBestHost` at scale |
+

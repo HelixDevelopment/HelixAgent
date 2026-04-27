@@ -36,6 +36,11 @@ type composeService struct {
 	Deploy    composeDeploy          `yaml:"deploy"`
 	Build     interface{}            `yaml:"build"`
 	Ports     []interface{}          `yaml:"ports"`
+	// Labels is the standard Compose service labels block. The
+	// placement layer reads `helixagent.placement.{require,prefer}.X`
+	// keys here as capability hints (capability.go LabelXxx
+	// constants). Other label keys are ignored by placement.
+	Labels    map[string]string      `yaml:"labels"`
 	Extras    map[string]interface{} `yaml:",inline"`
 }
 
@@ -102,6 +107,45 @@ func ParseCompose(composeFile, profile string) ([]scheduler.ContainerRequirement
 		if !matchesProfile(svc.Profiles, profile) {
 			continue
 		}
+		labels := map[string]string{
+			CoLocationLabel:  groups[name],
+			ComposeFileLabel: composeFile,
+		}
+		// Capability hints from compose service labels. We pass
+		// through every `helixagent.placement.{require,prefer}.X` key
+		// so the scorer in capability.go can read them. Other label
+		// keys are ignored.
+		for k, v := range svc.Labels {
+			if strings.HasPrefix(k, "helixagent.placement.") {
+				labels[k] = v
+			}
+		}
+		// Auto-derive: any service with a GPU reservation on
+		// devices implicitly requires GPU even if it didn't set the
+		// label explicitly. Backward-compatible with services that
+		// already declared the device.
+		gpu := extractGPU(svc.Deploy.Resources.Reservations.Devices)
+		if gpu != nil {
+			if _, set := labels[LabelRequireGPU]; !set {
+				labels[LabelRequireGPU] = strings.ToLower(gpu.Vendor)
+				if labels[LabelRequireGPU] == "" {
+					labels[LabelRequireGPU] = "true"
+				}
+			}
+		}
+		// Auto-derive memory class preference from limits.memory:
+		// XL services (>=8 GiB) prefer high-memory hosts unless
+		// the operator already set a value.
+		if _, set := labels[LabelPreferMemory]; !set {
+			memMB := bytesToMB(svc.Deploy.Resources.Limits.Memory)
+			switch {
+			case memMB >= 8*1024:
+				labels[LabelPreferMemory] = "high"
+			case memMB >= 2*1024:
+				labels[LabelPreferMemory] = "medium"
+			}
+		}
+
 		req := scheduler.ContainerRequirements{
 			Name:        name,
 			Image:       svc.Image,
@@ -109,14 +153,9 @@ func ParseCompose(composeFile, profile string) ([]scheduler.ContainerRequirement
 			ServiceName: name,
 			MemoryMB:    bytesToMB(svc.Deploy.Resources.Limits.Memory),
 			CPUCores:    parseCPUs(svc.Deploy.Resources.Limits.CPUs),
-			Labels: map[string]string{
-				CoLocationLabel:  groups[name],
-				ComposeFileLabel: composeFile,
-			},
+			Labels:      labels,
 		}
-		// GPU detection: any reservations.devices entry with capability
-		// "gpu" is taken as a GPU requirement.
-		if gpu := extractGPU(svc.Deploy.Resources.Reservations.Devices); gpu != nil {
+		if gpu != nil {
 			req.GPU = gpu
 		}
 		reqs = append(reqs, req)

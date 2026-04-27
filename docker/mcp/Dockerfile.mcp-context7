@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1
+# Per-submodule Dockerfile for context7-mcp (BUGFIXES Issue #54).
+#
+# pnpm monorepo with packages/{cli,mcp}. The mcp package builds to
+# packages/mcp/dist/index.js and exposes `bin: { context7-mcp:
+# dist/index.js }`. Default upstream start uses `--transport http`;
+# we omit the flag so it falls back to stdio (the MCP default).
+
+FROM node:22-bookworm-slim AS builder
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY . .
+
+RUN pnpm install --frozen-lockfile=false --no-strict-peer-dependencies && \
+    pnpm -r run build
+
+FROM node:22-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends socat netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /app /app
+
+EXPOSE 9000
+
+# socat wraps stdio→TCP. NDJSON requires raw pipes, never pty.
+# Note: context7-mcp's default --transport is http; omitting the flag
+# uses stdio (MCP default).
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'echo "Starting context7-mcp (stdio→TCP wrapped)"' >> /entrypoint.sh && \
+    echo 'echo "Listening on TCP port 9000..."' >> /entrypoint.sh && \
+    echo 'exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:"node /app/packages/mcp/dist/index.js"' \
+        >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

@@ -233,14 +233,12 @@ services:
     restart: unless-stopped
 
   mcp-supabase:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): pnpm monorepo;
+    # uses packages/mcp-server-supabase's bin → dist/transports/stdio.js
+    # entry. Verified: initialize → serverInfo "supabase" v0.7.0.
     build:
       context: ../../MCP/submodules/supabase-mcp
-      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-supabase
     container_name: helixagent-mcp-supabase
     mem_limit: 1g
     memswap_limit: 1g
@@ -363,14 +361,13 @@ services:
     restart: unless-stopped
 
   mcp-sentry:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): turbo monorepo;
+    # uses packages/mcp-server's bin → dist/index.js. NOTE: requires
+    # SENTRY_ACCESS_TOKEN env var or it exits at startup. Verified
+    # with dummy token: initialize → serverInfo "Sentry MCP" v0.29.0.
     build:
       context: ../../MCP/submodules/sentry-mcp
-      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-sentry
     container_name: helixagent-mcp-sentry
     mem_limit: 1g
     memswap_limit: 1g
@@ -609,14 +606,12 @@ services:
     restart: unless-stopped
 
   mcp-context7:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): pnpm monorepo;
+    # uses packages/mcp's bin → dist/index.js, default stdio
+    # transport. Verified: initialize → serverInfo "Context7" v2.1.4.
     build:
       context: ../../MCP/submodules/context7-mcp
-      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-context7
     container_name: helixagent-mcp-context7
     mem_limit: 1g
     memswap_limit: 1g

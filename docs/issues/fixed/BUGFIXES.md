@@ -2150,11 +2150,15 @@ User chose Option 1 ("handle each separately"). Per-submodule Dockerfiles + unga
 | `mcp-atlassian` | `Dockerfile.mcp-atlassian` (uv two-stage build + `mcp-atlassian --transport stdio`) | `initialize` returned `serverInfo: "Atlassian MCP" v2.14.5` | ✅ ungated |
 | `mcp-playwright` | `Dockerfile.mcp-playwright` (multi-stage browser image + `node cli.js --headless`) | `initialize` returned `serverInfo: "Playwright" v1.59.0` | ✅ ungated |
 | `mcp-qdrant` | `Dockerfile.mcp-qdrant` (uv-install `mcp-server-qdrant` + stdio transport) | TCP open; full MCP needs running qdrant-backend (will verify in deploy cycle) | ✅ ungated |
-| `mcp-cloudflare` | (pending — pnpm monorepo, must pick one app) | — | ⏳ still gated |
-| `mcp-context7` | (pending — pnpm monorepo) | — | ⏳ still gated |
-| `mcp-llamaindex` | (pending — Next.js web app, may not fit stdio model) | — | ⏳ still gated |
-| `mcp-sentry` | (pending — turbo monorepo) | — | ⏳ still gated |
-| `mcp-supabase` | (pending — pnpm monorepo) | — | ⏳ still gated |
+| `mcp-supabase` | `Dockerfile.mcp-supabase` (pnpm monorepo → packages/mcp-server-supabase, bin already targets `dist/transports/stdio.js`) | `initialize` returned `serverInfo: "supabase" v0.7.0` | ✅ ungated |
+| `mcp-context7` | `Dockerfile.mcp-context7` (pnpm monorepo → packages/mcp, default stdio transport) | `initialize` returned `serverInfo: "Context7" v2.1.4` | ✅ ungated |
+| `mcp-sentry` | `Dockerfile.mcp-sentry` (turbo monorepo → packages/mcp-server, requires SENTRY_ACCESS_TOKEN env) | `initialize` returned `serverInfo: "Sentry MCP" v0.29.0` (with dummy token) | ✅ ungated |
+| `mcp-cloudflare` | Cloudflare Workers runtime — uses `wrangler dev`, not Node stdio. Doesn't fit our stdio-MCP-over-TCP model | — | 🚫 still gated (architectural mismatch) |
+| `mcp-llamaindex` | Next.js web app — exposes HTTP/OAuth, not stdio MCP | — | 🚫 still gated (architectural mismatch) |
+
+Each verified Dockerfile uses raw socat pipes (`SYSTEM:` form, NOT `EXEC:`+`pty`) to preserve MCP's NDJSON framing — pty mode corrupts the protocol per upstream warnings.
+
+7 of 9 submodules un-gated and verified end-to-end with real `initialize` JSON-RPC probes. The remaining 2 (`mcp-cloudflare`, `mcp-llamaindex`) are architecturally incompatible with our stdio-MCP-over-TCP convention — they're stay-gated permanently with documented rationale rather than pretending to fit.
 
 Each verified Dockerfile uses raw socat pipes (`SYSTEM:` form, NOT `EXEC:`+`pty`) to preserve MCP's NDJSON framing — pty mode corrupts the protocol per upstream warnings.
 

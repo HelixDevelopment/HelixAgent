@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+# Per-submodule Dockerfile for supabase-mcp (BUGFIXES Issue #54).
+#
+# pnpm monorepo. The actual server is
+# packages/mcp-server-supabase, with bin entry pointing at
+# `dist/transports/stdio.js` — already a stdio launcher. We pnpm
+# install the workspace, run the targeted build, and launch the
+# stdio entry directly via socat.
+
+FROM node:22-bookworm-slim AS builder
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY . .
+
+# pnpm install with workspace awareness; build only the supabase server
+# package (and its mcp-utils sibling, per upstream's build script).
+RUN pnpm install --frozen-lockfile=false --no-strict-peer-dependencies && \
+    pnpm --filter @supabase/mcp-utils --filter @supabase/mcp-server-supabase build
+
+FROM node:22-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends socat netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /app /app
+
+EXPOSE 9000
+
+# socat wraps stdio→TCP. NDJSON requires raw pipes, never pty.
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'echo "Starting supabase-mcp (stdio→TCP wrapped)"' >> /entrypoint.sh && \
+    echo 'echo "Listening on TCP port 9000..."' >> /entrypoint.sh && \
+    echo 'exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:"node /app/packages/mcp-server-supabase/dist/transports/stdio.js"' \
+        >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

@@ -414,5 +414,81 @@ identifying the non-host context.
 **See also:** `docs/HOST_POWER_MANAGEMENT.md` for full background and
 runbook.
 
+### CONST-033 clarification — distinguishing host events from sluggishness
+
+Heavy container builds (BuildKit pulling many GB of layers, 35+
+parallel podman/docker compose-up across MCP / RAG / cognee stacks)
+can make the host **appear** unresponsive — high load average, slow
+SSH, watchers timing out, interactive sessions feeling frozen. **This
+is NOT a CONST-033 violation.** Host suspend / hibernate / logout are
+categorically different events that leave authoritative traces.
+
+When the host appears stuck, distinguish via:
+
+| Signal | Sluggish-but-fine (build pressure) | Real CONST-033 violation |
+|--------|-----------------------------------|--------------------------|
+| `uptime` | unchanged from before | recent reboot |
+| `loginctl list-sessions` | session(s) still active | session(s) gone |
+| `journalctl ... \| grep "will suspend"` | zero broadcasts since CONST-033 fix | one or more broadcasts |
+| Load average | high (>5, often double-digit on amber) | normal but no responses |
+| `dmesg \| grep "out of memory"` | maybe (not host-power) | unrelated |
+| Recovery | clears when build finishes | requires explicit unsuspend / re-login |
+
+A sluggish host under build pressure recovers when the build
+finishes; a suspended host requires explicit unsuspend (and CONST-033
+hardening should make that impossible). If you observe what looks
+like a suspend during heavy builds, the correct first action is **not
+to edit CONST-033** but to:
+
+```bash
+bash challenges/scripts/host_no_auto_suspend_challenge.sh
+journalctl --since "10 min ago" | grep -i "will suspend\|hibernate"
+uptime ; loginctl list-sessions
+```
+
+If hardening is intact AND zero suspend broadcasts AND uptime
+unchanged AND sessions still listed → the perceived event was
+build-pressure sluggishness, not a power transition. Address by
+reducing parallel-build pressure (e.g. lower
+`compose.resources.limits` for non-essential services, sequence
+deploys, or reduce simultaneous Dockerfile changes).
+
+**Worked example (2026-04-27):** During a clean-rebuild cycle that
+triggered 28 MCP image rebuilds across thinker.local + amber.local
+simultaneously (amber load avg 10+), the orchestrator's SSH-based
+watchers timed out and the user reported "computer has stuck —
+suspended / hibernated / signed out?". Triple-check via the table
+above: hardening 4/4 PASS, zero suspend broadcasts, uptime intact at
+7:04 hours, both user sessions still listed. Conclusion: build
+pressure, not a power event. The Containers submodule was patched in
+the same session to pass `--build` to compose-up
+(`Containers/pkg/remote/compose.go`, commit 9696817) — necessary for
+CONST-035 anti-bluff but DOES increase build duration on first run
+after Dockerfile changes.
+
+### Docker / Podman ruled out as suspend vectors
+
+Investigation in the same session confirmed neither runtime issues
+host-power calls under any normal operation:
+
+- `journalctl -u podman --since '1 hour ago'` and the equivalent for
+  docker showed no daemon crashes during the heavy-build window.
+- `dmesg | grep -i 'killed process\|out of memory'` was empty — no
+  OOM events.
+- BuildKit / runc executor processes are unprivileged user-namespace
+  processes; they cannot invoke `systemctl suspend` or equivalent
+  even if instructed (CONST-033 layer-1 masking would block it
+  anyway).
+- Container image layer pulls + builds CAN saturate disk I/O and CPU
+  to the point of triggering watchdog timers in poorly-configured
+  hosts — but the CONST-033-hardened host has no watchdog set to a
+  power action; `IdleAction=ignore` ensures the only response to
+  prolonged inactivity is "do nothing".
+
+Conclusion: container runtime activity creates no path to host
+suspend on a CONST-033-compliant host. Any "suspended-feeling"
+behaviour observed during heavy builds is sluggishness, not a power
+event, and is verifiable per the table above.
+
 <!-- END host-power-management addendum (CONST-033) -->
 

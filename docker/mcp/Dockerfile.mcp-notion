@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1
+# Per-submodule Dockerfile for notion-mcp-server (BUGFIXES Issue #54).
+#
+# The generic Dockerfile.mcp-submodule entrypoint heuristics
+# (dist/index.js, build/index.js, ...) don't fit notion's layout —
+# notion-mcp-server installs as a global npm binary at
+# /usr/local/bin/notion-mcp-server (its package.json has
+# `bin: { "notion-mcp-server": "bin/cli.mjs" }`). The upstream
+# Dockerfile uses `npm link` to expose it; we replicate that and wrap
+# with socat for our orchestrator's stdio→TCP convention.
+#
+# Build context: ../../MCP/submodules/notion-mcp-server (the submodule
+# directory itself).
+
+FROM node:20-slim AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --omit-dev
+
+COPY . .
+RUN --mount=type=cache,target=/root/.npm npm run build
+RUN --mount=type=cache,target=/root/.npm npm link
+
+FROM node:20-slim
+
+# socat wraps stdio MCP over TCP per HelixAgent convention.
+RUN apt-get update && apt-get install -y --no-install-recommends socat \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/notion-openapi.json /usr/local/scripts/
+COPY --from=builder /usr/local/lib/node_modules/@notionhq/notion-mcp-server \
+                    /usr/local/lib/node_modules/@notionhq/notion-mcp-server
+COPY --from=builder /usr/local/bin/notion-mcp-server /usr/local/bin/notion-mcp-server
+
+ENV OPENAPI_MCP_HEADERS="{}"
+
+EXPOSE 9000
+
+# CRITICAL: MCP uses newline-delimited JSON over stdio. Use socat with
+# raw pipes (NOT pty) — pty mode corrupts NDJSON framing.
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'echo "Starting notion-mcp-server (stdio→TCP wrapped)"' >> /entrypoint.sh && \
+    echo 'echo "Listening on TCP port 9000..."' >> /entrypoint.sh && \
+    echo 'exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:"/usr/local/bin/notion-mcp-server"' \
+        >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

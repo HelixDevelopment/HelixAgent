@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+# Per-submodule Dockerfile for qdrant-mcp (BUGFIXES Issue #54).
+#
+# qdrant-mcp is distributed as a PyPI package (`mcp-server-qdrant`)
+# rather than launchable from its source tree, so the generic
+# Dockerfile.mcp-python entry-point heuristics
+# (src/main.py, main.py, server.py, ...) never matched. This
+# Dockerfile installs the published package and runs it with stdio
+# transport (confirmed via `mcp-server-qdrant --help` to support
+# {stdio, sse, streamable-http}). socat wraps stdio→TCP per
+# HelixAgent convention.
+#
+# Build context: ../../MCP/submodules/qdrant-mcp (the submodule
+# directory itself, even though we install from PyPI — keeping the
+# context for parity with other submodule services).
+
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    socat netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --quiet uv && \
+    uv pip install --system --no-cache-dir mcp-server-qdrant
+
+EXPOSE 9000
+
+# Default qdrant connection — overridden by env vars
+# QDRANT_URL / QDRANT_API_KEY at runtime.
+ENV QDRANT_URL="" \
+    QDRANT_API_KEY="" \
+    COLLECTION_NAME="default-collection" \
+    EMBEDDING_MODEL="sentence-transformers/all-MiniLM-L6-v2"
+
+# CRITICAL: MCP uses newline-delimited JSON over stdio. Use socat with
+# raw pipes (NOT pty) — pty mode corrupts NDJSON framing.
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'echo "Starting mcp-server-qdrant (stdio→TCP wrapped)"' >> /entrypoint.sh && \
+    echo 'echo "Listening on TCP port 9000..."' >> /entrypoint.sh && \
+    echo 'exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:"mcp-server-qdrant --transport stdio"' \
+        >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

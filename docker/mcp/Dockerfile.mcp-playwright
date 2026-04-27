@@ -1,32 +1,51 @@
-# Dockerfile for Playwright MCP server
-# Requires browser binaries and dependencies
+# syntax=docker/dockerfile:1
+# Per-submodule Dockerfile for playwright-mcp (BUGFIXES Issue #54).
+#
+# Mirrors upstream's multi-stage build (browser image with chromium
+# pre-installed) plus our socat wrapper for stdio→TCP at port 9000.
+# CRITICAL: uses raw pipes (NOT pty) — pty mode corrupts MCP NDJSON
+# framing.
 
-FROM mcr.microsoft.com/playwright:v1.40.0-jammy
+ARG PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-
-# Install socat for TCP wrapper
-RUN apt-get update && apt-get install -y socat netcat-openbsd && rm -rf /var/lib/apt/lists/*
-
+FROM node:22-bookworm-slim AS base
+ARG PLAYWRIGHT_BROWSERS_PATH
+ENV PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH}
 WORKDIR /app
 
-# Copy the submodule source from the specified directory
-COPY . .
+RUN apt-get update && apt-get install -y --no-install-recommends socat netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies and build
-RUN npm install && npm run build 2>/dev/null || true
+RUN --mount=type=cache,target=/root/.npm,sharing=locked,id=npm-cache \
+    --mount=type=bind,source=package.json,target=package.json \
+    --mount=type=bind,source=package-lock.json,target=package-lock.json \
+    --mount=type=bind,source=packages/playwright-mcp/package.json,target=packages/playwright-mcp/package.json \
+  npm ci --omit=dev && \
+  npx -y playwright-core install-deps chromium
 
-# Create entrypoint script
+FROM base AS browser
+RUN npx -y playwright-core install --no-shell chromium
+
+FROM base
+ARG PLAYWRIGHT_BROWSERS_PATH
+ARG USERNAME=node
+ENV NODE_ENV=production
+ENV PLAYWRIGHT_MCP_OUTPUT_DIR=/tmp/playwright-output
+
+RUN chown -R ${USERNAME}:${USERNAME} node_modules
+COPY --from=browser --chown=${USERNAME}:${USERNAME} ${PLAYWRIGHT_BROWSERS_PATH} ${PLAYWRIGHT_BROWSERS_PATH}
+COPY --chown=${USERNAME}:${USERNAME} packages/playwright-mcp/cli.js packages/playwright-mcp/package.json ./
+
+# Entrypoint as root (need to write /entrypoint.sh) then drop privs.
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
-    echo 'echo "Starting Playwright MCP server on port 9000"' >> /entrypoint.sh && \
-    echo 'ENTRY=""' >> /entrypoint.sh && \
-    echo 'if [ -f "dist/index.js" ]; then ENTRY="dist/index.js"' >> /entrypoint.sh && \
-    echo 'elif [ -f "build/index.js" ]; then ENTRY="build/index.js"' >> /entrypoint.sh && \
-    echo 'elif [ -f "index.js" ]; then ENTRY="index.js"' >> /entrypoint.sh && \
-    echo 'fi' >> /entrypoint.sh && \
-    echo 'if [ -z "$ENTRY" ]; then echo "No entry point found!"; exit 1; fi' >> /entrypoint.sh && \
-    echo 'socat TCP-LISTEN:9000,reuseaddr,fork EXEC:"node $ENTRY",pty,stderr' >> /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'echo "Starting playwright-mcp (stdio→TCP wrapped)"' >> /entrypoint.sh && \
+    echo 'echo "Listening on TCP port 9000..."' >> /entrypoint.sh && \
+    echo 'exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:"node /app/cli.js --headless --browser chromium --no-sandbox"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh && \
+    chown ${USERNAME}:${USERNAME} /entrypoint.sh
 
+USER ${USERNAME}
 EXPOSE 9000
 
 CMD ["/entrypoint.sh"]

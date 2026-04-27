@@ -258,14 +258,13 @@ services:
   # =============================================================================
 
   mcp-qdrant:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): qdrant-mcp is a
+    # PyPI package (mcp-server-qdrant); generic mcp-python heuristics
+    # couldn't find it. Dockerfile.mcp-qdrant uv-installs it and
+    # invokes via stdio transport.
     build:
       context: ../../MCP/submodules/qdrant-mcp
-      dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-qdrant
     container_name: helixagent-mcp-qdrant-server
     mem_limit: 1g
     memswap_limit: 1g
@@ -389,11 +388,11 @@ services:
   # =============================================================================
 
   mcp-playwright:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): playwright-mcp
+    # has a multi-stage browser build + ENTRYPOINT
+    # ["node", "cli.js", ...]. Dockerfile.mcp-playwright replicates
+    # that with socat wrapping for stdio→TCP. CRITICAL: raw pipes,
+    # NOT pty (pty corrupts NDJSON framing).
     build:
       context: ../../MCP/submodules/playwright-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-playwright
@@ -477,14 +476,13 @@ services:
   # =============================================================================
 
   mcp-notion:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): notion installs
+    # as a global npm binary; generic Dockerfile.mcp-submodule
+    # heuristics couldn't find dist/index.js. Dockerfile.mcp-notion
+    # replicates upstream's npm-link approach + socat wrapper.
     build:
       context: ../../MCP/submodules/notion-mcp-server
-      dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-notion
     container_name: helixagent-mcp-notion
     mem_limit: 1g
     memswap_limit: 1g
@@ -543,14 +541,13 @@ services:
     restart: unless-stopped
 
   mcp-atlassian:
-    profiles:
-      # Broken under current generic Dockerfile.mcp-{submodule,python}
-      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
-      # Opt-in: docker compose --profile submodule-experimental up -d
-      - submodule-experimental
+    # Per-submodule Dockerfile (BUGFIXES Issue #54): atlassian-mcp
+    # is a PyPI uv-installed binary `mcp-atlassian`; needs explicit
+    # `--transport stdio` flag. Dockerfile.mcp-atlassian replicates
+    # upstream's two-stage uv build + socat wrapper.
     build:
       context: ../../MCP/submodules/atlassian-mcp
-      dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
+      dockerfile: ../../../docker/mcp/Dockerfile.mcp-atlassian
     container_name: helixagent-mcp-atlassian
     mem_limit: 1g
     memswap_limit: 1g

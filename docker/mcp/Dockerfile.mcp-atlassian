@@ -1,0 +1,49 @@
+# syntax=docker/dockerfile:1
+# Per-submodule Dockerfile for atlassian-mcp (BUGFIXES Issue #54).
+#
+# Mirrors upstream's two-stage uv-based build (uv sync) plus our
+# socat wrapper for stdio→TCP at port 9000.
+
+FROM ghcr.io/astral-sh/uv:python3.13-alpine AS uv
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
+RUN --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=README.md,target=README.md \
+    uv lock
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    uv sync --frozen --no-install-project --no-dev --no-editable
+
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    uv sync --frozen --no-dev --no-editable
+
+RUN find /app/.venv -name '__pycache__' -type d -exec rm -rf {} + && \
+    find /app/.venv -name '*.pyc' -delete && \
+    find /app/.venv -name '*.pyo' -delete
+
+FROM python:3.13-alpine
+
+RUN apk add --no-cache socat netcat-openbsd && \
+    adduser -D -h /home/app -s /bin/sh app
+
+WORKDIR /app
+COPY --from=uv --chown=app:app /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
+
+USER app
+EXPOSE 9000
+
+# socat wraps stdio→TCP. NDJSON framing requires raw pipes.
+RUN echo '#!/bin/sh' > /home/app/entrypoint.sh && \
+    echo 'set -e' >> /home/app/entrypoint.sh && \
+    echo 'echo "Starting mcp-atlassian (stdio→TCP wrapped)"' >> /home/app/entrypoint.sh && \
+    echo 'echo "Listening on TCP port 9000..."' >> /home/app/entrypoint.sh && \
+    echo 'exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:"mcp-atlassian --transport stdio"' >> /home/app/entrypoint.sh && \
+    chmod +x /home/app/entrypoint.sh
+
+CMD ["/home/app/entrypoint.sh"]

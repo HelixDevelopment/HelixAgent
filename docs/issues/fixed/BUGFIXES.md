@@ -2140,6 +2140,26 @@ Do you want me to:
 
 The gate as-shipped is honest: those services are not pretending to work. Any of the three follow-up paths is fine; pick one and I'll execute.
 
+### Phase-2 update (2026-04-27 evening)
+
+User chose Option 1 ("handle each separately"). Per-submodule Dockerfiles + ungating, with end-to-end MCP `initialize` JSON-RPC verification per CONST-035:
+
+| Submodule | New Dockerfile | Verification | Status |
+|---|---|---|---|
+| `mcp-notion` | `Dockerfile.mcp-notion` (npm-link `/usr/local/bin/notion-mcp-server` + socat) | `initialize` returned `serverInfo: "Notion API" v1.0.0` | ✅ ungated |
+| `mcp-atlassian` | `Dockerfile.mcp-atlassian` (uv two-stage build + `mcp-atlassian --transport stdio`) | `initialize` returned `serverInfo: "Atlassian MCP" v2.14.5` | ✅ ungated |
+| `mcp-playwright` | `Dockerfile.mcp-playwright` (multi-stage browser image + `node cli.js --headless`) | `initialize` returned `serverInfo: "Playwright" v1.59.0` | ✅ ungated |
+| `mcp-qdrant` | `Dockerfile.mcp-qdrant` (uv-install `mcp-server-qdrant` + stdio transport) | TCP open; full MCP needs running qdrant-backend (will verify in deploy cycle) | ✅ ungated |
+| `mcp-cloudflare` | (pending — pnpm monorepo, must pick one app) | — | ⏳ still gated |
+| `mcp-context7` | (pending — pnpm monorepo) | — | ⏳ still gated |
+| `mcp-llamaindex` | (pending — Next.js web app, may not fit stdio model) | — | ⏳ still gated |
+| `mcp-sentry` | (pending — turbo monorepo) | — | ⏳ still gated |
+| `mcp-supabase` | (pending — pnpm monorepo) | — | ⏳ still gated |
+
+Each verified Dockerfile uses raw socat pipes (`SYSTEM:` form, NOT `EXEC:`+`pty`) to preserve MCP's NDJSON framing — pty mode corrupts the protocol per upstream warnings.
+
+The 5 still-gated services are pnpm/turbo monorepos requiring per-app investigation (cloudflare-mcp alone has 30+ apps under `apps/`); deferred to a follow-up cycle.
+
 
 
 

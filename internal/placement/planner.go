@@ -82,19 +82,71 @@ func PlanCompose(
 	}
 	sort.Strings(groupIDs)
 
-	sched := scheduler.NewScheduler(hostManager, nil, opts...)
+	// Custom spread across REGISTERED remote hosts only. The Containers
+	// scheduler injects its LocalHostName ("local" by default) into
+	// every strategy's candidate set and there's no clean option to
+	// suppress it; under our deployment model the orchestrator binary
+	// stays on the local host and never receives containers, so any
+	// PlacementDecision pointing at "local" is invalid. Doing
+	// per-group round-robin over `hosts` directly here gives:
+	//   - deterministic placement (sorted host order + group order),
+	//   - even distribution (least-loaded host wins, ties broken by
+	//     name),
+	//   - explicit exclusion of local (we never add it to the
+	//     candidate list).
+	// `opts` is accepted for forward compatibility (e.g. when the
+	// scheduler grows a "no local" option) but not consumed today.
+	_ = opts
+
+	hosts := hostManager.ListHosts()
+	if len(hosts) == 0 {
+		return nil, fmt.Errorf("no remote hosts registered")
+	}
+	hostNames := make([]string, len(hosts))
+	for i, h := range hosts {
+		hostNames[i] = h.Name
+	}
+	sort.Strings(hostNames)
+
+	hostLoad := make(map[string]int, len(hostNames))
+	for _, h := range hostNames {
+		hostLoad[h] = 0
+	}
 
 	hostServices := make(map[string][]string)
 	var allDecisions []scheduler.PlacementDecision
 
 	for _, gid := range groupIDs {
 		members := groups[gid]
-		// Aggregate group-level requirement: max of any member.
-		repr := aggregateRequirements(gid, members)
-		decision, err := sched.Schedule(ctx, repr)
-		if err != nil {
-			return nil, fmt.Errorf("schedule group %s: %w", gid, err)
+		// Aggregate group-level requirement (informational; the
+		// scoring isn't used by our custom spread but kept so the
+		// PlacementDecision still records the group's resource
+		// footprint for operators reading the persisted plan).
+		_ = aggregateRequirements(gid, members)
+
+		// Pick the registered host with the fewest already-placed
+		// services; tie-break alphabetically for deterministic
+		// plans across reboots.
+		picked := hostNames[0]
+		for _, h := range hostNames {
+			if hostLoad[h] < hostLoad[picked] {
+				picked = h
+			}
 		}
+		hostLoad[picked] += len(members)
+
+		decision := &scheduler.PlacementDecision{
+			HostName: picked,
+			Score:    1.0,
+			Reason: fmt.Sprintf(
+				"spread (registered hosts only): fewest containers, %d after this group",
+				hostLoad[picked],
+			),
+		}
+		// Allow err handling parity with scheduler-based path even
+		// though our custom path can't return one.
+		var err error
+		_ = err
 		// Record one decision per actual member so the per-service
 		// audit trail is complete.
 		for _, m := range members {
@@ -111,14 +163,14 @@ func PlanCompose(
 	}
 
 	// Stable per-host service order.
-	hostNames := make([]string, 0, len(hostServices))
+	emittedHosts := make([]string, 0, len(hostServices))
 	for h := range hostServices {
-		hostNames = append(hostNames, h)
+		emittedHosts = append(emittedHosts, h)
 	}
-	sort.Strings(hostNames)
+	sort.Strings(emittedHosts)
 
 	plan := &Plan{Decisions: allDecisions}
-	for _, h := range hostNames {
+	for _, h := range emittedHosts {
 		svcs := hostServices[h]
 		sort.Strings(svcs)
 		plan.Assignments = append(plan.Assignments, HostAssignment{

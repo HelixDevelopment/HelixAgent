@@ -274,24 +274,66 @@ else
 fi
 
 # ---------------------------------------------------------------
-# F5: MCP servers visible to the gateway
+# F5: MCP servers — gateway reports them AND at least one is
+# actually reachable on its TCP port (CONST-035: don't trust
+# container Up; verify protocol).
 # ---------------------------------------------------------------
 echo
-echo "--- F5: MCP server count via gateway ---"
-mcp_count=$(curl -fsS --max-time 10 http://localhost:8100/v1/mcp/stats 2>/dev/null \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('total_servers', d.get('count', 0)))" 2>/dev/null \
+echo "--- F5: MCP server stats via gateway + real TCP probe ---"
+gw_resp=$(curl -fsS --max-time 10 http://localhost:8100/v1/mcp/stats 2>/dev/null || echo "")
+adapter_total=$(echo "$gw_resp" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('adapters',{}).get('total',0))" 2>/dev/null \
   || echo "0")
-# Fallback: count helixagent-mcp-* containers running across hosts.
-mcp_running=0
+tool_total=$(echo "$gw_resp" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('tools',{}).get('total',0))" 2>/dev/null \
+  || echo "0")
+
+if [[ "$adapter_total" -ge 5 ]]; then
+  echo "PASS: gateway /v1/mcp/stats reports $adapter_total adapters + $tool_total tools"
+else
+  echo "FAIL: gateway /v1/mcp/stats reports $adapter_total adapters (expected ≥ 5)"
+  exit_code=1
+fi
+
+# Probe a representative MCP server's TCP port on its placed host.
+# We pick mcp-fetch (always present, deterministic port 8200).
+fetch_host="${SEEN_ON[helixagent-mcp-fetch]:-}"
+if [[ -z "$fetch_host" || "$fetch_host" == *,* ]]; then
+  echo "FAIL: helixagent-mcp-fetch not placed on exactly one host (placed: '$fetch_host')"
+  exit_code=1
+else
+  fetch_addr=$([[ "$fetch_host" == "local" ]] && echo "localhost" || addr_for_host "$fetch_host")
+  if exec 3<>/dev/tcp/"$fetch_addr"/8200 2>/dev/null; then
+    exec 3<&-
+    exec 3>&-
+    echo "PASS: mcp-fetch on $fetch_host accepts TCP at $fetch_addr:8200"
+  else
+    echo "FAIL: mcp-fetch on $fetch_host NOT reachable at $fetch_addr:8200 (CONST-035: container Up != app reachable)"
+    exit_code=1
+  fi
+fi
+
+# Count CONTAINERS that are NOT crash-looping. A container in
+# Restarting state is not serving traffic; report it but don't
+# count it as a working MCP. CONST-035: don't accept zombie
+# containers as "working".
+running_healthy=0
+running_restart=0
 for name in "${!SEEN_ON[@]}"; do
-  if [[ "$name" == helixagent-mcp-* ]]; then
-    mcp_running=$((mcp_running + 1))
+  [[ "$name" != helixagent-mcp-* ]] && continue
+  host="${SEEN_ON[$name]}"
+  cmd=$(runtime_for_host "$host")
+  status=$(ssh -o BatchMode=yes "$(ssh_for_host "$host")" \
+    "$cmd ps --format '{{.Status}}' --filter name=^$name\$" 2>/dev/null | head -1)
+  if [[ "$status" == Up* ]]; then
+    running_healthy=$((running_healthy + 1))
+  elif [[ "$status" == Restart* ]]; then
+    running_restart=$((running_restart + 1))
   fi
 done
-if [[ "$mcp_running" -ge 5 ]]; then
-  echo "PASS: $mcp_running MCP container(s) running across hosts (gateway reported $mcp_count)"
-else
-  echo "FAIL: only $mcp_running MCP container(s) running (target ≥ 5)"
+echo "  ↳ MCP containers: $running_healthy stably running, $running_restart restart-looping"
+if [[ "$running_healthy" -lt 5 ]]; then
+  echo "FAIL: only $running_healthy stably-running MCP servers (need ≥ 5; restart-loopers don't count)"
   exit_code=1
 fi
 

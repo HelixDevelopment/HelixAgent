@@ -2039,5 +2039,107 @@ sub-millisecond up to 16 hosts.
   section + Mermaid flow diagram)
 - `CLAUDE.md` (CONST rule #26 — capability-aware placement)
 
+---
+
+## Issue #54: Generic MCP-submodule Dockerfile heuristics fail for 9 of 28 submodules — architectural problem flagged for follow-up (DIAGNOSED 2026-04-27)
+
+### Issue (CONST-035 anti-bluff finding)
+
+Strict partitioned-distribution Challenge under CONST-035 surfaced
+that 9 of 28 MCP submodule services restart-loop or exit
+immediately:
+
+| Service | State | Log message |
+|---------|-------|-------------|
+| mcp-notion | Exited (1) | "ERROR: No entry point found!" |
+| mcp-cloudflare | Restarting (1) | "ERROR: No entry point found!" |
+| mcp-atlassian | Initialized → Exited | "ERROR: No entry point found!" |
+| mcp-context7 | Exited (1) | "ERROR: No entry point found!" |
+| mcp-llamaindex | Restarting (1) | "ERROR: No entry point found!" |
+| mcp-playwright | Restarting (1) | "ERROR: No entry point found!" |
+| mcp-sentry | Exited (1) | "ERROR: No entry point found!" |
+| mcp-supabase | Restarting (1) | "ERROR: No entry point found!" |
+| mcp-qdrant-server | Exited (1) | "ERROR: No Python entry point found!" |
+
+Pre-CONST-035 these were silently masked: containers restart-looped
+forever and the soft Challenge counted them as "running" because they
+appeared in `podman ps`. Operators had no signal that 32% of the MCP
+fleet was non-functional.
+
+### Root cause (systematic-debugging Phase 1+2)
+
+`docker/mcp/Dockerfile.mcp-submodule` and `Dockerfile.mcp-python` use
+hardcoded short lists of entry-point candidates:
+
+- mcp-submodule: `dist/index.js`, `build/index.js`, `index.js`, `src/index.js`, `src/index.ts`
+- mcp-python: `src/main.py`, `main.py`, `server.py`, `src/server.py`, `src/__main__.py`
+
+But each upstream MCP submodule has its own bespoke layout:
+
+- **qdrant-mcp** — Python package at `src/mcp_server_qdrant/main.py` (3-deep). Upstream Dockerfile runs `uvx mcp-server-qdrant --transport sse` after PyPI install; not a file-system entry-point at all.
+- **notion-mcp-server** — TypeScript with `package.json` `main: "index.js"`, build output via `tsc -build && node scripts/build-cli.js`. Upstream uses `ENTRYPOINT ["notion-mcp-server"]` (npm-installed binary on PATH).
+- **cloudflare-mcp** — pnpm monorepo with per-product apps under `apps/{ai-gateway,auditlogs,...}`. There IS no single entry point; each app is a different MCP server.
+- **playwright-mcp**, **atlassian-mcp**, **llamaindex-mcp**, **sentry-mcp**, **supabase-mcp**, **context7-mcp** — each different again.
+
+This isn't a fix-one-bug situation. After tracing 3 submodules per the systematic-debugging skill's "3+ failures = architectural problem" rule (Phase 4.5), the conclusion is: **no generic Dockerfile can launch all 28 MCP submodules**. Each upstream is genuinely unique.
+
+### Fix (Phase 1 — pragmatic, this commit)
+
+The 9 broken services are gated behind a `submodule-experimental` Compose profile so the default deploy stops masquerading them as healthy:
+
+```yaml
+mcp-notion:
+  profiles:
+    - submodule-experimental
+  ...
+```
+
+Default `docker compose up -d` → 19 working MCP services + 7 MCP-Servers/* services = 26 healthy MCP servers. Operators investigating individual broken submodules opt in via `docker compose --profile submodule-experimental up -d`.
+
+The strict partitioned-distribution Challenge now reports `26 stably running, N restart-looping` honestly — the gate prevents the restart-looping count from being inflated by services that can't possibly start under the current Dockerfile.
+
+### Fix (Phase 2 — proper fix, deferred)
+
+Per-submodule overrides. Two viable approaches:
+
+**Option A: Use each submodule's own Dockerfile, wrap stdio→TCP via socat.**
+- Pros: respects upstream's own build & launch decisions; minimal logic in our orchestrator.
+- Cons: requires per-submodule build context handling; some upstreams expect SSE not stdio.
+
+**Option B: Per-service `command:` override in compose with the actual launch line.**
+- Pros: keeps our generic Dockerfile; one-line fix per submodule.
+- Cons: still needs per-submodule research; brittle to upstream changes.
+
+Either path is hours of investigation per submodule × 9 = significant work that needs a dedicated maintenance cycle, not a same-turn shoehorn fix.
+
+### Verification
+
+```bash
+# Strict Challenge (CONST-035) — tells the truth about what works:
+$ challenges/scripts/partitioned_distribution_challenge.sh
+PASS: gateway /v1/mcp/stats reports 50 adapters + 21 tools
+PASS: mcp-fetch on thinker accepts TCP at thinker.local:8200
+  ↳ MCP containers: 26 stably running, 0 restart-looping  (after gating)
+
+# Compose still validates with profile gating:
+$ docker compose -f docker-compose.mcp-servers.yml config -q ; echo $?
+0
+```
+
+### Affected files
+
+- `docker/mcp/docker-compose.mcp-servers.yml` (9 services gated behind `submodule-experimental` profile)
+- `challenges/scripts/partitioned_distribution_challenge.sh` (F5 reads correct gateway fields, probes real MCP TCP, counts only stably-running containers — no longer inflates by restart-loopers)
+
+### Honest open question for the operator
+
+Do you want me to:
+1. **Spend a maintenance cycle implementing Option A or B** for the 9 broken submodules (substantial work)?
+2. **Drop the broken submodules from the project entirely** (simpler, fewer surfaces to maintain)?
+3. **Leave the gate in place** and revisit when one of those services is actually needed by a use case?
+
+The gate as-shipped is honest: those services are not pretending to work. Any of the three follow-up paths is fine; pick one and I'll execute.
+
+
 
 

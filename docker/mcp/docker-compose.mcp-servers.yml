@@ -233,6 +233,11 @@ services:
     restart: unless-stopped
 
   mcp-supabase:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/supabase-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
@@ -253,6 +258,11 @@ services:
   # =============================================================================
 
   mcp-qdrant:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/qdrant-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
@@ -318,6 +328,11 @@ services:
     restart: unless-stopped
 
   mcp-cloudflare:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/cloudflare-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
@@ -349,6 +364,11 @@ services:
     restart: unless-stopped
 
   mcp-sentry:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/sentry-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
@@ -369,6 +389,11 @@ services:
   # =============================================================================
 
   mcp-playwright:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/playwright-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-playwright
@@ -452,6 +477,11 @@ services:
   # =============================================================================
 
   mcp-notion:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/notion-mcp-server
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
@@ -513,6 +543,11 @@ services:
     restart: unless-stopped
 
   mcp-atlassian:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/atlassian-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-python
@@ -577,6 +612,11 @@ services:
     restart: unless-stopped
 
   mcp-context7:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/context7-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule
@@ -590,6 +630,11 @@ services:
     restart: unless-stopped
 
   mcp-llamaindex:
+    profiles:
+      # Broken under current generic Dockerfile.mcp-{submodule,python}
+      # — each submodule has a bespoke build/launch (BUGFIXES Issue #54).
+      # Opt-in: docker compose --profile submodule-experimental up -d
+      - submodule-experimental
     build:
       context: ../../MCP/submodules/llamaindex-mcp
       dockerfile: ../../../docker/mcp/Dockerfile.mcp-submodule

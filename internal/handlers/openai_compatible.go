@@ -521,19 +521,29 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	// Check model routing
-	// helix-llm → provider chain with fallback (helixllm → other providers)
-	// helix-debate → full AI Debate ensemble
-	// default → ensemble
+	// Check model routing.
+	// Canonical names per docs/api/API_REFERENCE.md and /v1/models response:
+	//   - helixagent-debate (canonical for CLI configs)
+	//   - helixagent/helixagent-debate (provider-qualified form)
+	//   - helix-debate, helixagent/helix-debate (legacy aliases)
+	//   → AI Debate ensemble
+	//   - helixagent-llm, helixagent/helixagent-llm (canonical)
+	//   - helix-llm, helixagent/helix-llm (legacy aliases)
+	//   → provider chain with HelixLLM-first fallback
+	// Anything else → AI Debate ensemble (graceful default).
 	modelToCheck := req.Model
-	if modelToCheck == "" || modelToCheck == "helixagent/helix-debate" || modelToCheck == "helix-debate" {
-		logrus.Info("Model: helix-debate or default - routing to AI Debate ensemble")
-	} else if modelToCheck == "helixagent/helix-llm" || modelToCheck == "helix-llm" {
-		logrus.Info("Model: helix-llm - routing to provider chain with fallback")
+	switch modelToCheck {
+	case "",
+		"helixagent-debate", "helixagent/helixagent-debate",
+		"helix-debate", "helixagent/helix-debate":
+		logrus.Info("Model: helixagent-debate or default - routing to AI Debate ensemble")
+	case "helixagent-llm", "helixagent/helixagent-llm",
+		"helix-llm", "helixagent/helix-llm":
+		logrus.Info("Model: helixagent-llm - routing to provider chain with fallback")
 		h.processWithProviderChain(c, &req)
 		return
-	} else {
-		logrus.Infof("Model '%s' not recognized, using AI Debate ensemble", modelToCheck)
+	default:
+		logrus.Infof("Model '%s' not in canonical alias set, using AI Debate ensemble", modelToCheck)
 	}
 
 	// Check if this is a tool result processing turn vs a new user request
@@ -702,11 +712,13 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 
 // handleStreamingChatCompletions handles streaming chat completions with SSE
 func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *OpenAIChatRequest) {
-	// Check model routing for streaming
-	// helix-llm → provider chain with fallback
-	// helix-debate → ensemble stream
-	if req.Model == "helixagent/helix-llm" || req.Model == "helix-llm" {
-		logrus.Info("Streaming: helix-llm - using provider chain with fallback")
+	// Check model routing for streaming. Match the canonical set used
+	// in ChatCompletions(): helixagent-llm (and legacy helix-llm) →
+	// provider chain; default / helixagent-debate → ensemble stream.
+	switch req.Model {
+	case "helixagent-llm", "helixagent/helixagent-llm",
+		"helix-llm", "helixagent/helix-llm":
+		logrus.Info("Streaming: helixagent-llm - using provider chain with fallback")
 		h.streamWithProviderChain(c, req)
 		return
 	}
@@ -2282,7 +2294,10 @@ func (h *UnifiedHandler) Models(c *gin.Context) {
 	response := OpenAIModelsResponse{
 		Object: "list",
 		Data: []OpenAIModel{
+			// Canonical names used in CLI configs and docs/api/API_REFERENCE.md.
 			makeModel("helixagent-debate"),
+			makeModel("helixagent-llm"),
+			// Legacy aliases retained so existing clients keep working.
 			makeModel("helix-debate"),
 			makeModel("helix-llm"),
 		},

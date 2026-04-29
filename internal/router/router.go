@@ -9,6 +9,7 @@ import (
 
 	authadapter "dev.helix.agent/internal/adapters/auth"
 	containeradapter "dev.helix.agent/internal/adapters/containers"
+	"dev.helix.agent/internal/benchmark"
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
 	"dev.helix.agent/internal/checkpoints"
@@ -1285,10 +1286,15 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		handlers.RegisterLLMOpsRoutes(protected, llmopsHandler)
 		logger.Info("LLMOps endpoints registered at /v1/llmops/* (services pending)")
 
-		// Benchmark endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
-		benchmarkHandler := handlers.NewBenchmarkHandler(nil)
+		// Benchmark endpoints — wire a real BenchmarkSystem so /v1/benchmark/*
+		// returns real data instead of 503. The system uses defaults when
+		// nil config is passed; provider adapter remains nil until a future
+		// commit wires it to the registry.
+		benchmarkSystem := benchmark.NewBenchmarkSystem(nil, logger)
+		_ = benchmarkSystem.Initialize(nil) // best-effort; nil provider OK
+		benchmarkHandler := handlers.NewBenchmarkHandler(benchmarkSystem)
 		handlers.RegisterBenchmarkRoutes(protected, benchmarkHandler)
-		logger.Info("Benchmark endpoints registered at /v1/benchmark/* (services pending)")
+		logger.Info("Benchmark endpoints registered at /v1/benchmark/* (real BenchmarkSystem wired)")
 
 		// QA endpoints — HelixQA autonomous QA pipeline; adapter wired lazily
 		qaHandler := handlers.NewQAHandler(nil)

@@ -18,8 +18,12 @@ func TestMemoryBackendName(t *testing.T) {
 	t.Parallel()
 	name := adapter.MemoryBackendName()
 	assert.NotEmpty(t, name)
-	// Must be one of the known backends
-	assert.Contains(t, name, "digital.vasic.helixmemory")
+	// Backend name must match the active build tag.
+	if adapter.IsHelixMemoryEnabled() {
+		assert.Contains(t, name, "digital.vasic.helixmemory")
+	} else {
+		assert.Contains(t, name, "digital.vasic.memory")
+	}
 }
 
 func TestNewOptimalStoreAdapter_Default(t *testing.T) {

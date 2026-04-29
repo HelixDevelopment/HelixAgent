@@ -1,4 +1,12 @@
 // Package memory_test provides comprehensive tests for the HelixMemory fusion adapter.
+//
+// These tests exercise NewOptimalStoreAdapter() returning *HelixMemoryFusionAdapter
+// (the default implementation). Under -tags nohelixmemory the same factory returns
+// *StoreAdapter, which lacks StoreWithAgent / RetrieveForAgent / Health / GetStats —
+// so this test file is gated to the default build and skipped under the opt-out tag.
+//
+//go:build !nohelixmemory
+
 package memory_test
 
 import (

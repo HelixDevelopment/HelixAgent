@@ -125,7 +125,7 @@ log_info "SECTION 6: Race Detector — Debate & Handlers"
 log_info "=============================================="
 
 run_test "debate agents: no data races" \
-    "go test -race -short -count=1 -timeout=60s ./internal/debate/agents/ ./internal/debate/orchestrator/"
+    "go test -race -short -count=1 -timeout=60s ./DebateOrchestrator/agents/ ./DebateOrchestrator/orchestrator/"
 
 run_test "handlers: no data races" \
     "go test -race -short -count=1 -timeout=60s ./internal/handlers/"

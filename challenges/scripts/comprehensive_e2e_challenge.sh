@@ -722,7 +722,7 @@ fi
 # Test 6.8: Debate orchestrator framework exists
 TOTAL=$((TOTAL + 1))
 log_info "Test 6.8: Debate orchestrator framework exists"
-if [ -d "$PROJECT_ROOT/internal/debate/orchestrator" ]; then
+if [ -d "$PROJECT_ROOT/DebateOrchestrator/orchestrator" ]; then
     pass_test "Debate orchestrator framework found"
 else
     fail_test "Debate orchestrator framework NOT found"

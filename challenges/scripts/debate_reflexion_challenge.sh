@@ -23,35 +23,35 @@ log_info "=============================================="
 # --- Section 1: Package existence and compilation ---
 
 log_info "Test 1: Reflexion package compiles"
-if (cd "$PROJECT_ROOT" && go build ./internal/debate/reflexion/... 2>&1); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && go build ./reflexion/... 2>&1); then
     record_assertion "reflexion_compile" "true" "true" "Reflexion package compiles"
 else
     record_assertion "reflexion_compile" "true" "false" "Reflexion package failed to compile"
 fi
 
 log_info "Test 2: EpisodicMemoryBuffer type exists"
-if grep -q "type EpisodicMemoryBuffer struct" "$PROJECT_ROOT/internal/debate/reflexion/episodic_memory.go" 2>/dev/null; then
+if grep -q "type EpisodicMemoryBuffer struct" "$PROJECT_ROOT/DebateOrchestrator/reflexion/episodic_memory.go" 2>/dev/null; then
     record_assertion "episodic_memory_buffer" "true" "true" "EpisodicMemoryBuffer type found"
 else
     record_assertion "episodic_memory_buffer" "true" "false" "EpisodicMemoryBuffer type NOT found"
 fi
 
 log_info "Test 3: ReflectionGenerator type exists"
-if grep -q "type ReflectionGenerator struct" "$PROJECT_ROOT/internal/debate/reflexion/reflection_generator.go" 2>/dev/null; then
+if grep -q "type ReflectionGenerator struct" "$PROJECT_ROOT/DebateOrchestrator/reflexion/reflection_generator.go" 2>/dev/null; then
     record_assertion "reflection_generator" "true" "true" "ReflectionGenerator type found"
 else
     record_assertion "reflection_generator" "true" "false" "ReflectionGenerator type NOT found"
 fi
 
 log_info "Test 4: ReflexionLoop type exists"
-if grep -q "type ReflexionLoop struct" "$PROJECT_ROOT/internal/debate/reflexion/reflexion_loop.go" 2>/dev/null; then
+if grep -q "type ReflexionLoop struct" "$PROJECT_ROOT/DebateOrchestrator/reflexion/reflexion_loop.go" 2>/dev/null; then
     record_assertion "reflexion_loop" "true" "true" "ReflexionLoop type found"
 else
     record_assertion "reflexion_loop" "true" "false" "ReflexionLoop type NOT found"
 fi
 
 log_info "Test 5: AccumulatedWisdom type exists"
-if grep -q "type AccumulatedWisdom struct" "$PROJECT_ROOT/internal/debate/reflexion/accumulated_wisdom.go" 2>/dev/null; then
+if grep -q "type AccumulatedWisdom struct" "$PROJECT_ROOT/DebateOrchestrator/reflexion/accumulated_wisdom.go" 2>/dev/null; then
     record_assertion "accumulated_wisdom" "true" "true" "AccumulatedWisdom type found"
 else
     record_assertion "accumulated_wisdom" "true" "false" "AccumulatedWisdom type NOT found"
@@ -60,28 +60,28 @@ fi
 # --- Section 2: Tests pass ---
 
 log_info "Test 6: Episodic memory tests pass"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./internal/debate/reflexion/ -run "TestEpisodic|TestNewEpisodic|TestMemoryBuffer" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./reflexion/ -run "TestEpisodic|TestNewEpisodic|TestMemoryBuffer" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
     record_assertion "episodic_memory_tests" "pass" "true" "Episodic memory tests passed"
 else
     record_assertion "episodic_memory_tests" "pass" "false" "Episodic memory tests failed"
 fi
 
 log_info "Test 7: Reflection generator tests pass"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./internal/debate/reflexion/ -run "TestReflection|TestGenerate" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./reflexion/ -run "TestReflection|TestGenerate" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
     record_assertion "reflection_generator_tests" "pass" "true" "Reflection generator tests passed"
 else
     record_assertion "reflection_generator_tests" "pass" "false" "Reflection generator tests failed"
 fi
 
 log_info "Test 8: Reflexion loop tests pass"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./internal/debate/reflexion/ -run "TestReflexionLoop|TestLoop" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./reflexion/ -run "TestReflexionLoop|TestLoop" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
     record_assertion "reflexion_loop_tests" "pass" "true" "Reflexion loop tests passed"
 else
     record_assertion "reflexion_loop_tests" "pass" "false" "Reflexion loop tests failed"
 fi
 
 log_info "Test 9: Accumulated wisdom tests pass"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./internal/debate/reflexion/ -run "TestAccumulated|TestWisdom" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./reflexion/ -run "TestAccumulated|TestWisdom" 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
     record_assertion "accumulated_wisdom_tests" "pass" "true" "Accumulated wisdom tests passed"
 else
     record_assertion "accumulated_wisdom_tests" "pass" "false" "Accumulated wisdom tests failed"

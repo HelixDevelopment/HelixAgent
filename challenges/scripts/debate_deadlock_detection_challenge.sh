@@ -24,10 +24,10 @@ RACE_TIMEOUT="180s"
 # --- Section 1: Race detection on core packages ---
 
 log_info "Test 1: Voting package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/voting/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./voting/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "voting_race_free" "pass" "true" "Voting package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/voting/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./voting/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "voting_race_free" "pass" "false" "Voting package: DATA RACE detected"
     else
@@ -36,10 +36,10 @@ else
 fi
 
 log_info "Test 2: Topology package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/topology/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./topology/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "topology_race_free" "pass" "true" "Topology package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/topology/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./topology/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "topology_race_free" "pass" "false" "Topology package: DATA RACE detected"
     else
@@ -48,10 +48,10 @@ else
 fi
 
 log_info "Test 3: Reflexion package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/reflexion/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./reflexion/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "reflexion_race_free" "pass" "true" "Reflexion package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/reflexion/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./reflexion/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "reflexion_race_free" "pass" "false" "Reflexion package: DATA RACE detected"
     else
@@ -60,10 +60,10 @@ else
 fi
 
 log_info "Test 4: Audit package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/audit/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./audit/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "audit_race_free" "pass" "true" "Audit package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/audit/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./audit/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "audit_race_free" "pass" "false" "Audit package: DATA RACE detected"
     else
@@ -72,10 +72,10 @@ else
 fi
 
 log_info "Test 5: Gates package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/gates/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./gates/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "gates_race_free" "pass" "true" "Gates package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/gates/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./gates/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "gates_race_free" "pass" "false" "Gates package: DATA RACE detected"
     else
@@ -84,10 +84,10 @@ else
 fi
 
 log_info "Test 6: Protocol package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/protocol/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./protocol/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "protocol_race_free" "pass" "true" "Protocol package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/protocol/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./protocol/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "protocol_race_free" "pass" "false" "Protocol package: DATA RACE detected"
     else
@@ -96,10 +96,10 @@ else
 fi
 
 log_info "Test 7: Agents package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/agents/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./agents/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "agents_race_free" "pass" "true" "Agents package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/agents/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./agents/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "agents_race_free" "pass" "false" "Agents package: DATA RACE detected"
     else
@@ -108,10 +108,10 @@ else
 fi
 
 log_info "Test 8: Evaluation package race-free"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/evaluation/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./evaluation/ 2>&1 | tail -10 | grep -q "^ok\|PASS"); then
     record_assertion "evaluation_race_free" "pass" "true" "Evaluation package: no races detected"
 else
-    RACE_OUT=$(cd "$PROJECT_ROOT" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./internal/debate/evaluation/ 2>&1 | tail -5)
+    RACE_OUT=$(cd "$PROJECT_ROOT/DebateOrchestrator" && go test -short -race -count=1 -p 1 -timeout "$RACE_TIMEOUT" ./evaluation/ 2>&1 | tail -5)
     if echo "$RACE_OUT" | grep -qi "DATA RACE"; then
         record_assertion "evaluation_race_free" "pass" "false" "Evaluation package: DATA RACE detected"
     else

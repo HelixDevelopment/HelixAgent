@@ -22,14 +22,14 @@ log_info "=============================================="
 # --- Section 1: File existence and compilation ---
 
 log_info "Test 1: weighted_voting.go exists"
-if [ -f "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" ]; then
+if [ -f "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" ]; then
     record_assertion "voting_file" "exists" "true" "weighted_voting.go exists"
 else
     record_assertion "voting_file" "exists" "false" "weighted_voting.go NOT found"
 fi
 
 log_info "Test 2: Voting package compiles"
-if (cd "$PROJECT_ROOT" && go build ./internal/debate/voting/... 2>&1); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && go build ./voting/... 2>&1); then
     record_assertion "voting_compile" "true" "true" "Voting package compiles"
 else
     record_assertion "voting_compile" "true" "false" "Voting package failed to compile"
@@ -38,42 +38,42 @@ fi
 # --- Section 2: Voting methods ---
 
 log_info "Test 3: CalculateCondorcet method exists"
-if grep -q "func (wvs \*WeightedVotingSystem) CalculateCondorcet" "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" 2>/dev/null; then
+if grep -q "func (wvs \*WeightedVotingSystem) CalculateCondorcet" "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" 2>/dev/null; then
     record_assertion "calculate_condorcet" "true" "true" "CalculateCondorcet method found"
 else
     record_assertion "calculate_condorcet" "true" "false" "CalculateCondorcet method NOT found"
 fi
 
 log_info "Test 4: CalculatePlurality method exists"
-if grep -q "func (wvs \*WeightedVotingSystem) CalculatePlurality" "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" 2>/dev/null; then
+if grep -q "func (wvs \*WeightedVotingSystem) CalculatePlurality" "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" 2>/dev/null; then
     record_assertion "calculate_plurality" "true" "true" "CalculatePlurality method found"
 else
     record_assertion "calculate_plurality" "true" "false" "CalculatePlurality method NOT found"
 fi
 
 log_info "Test 5: CalculateUnanimous method exists"
-if grep -q "func (wvs \*WeightedVotingSystem) CalculateUnanimous" "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" 2>/dev/null; then
+if grep -q "func (wvs \*WeightedVotingSystem) CalculateUnanimous" "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" 2>/dev/null; then
     record_assertion "calculate_unanimous" "true" "true" "CalculateUnanimous method found"
 else
     record_assertion "calculate_unanimous" "true" "false" "CalculateUnanimous method NOT found"
 fi
 
 log_info "Test 6: CondorcetMatrix type exists"
-if grep -q "type CondorcetMatrix struct" "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" 2>/dev/null; then
+if grep -q "type CondorcetMatrix struct" "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" 2>/dev/null; then
     record_assertion "condorcet_matrix" "true" "true" "CondorcetMatrix type found"
 else
     record_assertion "condorcet_matrix" "true" "false" "CondorcetMatrix type NOT found"
 fi
 
 log_info "Test 7: AutoSelectMethod exists"
-if grep -q "func (wvs \*WeightedVotingSystem) AutoSelectMethod" "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" 2>/dev/null; then
+if grep -q "func (wvs \*WeightedVotingSystem) AutoSelectMethod" "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" 2>/dev/null; then
     record_assertion "auto_select_method" "true" "true" "AutoSelectMethod found"
 else
     record_assertion "auto_select_method" "true" "false" "AutoSelectMethod NOT found"
 fi
 
 log_info "Test 8: WeightedVotingSystem type exists"
-if grep -q "type WeightedVotingSystem struct" "$PROJECT_ROOT/internal/debate/voting/weighted_voting.go" 2>/dev/null; then
+if grep -q "type WeightedVotingSystem struct" "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting.go" 2>/dev/null; then
     record_assertion "weighted_voting_system" "true" "true" "WeightedVotingSystem type found"
 else
     record_assertion "weighted_voting_system" "true" "false" "WeightedVotingSystem type NOT found"
@@ -82,14 +82,14 @@ fi
 # --- Section 3: Tests ---
 
 log_info "Test 9: weighted_voting_test.go exists"
-if [ -f "$PROJECT_ROOT/internal/debate/voting/weighted_voting_test.go" ]; then
+if [ -f "$PROJECT_ROOT/DebateOrchestrator/voting/weighted_voting_test.go" ]; then
     record_assertion "voting_test_file" "exists" "true" "Test file found"
 else
     record_assertion "voting_test_file" "exists" "false" "Test file NOT found"
 fi
 
 log_info "Test 10: Voting tests pass"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./internal/debate/voting/ 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./voting/ 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
     record_assertion "voting_tests_pass" "pass" "true" "Voting tests passed"
 else
     record_assertion "voting_tests_pass" "pass" "false" "Voting tests failed"

@@ -181,7 +181,7 @@ log_info "=============================================="
 
 # Check new framework is enabled
 log_info "Test 9: New debate framework enabled by default"
-NEW_FRAMEWORK=$(grep -c 'EnableNewFramework:.*true' "$PROJECT_ROOT/internal/debate/orchestrator/service_integration.go" || echo "0")
+NEW_FRAMEWORK=$(grep -c 'EnableNewFramework:.*true' "$PROJECT_ROOT/DebateOrchestrator/orchestrator/service_integration.go" || echo "0")
 if [ "$NEW_FRAMEWORK" -gt 0 ]; then
     log_success "New debate framework is enabled by default"
 else
@@ -190,7 +190,7 @@ fi
 
 # Check learning is enabled
 log_info "Test 10: Learning enabled by default"
-LEARNING=$(grep -c 'EnableLearning:.*true' "$PROJECT_ROOT/internal/debate/orchestrator/service_integration.go" || echo "0")
+LEARNING=$(grep -c 'EnableLearning:.*true' "$PROJECT_ROOT/DebateOrchestrator/orchestrator/service_integration.go" || echo "0")
 if [ "$LEARNING" -gt 0 ]; then
     log_success "Learning is enabled by default"
 else

@@ -106,13 +106,13 @@ else
 fi
 
 # Test 1.6: Debate reflexion framework exists
-REFLEXION_FILES=$(find "$PROJECT_ROOT/internal/debate/reflexion" -name "*.go" 2>/dev/null | grep -cv '_test.go' || echo "0")
+REFLEXION_FILES=$(find "$PROJECT_ROOT/DebateOrchestrator/reflexion" -name "*.go" 2>/dev/null | grep -cv '_test.go' || echo "0")
 REFLEXION_FILES=${REFLEXION_FILES//[^0-9]/}
 REFLEXION_FILES=${REFLEXION_FILES:-0}
 if [ "$REFLEXION_FILES" -ge 1 ]; then
-    pass "Debate reflexion framework exists ($REFLEXION_FILES source files in internal/debate/reflexion/)"
+    pass "Debate reflexion framework exists ($REFLEXION_FILES source files in DebateOrchestrator/reflexion/)"
 else
-    fail "Debate reflexion framework NOT found in internal/debate/reflexion/"
+    fail "Debate reflexion framework NOT found in DebateOrchestrator/reflexion/"
 fi
 
 #===============================================================================

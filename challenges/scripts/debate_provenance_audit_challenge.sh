@@ -22,14 +22,14 @@ log_info "=============================================="
 # --- Section 1: File existence and compilation ---
 
 log_info "Test 1: provenance.go exists"
-if [ -f "$PROJECT_ROOT/internal/debate/audit/provenance.go" ]; then
+if [ -f "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" ]; then
     record_assertion "provenance_file" "exists" "true" "provenance.go exists"
 else
     record_assertion "provenance_file" "exists" "false" "provenance.go NOT found"
 fi
 
 log_info "Test 2: Audit package compiles"
-if (cd "$PROJECT_ROOT" && go build ./internal/debate/audit/... 2>&1); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && go build ./audit/... 2>&1); then
     record_assertion "audit_compile" "true" "true" "Audit package compiles"
 else
     record_assertion "audit_compile" "true" "false" "Audit package failed to compile"
@@ -38,28 +38,28 @@ fi
 # --- Section 2: Core types ---
 
 log_info "Test 3: ProvenanceTracker type exists"
-if grep -q "type ProvenanceTracker struct" "$PROJECT_ROOT/internal/debate/audit/provenance.go" 2>/dev/null; then
+if grep -q "type ProvenanceTracker struct" "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" 2>/dev/null; then
     record_assertion "provenance_tracker_type" "true" "true" "ProvenanceTracker type found"
 else
     record_assertion "provenance_tracker_type" "true" "false" "ProvenanceTracker type NOT found"
 fi
 
 log_info "Test 4: AuditEntry type exists"
-if grep -q "type AuditEntry struct" "$PROJECT_ROOT/internal/debate/audit/provenance.go" 2>/dev/null; then
+if grep -q "type AuditEntry struct" "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" 2>/dev/null; then
     record_assertion "audit_entry_type" "true" "true" "AuditEntry type found"
 else
     record_assertion "audit_entry_type" "true" "false" "AuditEntry type NOT found"
 fi
 
 log_info "Test 5: AuditTrail type exists"
-if grep -q "type AuditTrail struct" "$PROJECT_ROOT/internal/debate/audit/provenance.go" 2>/dev/null; then
+if grep -q "type AuditTrail struct" "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" 2>/dev/null; then
     record_assertion "audit_trail_type" "true" "true" "AuditTrail type found"
 else
     record_assertion "audit_trail_type" "true" "false" "AuditTrail type NOT found"
 fi
 
 log_info "Test 6: EventType type defined"
-if grep -q "type EventType string" "$PROJECT_ROOT/internal/debate/audit/provenance.go" 2>/dev/null; then
+if grep -q "type EventType string" "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" 2>/dev/null; then
     record_assertion "event_type_defined" "true" "true" "EventType type found"
 else
     record_assertion "event_type_defined" "true" "false" "EventType type NOT found"
@@ -68,7 +68,7 @@ fi
 # --- Section 3: 14 event types ---
 
 log_info "Test 7: 14 event types defined"
-EVENT_COUNT=$(grep -c 'Event[A-Z].*EventType.*=' "$PROJECT_ROOT/internal/debate/audit/provenance.go" 2>/dev/null || echo "0")
+EVENT_COUNT=$(grep -c 'Event[A-Z].*EventType.*=' "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" 2>/dev/null || echo "0")
 if [ "$EVENT_COUNT" -ge 14 ]; then
     record_assertion "event_type_count" "true" "true" "Found $EVENT_COUNT event types (need 14+)"
 else
@@ -78,7 +78,7 @@ fi
 log_info "Test 8: Core event types present"
 CORE_EVENTS=0
 for evt in "prompt_sent" "response_received" "vote_cast" "phase_started" "debate_started" "error_occurred"; do
-    if grep -q "\"$evt\"" "$PROJECT_ROOT/internal/debate/audit/provenance.go" 2>/dev/null; then
+    if grep -q "\"$evt\"" "$PROJECT_ROOT/DebateOrchestrator/audit/provenance.go" 2>/dev/null; then
         CORE_EVENTS=$((CORE_EVENTS + 1))
     fi
 done
@@ -107,14 +107,14 @@ fi
 # --- Section 5: Tests ---
 
 log_info "Test 11: provenance_test.go exists"
-if [ -f "$PROJECT_ROOT/internal/debate/audit/provenance_test.go" ]; then
+if [ -f "$PROJECT_ROOT/DebateOrchestrator/audit/provenance_test.go" ]; then
     record_assertion "provenance_test_file" "exists" "true" "Test file found"
 else
     record_assertion "provenance_test_file" "exists" "false" "Test file NOT found"
 fi
 
 log_info "Test 12: Provenance tests pass"
-if (cd "$PROJECT_ROOT" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./internal/debate/audit/ 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
+if (cd "$PROJECT_ROOT/DebateOrchestrator" && nice -n 19 ionice -c 3 go test -short -count=1 -p 1 -timeout 120s ./audit/ 2>&1 | tail -5 | grep -q "^ok\|PASS"); then
     record_assertion "provenance_tests_pass" "pass" "true" "Provenance tests passed"
 else
     record_assertion "provenance_tests_pass" "pass" "false" "Provenance tests failed"

@@ -1288,6 +1288,32 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		if extRegistryErr != nil {
 			logger.WithError(extRegistryErr).Warn("Failed to init ExtendedProviderRegistry; /v1/verification/{models,health} will 503")
 		}
+		// Bridge LLM providerRegistry → ExtendedProviderRegistry so
+		// /v1/verification/models returns real model list (not total=0).
+		// CONST-035 §c "Completion": empty advertised list is a contract
+		// bluff against docs/api/API_REFERENCE.md.
+		if extRegistry != nil {
+			provNames := providerRegistry.ListProviders()
+			logger.Infof("ExtendedProviderRegistry bridge: importing %d provider(s) from providerRegistry", len(provNames))
+			totalModels := 0
+			for _, providerName := range provNames {
+				p, err := providerRegistry.GetProvider(providerName)
+				if err != nil || p == nil {
+					continue
+				}
+				caps := p.GetCapabilities()
+				modelList := []string{}
+				if caps != nil {
+					modelList = caps.SupportedModels
+				}
+				if regErr := extRegistry.RegisterProvider(context.Background(), providerName, providerName, "", "", modelList); regErr != nil {
+					logger.WithError(regErr).Debugf("ExtendedProviderRegistry.RegisterProvider(%s) failed", providerName)
+				} else {
+					totalModels += len(modelList)
+				}
+			}
+			logger.Infof("ExtendedProviderRegistry bridge: registered %d models across %d providers", totalModels, len(provNames))
+		}
 		verificationHandler := handlers.NewVerificationHandler(verificationSvc, scoringSvc, healthSvcForVerification, extRegistry)
 		verificationGroup := protected.Group("/verification")
 		{

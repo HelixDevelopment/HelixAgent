@@ -12,6 +12,7 @@ import (
 	"dev.helix.agent/internal/benchmark"
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
+	"dev.helix.agent/internal/ensemble/multi_instance"
 	"dev.helix.agent/internal/llmops"
 	"dev.helix.agent/internal/checkpoints"
 	"dev.helix.agent/internal/config"
@@ -1113,10 +1114,16 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		protocolSSEHandler.SetRAGHandler(ragHandler)
 		logger.Info("RAG endpoints registered at /v1/rag/*")
 
-		// Ensemble session/team management endpoints
-		ensembleHandler := handlers.NewEnsembleHandler(nil, logger)
+		// Ensemble session/team management endpoints — wire a real
+		// multi_instance.Coordinator. Constructor accepts nil db/InstanceManager/
+		// SyncManager (uses defaults: in-memory sessions, RoundRobinBalancer,
+		// HealthMonitor, WorkerPool(100), EventBus). The standard-lib
+		// *log.Logger arg is also nil-tolerant (constructor falls back to
+		// log.New(os.Stdout)).
+		ensembleCoordinator := multi_instance.NewCoordinator(nil, nil, nil, nil)
+		ensembleHandler := handlers.NewEnsembleHandler(ensembleCoordinator, logger)
 		ensembleHandler.RegisterRoutes(protected)
-		logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/*")
+		logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/* (real Coordinator wired)")
 
 		// Completion endpoints (skills-enhanced completion with intent routing)
 		completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())

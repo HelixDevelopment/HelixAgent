@@ -1,6 +1,6 @@
 {
     "agent": "amazon_q",
     "plugins": ["helix-integration", "event-handler"],
-    "generated_at": "2026-01-24T01:15:52+03:00",
+    "generated_at": "2026-04-29T19:52:16+03:00",
     "version": "1.0.0"
 }

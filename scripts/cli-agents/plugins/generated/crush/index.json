@@ -1,6 +1,6 @@
 {
     "agent": "crush",
     "plugins": ["helix-integration", "event-handler", "debate-ui"],
-    "generated_at": "2026-02-12T17:25:32+03:00",
+    "generated_at": "2026-04-29T19:52:17+03:00",
     "version": "1.0.0"
 }

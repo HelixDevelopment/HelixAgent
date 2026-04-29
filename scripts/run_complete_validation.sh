@@ -182,13 +182,13 @@ run_integration_tests() {
     
     log_info "Waiting for HelixAgent to be ready..."
     for i in {1..60}; do
-        if curl -s http://localhost:7061/health > /dev/null 2>&1; then
+        if curl -s http://localhost:8100/health > /dev/null 2>&1; then
             break
         fi
         sleep 1
     done
     
-    if ! curl -s http://localhost:7061/health > /dev/null 2>&1; then
+    if ! curl -s http://localhost:8100/health > /dev/null 2>&1; then
         log_error "HelixAgent failed to start (check logs/helixagent.log)"
         kill $HELIX_PID 2>/dev/null || true
         return 1
@@ -198,7 +198,7 @@ run_integration_tests() {
     
     # Check providers endpoint
     log_info "Checking providers endpoint..."
-    curl -s http://localhost:7061/v1/providers | jq '.' > logs/providers_list.json 2>/dev/null || true
+    curl -s http://localhost:8100/v1/providers | jq '.' > logs/providers_list.json 2>/dev/null || true
     
     log_info "Running integration tests..."
     if ! nice -n 19 ionice -c 3 go test ./tests/integration/... -v -timeout 10m 2>&1 | tee logs/test_integration.log | tail -50; then
@@ -231,13 +231,13 @@ run_challenge_tests() {
     sleep 5
     
     for i in {1..30}; do
-        if curl -s http://localhost:7061/health > /dev/null 2>&1; then
+        if curl -s http://localhost:8100/health > /dev/null 2>&1; then
             break
         fi
         sleep 1
     done
     
-    if ! curl -s http://localhost:7061/health > /dev/null 2>&1; then
+    if ! curl -s http://localhost:8100/health > /dev/null 2>&1; then
         log_error "HelixAgent failed to start for challenges"
         kill $HELIX_PID 2>/dev/null || true
         return 1

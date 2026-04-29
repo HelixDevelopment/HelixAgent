@@ -19,7 +19,7 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     set -a; source "$PROJECT_ROOT/.env"; set +a
 fi
 
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://127.0.0.1:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://127.0.0.1:8100}"
 PASSED=0
 FAILED=0
 TOTAL=0

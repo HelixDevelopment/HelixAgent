@@ -169,13 +169,13 @@ if [ "$RUN_INTEGRATION" = true ]; then
     
     # Wait for health
     for i in {1..30}; do
-        if curl -s http://localhost:7061/health > /dev/null 2>&1; then
+        if curl -s http://localhost:8100/health > /dev/null 2>&1; then
             break
         fi
         sleep 1
     done
     
-    if ! curl -s http://localhost:7061/health > /dev/null 2>&1; then
+    if ! curl -s http://localhost:8100/health > /dev/null 2>&1; then
         log_error "HelixAgent failed to start"
         kill $HELIX_PID 2>/dev/null || true
         exit 1

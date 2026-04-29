@@ -358,9 +358,9 @@ check_status() {
     # HelixAgent
     echo ""
     echo "=== HELIXAGENT ==="
-    curl -sf "http://localhost:7061/health" >/dev/null && echo -e "  ${GREEN}✓${NC} HelixAgent API" || echo -e "  ${YELLOW}○${NC} HelixAgent API"
-    curl -sf "http://localhost:7061/v1/acp/health" >/dev/null && echo -e "  ${GREEN}✓${NC} ACP Protocol" || echo -e "  ${YELLOW}○${NC} ACP Protocol"
-    curl -sf "http://localhost:7061/v1/vision/health" >/dev/null && echo -e "  ${GREEN}✓${NC} Vision Protocol" || echo -e "  ${YELLOW}○${NC} Vision Protocol"
+    curl -sf "http://localhost:8100/health" >/dev/null && echo -e "  ${GREEN}✓${NC} HelixAgent API" || echo -e "  ${YELLOW}○${NC} HelixAgent API"
+    curl -sf "http://localhost:8100/v1/acp/health" >/dev/null && echo -e "  ${GREEN}✓${NC} ACP Protocol" || echo -e "  ${YELLOW}○${NC} ACP Protocol"
+    curl -sf "http://localhost:8100/v1/vision/health" >/dev/null && echo -e "  ${GREEN}✓${NC} Vision Protocol" || echo -e "  ${YELLOW}○${NC} Vision Protocol"
 
     echo ""
 }

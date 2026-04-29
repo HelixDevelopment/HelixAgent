@@ -295,7 +295,7 @@ fi
 
 # Test 16: HelixAgent is running
 TOTAL=$((TOTAL + 1))
-log_info "Test 16: HelixAgent is running (port 7061)"
+log_info "Test 16: HelixAgent is running (port 8100)"
 if curl -s --max-time 60 http://localhost:8100/health >/dev/null 2>&1; then
     log_success "HelixAgent is running"
     PASSED=$((PASSED + 1))

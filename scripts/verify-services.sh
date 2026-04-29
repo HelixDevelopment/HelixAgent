@@ -113,8 +113,8 @@ test_service "Grafana health" "curl -sf http://localhost:3000/api/health" "helix
 
 echo ""
 echo "=== HelixAgent Server ==="
-test_service "HelixAgent API" "curl -sf http://localhost:7061/health"
-test_service "HelixAgent verification endpoint" "curl -sf http://localhost:7061/v1/startup/verification"
+test_service "HelixAgent API" "curl -sf http://localhost:8100/health"
+test_service "HelixAgent verification endpoint" "curl -sf http://localhost:8100/v1/startup/verification"
 
 echo ""
 echo "=============================================="

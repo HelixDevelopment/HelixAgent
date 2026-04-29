@@ -91,7 +91,7 @@ start_core() {
 
     echo -e "${YELLOW}Waiting for HelixAgent to be ready...${NC}"
     for i in {1..30}; do
-        if curl -sf http://localhost:7061/health > /dev/null 2>&1; then
+        if curl -sf http://localhost:8100/health > /dev/null 2>&1; then
             echo -e "${GREEN}HelixAgent is ready!${NC}"
             break
         fi

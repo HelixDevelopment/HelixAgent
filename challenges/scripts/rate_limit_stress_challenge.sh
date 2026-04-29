@@ -88,11 +88,11 @@ Options:
   --help, -h          Show this help message
   --burst=N           Burst request count (default: 200)
   --window=N          Rate limit window in seconds (default: 60)
-  --port=PORT         Set HelixAgent port (default: 7061)
+  --port=PORT         Set HelixAgent port (default: 8100)
   --quick             Quick test with reduced parameters
 
 Environment Variables:
-  HELIXAGENT_PORT             API port (default: 7061)
+  HELIXAGENT_PORT             API port (default: 8100)
   BURST_SIZE                  Number of burst requests (default: 200)
   RATE_LIMIT_WINDOW           Rate limit window seconds (default: 60)
   REQUEST_TIMEOUT             Request timeout seconds (default: 30)

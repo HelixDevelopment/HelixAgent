@@ -114,21 +114,21 @@ check_all_services() {
     echo ""
     echo "=== HELIXAGENT API ==="
 
-    if check_http "http://localhost:7061/health"; then
-        log_success "HelixAgent Health (7061)"
+    if check_http "http://localhost:8100/health"; then
+        log_success "HelixAgent Health (8100)"
     else
-        log_error "HelixAgent Health (7061) - DOWN"
+        log_error "HelixAgent Health (8100) - DOWN"
         ((errors++))
     fi
 
-    if check_http "http://localhost:7061/v1/acp/health"; then
+    if check_http "http://localhost:8100/v1/acp/health"; then
         log_success "ACP Protocol"
     else
         log_warning "ACP Protocol - Not responding"
         ((warnings++))
     fi
 
-    if check_http "http://localhost:7061/v1/vision/health"; then
+    if check_http "http://localhost:8100/v1/vision/health"; then
         log_success "Vision Protocol"
     else
         log_warning "Vision Protocol - Not responding"

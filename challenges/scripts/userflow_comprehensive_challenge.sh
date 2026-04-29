@@ -6,7 +6,7 @@
 # automatically, simulating a real user or QA tester.
 #
 # Prerequisites:
-#   - HelixAgent server running on PORT (default: 7061)
+#   - HelixAgent server running on PORT (default: 8100)
 #   - Infrastructure containers running (PostgreSQL, Redis)
 #
 # Usage:
@@ -16,7 +16,7 @@
 set -euo pipefail
 
 # Configuration
-HELIX_PORT="${HELIX_PORT:-7061}"
+HELIX_PORT="${HELIX_PORT:-8100}"
 HELIX_HOST="${HELIX_HOST:-localhost}"
 BASE_URL="http://${HELIX_HOST}:${HELIX_PORT}"
 RESULTS_DIR="results/userflow"

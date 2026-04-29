@@ -7,7 +7,7 @@
 # chat quality — all through HelixLLM llama.cpp-only mode.
 #
 # Tests: 53 agents x 5 steps = 265 steps
-# Requires: HelixLLM on https://localhost:8444 or HelixAgent on :7061
+# Requires: HelixLLM on https://localhost:8444 or HelixAgent on :8100
 #===============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

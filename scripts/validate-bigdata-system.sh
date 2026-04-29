@@ -18,7 +18,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:9092}"
 CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-localhost}"
 NEO4J_URI="${NEO4J_URI:-bolt://localhost:7687}"

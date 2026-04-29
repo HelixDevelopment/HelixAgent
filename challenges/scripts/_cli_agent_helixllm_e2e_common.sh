@@ -29,7 +29,7 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 : "${AGENT_MODEL_ID:=helixagent-debate}"
-: "${HELIXAGENT_PORT:=7061}"
+: "${HELIXAGENT_PORT:=8100}"
 : "${HELIXAGENT_HOST:=localhost}"
 : "${HELIXAGENT_API_KEY:=test}"
 : "${HELIXLLM_URL:=https://localhost:8444}"

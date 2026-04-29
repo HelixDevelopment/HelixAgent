@@ -37,7 +37,7 @@ NC='\033[0m'
 # Defaults a wrapper can override.
 : "${AGENT_MODEL_ID:=helixagent-debate}"
 : "${AGENT_CLI_PROBE:=}"
-: "${HELIXAGENT_PORT:=7061}"
+: "${HELIXAGENT_PORT:=8100}"
 : "${HELIXAGENT_HOST:=localhost}"
 : "${HELIXAGENT_API_KEY:=test}"
 

@@ -91,11 +91,11 @@ Options:
   --help, -h          Show this help message
   --duration=N        Test duration in minutes (default: 10)
   --rps=N             Requests per second (default: 5)
-  --port=PORT         Set HelixAgent port (default: 7061)
+  --port=PORT         Set HelixAgent port (default: 8100)
   --quick             Quick test (2 minutes) for validation
 
 Environment Variables:
-  HELIXAGENT_PORT                 API port (default: 7061)
+  HELIXAGENT_PORT                 API port (default: 8100)
   STRESS_DURATION_MINUTES         Duration in minutes (default: 10)
   REQUESTS_PER_SECOND             RPS rate (default: 5)
   SAMPLE_INTERVAL_SECONDS         Metric sampling interval (default: 30)

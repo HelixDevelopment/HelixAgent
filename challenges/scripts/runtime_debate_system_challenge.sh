@@ -5,7 +5,7 @@
 #            to weak/legacy models.
 #
 # IMPORTANT: This challenge requires the HelixAgent server to be running
-#            on port 7061 with the LATEST binary (make build first!)
+#            on port 8100 with the LATEST binary (make build first!)
 #
 # Total: ~20 tests
 
@@ -35,7 +35,7 @@ skip() { SKIP=$((SKIP + 1)); TOTAL=$((TOTAL + 1)); echo -e "  ${YELLOW}[SKIP]${N
 # Check if server is running
 SERVER_URL="http://localhost:8100"
 if ! curl -s --max-time 60 --connect-timeout 5 "$SERVER_URL/v1/health" > /dev/null 2>&1; then
-    echo -e "${RED}ERROR: HelixAgent server not running on port 7061${NC}"
+    echo -e "${RED}ERROR: HelixAgent server not running on port 8100${NC}"
     echo "Start it with: GIN_MODE=release ./bin/helixagent"
     exit 1
 fi
@@ -287,7 +287,7 @@ if [ "$FAIL" -gt 0 ]; then
     echo -e "  ${RED}$FAIL test(s) failed${NC}"
     echo ""
     echo -e "  ${YELLOW}IMPORTANT: If the server is running an old binary:${NC}"
-    echo -e "  ${YELLOW}  1. Stop the old server (kill the process on port 7061)${NC}"
+    echo -e "  ${YELLOW}  1. Stop the old server (kill the process on port 8100)${NC}"
     echo -e "  ${YELLOW}  2. Rebuild: make build${NC}"
     echo -e "  ${YELLOW}  3. Restart: GIN_MODE=release ./bin/helixagent${NC}"
     exit 1

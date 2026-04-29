@@ -39,7 +39,7 @@ log_detail() {
 }
 
 # Configuration
-HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:7061}"
+HELIXAGENT_URL="${HELIXAGENT_URL:-http://localhost:8100}"
 TEST_TIMEOUT=60
 COMPREHENSIVE_TIMEOUT=120
 PARALLEL_JOBS=3

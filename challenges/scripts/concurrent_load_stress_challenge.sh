@@ -83,10 +83,10 @@ Options:
   --help, -h          Show this help message
   --concurrent=N      Set number of concurrent requests (default: 100)
   --timeout=S         Set request timeout in seconds (default: 60)
-  --port=PORT         Set HelixAgent port (default: 7061)
+  --port=PORT         Set HelixAgent port (default: 8100)
 
 Environment Variables:
-  HELIXAGENT_PORT               API port (default: 7061)
+  HELIXAGENT_PORT               API port (default: 8100)
   CONCURRENT_REQUESTS_LIGHT     Light load requests (default: 50)
   CONCURRENT_REQUESTS_HEAVY     Heavy load requests (default: 100)
   REQUEST_TIMEOUT               Request timeout seconds (default: 60)

@@ -124,13 +124,13 @@ start_helixagent() {
     echo -e "${BLUE}=== Starting HelixAgent ===${NC}"
     cd "$PROJECT_DIR"
 
-    if check_service "helixagent" "7061" "/health"; then
+    if check_service "helixagent" "8100" "/health"; then
         echo -e "${GREEN}HelixAgent already running${NC}"
         return 0
     fi
 
     $COMPOSE_CMD -f docker-compose.yml up -d helixagent
-    wait_for_service "helixagent" "7061" "/health" 60
+    wait_for_service "helixagent" "8100" "/health" 60
 }
 
 # Start Protocol Discovery
@@ -237,7 +237,7 @@ start_all() {
     echo -e "${GREEN}=============================================${NC}"
     echo ""
     echo "Services available at:"
-    echo "  - HelixAgent:          http://localhost:7061"
+    echo "  - HelixAgent:          http://localhost:8100"
     echo "  - Protocol Discovery:  http://localhost:9300"
     echo "  - MCP Manager:         http://localhost:9000"
     echo "  - LSP Manager:         http://localhost:5100"
@@ -252,7 +252,7 @@ verify_all() {
 
     local all_ok=true
 
-    if check_service "helixagent" "7061" "/health"; then
+    if check_service "helixagent" "8100" "/health"; then
         echo -e "${GREEN}[OK]${NC} HelixAgent"
     else
         echo -e "${RED}[FAIL]${NC} HelixAgent"

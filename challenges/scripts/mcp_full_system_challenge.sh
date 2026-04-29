@@ -121,7 +121,7 @@ check_port_available() {
     ! ss -tlnp 2>/dev/null | grep -q ":$1 " || ss -tlnp 2>/dev/null | grep ":$1 " | grep -q "mcp\|helixagent"
 }
 
-run_test 3 "Port 7061 available for HelixAgent" "check_port_available 7061"
+run_test 3 "Port 8100 available for HelixAgent" "check_port_available 8100"
 run_test 4 "Port range 9101-9110 available for core MCPs" "check_port_available 9101"
 
 # Test 5: Go compiler available

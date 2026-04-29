@@ -127,21 +127,21 @@ fi
 
 # Test 4: Port Configuration
 test_case "autopep8 uses port 9211"
-if grep -A 5 "autopep8:" docker/formatters/docker-compose.formatters.yml | grep -q "9211:9211"; then
+if grep -A 20 "autopep8:" docker/formatters/docker-compose.formatters.yml | grep -q "9211:9211"; then
     pass
 else
     fail "incorrect port"
 fi
 
 test_case "yapf uses port 9210"
-if grep -A 5 "yapf:" docker/formatters/docker-compose.formatters.yml | grep -q "9210:9210"; then
+if grep -A 20 "yapf:" docker/formatters/docker-compose.formatters.yml | grep -q "9210:9210"; then
     pass
 else
     fail "incorrect port"
 fi
 
 test_case "sqlfluff uses port 9220"
-if grep -A 5 "sqlfluff:" docker/formatters/docker-compose.formatters.yml | grep -q "9220:9220"; then
+if grep -A 20 "sqlfluff:" docker/formatters/docker-compose.formatters.yml | grep -q "9220:9220"; then
     pass
 else
     fail "incorrect port"
@@ -185,14 +185,17 @@ else
 fi
 
 test_case "register.go registers autopep8"
-if grep -q "autopep8" internal/formatters/providers/register.go; then
+# Case-insensitive: code has NewAutopep8Formatter (Pascal-case);
+# strict-case grep "autopep8" was a false-negative bluff.
+if grep -qi "autopep8" internal/formatters/providers/register.go; then
     pass
 else
     fail "autopep8 not registered"
 fi
 
 test_case "register.go registers sqlfluff"
-if grep -q "sqlfluff" internal/formatters/providers/register.go; then
+# Case-insensitive: code has NewSQLFluffFormatter (mixed case).
+if grep -qi "sqlfluff" internal/formatters/providers/register.go; then
     pass
 else
     fail "sqlfluff not registered"

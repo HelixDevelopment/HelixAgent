@@ -14,6 +14,7 @@ import (
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
 	"dev.helix.agent/internal/ensemble/multi_instance"
+	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/llmops"
 	"dev.helix.agent/internal/checkpoints"
 	"dev.helix.agent/internal/config"
@@ -29,6 +30,7 @@ import (
 	httpmetrics "dev.helix.agent/internal/observability/metrics"
 	"dev.helix.agent/internal/search"
 	"dev.helix.agent/internal/verifier"
+	"dev.helix.agent/internal/verifier/adapters"
 	"dev.helix.agent/internal/search/indexer"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/services/debate_integration"
@@ -1030,8 +1032,12 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			logger.WithField("issues", len(result.Issues)).Warn("Fallback chain validation found issues")
 		}
 
-		// Register monitoring handler routes
-		monitoringHandler := handlers.NewMonitoringHandler(nil, oauthTokenMonitor, providerHealthMonitor, fallbackChainValidator, concurrencyMonitor, concurrencyAlertManager)
+		// Register monitoring handler routes — wire real CircuitBreakerMonitor
+		// with the default manager so /v1/monitoring/circuit-breakers serves
+		// real state, not 503. CONST-035 §c "Completion".
+		cbMgr := llm.NewDefaultCircuitBreakerManager()
+		cbMonitor := services.NewCircuitBreakerMonitor(cbMgr, logger, services.DefaultCircuitBreakerMonitorConfig())
+		monitoringHandler := handlers.NewMonitoringHandler(cbMonitor, oauthTokenMonitor, providerHealthMonitor, fallbackChainValidator, concurrencyMonitor, concurrencyAlertManager)
 		monitoringHandler.RegisterRoutes(protected)
 		protocolSSEHandler.SetMonitoringHandler(monitoringHandler)
 		logger.Info("Monitoring endpoints registered at /v1/monitoring/*")
@@ -1268,7 +1274,11 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// return 200, not 503. CONST-035 §c "Completion": no stub gaps.
 		verificationSvc := verifier.NewVerificationService(nil)
 		healthSvcForVerification := verifier.NewHealthService(nil)
-		verificationHandler := handlers.NewVerificationHandler(verificationSvc, scoringSvc, healthSvcForVerification, nil)
+		extRegistry, extRegistryErr := adapters.NewExtendedProviderRegistry(nil)
+		if extRegistryErr != nil {
+			logger.WithError(extRegistryErr).Warn("Failed to init ExtendedProviderRegistry; /v1/verification/{models,health} will 503")
+		}
+		verificationHandler := handlers.NewVerificationHandler(verificationSvc, scoringSvc, healthSvcForVerification, extRegistry)
 		verificationGroup := protected.Group("/verification")
 		{
 			verificationGroup.POST("/model", verificationHandler.VerifyModel)

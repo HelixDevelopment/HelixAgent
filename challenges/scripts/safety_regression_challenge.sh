@@ -83,11 +83,15 @@ else
     record_result "cleanupExpired function exists in session_manager.go" "FAIL"
 fi
 
-# Test 8: cleanupExpired acquires mutex
-if grep -A 5 "func.*cleanupExpired" "$SESSION_MGR" 2>/dev/null | grep -q "Lock\|mu\."; then
-    record_result "cleanupExpired acquires mutex lock" "PASS"
+# Test 8: cleanupExpired uses concurrent-safe access
+# CONST-029 migration: code formerly used bare mutex (Lock / mu.) was
+# migrated to safe.Store APIs (sessions.Keys, sessions.Update, etc.) —
+# both patterns are concurrent-safe. Accept EITHER form so the test
+# tracks the actual safety property, not the obsolete pattern.
+if grep -A 12 "func.*cleanupExpired" "$SESSION_MGR" 2>/dev/null | grep -qE "Lock|mu\.|sessions\.Update|sessions\.Range|sessions\.Keys"; then
+    record_result "cleanupExpired uses concurrent-safe access" "PASS"
 else
-    record_result "cleanupExpired acquires mutex lock" "FAIL"
+    record_result "cleanupExpired uses concurrent-safe access" "FAIL"
 fi
 
 # Test 9: atomic.Bool used in notifications (sse_manager)

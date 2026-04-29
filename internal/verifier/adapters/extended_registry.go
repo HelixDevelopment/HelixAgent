@@ -292,6 +292,20 @@ func (r *ExtendedProviderRegistry) GetHealthyProviders() []*ProviderHealthStatus
 	return healthy
 }
 
+// GetAllProviderHealth returns every registered provider's health status,
+// regardless of healthy/unhealthy state. Used by /v1/verification/health to
+// report total_providers honestly (the previous handler was reading
+// stats.TotalVerifications, which counts verification ATTEMPTS not
+// providers — a CONST-035 field-naming bluff).
+func (r *ExtendedProviderRegistry) GetAllProviderHealth() []*ProviderHealthStatus {
+	all := make([]*ProviderHealthStatus, 0)
+	r.providerHealth.Range(func(_ string, health *ProviderHealthStatus) bool {
+		all = append(all, health)
+		return true
+	})
+	return all
+}
+
 // GetProviderHealth returns health status for a specific provider
 func (r *ExtendedProviderRegistry) GetProviderHealth(providerID string) (*ProviderHealthStatus, error) {
 	health, ok := r.providerHealth.Get(providerID)

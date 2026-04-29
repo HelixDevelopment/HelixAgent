@@ -481,13 +481,14 @@ func (h *VerificationHandler) GetVerificationHealth(c *gin.Context) {
 	}
 	stats, _ := h.verificationService.GetStats(c.Request.Context()) //nolint:errcheck
 	healthy := h.registry.GetHealthyProviders()
+	all := h.registry.GetAllProviderHealth()
 
 	c.JSON(http.StatusOK, VerificationHealthResponse{
 		Status:           "healthy",
 		VerifiedModels:   stats.SuccessfulCount,
 		PendingModels:    0,
 		HealthyProviders: len(healthy),
-		TotalProviders:   stats.TotalVerifications,
+		TotalProviders:   len(all),
 		LastVerification: "",
 	})
 }

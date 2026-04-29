@@ -382,33 +382,96 @@ func (h *UnifiedHandler) RegisterOpenAIRoutes(r *gin.RouterGroup, auth gin.Handl
 	}
 }
 
+// validChatMessageRoles are the only role values accepted on incoming
+// chat completion requests.
+var validChatMessageRoles = map[string]bool{
+	"system":    true,
+	"user":      true,
+	"assistant": true,
+	"tool":      true,
+	"function":  true, // legacy OpenAI function-calling, still accepted by some providers
+	"developer": true, // OpenAI o1/o3 family
+}
+
 // validateChatRequest enforces structural rules that EVERY upstream
 // provider in our chain enforces. Catching them here lets us return a
-// specific, actionable 400 instead of a vague 503 after every provider
+// specific, actionable 400 instead of a vague 502 after every provider
 // has independently rejected the request.
 //
-// Currently checked:
-//   - Each role="tool" message MUST carry tool_call_id (matched against
-//     a prior assistant tool_call). OpenAI, Cerebras, Mistral, Groq,
-//     and others reject tool messages without it.
-//   - role="tool" without a corresponding prior assistant tool_call.id
-//     in the message history (orphaned tool result).
+// Checks (in order):
+//   - messages array is present and non-empty
+//   - each message has a role from the known set
+//   - each message has either content OR (assistant-only) tool_calls
+//   - role="tool" carries tool_call_id matched against a prior assistant
+//     tool_call (orphaned-result detection)
+//   - max_tokens >= 0 if present (negative rejected)
+//   - temperature in [0, 2] if present
+//   - top_p in [0, 1] if present
+//   - presence_penalty / frequency_penalty in [-2, 2] if present
 func validateChatRequest(req *OpenAIChatRequest) error {
 	if req == nil {
 		return nil
 	}
-	// Build set of known tool_call IDs from prior assistant turns.
+
+	// 1. Messages array must be present and non-empty.
+	if len(req.Messages) == 0 {
+		return fmt.Errorf("messages: required, must be a non-empty array")
+	}
+
+	// 2. Numeric parameter ranges (omitempty zeroes collapse to "not set"
+	// for these, so the lower bound 0 is the inclusive default).
+	if req.MaxTokens < 0 {
+		return fmt.Errorf("max_tokens: must be >= 0 (got %d)", req.MaxTokens)
+	}
+	if req.Temperature < 0 || req.Temperature > 2 {
+		return fmt.Errorf("temperature: must be in [0, 2] (got %g)", req.Temperature)
+	}
+	if req.TopP < 0 || req.TopP > 1 {
+		return fmt.Errorf("top_p: must be in [0, 1] (got %g)", req.TopP)
+	}
+	if req.PresencePenalty < -2 || req.PresencePenalty > 2 {
+		return fmt.Errorf("presence_penalty: must be in [-2, 2] (got %g)", req.PresencePenalty)
+	}
+	if req.FrequencyPenalty < -2 || req.FrequencyPenalty > 2 {
+		return fmt.Errorf("frequency_penalty: must be in [-2, 2] (got %g)", req.FrequencyPenalty)
+	}
+
+	// 3. Per-message validation + collect known tool_call IDs.
 	knownIDs := make(map[string]bool)
-	for _, msg := range req.Messages {
-		if msg.Role == "assistant" {
+	for i, msg := range req.Messages {
+		if msg.Role == "" {
+			return fmt.Errorf("messages[%d]: role is required", i)
+		}
+		if !validChatMessageRoles[msg.Role] {
+			return fmt.Errorf(
+				"messages[%d]: role %q is not one of system|user|assistant|tool|function|developer",
+				i, msg.Role)
+		}
+		hasContent := msg.Content != ""
+		hasToolCalls := len(msg.ToolCalls) > 0
+		switch msg.Role {
+		case "assistant":
+			if !hasContent && !hasToolCalls {
+				return fmt.Errorf("messages[%d]: assistant message must have content or tool_calls", i)
+			}
 			for _, tc := range msg.ToolCalls {
 				if tc.ID != "" {
 					knownIDs[tc.ID] = true
 				}
 			}
+		case "tool":
+			if !hasContent {
+				return fmt.Errorf("messages[%d]: tool message must have content", i)
+			}
+		default:
+			if !hasContent {
+				return fmt.Errorf("messages[%d]: %s message must have content", i, msg.Role)
+			}
 		}
 	}
-	// Validate tool messages.
+
+	// 4. Tool-message specific: tool_call_id must reference a prior
+	// assistant tool_calls[].id (orphaned-result detection).
 	for i, msg := range req.Messages {
 		if msg.Role != "tool" {
 			continue

@@ -9,6 +9,7 @@ import (
 
 	authadapter "dev.helix.agent/internal/adapters/auth"
 	containeradapter "dev.helix.agent/internal/adapters/containers"
+	helixqaadapter "dev.helix.agent/internal/adapters/helixqa"
 	"dev.helix.agent/internal/benchmark"
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
@@ -1309,9 +1310,18 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		handlers.RegisterBenchmarkRoutes(protected, benchmarkHandler)
 		logger.Info("Benchmark endpoints registered at /v1/benchmark/* (real BenchmarkSystem wired)")
 
-		// QA endpoints — HelixQA autonomous QA pipeline; adapter wired lazily
-		qaHandler := handlers.NewQAHandler(nil)
+		// QA endpoints — wire a real HelixQA adapter. New(nil) accepts
+		// nil logger and uses a default. Initialize() opens the SQLite
+		// memory store at "data/memory.db" — best-effort: handler still
+		// works with adapter alone if Initialize fails (the adapter
+		// gates DB-backed operations on the store being non-nil).
+		qaAdapter := helixqaadapter.New(logger)
+		if err := qaAdapter.Initialize(""); err != nil {
+			logger.WithError(err).Warn("HelixQA adapter Initialize failed; some endpoints may degrade")
+		}
+		qaHandler := handlers.NewQAHandler(qaAdapter)
 		handlers.RegisterQARoutes(protected, qaHandler)
+		logger.Info("QA endpoints registered at /v1/qa/* (real HelixQA adapter wired)")
 		logger.Info("QA endpoints registered at /v1/qa/* (services pending)")
 
 		// Semantic Search endpoints — vector-based code search with ChromaDB/Qdrant

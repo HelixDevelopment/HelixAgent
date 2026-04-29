@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "agent": "qwen_code",
-  "generated_at": "2026-04-12T08:01:24+03:00",
+  "generated_at": "2026-04-29T20:03:27+03:00",
   "helix_agent": {
     "enabled": true,
-    "url": "http://localhost:7061",
+    "url": "http://localhost:8100",
     "api_key": "helixagent-local",
     "timeout": 120000,
     "retry": {

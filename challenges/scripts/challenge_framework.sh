@@ -182,7 +182,13 @@ get_verifier_binary() {
 
 # Start HelixAgent
 start_helixagent() {
-    local port="${1:-7061}"
+    # Default port: HELIXAGENT_PORT, then 8100 (canonical per
+    # docs/development/port-registry.md). The previous default of 7061
+    # was stale and caused start_helixagent to spawn a NEW instance on
+    # an unused port even when one was already running on 8100,
+    # producing false-positive "HelixAgent stopped" cleanup messages
+    # observed in the 2026-04-29 sweep.
+    local port="${1:-${HELIXAGENT_PORT:-8100}}"
     local config="${2:-$PROJECT_ROOT/configs/production.yaml}"
 
     local binary=$(get_helixagent_binary) || return 1

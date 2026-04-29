@@ -15,7 +15,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Configuration
-HELIX_AGENT_URL="${HELIX_AGENT_URL:-http://localhost:7061}"
+# Default port: 8100 per docs/development/port-registry.md and CLAUDE.md
+# CLI Agent Config Rule #4 ("Both use http://localhost:8100/v1 as
+# provider base URL"). The previous default of 7061 was stale and
+# caused every generated CLI-agent config to point at a port HelixAgent
+# does not listen on, breaking the install for end users.
+HELIX_AGENT_URL="${HELIX_AGENT_URL:-http://localhost:8100}"
 HELIX_AGENT_API_KEY="${HELIX_AGENT_API_KEY:-helixagent-local}"
 LLMS_VERIFIER_URL="${LLMS_VERIFIER_URL:-http://localhost:8081}"
 
@@ -442,8 +447,8 @@ generate_opencode_config() {
     local output_dir="$CONFIG_OUTPUT_DIR/opencode"
     mkdir -p "$output_dir"
 
-    # Use port 7061 for HelixAgent (development default)
-    local helix_url="${HELIX_AGENT_URL:-http://localhost:7061}"
+    # Use port 8100 for HelixAgent (canonical default per port-registry.md)
+    local helix_url="${HELIX_AGENT_URL:-http://localhost:8100}"
     local helix_api_key="${HELIX_AGENT_API_KEY:-helixagent-local}"
 
     # Generate config with correct OpenCode schema (mcpServers, providers, agents)
@@ -673,8 +678,8 @@ generate_crush_config() {
     local output_dir="$CONFIG_OUTPUT_DIR/crush"
     mkdir -p "$output_dir"
 
-    # Use port 7061 for HelixAgent (development default)
-    local helix_url="${HELIX_AGENT_URL:-http://localhost:7061}"
+    # Use port 8100 for HelixAgent (canonical default per port-registry.md)
+    local helix_url="${HELIX_AGENT_URL:-http://localhost:8100}"
     local helix_api_key="${HELIX_AGENT_API_KEY:-helixagent-local}"
 
     # Generate config with 35+ MCPs

@@ -4,7 +4,7 @@
     "helixagent": {
       "name": "HelixAgent AI Debate Ensemble",
       "type": "openai",
-      "base_url": "http://localhost:7061/v1",
+      "base_url": "http://localhost:8100/v1",
       "api_key": "helixagent-local",
       "models": [
         {
@@ -54,10 +54,10 @@
     "figma": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-figma"], "env": {"FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"}, "enabled": true},
     "aws-kb-retrieval": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-aws-kb-retrieval"], "env": {"AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}"}, "enabled": true},
     "gitlab": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-gitlab"], "env": {"GITLAB_TOKEN": "${GITLAB_TOKEN}"}, "enabled": true},
-    "helixagent": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:7061/v1/mcp", "-H", "Content-Type: application/json"], "enabled": true},
-    "helixagent-debate": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:7061/v1/debates", "-H", "Content-Type: application/json"], "enabled": true},
-    "helixagent-rag": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:7061/v1/rag/search", "-H", "Content-Type: application/json"], "enabled": true},
-    "helixagent-memory": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:7061/v1/memory", "-H", "Content-Type: application/json"], "enabled": true},
+    "helixagent": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:8100/v1/mcp", "-H", "Content-Type: application/json"], "enabled": true},
+    "helixagent-debate": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:8100/v1/debates", "-H", "Content-Type: application/json"], "enabled": true},
+    "helixagent-rag": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:8100/v1/rag/search", "-H", "Content-Type: application/json"], "enabled": true},
+    "helixagent-memory": {"command": "curl", "args": ["-s", "-X", "POST", "http://localhost:8100/v1/memory", "-H", "Content-Type: application/json"], "enabled": true},
     "docker": {"command": "npx", "args": ["-y", "mcp-server-docker"], "enabled": true},
     "kubernetes": {"command": "npx", "args": ["-y", "mcp-server-kubernetes"], "env": {"KUBECONFIG": "${KUBECONFIG:-$HOME/.kube/config}"}, "enabled": true},
     "redis": {"command": "npx", "args": ["-y", "mcp-server-redis"], "env": {"REDIS_URL": "${REDIS_URL:-redis://localhost:6379}"}, "enabled": true},
@@ -72,7 +72,7 @@
     "datadog": {"command": "npx", "args": ["-y", "mcp-server-datadog"], "env": {"DD_API_KEY": "${DD_API_KEY}", "DD_APP_KEY": "${DD_APP_KEY}"}, "enabled": true}
   },
   "lsp": {
-    "helixagent-lsp": {"command": "curl", "args": ["-X", "POST", "http://localhost:7061/v1/lsp", "-H", "Authorization: Bearer helixagent-local"], "enabled": true}
+    "helixagent-lsp": {"command": "curl", "args": ["-X", "POST", "http://localhost:8100/v1/lsp", "-H", "Authorization: Bearer helixagent-local"], "enabled": true}
   },
   "options": {
     "default_provider": "helixagent",

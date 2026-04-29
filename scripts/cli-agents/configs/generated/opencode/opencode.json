@@ -121,19 +121,19 @@
     },
     "helixagent": {
       "type": "sse",
-      "url": "http://localhost:7061/v1/mcp/sse"
+      "url": "http://localhost:8100/v1/mcp/sse"
     },
     "helixagent-debate": {
       "type": "sse",
-      "url": "http://localhost:7061/v1/mcp/debate/sse"
+      "url": "http://localhost:8100/v1/mcp/debate/sse"
     },
     "helixagent-rag": {
       "type": "sse",
-      "url": "http://localhost:7061/v1/mcp/rag/sse"
+      "url": "http://localhost:8100/v1/mcp/rag/sse"
     },
     "helixagent-memory": {
       "type": "sse",
-      "url": "http://localhost:7061/v1/mcp/memory/sse"
+      "url": "http://localhost:8100/v1/mcp/memory/sse"
     },
     "docker": {
       "command": "npx",

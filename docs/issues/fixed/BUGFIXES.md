@@ -2167,3 +2167,86 @@ The 5 still-gated services are pnpm/turbo monorepos requiring per-app investigat
 
 
 
+
+## Issue #55: Session loss — user.slice memory pressure forced manual logout, then power off (FIXED 2026-04-28)
+
+### Root cause
+
+On 2026-04-28 between 18:36:35 and 18:38:00 the user lost a working session
+containing 3 concurrent Claude Code instances (PIDs 7893, 18533, 734608),
+an Android build (`soong_ui` / `ninja` / `simg2img` / `build_image`), Kimi
+Code, ~30 long-lived `npm exec`/`uv`/`python` MCP server processes, and a
+rootless podman container fleet from three other projects (Boba, Atmosphere
+QA, qBittorrent stack). The `user.slice` consumed **60.6 GiB memory peak /
+5.2 GiB swap peak**. The host was hardened against suspend (CONST-033 was
+already in place — `host_no_auto_suspend_challenge.sh` PASS) and the kernel
+OOM killer never fired (no `journalctl -k` matches). But the GUI became
+unresponsive, the user manually logged out (clean PAM:session_close on
+sessions 3, 11, 14, 15 at 18:36:35.377), `user@1000.service` was SIGKILL'd
+after timeout, then at 18:37:55 the user clicked Power Off in the GNOME
+shell `endSessionDialog`, reaching `poweroff.target` at 18:38:00.
+
+Triple-checked: no command issued by Claude Code in the prior session
+caused this. All Claude commands were read-only git introspection
+(`git status`, `git diff`, `git log`, `git ls-tree`, `git submodule
+status`, `cat`, `ls`). Repo-wide grep for `loginctl
+terminate-{user,session}|systemctl stop user@|gnome-session-quit|dbus-send
+… login1.Manager.PowerOff/Reboot/Logout|/sys/power/state` returned 0 hits
+in HelixAgent source (matches found are all in CLAUDE.md / AGENTS.md
+governance text or in the scanner script itself). Docker is `inactive` and
+`not-found` on this host — only podman runs, and podman is rootless
+(containers count under `user.slice`, but no container mounts `/sys/power`,
+the D-Bus system socket, or sets `cap_add: SYS_BOOT|SYS_TIME`). Three
+compose files use `privileged: true` — cAdvisor (kernel metrics, read-only
+mounts), Android emulator in CI (KVM access), and a docs/spec example —
+all legitimate and not running by default.
+
+### Affected files
+
+- `docs/issues/fixed/SESSION_LOSS_2026-04-28.md` (new — full forensic timeline,
+  evidence excerpts, vector audit)
+
+### Fix
+
+1. **CONST-036 added.** New rule "User-Session Termination — Hard Ban"
+   forbids `loginctl terminate-{user,session}|kill-{user,session}`,
+   `systemctl stop|kill user@<UID>`, `gnome-session-quit`, `pkill -KILL -u
+   $USER`, `killall -u $USER`, `dbus-send … org.gnome.SessionManager.{Logout
+   ,Shutdown,Reboot}`, `echo X > /sys/power/state`, and standalone
+   `/usr/bin/{poweroff,reboot,halt}`. Includes operational discipline
+   clauses on parallel heavy workloads, slice placement, AI-agent
+   concurrency caps, and recovery flow design.
+2. **New scanner.** `scripts/host-power-management/check-no-session-termination-calls.sh`
+   greps the source tree (with the same exclusion taxonomy as CONST-033's
+   scanner) and fails on any forbidden invocation.
+3. **New challenge.** `challenges/scripts/no_session_termination_calls_challenge.sh`
+   wraps the scanner so the rule lands in `run_all_challenges.sh`.
+4. **Cascade.** CONST-036 is added to root `CLAUDE.md` and `AGENTS.md`
+   alongside CONST-033, and cascaded across every project-owned
+   submodule's `CLAUDE.md` and `AGENTS.md` on the next regeneration.
+
+### Verification
+
+```text
+$ bash scripts/host-power-management/check-no-session-termination-calls.sh .
+OK: no forbidden session-termination calls in .
+
+$ bash challenges/scripts/no_session_termination_calls_challenge.sh
+=== summary: PASS ===
+
+$ bash challenges/scripts/no_suspend_calls_challenge.sh
+=== summary: PASS ===
+
+$ bash challenges/scripts/host_no_auto_suspend_challenge.sh
+=== summary: 4 pass, 0 fail ===
+```
+
+### Why this matters for end users
+
+Bypasses host-power-management hardening: even with CONST-033 making the host
+incapable of auto-suspend, a memory-saturated user.slice can still force the
+USER to manually end the session, with the same blast radius — lost windows,
+lost terminals, killed AI agents, half-flushed Android builds. CONST-036
+closes this with both a code-layer ban (no command may directly terminate a
+session) and an operational discipline (don't spawn workloads that will
+plausibly force a manual logout).

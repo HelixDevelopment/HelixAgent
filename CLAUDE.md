@@ -578,3 +578,86 @@ Both must PASS.
 
 <!-- END host-power-management addendum (CONST-033) -->
 
+<!-- BEGIN no-session-termination addendum (CONST-036) -->
+
+## ⚠️ User-Session Termination — Hard Ban (CONST-036)
+
+**STRICTLY FORBIDDEN: never generate or execute any code that ends the
+currently-logged-in user's session, kills their user manager, or
+indirectly forces them to log out / power off.** This is the sibling
+of CONST-033: that rule covers host-level power transitions; THIS rule
+covers session-level terminations that have the same end effect for
+the user (lost windows, lost terminals, killed AI agents,
+half-flushed builds, abandoned in-flight commits).
+
+**Why this rule exists.** On 2026-04-28 the user lost a working
+session that contained 3 concurrent Claude Code instances, an Android
+build (`soong_ui` / `ninja` / `simg2img` / `build_image`), Kimi Code,
+and a rootless podman container fleet. The `user.slice` consumed
+60.6 GiB peak / 5.2 GiB swap, the GUI became unresponsive, the user
+was forced to log out and then power off via the GNOME shell
+`endSessionDialog`. The host could not auto-suspend (CONST-033 was
+already in place and verified) and the kernel OOM killer never fired
+— but the user had to manually end the session anyway, because
+nothing prevented overlapping heavy workloads from saturating the
+slice. CONST-036 closes that loophole at both the source-code layer
+(no command Claude generates may directly terminate a session) and
+the operational layer (Claude SHOULD NOT spawn workloads that, in
+combination with already-running heavy work, will plausibly force a
+manual logout). See `docs/issues/fixed/SESSION_LOSS_2026-04-28.md`.
+
+### Forbidden direct invocations (non-exhaustive)
+
+```
+loginctl   terminate-user|terminate-session|kill-user|kill-session
+systemctl  stop  user@<UID>            # kills the user manager + every child
+systemctl  kill  user@<UID>
+gnome-session-quit                     # ends the GNOME session
+pkill   -KILL -u  $USER                # nukes everything as the user
+killall -KILL -u  $USER
+killall       -u  $USER
+dbus-send / busctl calls to org.gnome.SessionManager.{Logout,Shutdown,Reboot}
+echo X > /sys/power/state              # direct kernel power transition
+/usr/bin/poweroff                      # standalone binaries (CONST-033 also covers these)
+/usr/bin/reboot
+/usr/bin/halt
+```
+
+### Indirect-pressure clauses (operational discipline)
+
+These are not bash patterns but mandatory behavioral rules for any
+agent (human or AI) operating on this host:
+
+1. **Do not spawn parallel heavy workloads casually.** If the host
+   already has an Android build, a multi-Claude session, or a large
+   container fleet running, do NOT add another high-memory process
+   without first sampling `free -h` and `systemctl status user@1000`
+   to confirm headroom (target: keep `user.slice` under 70% of
+   physical RAM).
+2. **Long-lived background subagents go in `system.slice`, not
+   `user.slice`.** Use a system unit (or rootful podman) for fleets
+   that must survive a desktop crash. Rootless podman containers
+   live inside `user@UID.service` and die with it.
+3. **Document AI-agent concurrency limits in CLAUDE.md.** Each
+   submodule that spawns subagents (Claude Code, Kimi, etc.)
+   declares a soft cap and its rationale. The cap is advisory but
+   referenced in code review.
+4. **Never script "log out and back in" recovery flows.** If a
+   service is wedged, restart the SERVICE — never the session.
+
+### Verification commands
+
+```bash
+bash challenges/scripts/no_session_termination_calls_challenge.sh  # source clean
+bash challenges/scripts/no_suspend_calls_challenge.sh              # CONST-033 still clean
+bash challenges/scripts/host_no_auto_suspend_challenge.sh          # host hardened
+free -h                                                              # current memory headroom
+systemctl status user@1000.service --no-pager | head -20             # current user-slice load
+```
+
+The first three must PASS. `free -h` and `systemctl status` are
+diagnostic, not pass/fail — they're surfaced so the operator (and any
+agent reading this rule) can sanity-check load before adding work.
+
+<!-- END no-session-termination addendum (CONST-036) -->
+

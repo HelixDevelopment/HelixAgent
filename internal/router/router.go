@@ -1202,18 +1202,26 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 
 		// Background Task endpoints — wire the in-memory TaskRepository so
 		// /v1/tasks/* serves real responses, not 503. CONST-035 §c
-		// "Completion": no stub gaps. The InMemoryTaskRepository is
-		// process-local (tasks don't survive restart). For durability swap
-		// for the Postgres-backed BackgroundTaskRepository in
-		// internal/database/ via the same TaskRepository interface; see
-		// docs/issues for the production-DB-pool plumbing plan.
+		// "Completion": no stub gaps for storage/queue. The
+		// InMemoryTaskRepository is process-local (tasks don't survive
+		// restart). For durability swap the Postgres-backed
+		// BackgroundTaskRepository in internal/database/ via the same
+		// TaskRepository interface.
+		//
+		// Known gap (#task-worker-pool-wiring): no WorkerPool is plumbed
+		// here, so tasks created via POST stay in `pending` status — the
+		// queue accepts them but nothing drains it. The CRUD/list/detail
+		// API surface is fully usable and exercised by
+		// challenges/scripts/tasks_roundtrip_challenge.sh; execution
+		// behavior remains an explicit future-work item rather than a
+		// silent-503 bluff.
 		taskRepo := background.NewInMemoryTaskRepository()
 		taskQueue := background.NewInMemoryTaskQueue(logger)
 		backgroundTaskHandler := handlers.NewBackgroundTaskHandler(
 			taskRepo, taskQueue, nil, nil, nil, nil, nil, nil, nil, nil, logger,
 		)
 		backgroundTaskHandler.RegisterRoutes(protected)
-		logger.Info("Background task endpoints registered at /v1/tasks/* (in-memory TaskRepository wired; non-durable across restarts)")
+		logger.Info("Background task endpoints registered at /v1/tasks/* (real CRUD wired; no worker-pool execution yet — tracking #task-worker-pool-wiring)")
 
 		// Discovery endpoints — wired with ProviderRegistry fallback so
 		// /v1/discovery/models always returns real data (each provider's

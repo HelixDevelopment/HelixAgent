@@ -244,10 +244,15 @@ test_model_capabilities() {
             "max_tokens": 10
         }'
 
+        # Full debate ensemble can take 25-45s for a real run (5 positions
+        # × multi-pass validation). Use 60s timeout to match realistic
+        # end-user latency budget — a tighter timeout produces false
+        # FAILED (CONST-035 wrapper bluff: test failure when feature
+        # actually works, just slowly).
         local response=$(curl -s -w "\n%{http_code}" "$BASE_URL/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
-            -d "$request" --max-time 30 2>/dev/null || true)
+            -d "$request" --max-time 60 2>/dev/null || true)
 
         local http_code=$(echo "$response" | tail -n1)
 

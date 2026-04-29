@@ -524,6 +524,7 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 	// Check model routing.
 	// Canonical names per docs/api/API_REFERENCE.md and /v1/models response:
 	//   - helixagent-debate (canonical for CLI configs)
+	//   - helixagent-ensemble (semantic alias — same dispatch as -debate)
 	//   - helixagent/helixagent-debate (provider-qualified form)
 	//   - helix-debate, helixagent/helix-debate (legacy aliases)
 	//   → AI Debate ensemble
@@ -535,6 +536,7 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 	switch modelToCheck {
 	case "",
 		"helixagent-debate", "helixagent/helixagent-debate",
+		"helixagent-ensemble", "helixagent/helixagent-ensemble",
 		"helix-debate", "helixagent/helix-debate":
 		logrus.Info("Model: helixagent-debate or default - routing to AI Debate ensemble")
 	case "helixagent-llm", "helixagent/helixagent-llm",
@@ -2279,18 +2281,23 @@ func (h *UnifiedHandler) CompletionsStream(c *gin.Context) {
 // HelixAgent exposes a single unified model that internally uses AI debate ensemble
 // Backend provider models are implementation details and not exposed to clients
 func (h *UnifiedHandler) Models(c *gin.Context) {
-	// HelixAgent exposes three model IDs that the CLI agent configs
-	// (OpenCode, Crush, HelixCode) reference:
-	//   - helixagent-debate: AI debate ensemble (canonical name)
-	//   - helix-debate:      same ensemble, alias used by HelixCode config
-	//   - helix-llm:         provider chain with HelixLLM-first fallback;
-	//                        used by OpenCode/HelixCode for "fast" routing
+	// HelixAgent exposes the model IDs that CLI agent configs
+	// (OpenCode, Crush, HelixCode) and SDK consumers reference:
+	//   - helixagent-debate:    AI debate ensemble (canonical name)
+	//   - helixagent-ensemble:  same ensemble, semantic alias surfacing
+	//                           the user-visible "ensemble" terminology
+	//   - helix-debate:         legacy alias used by HelixCode config
+	//   - helix-llm:            provider chain with HelixLLM-first fallback;
+	//                           used by OpenCode/HelixCode for "fast" routing
+	//   - helixagent-llm:       canonical name for the provider chain
 	//
-	// All three are listed so CLI agents that pre-validate against
-	// /v1/models (instead of just sending the request) see them as
-	// available. Reproduction guard:
-	// challenges/scripts/opencode_helixllm_hello_challenge.sh asserts
-	// helix-llm is present (CONST-032).
+	// All are listed so CLI agents that pre-validate against /v1/models
+	// (instead of just sending the request) see them as available.
+	// Reproduction guards:
+	//   - challenges/scripts/opencode_helixllm_hello_challenge.sh
+	//     asserts helix-llm is present (CONST-032).
+	//   - challenges/scripts/chat_model_selection_challenge.sh
+	//     asserts helixagent-ensemble is dispatchable (CONST-035).
 	now := time.Now().Unix()
 	makeModel := func(id string) OpenAIModel {
 		return OpenAIModel{
@@ -2322,6 +2329,9 @@ func (h *UnifiedHandler) Models(c *gin.Context) {
 			// Canonical names used in CLI configs and docs/api/API_REFERENCE.md.
 			makeModel("helixagent-debate"),
 			makeModel("helixagent-llm"),
+			// Semantic alias for the debate ensemble (user-visible
+			// "ensemble" terminology — same dispatch as helixagent-debate).
+			makeModel("helixagent-ensemble"),
 			// Legacy aliases retained so existing clients keep working.
 			makeModel("helix-debate"),
 			makeModel("helix-llm"),

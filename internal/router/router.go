@@ -1302,8 +1302,15 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		}
 		logger.Info("Verification endpoints registered at /v1/verification/* (real VerificationService wired)")
 
-		// Health monitoring endpoints — wire real HealthService so endpoints return 200, not 503.
+		// Health monitoring endpoints — wire real HealthService so endpoints
+		// return 200, not 503. Bridge LLM providers from the providerRegistry
+		// into the HealthService at boot so /v1/health/providers returns the
+		// real provider list (not an empty list, which would be a contract
+		// bluff against docs/api/API_REFERENCE.md §"GET /v1/health/providers").
 		healthSvc := verifier.NewHealthService(nil)
+		for _, providerName := range providerRegistry.ListProviders() {
+			healthSvc.AddProvider(providerName, providerName)
+		}
 		healthHandler := handlers.NewHealthHandler(healthSvc)
 		healthGroup := protected.Group("/health")
 		{

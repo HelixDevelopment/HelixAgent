@@ -1193,12 +1193,19 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			logger.Info("Skills endpoints registered at /v1/skills/*")
 		}
 
-		// Background Task endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
+		// Background Task endpoints — handler currently constructed with nil
+		// services because TaskRepository requires a Postgres pool that's
+		// not yet plumbed through RouterContext. Endpoints return 503 with
+		// "service_unavailable" until the DB pool wiring lands. This is a
+		// genuine CONST-035 §c gap (not a comment bluff): no in-memory
+		// fallback exists for the production TaskRepository interface, and
+		// the route is registered so the API surface stays present for
+		// SDK / CLI agent contract validation. Tracking: #task-repo-wiring.
 		backgroundTaskHandler := handlers.NewBackgroundTaskHandler(
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger,
 		)
 		backgroundTaskHandler.RegisterRoutes(protected)
-		logger.Info("Background task endpoints registered at /v1/tasks/* (services pending)")
+		logger.Warn("Background task endpoints registered at /v1/tasks/* (will 503 — TaskRepository requires Postgres pool not yet plumbed; tracking #task-repo-wiring)")
 
 		// Discovery endpoints — wired with ProviderRegistry fallback so
 		// /v1/discovery/models always returns real data (each provider's
@@ -1231,7 +1238,6 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		}
 		logger.Info("Discovery endpoints registered at /v1/discovery/* (registry fallback active)")
 
-		// Scoring endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
 		// Scoring endpoints — wire a real verifier.ScoringService so endpoints
 		// return 200 with computed scores, not 503. CONST-035 §c "Completion":
 		// no stub / placeholder gaps that silently 503.

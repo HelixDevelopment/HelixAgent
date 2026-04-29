@@ -548,17 +548,27 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		// names that no provider recognises return HTTP 404 instead of
 		// silently routing to the ensemble (which would produce a
 		// completion that wasn't actually for the requested model).
-		// Best-effort: when the registry has incomplete discovery state
-		// the model is allowed through (fail-open) rather than blocking
-		// legitimate requests during cold-start.
-		if h.providerRegistry != nil && !h.providerRegistry.IsKnownModel(modelToCheck) {
-			logrus.Warnf("Model '%s' not in canonical aliases and unknown to all registered providers — returning 404", modelToCheck)
-			h.sendOpenAIError(c, http.StatusNotFound, "model_not_found",
-				fmt.Sprintf("model '%s' is not supported by any registered provider", modelToCheck),
-				"see GET /v1/models for the canonical model list, or use helixagent-debate / helixagent-llm")
-			return
+		//
+		// Fail-OPEN during cold-start / unreachable-discovery: when no
+		// provider has populated SupportedModels yet (registry has zero
+		// model data), we cannot honestly say "unknown" — we let the
+		// request through and rely on the ensemble's own provider-level
+		// handling to surface a real error if the model is bogus.
+		if h.providerRegistry != nil {
+			found, authoritative := h.providerRegistry.LookupModel(modelToCheck)
+			switch {
+			case !authoritative:
+				logrus.Warnf("Model '%s' check skipped — provider registry has no model data yet (cold-start), allowing request through", modelToCheck)
+			case !found:
+				logrus.Warnf("Model '%s' not in canonical aliases and unknown to all registered providers — returning 404", modelToCheck)
+				h.sendOpenAIError(c, http.StatusNotFound, "model_not_found",
+					fmt.Sprintf("model '%s' is not supported by any registered provider", modelToCheck),
+					"see GET /v1/models for the canonical model list, or use helixagent-debate / helixagent-llm")
+				return
+			default:
+				logrus.Infof("Model '%s' recognised by at least one provider - using AI Debate ensemble", modelToCheck)
+			}
 		}
-		logrus.Infof("Model '%s' recognised by at least one provider - using AI Debate ensemble", modelToCheck)
 	}
 
 	// Check if this is a tool result processing turn vs a new user request

@@ -964,25 +964,24 @@ func (r *ProviderRegistry) ListProviders() []string {
 	return r.providers.Keys()
 }
 
-// IsKnownModel reports whether ANY registered provider claims to support
-// the given model name. The lookup is case-insensitive and matches both
-// bare model IDs ("gpt-4") and provider-qualified IDs ("openai/gpt-4").
+// LookupModel reports whether ANY registered provider claims to support
+// the given model name AND whether the registry has authoritative
+// information to back that verdict (i.e. at least one provider has
+// populated its SupportedModels list).
 //
-// Used by the chat-completions handler to fast-fail on bogus model names
-// (e.g. typos, model IDs from a different vendor) instead of routing to
-// the debate ensemble and silently producing some answer that wasn't
-// actually for the requested model.
+// Returns (found, authoritative):
+//   - (true, true)   — at least one provider claims this model
+//   - (false, true)  — registry has model data and none claim this name
+//   - (false, false) — no provider has populated SupportedModels yet
+//                      (cold-start, discovery never ran, or every API
+//                      was unreachable at startup); caller should
+//                      fail-OPEN and let the request proceed
 //
-// Note: providers whose discovery has not run yet (or whose API was
-// unreachable at startup) will report an empty SupportedModels list and
-// thus contribute nothing here. The caller should treat this as a
-// best-effort check — when the registry has incomplete information, an
-// "unknown" verdict is opportunistic, not authoritative. The handler
-// pairs this with the canonical alias set so the well-known
-// helixagent-debate / helixagent-llm names always pass.
-func (r *ProviderRegistry) IsKnownModel(name string) bool {
+// The lookup is case-insensitive and matches both bare model IDs
+// ("gpt-4") and provider-qualified IDs ("openai/gpt-4").
+func (r *ProviderRegistry) LookupModel(name string) (found, authoritative bool) {
 	if name == "" {
-		return false
+		return false, true // empty name is unambiguously not a known model
 	}
 	// Strip "provider/" prefix when present.
 	bare := name
@@ -991,7 +990,7 @@ func (r *ProviderRegistry) IsKnownModel(name string) bool {
 	}
 	lowerName := strings.ToLower(name)
 	lowerBare := strings.ToLower(bare)
-	found := false
+	hasAnyModelData := false
 	r.providers.Range(func(_ string, prov llm.LLMProvider) bool {
 		if prov == nil {
 			return true
@@ -999,6 +998,9 @@ func (r *ProviderRegistry) IsKnownModel(name string) bool {
 		caps := prov.GetCapabilities()
 		if caps == nil {
 			return true
+		}
+		if len(caps.SupportedModels) > 0 {
+			hasAnyModelData = true
 		}
 		for _, m := range caps.SupportedModels {
 			lm := strings.ToLower(m)
@@ -1009,7 +1011,16 @@ func (r *ProviderRegistry) IsKnownModel(name string) bool {
 		}
 		return true
 	})
-	return found
+	return found, hasAnyModelData
+}
+
+// IsKnownModel is a thin wrapper around LookupModel that returns true
+// when the registry has authoritative data AND the model is found.
+// Callers that need cold-start fail-open behavior should use
+// LookupModel directly.
+func (r *ProviderRegistry) IsKnownModel(name string) bool {
+	found, authoritative := r.LookupModel(name)
+	return found && authoritative
 }
 
 // ListProvidersOrderedByScore returns providers ordered by their LLMsVerifier scores (highest first)

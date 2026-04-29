@@ -55,17 +55,24 @@ setup_challenge() {
         shift
     done
 
-    # Load environment from project root first (primary location for API keys)
+    # Load environment from project root first (primary location for API keys).
+    # Temporarily disable `set -u` so .env entries like FOO=$BAR (where BAR is
+    # undefined) don't abort the challenge under `set -euo pipefail`. Auto-export
+    # (`set -a`) is preserved so any vars assigned in .env propagate to subprocs.
     if [ -f "$PROJECT_ROOT/.env" ]; then
         set -a
+        set +u
         source "$PROJECT_ROOT/.env"
+        set -u
         set +a
     fi
 
     # Then load challenges-specific .env (can override or add settings)
     if [ -f "$CHALLENGES_DIR/.env" ]; then
         set -a
+        set +u
         source "$CHALLENGES_DIR/.env"
+        set -u
         set +a
     fi
 

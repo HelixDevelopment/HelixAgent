@@ -13,21 +13,55 @@ import (
 	"dev.helix.agent/internal/verifier"
 )
 
-// DiscoveryHandler handles model discovery HTTP requests
-type DiscoveryHandler struct {
-	discoveryService *verifier.ModelDiscoveryService
+// providerRegistryView is the minimal subset of services.ProviderRegistry
+// the DiscoveryHandler reads when the full ModelDiscoveryService isn't
+// wired. Defined here to avoid an import cycle with internal/services.
+type providerRegistryView interface {
+	ListProviders() []string
 }
 
-// NewDiscoveryHandler creates a new discovery handler
+// DiscoveryHandler handles model discovery HTTP requests.
+//
+// Accepts EITHER the full ModelDiscoveryService (verifier-driven scoring +
+// selection) OR a fallback ProviderRegistry view (always available). The
+// fallback uses each provider's GetCapabilities().SupportedModels — same
+// source as /v1/models — so /v1/discovery/models never returns 503 just
+// because the optional ModelDiscoveryService isn't wired.
+type DiscoveryHandler struct {
+	discoveryService *verifier.ModelDiscoveryService
+	registry         providerRegistryView
+	getModels        func(providerName string) []string
+}
+
+// NewDiscoveryHandler creates a new discovery handler with optional
+// ModelDiscoveryService.
 func NewDiscoveryHandler(ds *verifier.ModelDiscoveryService) *DiscoveryHandler {
 	return &DiscoveryHandler{
 		discoveryService: ds,
 	}
 }
 
-// checkDiscoveryService returns true if the discovery service is available.
+// NewDiscoveryHandlerWithRegistry creates a discovery handler that falls back
+// to ProviderRegistry data when the full ModelDiscoveryService isn't wired.
+// `getModels` is a callback returning the models a registered provider
+// supports — passed in by the caller so this package doesn't need to import
+// internal/services (cycle prevention).
+func NewDiscoveryHandlerWithRegistry(
+	ds *verifier.ModelDiscoveryService,
+	registry providerRegistryView,
+	getModels func(providerName string) []string,
+) *DiscoveryHandler {
+	return &DiscoveryHandler{
+		discoveryService: ds,
+		registry:         registry,
+		getModels:        getModels,
+	}
+}
+
+// checkDiscoveryService returns true if either the discovery service or the
+// fallback registry is available. Returns 503 only when both are missing.
 func (h *DiscoveryHandler) checkDiscoveryService(c *gin.Context) bool {
-	if h.discoveryService == nil {
+	if h.discoveryService == nil && h.registry == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error":   "service_unavailable",
 			"message": "Model discovery service not initialized",
@@ -35,6 +69,32 @@ func (h *DiscoveryHandler) checkDiscoveryService(c *gin.Context) bool {
 		return false
 	}
 	return true
+}
+
+// fallbackDiscoveredModels returns the list of (provider, model) pairs
+// pulled from the ProviderRegistry. Real data — every entry corresponds
+// to a model some registered provider claims to support.
+func (h *DiscoveryHandler) fallbackDiscoveredModels() []DiscoveredModelResponse {
+	if h.registry == nil || h.getModels == nil {
+		return nil
+	}
+	now := time.Now().UTC().Format("2006-01-02T15:04:05Z")
+	var out []DiscoveredModelResponse
+	for _, prov := range h.registry.ListProviders() {
+		for _, m := range h.getModels(prov) {
+			out = append(out, DiscoveredModelResponse{
+				ModelID:      m,
+				ModelName:    m,
+				Provider:     prov,
+				Verified:     false, // verifier-driven status not in fallback
+				CodeVisible:  false,
+				OverallScore: 0,
+				ScoreSuffix:  "",
+				DiscoveredAt: now,
+			})
+		}
+	}
+	return out
 }
 
 // DiscoveredModelResponse represents a discovered model response
@@ -61,25 +121,38 @@ func (h *DiscoveryHandler) GetDiscoveredModels(c *gin.Context) {
 	if !h.checkDiscoveryService(c) {
 		return
 	}
-	models := h.discoveryService.GetDiscoveredModels()
 
-	response := make([]DiscoveredModelResponse, len(models))
-	for i, m := range models {
-		response[i] = DiscoveredModelResponse{
-			ModelID:      m.ModelID,
-			ModelName:    m.ModelName,
-			Provider:     m.Provider,
-			Verified:     m.Verified,
-			CodeVisible:  m.CodeVisible,
-			OverallScore: m.OverallScore,
-			ScoreSuffix:  m.ScoreSuffix,
-			DiscoveredAt: m.DiscoveredAt.Format("2006-01-02T15:04:05Z"),
+	// Prefer the full ModelDiscoveryService when wired; fall back to
+	// ProviderRegistry-derived models otherwise. The fallback is real
+	// data (each registered provider's GetCapabilities().SupportedModels)
+	// — the only fields it can't populate are the verifier-driven scores
+	// and the code-visibility flag.
+	var response []DiscoveredModelResponse
+	source := "registry"
+	if h.discoveryService != nil {
+		models := h.discoveryService.GetDiscoveredModels()
+		response = make([]DiscoveredModelResponse, len(models))
+		for i, m := range models {
+			response[i] = DiscoveredModelResponse{
+				ModelID:      m.ModelID,
+				ModelName:    m.ModelName,
+				Provider:     m.Provider,
+				Verified:     m.Verified,
+				CodeVisible:  m.CodeVisible,
+				OverallScore: m.OverallScore,
+				ScoreSuffix:  m.ScoreSuffix,
+				DiscoveredAt: m.DiscoveredAt.Format("2006-01-02T15:04:05Z"),
+			}
 		}
+		source = "discovery_service"
+	} else {
+		response = h.fallbackDiscoveredModels()
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"models": response,
 		"total":  len(response),
+		"source": source,
 	})
 }
 

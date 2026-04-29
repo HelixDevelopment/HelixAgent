@@ -1189,8 +1189,26 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		backgroundTaskHandler.RegisterRoutes(protected)
 		logger.Info("Background task endpoints registered at /v1/tasks/* (services pending)")
 
-		// Discovery endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
-		discoveryHandler := handlers.NewDiscoveryHandler(nil)
+		// Discovery endpoints — wired with ProviderRegistry fallback so
+		// /v1/discovery/models always returns real data (each provider's
+		// SupportedModels) even when the optional verifier-driven
+		// ModelDiscoveryService isn't configured. Other discovery
+		// endpoints still 503 until the full service is wired.
+		discoveryHandler := handlers.NewDiscoveryHandlerWithRegistry(
+			nil, // ModelDiscoveryService — optional, not wired here
+			providerRegistry,
+			func(providerName string) []string {
+				prov, err := providerRegistry.GetProvider(providerName)
+				if err != nil || prov == nil {
+					return nil
+				}
+				caps := prov.GetCapabilities()
+				if caps == nil {
+					return nil
+				}
+				return caps.SupportedModels
+			},
+		)
 		discoveryGroup := protected.Group("/discovery")
 		{
 			discoveryGroup.GET("/models", discoveryHandler.GetDiscoveredModels)
@@ -1200,7 +1218,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			discoveryGroup.GET("/ensemble", discoveryHandler.GetEnsembleModels)
 			discoveryGroup.GET("/debate-model", discoveryHandler.GetModelForDebate)
 		}
-		logger.Info("Discovery endpoints registered at /v1/discovery/* (services pending)")
+		logger.Info("Discovery endpoints registered at /v1/discovery/* (registry fallback active)")
 
 		// Scoring endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
 		scoringHandler := handlers.NewScoringHandler(nil)

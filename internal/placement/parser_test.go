@@ -246,7 +246,12 @@ func TestParseCompose_RealMainCompose(t *testing.T) {
 	}
 	// cognee depends on postgres + redis + chromadb.
 	if groups["cognee"] == "" {
-		t.Skip("cognee not in default profile of this compose file")
+		// SKIP-OK: #compose-profile-default — cognee is in an optional
+		// profile of docker-compose.yml; when this test runs against a
+		// profile that doesn't include it, the co-location invariant
+		// has nothing to verify. Per CLAUDE.md DoD rule 4 the marker
+		// makes absence-of-coverage loud rather than silent.
+		t.Skip("cognee not in default profile of this compose file (SKIP-OK: #compose-profile-default)")
 	}
 	for _, dep := range []string{"postgres", "redis", "chromadb"} {
 		if groups[dep] != groups["cognee"] {

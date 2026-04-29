@@ -146,3 +146,13 @@ scripts/cli-agents/configs/backups/
 .placement-plan-*.json
 .placement-*-*.yml
 .placement-*/
+
+# challenge & monitoring run artifacts (per-run, not source state)
+challenges/monitoring/reports/html_report_test_*/
+challenges/monitoring/reports/json_report_test_*/
+challenges/monitoring/reports/report_test_*/
+docs/reports/LLM_SCORING_REPORT_*.md
+
+# sqlite memory store created by `bin/helixagent` at runtime
+/data/
+/internal/router/data/

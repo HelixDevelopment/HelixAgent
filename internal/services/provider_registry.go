@@ -964,6 +964,54 @@ func (r *ProviderRegistry) ListProviders() []string {
 	return r.providers.Keys()
 }
 
+// IsKnownModel reports whether ANY registered provider claims to support
+// the given model name. The lookup is case-insensitive and matches both
+// bare model IDs ("gpt-4") and provider-qualified IDs ("openai/gpt-4").
+//
+// Used by the chat-completions handler to fast-fail on bogus model names
+// (e.g. typos, model IDs from a different vendor) instead of routing to
+// the debate ensemble and silently producing some answer that wasn't
+// actually for the requested model.
+//
+// Note: providers whose discovery has not run yet (or whose API was
+// unreachable at startup) will report an empty SupportedModels list and
+// thus contribute nothing here. The caller should treat this as a
+// best-effort check — when the registry has incomplete information, an
+// "unknown" verdict is opportunistic, not authoritative. The handler
+// pairs this with the canonical alias set so the well-known
+// helixagent-debate / helixagent-llm names always pass.
+func (r *ProviderRegistry) IsKnownModel(name string) bool {
+	if name == "" {
+		return false
+	}
+	// Strip "provider/" prefix when present.
+	bare := name
+	if idx := strings.Index(name, "/"); idx >= 0 && idx+1 < len(name) {
+		bare = name[idx+1:]
+	}
+	lowerName := strings.ToLower(name)
+	lowerBare := strings.ToLower(bare)
+	found := false
+	r.providers.Range(func(_ string, prov llm.LLMProvider) bool {
+		if prov == nil {
+			return true
+		}
+		caps := prov.GetCapabilities()
+		if caps == nil {
+			return true
+		}
+		for _, m := range caps.SupportedModels {
+			lm := strings.ToLower(m)
+			if lm == lowerName || lm == lowerBare {
+				found = true
+				return false // stop iteration
+			}
+		}
+		return true
+	})
+	return found
+}
+
 // ListProvidersOrderedByScore returns providers ordered by their LLMsVerifier scores (highest first)
 // CRITICAL: This enables dynamic provider selection based on real verification results
 // Providers without scores are placed at the end with a default score of 5.0

@@ -543,7 +543,22 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		h.processWithProviderChain(c, &req)
 		return
 	default:
-		logrus.Infof("Model '%s' not in canonical alias set, using AI Debate ensemble", modelToCheck)
+		// Verify the model is supported by at least ONE registered provider
+		// before falling through to the ensemble. Bogus / typo'd model
+		// names that no provider recognises return HTTP 404 instead of
+		// silently routing to the ensemble (which would produce a
+		// completion that wasn't actually for the requested model).
+		// Best-effort: when the registry has incomplete discovery state
+		// the model is allowed through (fail-open) rather than blocking
+		// legitimate requests during cold-start.
+		if h.providerRegistry != nil && !h.providerRegistry.IsKnownModel(modelToCheck) {
+			logrus.Warnf("Model '%s' not in canonical aliases and unknown to all registered providers — returning 404", modelToCheck)
+			h.sendOpenAIError(c, http.StatusNotFound, "model_not_found",
+				fmt.Sprintf("model '%s' is not supported by any registered provider", modelToCheck),
+				"see GET /v1/models for the canonical model list, or use helixagent-debate / helixagent-llm")
+			return
+		}
+		logrus.Infof("Model '%s' recognised by at least one provider - using AI Debate ensemble", modelToCheck)
 	}
 
 	// Check if this is a tool result processing turn vs a new user request

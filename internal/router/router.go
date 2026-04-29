@@ -12,6 +12,7 @@ import (
 	"dev.helix.agent/internal/benchmark"
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
+	"dev.helix.agent/internal/llmops"
 	"dev.helix.agent/internal/checkpoints"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/database"
@@ -1281,10 +1282,15 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		handlers.RegisterPlanningRoutes(protected, planningHandler)
 		logger.Info("Planning algorithm endpoints registered at /v1/planning/*")
 
-		// LLMOps endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
-		llmopsHandler := handlers.NewLLMOpsHandler(nil)
+		// LLMOps endpoints — wire a real LLMOpsSystem so /v1/llmops/*
+		// returns real data instead of 503. Constructor accepts nil config
+		// (defaults) and Initialize wires up in-memory PromptRegistry,
+		// AlertManager, etc.
+		llmopsSystem := llmops.NewLLMOpsSystem(nil, logger)
+		_ = llmopsSystem.Initialize() // best-effort
+		llmopsHandler := handlers.NewLLMOpsHandler(llmopsSystem)
 		handlers.RegisterLLMOpsRoutes(protected, llmopsHandler)
-		logger.Info("LLMOps endpoints registered at /v1/llmops/* (services pending)")
+		logger.Info("LLMOps endpoints registered at /v1/llmops/* (real LLMOpsSystem wired)")
 
 		// Benchmark endpoints — wire a real BenchmarkSystem so /v1/benchmark/*
 		// returns real data instead of 503. The system uses defaults when

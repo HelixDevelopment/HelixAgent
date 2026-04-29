@@ -47,6 +47,7 @@ EXCLUDE_PATHS=(
   "QWEN.md"
   "GEMINI.md"
   "/docs/issues/fixed/BUGFIXES.md"
+  "/docs/issues/fixed/SESSION_LOSS_2026-04-28.md"
   "/CHANGELOG.md"
   "/docs/superpowers/plans/"
   "anthropic-quickstarts/"

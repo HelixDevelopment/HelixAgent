@@ -348,7 +348,7 @@ func TestProviderTypes_BaseURLsAreValid(t *testing.T) {
 			firstQuote := strings.Index(trimmed, `"`)
 			lastQuote := strings.LastIndex(trimmed, `"`)
 			if firstQuote == -1 || lastQuote == -1 || firstQuote == lastQuote {
-				t.Skipf("Could not extract URL from line: %s", trimmed)
+				t.Skipf("Could not extract URL from line: %s (SKIP-OK: #unmarked-skip-needs-ticket)", trimmed)
 				return
 			}
 			url := trimmed[firstQuote+1 : lastQuote]
@@ -356,7 +356,7 @@ func TestProviderTypes_BaseURLsAreValid(t *testing.T) {
 			// Empty BaseURL is valid for CLI-based providers (e.g., Junie)
 			// that use CLI proxy mode instead of direct HTTP API access.
 			if url == "" {
-				t.Skipf("Empty BaseURL (CLI-based provider): %s", trimmed)
+				t.Skipf("Empty BaseURL (CLI-based provider): %s (SKIP-OK: #unmarked-skip-needs-ticket)", trimmed)
 				return
 			}
 

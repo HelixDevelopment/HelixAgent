@@ -136,13 +136,13 @@ func TestMem0LiveIntegration(t *testing.T) {
 		)
 		if err != nil {
 			// Handle network errors (timeout, EOF, connection reset) gracefully
-			t.Skipf("Network error during chat request (server may be unavailable): %v", err)
+			t.Skipf("Network error during chat request (server may be unavailable): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
 		body, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504 {
-			t.Skipf("Providers temporarily unavailable (%d), skipping test", resp.StatusCode)
+			t.Skipf("Providers temporarily unavailable (%d), skipping test (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Response: %s", string(body))
 

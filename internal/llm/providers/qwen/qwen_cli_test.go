@@ -239,7 +239,7 @@ func TestQwenCLIProvider_Integration_Complete(t *testing.T) {
 
 	// Verify CLI is actually available before running the test
 	if !provider.IsCLIAvailable() {
-		t.Skipf("Qwen CLI not available: %v", provider.GetCLIError())
+		t.Skipf("Qwen CLI not available: %v (SKIP-OK: #infra-unavailable)", provider.GetCLIError())
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -280,7 +280,7 @@ func TestQwenCLIProvider_Integration_HealthCheck(t *testing.T) {
 
 	// Verify CLI is actually available before running the test
 	if !provider.IsCLIAvailable() {
-		t.Skipf("Qwen CLI not available: %v", provider.GetCLIError())
+		t.Skipf("Qwen CLI not available: %v (SKIP-OK: #infra-unavailable)", provider.GetCLIError())
 	}
 
 	err := provider.HealthCheck()

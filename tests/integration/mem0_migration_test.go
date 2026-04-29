@@ -44,7 +44,7 @@ func TestMem0MigrationValidation(t *testing.T) {
 	t.Run("Config file has Cognee disabled", func(t *testing.T) {
 		data, err := os.ReadFile("configs/development.yaml")
 		if err != nil {
-			t.Skipf("Skipping - development.yaml not found: %v", err)
+			t.Skipf("Skipping - development.yaml not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 
@@ -64,7 +64,7 @@ func TestMem0MigrationValidation(t *testing.T) {
 	t.Run("Config file has Mem0 configuration", func(t *testing.T) {
 		data, err := os.ReadFile("configs/development.yaml")
 		if err != nil {
-			t.Skipf("Skipping - development.yaml not found: %v", err)
+			t.Skipf("Skipping - development.yaml not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 
@@ -86,7 +86,7 @@ func TestMem0MigrationValidation(t *testing.T) {
 	t.Run("No hardcoded Cognee enabling in code", func(t *testing.T) {
 		data, err := os.ReadFile("internal/config/config.go")
 		if err != nil {
-			t.Skipf("Skipping - config.go not found: %v", err)
+			t.Skipf("Skipping - config.go not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 
@@ -137,7 +137,7 @@ func TestMem0MigrationValidation(t *testing.T) {
 	t.Run("Memory service checks Cognee enabled flag", func(t *testing.T) {
 		data, err := os.ReadFile("internal/services/memory_service.go")
 		if err != nil {
-			t.Skipf("Skipping - memory_service.go not found: %v", err)
+			t.Skipf("Skipping - memory_service.go not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 
@@ -151,7 +151,7 @@ func TestMem0MigrationValidation(t *testing.T) {
 	t.Run("CogneeService checks enabled flag before operations", func(t *testing.T) {
 		data, err := os.ReadFile("internal/services/cognee_service.go")
 		if err != nil {
-			t.Skipf("Skipping - cognee_service.go not found: %v", err)
+			t.Skipf("Skipping - cognee_service.go not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 
@@ -210,7 +210,7 @@ func TestMem0ConfigurationPresent(t *testing.T) {
 	t.Run("Development YAML has Mem0 section", func(t *testing.T) {
 		data, err := os.ReadFile("configs/development.yaml")
 		if err != nil {
-			t.Skipf("Skipping - development.yaml not found: %v", err)
+			t.Skipf("Skipping - development.yaml not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 

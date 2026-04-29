@@ -45,7 +45,7 @@ func setupProtocolTestDB(t *testing.T) (*pgxpool.Pool, *ProtocolRepository) {
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		t.Skipf("Skipping test: database not available: %v", err)
+		t.Skipf("Skipping test: database not available: %v (SKIP-OK: #infra-db-unavailable)", err)
 		return nil, nil
 	}
 
@@ -55,7 +55,7 @@ func setupProtocolTestDB(t *testing.T) (*pgxpool.Pool, *ProtocolRepository) {
 	defer cancel()
 
 	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("Skipping test: database connection failed: %v", err)
+		t.Skipf("Skipping test: database connection failed: %v (SKIP-OK: #infra-db-unavailable)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -70,7 +70,7 @@ func setupProtocolTestDB(t *testing.T) (*pgxpool.Pool, *ProtocolRepository) {
 		)
 	`).Scan(&tableExists)
 	if err != nil || !tableExists {
-		t.Skipf("Skipping test: mcp_servers table does not exist (run migrations first)")
+		t.Skipf("Skipping test: mcp_servers table does not exist (run migrations first) (SKIP-OK: #infra-schema-not-migrated)")
 		pool.Close()
 		return nil, nil
 	}

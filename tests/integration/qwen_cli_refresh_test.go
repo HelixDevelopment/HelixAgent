@@ -49,7 +49,7 @@ func TestQwenCLIRefreshIntegration(t *testing.T) {
 		reader := oauth_credentials.GetGlobalReader()
 		creds, err := reader.ReadQwenCredentials()
 		if err != nil {
-			t.Skipf("No valid Qwen credentials available: %v", err)
+			t.Skipf("No valid Qwen credentials available: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 
 		if creds.AccessToken == "" {
@@ -143,7 +143,7 @@ func TestQwenCLIRefreshWithFallback(t *testing.T) {
 	reader := oauth_credentials.GetGlobalReader()
 	creds, err := reader.ReadQwenCredentials()
 	if err != nil {
-		t.Skipf("No valid Qwen credentials: %v", err)
+		t.Skipf("No valid Qwen credentials: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	t.Run("RefreshQwenTokenWithFallback with valid credentials", func(t *testing.T) {

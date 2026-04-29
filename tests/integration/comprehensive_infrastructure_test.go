@@ -40,7 +40,7 @@ func TestCoreInfrastructure(t *testing.T) {
 	t.Run("PostgreSQL_Connection", func(t *testing.T) {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", config.PostgresHost, config.PostgresPort), 5*time.Second)
 		if err != nil {
-			t.Skipf("PostgreSQL not available: %v", err)
+			t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 		}
 		conn.Close()
 		t.Log("PostgreSQL connection successful")
@@ -49,7 +49,7 @@ func TestCoreInfrastructure(t *testing.T) {
 	t.Run("Redis_Connection", func(t *testing.T) {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", config.RedisHost, config.RedisPort), 5*time.Second)
 		if err != nil {
-			t.Skipf("Redis not available: %v", err)
+			t.Skipf("Redis not available: %v (SKIP-OK: #infra-redis-unavailable)", err)
 		}
 		conn.Close()
 		t.Log("Redis connection successful")
@@ -58,7 +58,7 @@ func TestCoreInfrastructure(t *testing.T) {
 	t.Run("ChromaDB_Health", func(t *testing.T) {
 		resp, err := http.Get(config.ChromaDBURL + "/api/v2/heartbeat")
 		if err != nil {
-			t.Skipf("ChromaDB not available: %v", err)
+			t.Skipf("ChromaDB not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -67,7 +67,7 @@ func TestCoreInfrastructure(t *testing.T) {
 	t.Run("Cognee_Health", func(t *testing.T) {
 		resp, err := http.Get(config.CogneeURL + "/")
 		if err != nil {
-			t.Skipf("Cognee not available: %v", err)
+			t.Skipf("Cognee not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -85,7 +85,7 @@ func TestHelixAgentAPI(t *testing.T) {
 	t.Run("Health_Endpoint", func(t *testing.T) {
 		resp, err := client.Get(config.HelixAgentURL + "/health")
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -99,7 +99,7 @@ func TestHelixAgentAPI(t *testing.T) {
 	t.Run("Models_Endpoint", func(t *testing.T) {
 		resp, err := client.Get(config.HelixAgentURL + "/v1/models")
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -113,7 +113,7 @@ func TestHelixAgentAPI(t *testing.T) {
 	t.Run("Providers_Endpoint", func(t *testing.T) {
 		resp, err := client.Get(config.HelixAgentURL + "/v1/providers")
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -132,7 +132,7 @@ func TestACPProtocol(t *testing.T) {
 	t.Run("ACP_Health", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/health")
 		if err != nil {
-			t.Skipf("ACP not available: %v", err)
+			t.Skipf("ACP not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -146,7 +146,7 @@ func TestACPProtocol(t *testing.T) {
 	t.Run("ACP_List_Agents", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/agents")
 		if err != nil {
-			t.Skipf("ACP not available: %v", err)
+			t.Skipf("ACP not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -164,7 +164,7 @@ func TestACPProtocol(t *testing.T) {
 		t.Run(fmt.Sprintf("ACP_Agent_%s", agent), func(t *testing.T) {
 			resp, err := client.Get(baseURL + "/agents/" + agent)
 			if err != nil {
-				t.Skipf("ACP not available: %v", err)
+				t.Skipf("ACP not available: %v (SKIP-OK: #infra-unavailable)", err)
 			}
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -189,7 +189,7 @@ func TestACPProtocol(t *testing.T) {
 
 		resp, err := client.Post(baseURL+"/execute", "application/json", bytes.NewReader(body))
 		if err != nil {
-			t.Skipf("ACP not available: %v", err)
+			t.Skipf("ACP not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -213,7 +213,7 @@ func TestVisionProtocol(t *testing.T) {
 	t.Run("Vision_Health", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/health")
 		if err != nil {
-			t.Skipf("Vision not available: %v", err)
+			t.Skipf("Vision not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -227,7 +227,7 @@ func TestVisionProtocol(t *testing.T) {
 	t.Run("Vision_Capabilities", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/capabilities")
 		if err != nil {
-			t.Skipf("Vision not available: %v", err)
+			t.Skipf("Vision not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -246,7 +246,7 @@ func TestVisionProtocol(t *testing.T) {
 			// Test status endpoint
 			resp, err := client.Get(baseURL + "/" + cap + "/status")
 			if err != nil {
-				t.Skipf("Vision not available: %v", err)
+				t.Skipf("Vision not available: %v (SKIP-OK: #infra-unavailable)", err)
 			}
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -260,7 +260,7 @@ func TestVisionProtocol(t *testing.T) {
 
 			resp2, err := client.Post(baseURL+"/"+cap, "application/json", bytes.NewReader(body))
 			if err != nil {
-				t.Skipf("Vision not available: %v", err)
+				t.Skipf("Vision not available: %v (SKIP-OK: #infra-unavailable)", err)
 			}
 			defer resp2.Body.Close()
 			assert.Equal(t, http.StatusOK, resp2.StatusCode)
@@ -287,7 +287,7 @@ func TestMCPProtocol(t *testing.T) {
 		t.Run(fmt.Sprintf("MCP_%s_Port_%d", name, port), func(t *testing.T) {
 			conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 5*time.Second)
 			if err != nil {
-				t.Skipf("MCP server %s not available: %v", name, err)
+				t.Skipf("MCP server %s not available: %v (SKIP-OK: #infra-unavailable)", name, err)
 			}
 			defer conn.Close()
 
@@ -341,7 +341,7 @@ func TestLSPProtocol(t *testing.T) {
 		t.Run(fmt.Sprintf("LSP_%s_Port_%d", name, port), func(t *testing.T) {
 			conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 5*time.Second)
 			if err != nil {
-				t.Skipf("LSP server %s not available: %v", name, err)
+				t.Skipf("LSP server %s not available: %v (SKIP-OK: #infra-unavailable)", name, err)
 			}
 			conn.Close()
 			t.Logf("LSP server %s: port open", name)
@@ -352,7 +352,7 @@ func TestLSPProtocol(t *testing.T) {
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get("http://localhost:5100/health")
 		if err != nil {
-			t.Skipf("LSP Manager not available: %v", err)
+			t.Skipf("LSP Manager not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -381,7 +381,7 @@ func TestRAGServices(t *testing.T) {
 		t.Run(fmt.Sprintf("RAG_%s", strings.ReplaceAll(name, "-", "_")), func(t *testing.T) {
 			resp, err := client.Get(url)
 			if err != nil {
-				t.Skipf("%s not available: %v", name, err)
+				t.Skipf("%s not available: %v (SKIP-OK: #infra-unavailable)", name, err)
 			}
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -406,12 +406,12 @@ func TestEmbeddings(t *testing.T) {
 
 		resp, err := client.Post(baseURL, "application/json", bytes.NewReader(body))
 		if err != nil {
-			t.Skipf("Embeddings not available: %v", err)
+			t.Skipf("Embeddings not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured)", resp.StatusCode)
+			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured) (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var result map[string]interface{}
@@ -429,12 +429,12 @@ func TestEmbeddings(t *testing.T) {
 
 		resp, err := client.Post(baseURL, "application/json", bytes.NewReader(body))
 		if err != nil {
-			t.Skipf("Embeddings not available: %v", err)
+			t.Skipf("Embeddings not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured)", resp.StatusCode)
+			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured) (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var result map[string]interface{}
@@ -456,12 +456,12 @@ func TestCogneeIntegration(t *testing.T) {
 	t.Run("Cognee_Health", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/health")
 		if err != nil {
-			t.Skipf("Cognee integration not available: %v", err)
+			t.Skipf("Cognee integration not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		// Cognee may return 503 when service is not fully healthy (project uses Mem0 as primary memory)
 		if resp.StatusCode == http.StatusServiceUnavailable {
-			t.Skipf("Cognee service unavailable (503) - Mem0 is the primary memory system")
+			t.Skipf("Cognee service unavailable (503) - Mem0 is the primary memory system (SKIP-OK: #unmarked-skip-needs-ticket)")
 		}
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -470,13 +470,13 @@ func TestCogneeIntegration(t *testing.T) {
 		// Check if Cognee is enabled before testing content operations
 		healthResp, err := client.Get(baseURL + "/health")
 		if err != nil {
-			t.Skipf("Cognee not available: %v", err)
+			t.Skipf("Cognee not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer healthResp.Body.Close()
 
 		// Skip if Cognee service is not healthy (project uses Mem0 as primary memory)
 		if healthResp.StatusCode == http.StatusServiceUnavailable {
-			t.Skipf("Cognee service unavailable (503) - Mem0 is the primary memory system")
+			t.Skipf("Cognee service unavailable (503) - Mem0 is the primary memory system (SKIP-OK: #unmarked-skip-needs-ticket)")
 		}
 
 		var healthResult map[string]interface{}
@@ -507,7 +507,7 @@ func TestCogneeIntegration(t *testing.T) {
 
 		resp, err := client.Post(baseURL+"/memory", "application/json", bytes.NewReader(body))
 		if err != nil {
-			t.Skipf("Cognee integration not available: %v", err)
+			t.Skipf("Cognee integration not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		// Cognee may return 500 when the service is not fully functional
@@ -523,11 +523,11 @@ func TestCogneeIntegration(t *testing.T) {
 		// Check Cognee health first (project uses Mem0 as primary memory)
 		healthResp, err := client.Get(baseURL + "/health")
 		if err != nil {
-			t.Skipf("Cognee not available: %v", err)
+			t.Skipf("Cognee not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer healthResp.Body.Close()
 		if healthResp.StatusCode == http.StatusServiceUnavailable {
-			t.Skipf("Cognee service unavailable (503) - Mem0 is the primary memory system")
+			t.Skipf("Cognee service unavailable (503) - Mem0 is the primary memory system (SKIP-OK: #unmarked-skip-needs-ticket)")
 		}
 
 		reqBody := map[string]interface{}{
@@ -537,7 +537,7 @@ func TestCogneeIntegration(t *testing.T) {
 
 		resp, err := client.Post(baseURL+"/search", "application/json", bytes.NewReader(body))
 		if err != nil {
-			t.Skipf("Cognee integration not available: %v", err)
+			t.Skipf("Cognee integration not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -603,7 +603,7 @@ func TestSecurity(t *testing.T) {
 		maliciousURL := config.HelixAgentURL + "/v1/models?id=1'%20OR%20'1'='1"
 		resp, err := client.Get(maliciousURL)
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		// Should either return 400 (rejected) or 200 (safely handled)
@@ -620,7 +620,7 @@ func TestSecurity(t *testing.T) {
 
 		resp, err := client.Post(config.HelixAgentURL+"/v1/embeddings", "application/json", bytes.NewReader(body))
 		if err != nil {
-			t.Skipf("Embeddings not available: %v", err)
+			t.Skipf("Embeddings not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -634,7 +634,7 @@ func TestSecurity(t *testing.T) {
 		maliciousURL := config.HelixAgentURL + "/v1/../../../etc/passwd"
 		resp, err := client.Get(maliciousURL)
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		// Should return 404 or 400, not 200 with file contents
@@ -663,7 +663,7 @@ func TestAIDebate(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Debate system not available: %v", err)
+			t.Skipf("Debate system not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		// Accept 200, 401 (auth required), or 404 (endpoint might not exist)
@@ -702,7 +702,7 @@ func TestAIDebate(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Debate system not available: %v", err)
+			t.Skipf("Debate system not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		// Accept 200, 201, 202, 401 (auth required), or 404

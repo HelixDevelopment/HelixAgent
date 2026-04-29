@@ -716,7 +716,7 @@ func TestAllMem0Endpoints(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	healthResp, err := client.Get(mem0HelixagentBaseURL + "/health")
 	if err != nil {
-		t.Skipf("HelixAgent not accessible: %v", err)
+		t.Skipf("HelixAgent not accessible: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	healthResp.Body.Close()
@@ -724,7 +724,7 @@ func TestAllMem0Endpoints(t *testing.T) {
 	// Check if Mem0 Memory health endpoint exists (primary indicator of memory routes)
 	mem0HealthResp, err := client.Get(mem0HelixagentBaseURL + "/v1/cognee/health")
 	if err != nil {
-		t.Skipf("Mem0 Memory routes not accessible: %v", err)
+		t.Skipf("Mem0 Memory routes not accessible: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	if mem0HealthResp.StatusCode == 404 {

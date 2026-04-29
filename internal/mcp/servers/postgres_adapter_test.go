@@ -287,7 +287,7 @@ func TestPostgresAdapter_Integration(t *testing.T) {
 	// Initialize
 	err := adapter.Initialize(context.Background())
 	if err != nil {
-		t.Skipf("Could not connect to PostgreSQL: %v", err)
+		t.Skipf("Could not connect to PostgreSQL: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	defer func() { _ = adapter.Close() }()
 

@@ -277,7 +277,7 @@ func TestAllCLIAgentsSchemaValidation(t *testing.T) {
 		t.Run(agent.Name, func(t *testing.T) {
 			// Check if config exists
 			if _, err := os.Stat(agent.ConfigPath); os.IsNotExist(err) {
-				t.Skipf("Config file not found: %s", agent.ConfigPath)
+				t.Skipf("Config file not found: %s (SKIP-OK: #unmarked-skip-needs-ticket)", agent.ConfigPath)
 				return
 			}
 
@@ -444,7 +444,7 @@ func TestMCPRemoteServerConnectivity(t *testing.T) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		t.Skipf("OpenCode config not found: %v", err)
+		t.Skipf("OpenCode config not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	var config OpenCodeSchemaConfig
@@ -519,7 +519,7 @@ func TestNoLocalNpxServers(t *testing.T) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		t.Skipf("OpenCode config not found: %v", err)
+		t.Skipf("OpenCode config not found: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	var rawConfig map[string]interface{}

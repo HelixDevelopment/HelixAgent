@@ -312,7 +312,7 @@ func TestShutdownTraceExporter_WithProvider(t *testing.T) {
 
 	tp, err := SetupTraceExporter(context.Background(), config)
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	require.NotNil(t, tp)
 
@@ -336,7 +336,7 @@ func TestShutdownTraceExporter_CancelledContext(t *testing.T) {
 
 	tp, err := SetupTraceExporter(context.Background(), config)
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	require.NotNil(t, tp)
 
@@ -1185,7 +1185,7 @@ func TestSetupNoOpProvider_ValidConfig(t *testing.T) {
 
 	tp, err := SetupTraceExporter(context.Background(), config)
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	require.NotNil(t, tp)
 
@@ -1208,7 +1208,7 @@ func TestSetupTraceExporter_Console_WithServiceInfo(t *testing.T) {
 
 	tp, err := SetupTraceExporter(context.Background(), config)
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	require.NotNil(t, tp)
 
@@ -1283,7 +1283,7 @@ func TestShutdownTraceExporter_WithTimeoutContext(t *testing.T) {
 
 	tp, err := SetupTraceExporter(context.Background(), config)
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1405,7 +1405,7 @@ func TestSetupTraceExporter_ReturnsCorrectType(t *testing.T) {
 
 	tp, err := SetupTraceExporter(context.Background(), config)
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	// Verify it's the correct SDK type

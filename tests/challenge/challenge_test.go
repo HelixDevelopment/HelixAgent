@@ -56,7 +56,7 @@ func checkServerAvailability(baseURL string) bool {
 // skipIfServerUnavailable skips the test if the server is not reachable
 func skipIfServerUnavailable(t *testing.T, baseURL string) {
 	if !checkServerAvailability(baseURL) {
-		t.Skipf("Skipping challenge test: server not available at %s", baseURL)
+		t.Skipf("Skipping challenge test: server not available at %s (SKIP-OK: #infra-unavailable)", baseURL)
 	}
 }
 

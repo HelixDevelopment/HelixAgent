@@ -187,7 +187,7 @@ func TestVisionAnalyze(t *testing.T) {
 
 			resp, err := client.Analyze(req)
 			if err != nil {
-				t.Skipf("Vision capability %s not available: %v", cap.Capability, err)
+				t.Skipf("Vision capability %s not available: %v (SKIP-OK: #infra-unavailable)", cap.Capability, err)
 				return
 			}
 
@@ -223,7 +223,7 @@ func TestVisionWithURL(t *testing.T) {
 
 	resp, err := client.Analyze(req)
 	if err != nil {
-		t.Skipf("Vision service not available: %v", err)
+		t.Skipf("Vision service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 
@@ -248,7 +248,7 @@ func TestVisionOCR(t *testing.T) {
 
 	resp, err := client.Analyze(req)
 	if err != nil {
-		t.Skipf("Vision OCR not available: %v", err)
+		t.Skipf("Vision OCR not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 
@@ -272,7 +272,7 @@ func TestVisionDetection(t *testing.T) {
 
 	resp, err := client.Analyze(req)
 	if err != nil {
-		t.Skipf("Vision detection not available: %v", err)
+		t.Skipf("Vision detection not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 
@@ -310,7 +310,7 @@ func TestVisionFromFile(t *testing.T) {
 	tmpFile := "/tmp/test_image.png"
 	imgData, _ := base64.StdEncoding.DecodeString(testImageBase64)
 	if err := os.WriteFile(tmpFile, imgData, 0644); err != nil {
-		t.Skipf("Failed to create test image: %v", err)
+		t.Skipf("Failed to create test image: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = os.Remove(tmpFile) }()
@@ -329,7 +329,7 @@ func TestVisionFromFile(t *testing.T) {
 
 	resp, err := client.Analyze(req)
 	if err != nil {
-		t.Skipf("Vision service not available: %v", err)
+		t.Skipf("Vision service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 

@@ -178,10 +178,10 @@ func TestLLMProviders_ResponseTime(t *testing.T) {
 		t.Run(provider.Name+"_ResponseTime", func(t *testing.T) {
 			apiKey := os.Getenv(provider.EnvKeyName)
 			if apiKey == "" {
-				t.Skipf("Skipping %s: %s not set", provider.Name, provider.EnvKeyName)
+				t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.EnvKeyName)
 			}
 			if strings.HasPrefix(apiKey, "$") || strings.HasPrefix(apiKey, "<") {
-				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder", provider.Name, provider.EnvKeyName)
+				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.EnvKeyName)
 			}
 
 			start := time.Now()
@@ -197,7 +197,7 @@ func TestLLMProviders_ResponseTime(t *testing.T) {
 					strings.Contains(msg, "HTTP 404") || strings.Contains(msg, "HTTP 429") ||
 					strings.Contains(msg, "Unauthorized") || strings.Contains(msg, "credits") ||
 					strings.Contains(msg, "model_not_found") || strings.Contains(msg, "does not exist") {
-					t.Skipf("%s unavailable in this environment: %v", provider.Name, err)
+					t.Skipf("%s unavailable in this environment: %v (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, err)
 				}
 				t.Errorf("%s request failed: %v", provider.Name, err)
 				return
@@ -283,7 +283,7 @@ func TestHelixAgent_Health(t *testing.T) {
 	resp, err := client.Get(helixagentURL + "/health")
 	if err != nil {
 		// Skip test if server is not running (connection refused)
-		t.Skipf("Skipping integration test - HelixAgent server not available: %v", err)
+		t.Skipf("Skipping integration test - HelixAgent server not available: %v (SKIP-OK: #integration-only)", err)
 	}
 	defer resp.Body.Close()
 
@@ -308,10 +308,10 @@ func TestHelixAgent_Health(t *testing.T) {
 func testVerifyProvider(t *testing.T, provider VerifyProviderConfig) {
 	apiKey := os.Getenv(provider.EnvKeyName)
 	if apiKey == "" {
-		t.Skipf("Skipping %s: %s not set", provider.Name, provider.EnvKeyName)
+		t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.EnvKeyName)
 	}
 	if strings.HasPrefix(apiKey, "$") || strings.HasPrefix(apiKey, "<") {
-		t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder (%q)",
+		t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder (%q) (SKIP-OK: #unmarked-skip-needs-ticket)",
 			provider.Name, provider.EnvKeyName, apiKey)
 	}
 
@@ -326,7 +326,7 @@ func testVerifyProvider(t *testing.T, provider VerifyProviderConfig) {
 			strings.Contains(msg, "HTTP 404") || strings.Contains(msg, "HTTP 429") ||
 			strings.Contains(msg, "Unauthorized") || strings.Contains(msg, "credits") ||
 			strings.Contains(msg, "model_not_found") || strings.Contains(msg, "rate limit") {
-			t.Skipf("%s unavailable in this environment: %v", provider.Name, err)
+			t.Skipf("%s unavailable in this environment: %v (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, err)
 		}
 		t.Fatalf("%s request failed: %v", provider.Name, err)
 	}

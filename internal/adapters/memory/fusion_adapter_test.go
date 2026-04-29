@@ -99,7 +99,7 @@ func TestHelixMemoryFusionAdapter_CRUD(t *testing.T) {
 
 	err := adapter.Add(ctx, memory)
 	if err != nil {
-		t.Skipf("HelixMemory services not accessible: %v, skipping integration tests", err)
+		t.Skipf("HelixMemory services not accessible: %v, skipping integration tests (SKIP-OK: #integration-only)", err)
 	}
 
 	// Test Get
@@ -172,7 +172,7 @@ func TestHelixMemoryFusionAdapter_KnowledgeGraph(t *testing.T) {
 
 	err := adapter.AddEntity(ctx, entity)
 	if err != nil {
-		t.Skipf("Knowledge graph services not available: %v, skipping test", err)
+		t.Skipf("Knowledge graph services not available: %v, skipping test (SKIP-OK: #infra-unavailable)", err)
 	}
 
 	// Search entities

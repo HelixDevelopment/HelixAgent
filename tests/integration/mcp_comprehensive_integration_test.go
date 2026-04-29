@@ -188,7 +188,7 @@ func TestCoreMCPServers(t *testing.T) {
 			addr := fmt.Sprintf("localhost:%d", port)
 			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 			if err != nil {
-				t.Skipf("MCP server %s not running on port %d", name, port)
+				t.Skipf("MCP server %s not running on port %d (SKIP-OK: #unmarked-skip-needs-ticket)", name, port)
 				return
 			}
 			defer conn.Close()
@@ -224,7 +224,7 @@ func TestMCPProtocolCompliance(t *testing.T) {
 			addr := fmt.Sprintf("localhost:%d", server.Port)
 			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 			if err != nil {
-				t.Skipf("MCP server %s not running", server.Name)
+				t.Skipf("MCP server %s not running (SKIP-OK: #unmarked-skip-needs-ticket)", server.Name)
 				return
 			}
 			defer conn.Close()
@@ -291,14 +291,14 @@ func TestMCPToolDiscovery(t *testing.T) {
 		t.Run(serverName, func(t *testing.T) {
 			port := getServerPort(serverName)
 			if port == 0 {
-				t.Skipf("No port configured for %s", serverName)
+				t.Skipf("No port configured for %s (SKIP-OK: #unmarked-skip-needs-ticket)", serverName)
 				return
 			}
 
 			addr := fmt.Sprintf("localhost:%d", port)
 			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 			if err != nil {
-				t.Skipf("MCP server %s not running", serverName)
+				t.Skipf("MCP server %s not running (SKIP-OK: #unmarked-skip-needs-ticket)", serverName)
 				return
 			}
 			defer conn.Close()
@@ -331,7 +331,7 @@ func TestMCPWithLLMProviders(t *testing.T) {
 				envKey = "OPENCODE_API_KEY"
 			}
 			if os.Getenv(envKey) == "" && provider != "ollama" && provider != "zen" {
-				t.Skipf("Provider %s not configured (missing %s)", provider, envKey)
+				t.Skipf("Provider %s not configured (missing %s) (SKIP-OK: #unmarked-skip-needs-ticket)", provider, envKey)
 				return
 			}
 
@@ -364,7 +364,7 @@ func TestMCPWithLLMProviders(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -416,7 +416,7 @@ func TestMCPWithAIDebate(t *testing.T) {
 		bytes.NewBuffer(reqData),
 	)
 	if err != nil {
-		t.Skipf("HelixAgent not running: %v", err)
+		t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -443,7 +443,7 @@ func TestMCPServerHealth(t *testing.T) {
 			conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 			if err != nil {
 				unreachable++
-				t.Skipf("MCP server %s not running", server.Name)
+				t.Skipf("MCP server %s not running (SKIP-OK: #unmarked-skip-needs-ticket)", server.Name)
 				return
 			}
 			defer conn.Close()

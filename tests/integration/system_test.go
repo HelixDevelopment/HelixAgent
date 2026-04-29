@@ -35,7 +35,7 @@ func TestFullSystemIntegration(t *testing.T) {
 
 	// Skip if server is not available (expected in CI/test environments)
 	if !checkServerAvailable(baseURL, 5*time.Second) {
-		t.Skipf("Skipping integration test - server not available at %s", baseURL)
+		t.Skipf("Skipping integration test - server not available at %s (SKIP-OK: #integration-only)", baseURL)
 	}
 
 	// Helper function to make HTTP requests with retries

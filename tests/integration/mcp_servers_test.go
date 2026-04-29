@@ -202,7 +202,7 @@ func TestExternalMCPServerConnectivity(t *testing.T) {
 			// Check if required environment variables are set
 			for _, env := range server.RequiresEnv {
 				if os.Getenv(env) == "" {
-					t.Skipf("Skipping %s - missing required env: %s", server.Name, env)
+					t.Skipf("Skipping %s - missing required env: %s (SKIP-OK: #unmarked-skip-needs-ticket)", server.Name, env)
 				}
 			}
 
@@ -212,7 +212,7 @@ func TestExternalMCPServerConnectivity(t *testing.T) {
 			// but the connection itself should succeed)
 			resp, err := client.Get(url)
 			if err != nil {
-				t.Skipf("Server %s not reachable at %s: %v", server.Name, url, err)
+				t.Skipf("Server %s not reachable at %s: %v (SKIP-OK: #infra-unavailable)", server.Name, url, err)
 			}
 			defer resp.Body.Close()
 
@@ -255,14 +255,14 @@ func TestExternalMCPServerJSONRPC(t *testing.T) {
 			// Skip servers that require specific environment variables
 			for _, env := range server.RequiresEnv {
 				if os.Getenv(env) == "" {
-					t.Skipf("Skipping %s - missing required env: %s", server.Name, env)
+					t.Skipf("Skipping %s - missing required env: %s (SKIP-OK: #unmarked-skip-needs-ticket)", server.Name, env)
 				}
 			}
 
 			url := fmt.Sprintf("http://%s:%d", mcpHost, server.Port)
 			resp, err := client.Post(url, "application/json", bytes.NewReader(requestBody))
 			if err != nil {
-				t.Skipf("Server %s not reachable: %v", server.Name, err)
+				t.Skipf("Server %s not reachable: %v (SKIP-OK: #infra-unavailable)", server.Name, err)
 			}
 			defer resp.Body.Close()
 
@@ -306,14 +306,14 @@ func TestExternalMCPServerToolsList(t *testing.T) {
 		t.Run(server.Name+"_ToolsList", func(t *testing.T) {
 			for _, env := range server.RequiresEnv {
 				if os.Getenv(env) == "" {
-					t.Skipf("Skipping %s - missing required env: %s", server.Name, env)
+					t.Skipf("Skipping %s - missing required env: %s (SKIP-OK: #unmarked-skip-needs-ticket)", server.Name, env)
 				}
 			}
 
 			url := fmt.Sprintf("http://%s:%d", mcpHost, server.Port)
 			resp, err := client.Post(url, "application/json", bytes.NewReader(requestBody))
 			if err != nil {
-				t.Skipf("Server %s not reachable: %v", server.Name, err)
+				t.Skipf("Server %s not reachable: %v (SKIP-OK: #infra-unavailable)", server.Name, err)
 			}
 			defer resp.Body.Close()
 
@@ -537,7 +537,7 @@ func TestMCPDockerfileHasCorrectShell(t *testing.T) {
 		t.Run(filepath.Base(script), func(t *testing.T) {
 			content, err := os.ReadFile(scriptPath)
 			if err != nil {
-				t.Skipf("Script not found: %s", scriptPath)
+				t.Skipf("Script not found: %s (SKIP-OK: #unmarked-skip-needs-ticket)", scriptPath)
 				return
 			}
 

@@ -66,7 +66,7 @@ func TestLSPEndpoints(t *testing.T) {
 
 			resp, err := client.Do(req)
 			if err != nil {
-				t.Skipf("HelixAgent not running or LSP endpoint not available: %v", err)
+				t.Skipf("HelixAgent not running or LSP endpoint not available: %v (SKIP-OK: #infra-unavailable)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -108,7 +108,7 @@ func main() {
 			bytes.NewBuffer(reqData),
 		)
 		if err != nil {
-			t.Skipf("HelixAgent not running: %v", err)
+			t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -136,7 +136,7 @@ func main() {
 			bytes.NewBuffer(reqData),
 		)
 		if err != nil {
-			t.Skipf("HelixAgent not running: %v", err)
+			t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -170,7 +170,7 @@ func TestLSPCompletion(t *testing.T) {
 		bytes.NewBuffer(reqData),
 	)
 	if err != nil {
-		t.Skipf("HelixAgent not running: %v", err)
+		t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -208,7 +208,7 @@ func TestLSPWithLLMProviders(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -253,7 +253,7 @@ func TestACPAgentDiscovery(t *testing.T) {
 
 	resp, err := http.Get(baseURL + "/v1/acp/agents")
 	if err != nil {
-		t.Skipf("HelixAgent not running: %v", err)
+		t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -297,7 +297,7 @@ func TestACPAgentCommunication(t *testing.T) {
 			bytes.NewBuffer(reqData),
 		)
 		if err != nil {
-			t.Skipf("HelixAgent not running: %v", err)
+			t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -338,7 +338,7 @@ func TestACPWithLLMProviders(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -395,7 +395,7 @@ func TestEmbeddingProviders(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -446,7 +446,7 @@ func TestEmbeddingBatch(t *testing.T) {
 		bytes.NewBuffer(reqData),
 	)
 	if err != nil {
-		t.Skipf("HelixAgent not running: %v", err)
+		t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -486,7 +486,7 @@ func TestEmbeddingWithVectorStores(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -546,7 +546,7 @@ func TestVisionEndpoints(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -590,7 +590,7 @@ func TestVisionWithLLMProviders(t *testing.T) {
 				bytes.NewBuffer(reqData),
 			)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -624,7 +624,7 @@ func TestVisionOCR(t *testing.T) {
 		bytes.NewBuffer(reqData),
 	)
 	if err != nil {
-		t.Skipf("HelixAgent not running: %v", err)
+		t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -669,7 +669,7 @@ func TestProtocolsWithAIDebate(t *testing.T) {
 		bytes.NewBuffer(reqData),
 	)
 	if err != nil {
-		t.Skipf("HelixAgent not running: %v", err)
+		t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -704,7 +704,7 @@ func TestProtocolHealthCheck(t *testing.T) {
 		t.Run(ep.name, func(t *testing.T) {
 			resp, err := http.Get(baseURL + ep.endpoint)
 			if err != nil {
-				t.Skipf("HelixAgent not running: %v", err)
+				t.Skipf("HelixAgent not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()

@@ -34,7 +34,7 @@ func TestHelixAgentSSEEndpoints(t *testing.T) {
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
-		t.Skipf("HelixAgent not running at %s - skipping SSE endpoint tests", baseURL)
+		t.Skipf("HelixAgent not running at %s - skipping SSE endpoint tests (SKIP-OK: #unmarked-skip-needs-ticket)", baseURL)
 		return
 	}
 	resp.Body.Close()
@@ -63,7 +63,7 @@ func TestHelixAgentSSEEndpoints(t *testing.T) {
 				sseClient := &http.Client{Timeout: 5 * time.Second}
 				resp, err := sseClient.Get(baseURL + ep.path)
 				if err != nil {
-					t.Skipf("Could not connect to %s: %v", ep.path, err)
+					t.Skipf("Could not connect to %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", ep.path, err)
 					return
 				}
 				defer resp.Body.Close()
@@ -82,7 +82,7 @@ func TestHelixAgentSSEEndpoints(t *testing.T) {
 
 			resp, err := sseClient.Do(req)
 			if err != nil {
-				t.Skipf("Could not connect to %s: %v", ep.path, err)
+				t.Skipf("Could not connect to %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", ep.path, err)
 				return
 			}
 			defer resp.Body.Close()
@@ -110,7 +110,7 @@ func TestHelixAgentSSEEndpoints(t *testing.T) {
 
 			resp, err := client.Post(baseURL+ep.path, "application/json", strings.NewReader(string(body)))
 			if err != nil {
-				t.Skipf("Could not POST to %s: %v", ep.path, err)
+				t.Skipf("Could not POST to %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", ep.path, err)
 				return
 			}
 			defer resp.Body.Close()
@@ -136,7 +136,7 @@ func TestHelixAgentSSEEndpoints(t *testing.T) {
 
 			resp, err := client.Post(baseURL+ep.path, "application/json", strings.NewReader(string(body)))
 			if err != nil {
-				t.Skipf("Could not POST to %s: %v", ep.path, err)
+				t.Skipf("Could not POST to %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", ep.path, err)
 				return
 			}
 			defer resp.Body.Close()
@@ -167,7 +167,7 @@ func TestSSEProtocolToolsExist(t *testing.T) {
 	// Check if HelixAgent is running
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
-		t.Skipf("HelixAgent not running at %s", baseURL)
+		t.Skipf("HelixAgent not running at %s (SKIP-OK: #unmarked-skip-needs-ticket)", baseURL)
 		return
 	}
 	resp.Body.Close()
@@ -200,7 +200,7 @@ func TestSSEProtocolToolsExist(t *testing.T) {
 
 			resp, err := client.Post(baseURL+p.path, "application/json", strings.NewReader(string(body)))
 			if err != nil {
-				t.Skipf("Could not connect to %s", p.path)
+				t.Skipf("Could not connect to %s (SKIP-OK: #unmarked-skip-needs-ticket)", p.path)
 				return
 			}
 			defer resp.Body.Close()
@@ -226,7 +226,7 @@ func TestSSEProtocolCapabilities(t *testing.T) {
 
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
-		t.Skipf("HelixAgent not running at %s", baseURL)
+		t.Skipf("HelixAgent not running at %s (SKIP-OK: #unmarked-skip-needs-ticket)", baseURL)
 		return
 	}
 	resp.Body.Close()
@@ -253,7 +253,7 @@ func TestSSEProtocolCapabilities(t *testing.T) {
 			path := fmt.Sprintf("/v1/%s", protocol)
 			resp, err := client.Post(baseURL+path, "application/json", strings.NewReader(string(body)))
 			if err != nil {
-				t.Skipf("Could not connect to %s", path)
+				t.Skipf("Could not connect to %s (SKIP-OK: #unmarked-skip-needs-ticket)", path)
 				return
 			}
 			defer resp.Body.Close()
@@ -312,7 +312,7 @@ func TestFormattersRESTEndpointPreserved(t *testing.T) {
 
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
-		t.Skipf("HelixAgent not running at %s", baseURL)
+		t.Skipf("HelixAgent not running at %s (SKIP-OK: #unmarked-skip-needs-ticket)", baseURL)
 		return
 	}
 	resp.Body.Close()
@@ -320,7 +320,7 @@ func TestFormattersRESTEndpointPreserved(t *testing.T) {
 	t.Run("GET_returns_JSON_list", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/v1/formatters")
 		if err != nil {
-			t.Skipf("Could not GET /v1/formatters: %v", err)
+			t.Skipf("Could not GET /v1/formatters: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -350,7 +350,7 @@ func TestFormattersRESTEndpointPreserved(t *testing.T) {
 		resp, err := client.Post(baseURL+"/v1/formatters", "application/json",
 			strings.NewReader(string(body)))
 		if err != nil {
-			t.Skipf("Could not POST to /v1/formatters: %v", err)
+			t.Skipf("Could not POST to /v1/formatters: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -382,7 +382,7 @@ func TestNPMPackageNamesCorrect(t *testing.T) {
 			url := fmt.Sprintf("https://registry.npmjs.org/%s", pkg)
 			resp, err := client.Get(url)
 			if err != nil {
-				t.Skipf("Could not reach npm registry: %v", err)
+				t.Skipf("Could not reach npm registry: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -403,7 +403,7 @@ func TestNPMPackageNamesCorrect(t *testing.T) {
 			url := fmt.Sprintf("https://registry.npmjs.org/%s", pkg)
 			resp, err := client.Get(url)
 			if err != nil {
-				t.Skipf("Could not reach npm registry: %v", err)
+				t.Skipf("Could not reach npm registry: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -438,17 +438,17 @@ func TestLocalMCPStdioRespond(t *testing.T) {
 			cmd := exec.CommandContext(ctx, srv.command[0], srv.command[1:]...)
 			stdin, err := cmd.StdinPipe()
 			if err != nil {
-				t.Skipf("Could not create stdin pipe for %s: %v", srv.name, err)
+				t.Skipf("Could not create stdin pipe for %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", srv.name, err)
 				return
 			}
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {
-				t.Skipf("Could not create stdout pipe for %s: %v", srv.name, err)
+				t.Skipf("Could not create stdout pipe for %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", srv.name, err)
 				return
 			}
 
 			if err := cmd.Start(); err != nil {
-				t.Skipf("Could not start %s: %v", srv.name, err)
+				t.Skipf("Could not start %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", srv.name, err)
 				return
 			}
 			defer func() {

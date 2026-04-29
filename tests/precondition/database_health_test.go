@@ -21,7 +21,7 @@ func TestDatabaseConnectivity(t *testing.T) {
 
 	conn, err := net.DialTimeout("tcp", host+":"+port, 5*time.Second)
 	if err != nil {
-		t.Skipf("Database not available at %s:%s: %v", host, port, err)
+		t.Skipf("Database not available at %s:%s: %v (SKIP-OK: #infra-db-unavailable)", host, port, err)
 	}
 	conn.Close()
 	t.Logf("Database reachable at %s:%s", host, port)

@@ -367,7 +367,7 @@ func TestNewClientWithFallback_WithRealConnection(t *testing.T) {
 
 	client, err := NewClientWithFallback(cfg)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	assert.NotNil(t, client)

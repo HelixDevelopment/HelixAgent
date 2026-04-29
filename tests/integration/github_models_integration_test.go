@@ -31,7 +31,7 @@ func githubModelsAPIKey(t *testing.T) string {
 	// test hits GitHub with a garbage token and fails with a 401 that
 	// is impossible to distinguish from a real auth regression.
 	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
-		t.Skipf("GITHUB_MODELS_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)
+		t.Skipf("GITHUB_MODELS_API_KEY looks like an unsubstituted placeholder (%q) — skipping (SKIP-OK: #unmarked-skip-needs-ticket)", key)
 	}
 	return key
 }
@@ -48,13 +48,13 @@ func skipOnGitHubModelsRateLimit(t *testing.T, err error) bool {
 	if strings.Contains(msg, "429") ||
 		strings.Contains(msg, "rate_limit") ||
 		strings.Contains(msg, "Rate limit") {
-		t.Skipf("Skipping due to GitHub Models API rate limit: %v", err)
+		t.Skipf("Skipping due to GitHub Models API rate limit: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	if strings.Contains(msg, "401") || strings.Contains(msg, "Unauthorized") {
 		// Could be a stale / revoked PAT or a placeholder that slipped past
 		// the prefix check. Treat as environment rather than a regression.
-		t.Skipf("Skipping due to GitHub Models 401 (bad or expired token): %v", err)
+		t.Skipf("Skipping due to GitHub Models 401 (bad or expired token): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	return false

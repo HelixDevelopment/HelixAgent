@@ -236,12 +236,12 @@ func TestLLMProviderCompletion(t *testing.T) {
 
 			resp, err := client.Complete(req)
 			if err != nil {
-				t.Skipf("Provider %s not available: %v", provider.Name, err)
+				t.Skipf("Provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Name, err)
 				return
 			}
 
 			if resp.Error != nil {
-				t.Skipf("Provider returned error: %s", resp.Error.Message)
+				t.Skipf("Provider returned error: %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.Error.Message)
 				return
 			}
 
@@ -315,12 +315,12 @@ func TestMCPContextWithLLMProvider(t *testing.T) {
 
 			llmResp, err := llmClient.Complete(req)
 			if err != nil {
-				t.Skipf("Provider %s not available: %v", provider.Name, err)
+				t.Skipf("Provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Name, err)
 				return
 			}
 
 			if llmResp.Error != nil {
-				t.Skipf("Provider error: %s", llmResp.Error.Message)
+				t.Skipf("Provider error: %s (SKIP-OK: #unmarked-skip-needs-ticket)", llmResp.Error.Message)
 				return
 			}
 
@@ -389,12 +389,12 @@ func TestLLMToolCalling(t *testing.T) {
 
 			resp, err := llmClient.Complete(req)
 			if err != nil {
-				t.Skipf("Provider %s not available: %v", provider.Name, err)
+				t.Skipf("Provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Name, err)
 				return
 			}
 
 			if resp.Error != nil {
-				t.Skipf("Provider error: %s", resp.Error.Message)
+				t.Skipf("Provider error: %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.Error.Message)
 				return
 			}
 
@@ -497,12 +497,12 @@ func TestAllMCPServersWithAllProviders(t *testing.T) {
 
 			resp, err := llmClient.Complete(req)
 			if err != nil {
-				t.Skipf("Provider %s not available: %v", provider.Name, err)
+				t.Skipf("Provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Name, err)
 				return
 			}
 
 			if resp.Error != nil {
-				t.Skipf("Provider error: %s", resp.Error.Message)
+				t.Skipf("Provider error: %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.Error.Message)
 				return
 			}
 

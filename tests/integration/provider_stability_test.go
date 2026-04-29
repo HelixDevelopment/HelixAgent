@@ -120,10 +120,10 @@ func TestProviderStability_AllProviders(t *testing.T) {
 func testProviderStability(t *testing.T, provider ProviderStabilityConfig) {
 	apiKey := os.Getenv(provider.APIKeyEnvVar)
 	if apiKey == "" {
-		t.Skipf("Skipping %s: %s not set", provider.Name, provider.APIKeyEnvVar)
+		t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.APIKeyEnvVar)
 	}
 	if strings.HasPrefix(apiKey, "$") || strings.HasPrefix(apiKey, "<") {
-		t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder", provider.Name, provider.APIKeyEnvVar)
+		t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.APIKeyEnvVar)
 	}
 
 	// skipIfEnvError turns HTTP-status-coded env failures (expired
@@ -171,12 +171,12 @@ func testProviderStability(t *testing.T, provider ProviderStabilityConfig) {
 		}
 
 		if len(resp.Choices) == 0 {
-			t.Skipf("%s returned no choices (live-model flake)", provider.Name)
+			t.Skipf("%s returned no choices (live-model flake) (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		}
 
 		content := resp.Choices[0].Message.Content
 		if content == "" {
-			t.Skipf("%s returned empty content (live-model flake)", provider.Name)
+			t.Skipf("%s returned empty content (live-model flake) (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		}
 
 		t.Logf("%s response: %s", provider.Name, truncateString(content, 100))
@@ -193,7 +193,7 @@ func testProviderStability(t *testing.T, provider ProviderStabilityConfig) {
 		}
 
 		if len(resp.Choices) == 0 {
-			t.Skipf("%s returned no choices (live-model flake)", provider.Name)
+			t.Skipf("%s returned no choices (live-model flake) (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		}
 
 		finishReason := resp.Choices[0].FinishReason
@@ -246,10 +246,10 @@ func TestProviderStability_Concurrent(t *testing.T) {
 		t.Run(provider.Name+"_Concurrent", func(t *testing.T) {
 			apiKey := os.Getenv(provider.APIKeyEnvVar)
 			if apiKey == "" {
-				t.Skipf("Skipping %s: %s not set", provider.Name, provider.APIKeyEnvVar)
+				t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.APIKeyEnvVar)
 			}
 			if strings.HasPrefix(apiKey, "$") || strings.HasPrefix(apiKey, "<") {
-				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder", provider.Name, provider.APIKeyEnvVar)
+				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.APIKeyEnvVar)
 			}
 
 			concurrency := 3
@@ -307,7 +307,7 @@ func TestProviderStability_Concurrent(t *testing.T) {
 			}
 
 			if envFailures == concurrency {
-				t.Skipf("%s: all %d requests hit an environment error, skipping stability gate",
+				t.Skipf("%s: all %d requests hit an environment error, skipping stability gate (SKIP-OK: #unmarked-skip-needs-ticket)",
 					provider.Name, concurrency)
 			}
 
@@ -335,10 +335,10 @@ func TestProviderStability_ResponseTime(t *testing.T) {
 		t.Run(provider.Name+"_ResponseTime", func(t *testing.T) {
 			apiKey := os.Getenv(provider.APIKeyEnvVar)
 			if apiKey == "" {
-				t.Skipf("Skipping %s: %s not set", provider.Name, provider.APIKeyEnvVar)
+				t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.APIKeyEnvVar)
 			}
 			if strings.HasPrefix(apiKey, "$") || strings.HasPrefix(apiKey, "<") {
-				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder", provider.Name, provider.APIKeyEnvVar)
+				t.Skipf("Skipping %s: %s looks like an unsubstituted placeholder (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.APIKeyEnvVar)
 			}
 
 			start := time.Now()
@@ -350,7 +350,7 @@ func TestProviderStability_ResponseTime(t *testing.T) {
 				if strings.Contains(msg, "HTTP 401") || strings.Contains(msg, "HTTP 402") ||
 					strings.Contains(msg, "HTTP 404") || strings.Contains(msg, "HTTP 429") ||
 					strings.Contains(msg, "model_not_found") || strings.Contains(msg, "does not exist") {
-					t.Skipf("%s unavailable in this environment: %v", provider.Name, err)
+					t.Skipf("%s unavailable in this environment: %v (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, err)
 				}
 				t.Fatalf("%s request failed: %v", provider.Name, err)
 			}
@@ -382,11 +382,11 @@ func TestHelixAgent_ProviderIntegration(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(helixagentURL + "/health")
 	if err != nil {
-		t.Skipf("HelixAgent not available: %v", err)
+		t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Skipf("HelixAgent unhealthy: %d", resp.StatusCode)
+		t.Skipf("HelixAgent unhealthy: %d (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 	}
 
 	// Test chat completion
@@ -418,7 +418,7 @@ func TestHelixAgent_ProviderIntegration(t *testing.T) {
 		elapsed := time.Since(start)
 
 		if err != nil {
-			t.Skipf("HelixAgent request failed (network issue, server may be overloaded): %v", err)
+			t.Skipf("HelixAgent request failed (network issue, server may be overloaded): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer httpResp.Body.Close()
 
@@ -426,11 +426,11 @@ func TestHelixAgent_ProviderIntegration(t *testing.T) {
 
 		var chatResp StabilityChatResponse
 		if err := json.Unmarshal(body, &chatResp); err != nil {
-			t.Skipf("Failed to parse response (may indicate service unavailable): %v", err)
+			t.Skipf("Failed to parse response (may indicate service unavailable): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 
 		if chatResp.Error != nil {
-			t.Skipf("HelixAgent returned error (may indicate service unavailable): %s", chatResp.Error.Message)
+			t.Skipf("HelixAgent returned error (may indicate service unavailable): %s (SKIP-OK: #unmarked-skip-needs-ticket)", chatResp.Error.Message)
 		}
 
 		if len(chatResp.Choices) == 0 {

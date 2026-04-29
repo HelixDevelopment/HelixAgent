@@ -333,7 +333,7 @@ func TestAdapter_DetectRuntime_WithoutRuntime(t *testing.T) {
 	name, err := adapter.DetectRuntime(context.Background())
 	if err != nil {
 		// Runtime not available, skip test
-		t.Skipf("No container runtime detected: %v", err)
+		t.Skipf("No container runtime detected: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	// If we get here, runtime was detected
 	assert.NotEmpty(t, name)

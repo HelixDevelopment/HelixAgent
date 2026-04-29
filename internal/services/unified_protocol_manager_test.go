@@ -79,7 +79,7 @@ func TestUnifiedProtocolManager_ExecuteRequest_MCP(t *testing.T) {
 	// This test requires a real MCP-compatible server to be running
 	err = manager.mcpManager.ConnectServer(context.Background(), "test-server", "Test Server", "echo", []string{"test"})
 	if err != nil {
-		t.Skipf("Skipping MCP integration test - no MCP server available: %v", err)
+		t.Skipf("Skipping MCP integration test - no MCP server available: %v (SKIP-OK: #integration-only)", err)
 	}
 
 	req := UnifiedProtocolRequest{

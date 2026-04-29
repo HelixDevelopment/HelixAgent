@@ -56,7 +56,7 @@ func skipIfNoKafka(t *testing.T) *kafka.Broker {
 	defer cancel()
 
 	if err := broker.Connect(ctx); err != nil {
-		t.Skipf("Skipping Kafka integration test - infrastructure not available: %v", err)
+		t.Skipf("Skipping Kafka integration test - infrastructure not available: %v (SKIP-OK: #integration-only)", err)
 	}
 
 	return broker
@@ -737,7 +737,7 @@ func TestKafka_GetTopicMetadata(t *testing.T) {
 	// Get metadata
 	metadata, err := broker.GetTopicMetadata(ctx, topicName)
 	if err != nil {
-		t.Skipf("Could not get metadata: %v", err)
+		t.Skipf("Could not get metadata: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	assert.Equal(t, topicName, metadata.Name)

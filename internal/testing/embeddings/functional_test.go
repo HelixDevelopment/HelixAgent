@@ -173,7 +173,7 @@ func TestEmbeddingGeneration(t *testing.T) {
 
 			resp, err := client.Embed(req)
 			if err != nil {
-				t.Skipf("Embedding provider %s not available: %v", provider.Provider, err)
+				t.Skipf("Embedding provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Provider, err)
 				return
 			}
 
@@ -217,7 +217,7 @@ func TestEmbeddingSimilarity(t *testing.T) {
 				Input:    similarTexts,
 			})
 			if err != nil {
-				t.Skipf("Provider %s not available: %v", provider.Provider, err)
+				t.Skipf("Provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Provider, err)
 				return
 			}
 
@@ -228,7 +228,7 @@ func TestEmbeddingSimilarity(t *testing.T) {
 				Input:    []string{differentText},
 			})
 			if err != nil {
-				t.Skipf("Provider %s not available: %v", provider.Provider, err)
+				t.Skipf("Provider %s not available: %v (SKIP-OK: #infra-unavailable)", provider.Provider, err)
 				return
 			}
 

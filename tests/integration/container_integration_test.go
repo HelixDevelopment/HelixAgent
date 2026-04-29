@@ -257,7 +257,7 @@ func TestContainer_Cognee_Connection(t *testing.T) {
 	// wall-clock timeout.
 	probe := &http.Client{Timeout: 2 * time.Second}
 	if resp, err := probe.Get(cogneeURL + "/health"); err != nil {
-		t.Skipf("Cognee /health unreachable at %s: %v", cogneeURL, err)
+		t.Skipf("Cognee /health unreachable at %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", cogneeURL, err)
 	} else {
 		_ = resp.Body.Close()
 	}

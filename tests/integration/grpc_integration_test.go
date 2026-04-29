@@ -35,7 +35,7 @@ func getGRPCConn(t *testing.T) *grpc.ClientConn {
 		grpc.WithBlock(),
 	)
 	if err != nil {
-		t.Skipf("gRPC server not available at localhost:%s: %v", port, err)
+		t.Skipf("gRPC server not available at localhost:%s: %v (SKIP-OK: #infra-unavailable)", port, err)
 	}
 	t.Cleanup(func() {
 		if closeErr := conn.Close(); closeErr != nil {

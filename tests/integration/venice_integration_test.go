@@ -26,7 +26,7 @@ func veniceAPIKey(t *testing.T) string {
 		t.Skip("VENICE_API_KEY not set")  // SKIP-OK: #requires-upstream-key
 	}
 	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
-		t.Skipf("VENICE_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)
+		t.Skipf("VENICE_API_KEY looks like an unsubstituted placeholder (%q) — skipping (SKIP-OK: #unmarked-skip-needs-ticket)", key)
 	}
 	return key
 }
@@ -42,16 +42,16 @@ func skipOnVeniceRateLimit(t *testing.T, err error) bool {
 	if strings.Contains(msg, "429") ||
 		strings.Contains(msg, "rate_limit") ||
 		strings.Contains(msg, "Rate limit") {
-		t.Skipf("Skipping due to Venice AI rate limit: %v", err)
+		t.Skipf("Skipping due to Venice AI rate limit: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	if strings.Contains(msg, "401") || strings.Contains(msg, "Unauthorized") {
-		t.Skipf("Skipping due to Venice 401 (bad/expired token): %v", err)
+		t.Skipf("Skipping due to Venice 401 (bad/expired token): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	if strings.Contains(msg, "402") || strings.Contains(msg, "Insufficient") ||
 		strings.Contains(msg, "credits") || strings.Contains(msg, "balance") {
-		t.Skipf("Skipping due to Venice 402 (insufficient credits): %v", err)
+		t.Skipf("Skipping due to Venice 402 (insufficient credits): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	return false
@@ -169,7 +169,7 @@ func TestVeniceAPI_HealthCheck(t *testing.T) {
 	if err != nil && (strings.Contains(err.Error(), "context deadline exceeded") ||
 		strings.Contains(err.Error(), "i/o timeout") ||
 		strings.Contains(err.Error(), "Client.Timeout")) {
-		t.Skipf("Venice health check timed out (network/server slow): %v", err)
+		t.Skipf("Venice health check timed out (network/server slow): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	assert.NoError(t, err, "HealthCheck should succeed with a valid API key")
 }
@@ -235,14 +235,14 @@ func TestVeniceAPI_MultipleModels(t *testing.T) {
 			if err != nil && (strings.Contains(err.Error(), "404") ||
 				strings.Contains(err.Error(), "model not found") ||
 				strings.Contains(err.Error(), "Specified model not found")) {
-				t.Skipf("Venice model %s deprecated upstream: %v", model, err)
+				t.Skipf("Venice model %s deprecated upstream: %v (SKIP-OK: #unmarked-skip-needs-ticket)", model, err)
 			}
 			require.NoError(t, err,
 				"Complete should not error for model %s", model)
 			require.NotNil(t, resp,
 				"response should not be nil for model %s", model)
 			if strings.TrimSpace(resp.Content) == "" {
-				t.Skipf("Venice model %s returned empty content (live-model flake)", model)
+				t.Skipf("Venice model %s returned empty content (live-model flake) (SKIP-OK: #unmarked-skip-needs-ticket)", model)
 			}
 		})
 	}

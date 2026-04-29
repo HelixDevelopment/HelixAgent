@@ -42,7 +42,7 @@ func skipOnCloudflareRateLimit(t *testing.T, err error) bool {
 	if err != nil && (strings.Contains(err.Error(), "429") ||
 		strings.Contains(err.Error(), "rate_limit") ||
 		strings.Contains(err.Error(), "Rate limit")) {
-		t.Skipf("Skipping due to Cloudflare API rate limit: %v", err)
+		t.Skipf("Skipping due to Cloudflare API rate limit: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	return false

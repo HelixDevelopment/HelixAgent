@@ -86,7 +86,7 @@ func isHelixAgentAvailable(t *testing.T) bool {
 func skipUnlessLive(t *testing.T) {
 	t.Helper()
 	if !isHelixAgentAvailable(t) {
-		t.Skipf("HelixAgent not reachable on %s — skipping per CONST-030 (start with `make build && ./bin/helixagent`)", helixAgentBaseURL)
+		t.Skipf("HelixAgent not reachable on %s — skipping per CONST-030 (start with `make build && ./bin/helixagent`) (SKIP-OK: #infra-unavailable)", helixAgentBaseURL)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestServicesIntegration_DebateService_FullWorkflow(t *testing.T) {
 	// about what the live system returns. We only fail on unexpected
 	// transport-layer 5xx cascades.
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/debates endpoint not registered on this build — got 404")
+		t.Skipf("/v1/debates endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	require.NotEqual(t, http.StatusBadGateway, status, "unexpected 502 from live debate endpoint: %v", env)
 	require.NotEqual(t, http.StatusGatewayTimeout, status, "unexpected 504 from live debate endpoint: %v", env)
@@ -230,7 +230,7 @@ func TestServicesIntegration_EnsembleService_MultipleProviders(t *testing.T) {
 	status, env := postJSON(t, ctx, "/v1/ensemble", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404")
+		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	if status == http.StatusOK {
 		assert.NotEmpty(t, env, "expected non-empty ensemble response")
@@ -254,7 +254,7 @@ func TestServicesIntegration_EnsembleService_WithPreferredProviders(t *testing.T
 	status, env := postJSON(t, ctx, "/v1/ensemble", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404")
+		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	assert.NotEqual(t, http.StatusInternalServerError, status, "unexpected 500: %v", env)
 }
@@ -275,7 +275,7 @@ func TestServicesIntegration_EnsembleService_MajorityVoting(t *testing.T) {
 	status, env := postJSON(t, ctx, "/v1/ensemble", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404")
+		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	assert.NotEqual(t, http.StatusInternalServerError, status, "unexpected 500: %v", env)
 }
@@ -296,7 +296,7 @@ func TestServicesIntegration_EnsembleService_QualityWeighted(t *testing.T) {
 	status, env := postJSON(t, ctx, "/v1/ensemble", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404")
+		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	assert.NotEqual(t, http.StatusInternalServerError, status, "unexpected 500: %v", env)
 }
@@ -324,7 +324,7 @@ func TestServicesIntegration_ProviderRegistry_FullLifecycle(t *testing.T) {
 		status, env = getJSON(t, ctx, "/v1/providers")
 	}
 	if status == http.StatusNotFound {
-		t.Skipf("No live provider-listing endpoint on this build")
+		t.Skipf("No live provider-listing endpoint on this build (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	require.LessOrEqual(t, status, http.StatusBadRequest, "provider listing should not 5xx: %v", env)
 	assert.NotNil(t, env, "expected a non-nil response envelope")
@@ -399,7 +399,7 @@ func TestServicesIntegration_RegistryWithEnsemble(t *testing.T) {
 	status, env := postJSON(t, ctx, "/v1/ensemble", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404")
+		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	assert.NotEqual(t, http.StatusInternalServerError, status, "unexpected 500: %v", env)
 }
@@ -418,7 +418,7 @@ func TestServicesIntegration_DebateWithEnsembleFallback(t *testing.T) {
 	status, env := postJSON(t, ctx, "/v1/debates", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/debates endpoint not registered on this build — got 404")
+		t.Skipf("/v1/debates endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	assert.NotEqual(t, http.StatusInternalServerError, status, "unexpected 500: %v", env)
 }
@@ -441,7 +441,7 @@ func TestServicesIntegration_ErrorHandling(t *testing.T) {
 	status, env := postJSON(t, ctx, "/v1/ensemble", body)
 
 	if status == http.StatusNotFound {
-		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404")
+		t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 (SKIP-OK: #unmarked-skip-needs-ticket)")
 	}
 	// The server MUST either reject the malformed request with a 4xx or
 	// return a clean error envelope — a raw 500 indicates an uncaught
@@ -483,7 +483,7 @@ func TestServicesIntegration_Performance(t *testing.T) {
 
 	for i, status := range statuses {
 		if status == http.StatusNotFound {
-			t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 at request %d", i)
+			t.Skipf("/v1/ensemble endpoint not registered on this build — got 404 at request %d (SKIP-OK: #unmarked-skip-needs-ticket)", i)
 		}
 		assert.NotEqual(t, http.StatusInternalServerError, statuses[i], "request %d unexpectedly 500", i)
 	}

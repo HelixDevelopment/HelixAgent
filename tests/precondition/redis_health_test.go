@@ -21,7 +21,7 @@ func TestRedisConnectivity(t *testing.T) {
 
 	conn, err := net.DialTimeout("tcp", host+":"+port, 5*time.Second)
 	if err != nil {
-		t.Skipf("Redis not available at %s:%s: %v", host, port, err)
+		t.Skipf("Redis not available at %s:%s: %v (SKIP-OK: #infra-redis-unavailable)", host, port, err)
 	}
 	conn.Close()
 	t.Logf("Redis reachable at %s:%s", host, port)

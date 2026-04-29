@@ -668,7 +668,7 @@ func TestWebSocketServer_Integration(t *testing.T) {
 	// Connect WebSocket client
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		t.Skipf("WebSocket connection failed (may need network access): %v", err)
+		t.Skipf("WebSocket connection failed (may need network access): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = conn.Close() }()

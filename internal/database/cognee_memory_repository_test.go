@@ -22,7 +22,7 @@ func setupCogneeMemoryTestDB(t *testing.T) (*pgxpool.Pool, *CogneeMemoryReposito
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		t.Skipf("Skipping test: database not available: %v", err)
+		t.Skipf("Skipping test: database not available: %v (SKIP-OK: #infra-db-unavailable)", err)
 		return nil, nil
 	}
 
@@ -34,7 +34,7 @@ func setupCogneeMemoryTestDB(t *testing.T) (*pgxpool.Pool, *CogneeMemoryReposito
 	defer cancel()
 
 	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("Skipping test: database connection failed: %v", err)
+		t.Skipf("Skipping test: database connection failed: %v (SKIP-OK: #infra-db-unavailable)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -44,7 +44,7 @@ func setupCogneeMemoryTestDB(t *testing.T) (*pgxpool.Pool, *CogneeMemoryReposito
 	var count int
 	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM cognee_memories WHERE dataset_name = 'test-fk-check'").Scan(&count)
 	if err != nil {
-		t.Skipf("Skipping test: cognee_memories table not accessible: %v", err)
+		t.Skipf("Skipping test: cognee_memories table not accessible: %v (SKIP-OK: #infra-schema-not-migrated)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -76,7 +76,7 @@ func createTestCogneeMemoryWithPool(t *testing.T, pool *pgxpool.Pool) *CogneeMem
 		RETURNING id
 	`, timestamp).Scan(&userID)
 	if err != nil {
-		t.Skipf("Skipping test: could not create test user: %v", err)
+		t.Skipf("Skipping test: could not create test user: %v (SKIP-OK: #infra-test-setup)", err)
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func createTestCogneeMemoryWithPool(t *testing.T, pool *pgxpool.Pool) *CogneeMem
 		RETURNING id
 	`, userID, "test-session-token-"+timestamp).Scan(&sessionID)
 	if err != nil {
-		t.Skipf("Skipping test: could not create test session: %v", err)
+		t.Skipf("Skipping test: could not create test session: %v (SKIP-OK: #infra-test-setup)", err)
 		return nil
 	}
 

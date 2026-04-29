@@ -176,7 +176,7 @@ func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 	var createResp map[string]any
 	status, _ := doJSON(t, http.MethodPost, "/v1/debates", createBody, &createResp)
 	if status == http.StatusServiceUnavailable || status == http.StatusNotImplemented {
-		t.Skipf("/v1/debates not available on this instance (status=%d)", status)
+		t.Skipf("/v1/debates not available on this instance (status=%d) (SKIP-OK: #infra-unavailable)", status)
 	}
 	require.Equal(t, http.StatusAccepted, status,
 		"/v1/debates POST expected 202, got %d body=%v", status, createResp)
@@ -207,7 +207,7 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 	var createResp map[string]any
 	status, _ := doJSON(t, http.MethodPost, "/v1/debates", createBody, &createResp)
 	if status == http.StatusServiceUnavailable || status == http.StatusNotImplemented {
-		t.Skipf("/v1/debates not available on this instance (status=%d)", status)
+		t.Skipf("/v1/debates not available on this instance (status=%d) (SKIP-OK: #infra-unavailable)", status)
 	}
 	require.Equal(t, http.StatusAccepted, status)
 	debateID, _ := createResp["debate_id"].(string)
@@ -238,7 +238,7 @@ func TestIntegration_DebateListAndDelete(t *testing.T) {
 		}
 		status, _ := doJSON(t, http.MethodPost, "/v1/debates", createBody, nil)
 		if status == http.StatusServiceUnavailable || status == http.StatusNotImplemented {
-			t.Skipf("/v1/debates not available on this instance (status=%d)", status)
+			t.Skipf("/v1/debates not available on this instance (status=%d) (SKIP-OK: #infra-unavailable)", status)
 		}
 		require.Equal(t, http.StatusAccepted, status)
 	}

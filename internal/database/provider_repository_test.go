@@ -46,7 +46,7 @@ func setupProviderTestDB(t *testing.T) (*pgxpool.Pool, *ProviderRepository) {
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		t.Skipf("Skipping test: database not available: %v", err)
+		t.Skipf("Skipping test: database not available: %v (SKIP-OK: #infra-db-unavailable)", err)
 		return nil, nil
 	}
 
@@ -58,7 +58,7 @@ func setupProviderTestDB(t *testing.T) (*pgxpool.Pool, *ProviderRepository) {
 	defer cancel()
 
 	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("Skipping test: database connection failed: %v", err)
+		t.Skipf("Skipping test: database connection failed: %v (SKIP-OK: #infra-db-unavailable)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -73,7 +73,7 @@ func setupProviderTestDB(t *testing.T) (*pgxpool.Pool, *ProviderRepository) {
 		)
 	`).Scan(&tableExists)
 	if err != nil || !tableExists {
-		t.Skipf("Skipping test: llm_providers table does not exist (run migrations first)")
+		t.Skipf("Skipping test: llm_providers table does not exist (run migrations first) (SKIP-OK: #infra-schema-not-migrated)")
 		pool.Close()
 		return nil, nil
 	}

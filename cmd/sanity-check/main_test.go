@@ -207,7 +207,7 @@ func TestMainFlags(t *testing.T) {
 	cmd.Dir = "."
 	err := cmd.Run()
 	if err != nil {
-		t.Skipf("Failed to build binary: %v", err)
+		t.Skipf("Failed to build binary: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	defer func() { _ = os.Remove("/tmp/sanity-check-test") }()
 

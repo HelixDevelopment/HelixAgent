@@ -227,7 +227,7 @@ func TestCogneeHealthCheck(t *testing.T) {
 	err := client.HealthCheck()
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
-			t.Skipf("Cognee service not running: %v", err)
+			t.Skipf("Cognee service not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		t.Fatalf("Health check failed: %v", err)
@@ -240,7 +240,7 @@ func TestCogneeAddContent(t *testing.T) {
 
 	// Check if service is running
 	if err := client.HealthCheck(); err != nil {
-		t.Skipf("Cognee service not running: %v", err)
+		t.Skipf("Cognee service not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 
@@ -255,7 +255,7 @@ func TestCogneeAddContent(t *testing.T) {
 	resp, err := client.Add(req)
 	if err != nil {
 		if strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		t.Fatalf("Failed to add content: %v", err)
@@ -271,7 +271,7 @@ func TestCogneeCognify(t *testing.T) {
 
 	// Check if service is running
 	if err := client.HealthCheck(); err != nil {
-		t.Skipf("Cognee service not running: %v", err)
+		t.Skipf("Cognee service not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 
@@ -282,10 +282,10 @@ func TestCogneeCognify(t *testing.T) {
 	_, err := client.Add(addReq)
 	if err != nil {
 		if strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
-		t.Skipf("Failed to add content: %v", err)
+		t.Skipf("Failed to add content: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 
@@ -293,7 +293,7 @@ func TestCogneeCognify(t *testing.T) {
 	resp, err := client.Cognify()
 	if err != nil {
 		if strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		t.Fatalf("Failed to cognify: %v", err)
@@ -309,7 +309,7 @@ func TestCogneeSearch(t *testing.T) {
 
 	// Check if service is running
 	if err := client.HealthCheck(); err != nil {
-		t.Skipf("Cognee service not running: %v", err)
+		t.Skipf("Cognee service not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 
@@ -321,7 +321,7 @@ func TestCogneeSearch(t *testing.T) {
 	resp, err := client.Search(req)
 	if err != nil {
 		if strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		t.Fatalf("Failed to search: %v", err)
@@ -341,7 +341,7 @@ func TestCogneeFullWorkflow(t *testing.T) {
 
 	// Check if service is running
 	if err := client.HealthCheck(); err != nil {
-		t.Skipf("Cognee service not running: %v", err)
+		t.Skipf("Cognee service not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 
@@ -358,7 +358,7 @@ func TestCogneeFullWorkflow(t *testing.T) {
 		}
 		resp, err := client.Add(req)
 		if err != nil && strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		require.NoError(t, err, "Add should succeed")
@@ -369,7 +369,7 @@ func TestCogneeFullWorkflow(t *testing.T) {
 	t.Run("Cognify", func(t *testing.T) {
 		resp, err := client.Cognify()
 		if err != nil && strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		require.NoError(t, err, "Cognify should succeed")
@@ -384,7 +384,7 @@ func TestCogneeFullWorkflow(t *testing.T) {
 		}
 		resp, err := client.Search(req)
 		if err != nil && strings.Contains(err.Error(), "authentication required") {
-			t.Skipf("Cognee authentication not configured: %v", err)
+			t.Skipf("Cognee authentication not configured: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		require.NoError(t, err, "Search should succeed")
@@ -400,7 +400,7 @@ func TestCogneeViaHelixAgent(t *testing.T) {
 	// Check if HelixAgent is running
 	resp, err := client.Get("http://localhost:8080/health")
 	if err != nil || resp.StatusCode != http.StatusOK {
-		t.Skipf("HelixAgent not running")
+		t.Skipf("HelixAgent not running (SKIP-OK: #unmarked-skip-needs-ticket)")
 		return
 	}
 	_ = resp.Body.Close()

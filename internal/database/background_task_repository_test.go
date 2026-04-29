@@ -29,7 +29,7 @@ func setupBackgroundTaskTestDB(t *testing.T) (*pgxpool.Pool, *BackgroundTaskRepo
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		t.Skipf("Skipping test: database not available: %v", err)
+		t.Skipf("Skipping test: database not available: %v (SKIP-OK: #infra-db-unavailable)", err)
 		return nil, nil
 	}
 
@@ -41,7 +41,7 @@ func setupBackgroundTaskTestDB(t *testing.T) (*pgxpool.Pool, *BackgroundTaskRepo
 	defer cancel()
 
 	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("Skipping test: database connection failed: %v", err)
+		t.Skipf("Skipping test: database connection failed: %v (SKIP-OK: #infra-db-unavailable)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -51,7 +51,7 @@ func setupBackgroundTaskTestDB(t *testing.T) (*pgxpool.Pool, *BackgroundTaskRepo
 	err = pool.QueryRow(ctx,
 		"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'background_tasks')").Scan(&exists)
 	if err != nil || !exists {
-		t.Skipf("Skipping test: background_tasks table does not exist (schema not applied)")
+		t.Skipf("Skipping test: background_tasks table does not exist (schema not applied) (SKIP-OK: #infra-schema-not-migrated)")
 		pool.Close()
 		return nil, nil
 	}
@@ -848,7 +848,7 @@ func TestBackgroundTaskRepository_Dequeue(t *testing.T) {
 	task, err := repo.Dequeue(ctx, workerID, 4, 1024)
 	if err != nil {
 		// Function might not exist in test DB, skip
-		t.Skipf("Dequeue function not available: %v", err)
+		t.Skipf("Dequeue function not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 
@@ -883,7 +883,7 @@ func TestBackgroundTaskRepository_MoveToDeadLetter(t *testing.T) {
 	err = repo.MoveToDeadLetter(ctx, task.ID, "Max retries exceeded after 3 attempts")
 	if err != nil {
 		// Dead letter table might not exist in test DB
-		t.Skipf("MoveToDeadLetter not available: %v", err)
+		t.Skipf("MoveToDeadLetter not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	t.Logf("Task %s moved to dead letter queue", task.ID)

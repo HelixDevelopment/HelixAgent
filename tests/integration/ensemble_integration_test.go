@@ -360,7 +360,7 @@ func TestConcurrentEnsembleSessions(t *testing.T) {
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		t.Skipf("test database not reachable (%s): %v", dbURL, err)
+		t.Skipf("test database not reachable (%s): %v (SKIP-OK: #infra-unavailable)", dbURL, err)
 		return
 	}
 	defer db.Close()

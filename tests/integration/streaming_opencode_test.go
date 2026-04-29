@@ -44,7 +44,7 @@ func TestStreaming_OpenCode_DoneMarker(t *testing.T) {
 
 			resp, err := client.Do(req)
 			if err != nil {
-				t.Skipf("HelixAgent not available: %v", err)
+				t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 			}
 			defer resp.Body.Close()
 
@@ -110,12 +110,12 @@ func TestStreaming_OpenCode_ChunkFormat(t *testing.T) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Skipf("HelixAgent not available: %v", err)
+		t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Skipf("Request failed with status %d", resp.StatusCode)
+		t.Skipf("Request failed with status %d (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 	}
 
 	reader := bufio.NewReader(resp.Body)
@@ -183,12 +183,12 @@ func TestStreaming_OpenCode_NoInfiniteLoop(t *testing.T) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Skipf("HelixAgent not available: %v", err)
+		t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Skipf("Request failed with status %d", resp.StatusCode)
+		t.Skipf("Request failed with status %d (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 	}
 
 	reader := bufio.NewReader(resp.Body)
@@ -268,12 +268,12 @@ func TestStreaming_OpenCode_Headers(t *testing.T) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Skipf("HelixAgent not available: %v", err)
+		t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Skipf("Request failed with status %d", resp.StatusCode)
+		t.Skipf("Request failed with status %d (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 	}
 
 	// Verify SSE headers

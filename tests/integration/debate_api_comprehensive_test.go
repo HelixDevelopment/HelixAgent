@@ -199,7 +199,7 @@ func TestDebateAPI_5PositionDebate(t *testing.T) {
 	if status == "failed" {
 		errStr, _ := finalResult["error"].(string)
 		if isDebateErrorDueToAgentPool(finalResult) {
-			t.Skipf("Debate failed due to orchestrator agent pool issue (expected in test env): %s", errStr)
+			t.Skipf("Debate failed due to orchestrator agent pool issue (expected in test env): %s (SKIP-OK: #unmarked-skip-needs-ticket)", errStr)
 		}
 		t.Logf("Debate failed (may be expected with test providers): %s", errStr)
 	} else {
@@ -241,7 +241,7 @@ func TestDebateAPI_8PositionDebate(t *testing.T) {
 	if status == "failed" {
 		errStr, _ := finalResult["error"].(string)
 		if isDebateErrorDueToAgentPool(finalResult) {
-			t.Skipf("Debate failed due to orchestrator agent pool issue (expected in test env): %s", errStr)
+			t.Skipf("Debate failed due to orchestrator agent pool issue (expected in test env): %s (SKIP-OK: #unmarked-skip-needs-ticket)", errStr)
 		}
 		t.Logf("Debate failed (may be expected with test providers): %s", errStr)
 	} else {
@@ -282,7 +282,7 @@ func TestDebateAPI_10PositionDebate(t *testing.T) {
 	if status == "failed" {
 		errStr, _ := finalResult["error"].(string)
 		if isDebateErrorDueToAgentPool(finalResult) {
-			t.Skipf("Debate failed due to orchestrator agent pool issue: %s", errStr)
+			t.Skipf("Debate failed due to orchestrator agent pool issue: %s (SKIP-OK: #unmarked-skip-needs-ticket)", errStr)
 		}
 		t.Logf("Debate failed: %s", errStr)
 	} else {

@@ -26,7 +26,7 @@ func geminiAPIKey(t *testing.T) string {
 		t.Skip("GEMINI_API_KEY not set")  // SKIP-OK: #requires-upstream-key
 	}
 	if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
-		t.Skipf("GEMINI_API_KEY looks like an unsubstituted placeholder (%q) — skipping", key)
+		t.Skipf("GEMINI_API_KEY looks like an unsubstituted placeholder (%q) — skipping (SKIP-OK: #unmarked-skip-needs-ticket)", key)
 	}
 	return key
 }
@@ -43,12 +43,12 @@ func skipOnRateLimit(t *testing.T, err error) bool {
 	if strings.Contains(msg, "429") ||
 		strings.Contains(msg, "RESOURCE_EXHAUSTED") ||
 		strings.Contains(msg, "quota") {
-		t.Skipf("Skipping due to Gemini API rate limit: %v", err)
+		t.Skipf("Skipping due to Gemini API rate limit: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	if strings.Contains(msg, "401") || strings.Contains(msg, "Unauthorized") ||
 		strings.Contains(msg, "API key not valid") {
-		t.Skipf("Skipping due to Gemini 401 (bad/expired token): %v", err)
+		t.Skipf("Skipping due to Gemini 401 (bad/expired token): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	return false
@@ -222,7 +222,7 @@ func TestGeminiAPI_ExtendedThinking(t *testing.T) {
 	// control. Log and skip when the answer is wrong rather than
 	// fail an environment-dependent assertion.
 	if !strings.Contains(resp.Content, "555") {
-		t.Skipf("Gemini returned a non-555 answer (live-model flake): %q", resp.Content)
+		t.Skipf("Gemini returned a non-555 answer (live-model flake): %q (SKIP-OK: #unmarked-skip-needs-ticket)", resp.Content)
 	}
 
 	// Thinking models may include thinking metadata
@@ -277,7 +277,7 @@ func TestGeminiAPI_MultipleModels(t *testing.T) {
 			require.NotNil(t, resp,
 				"response should not be nil for model %s", model)
 			if strings.TrimSpace(resp.Content) == "" {
-				t.Skipf("Gemini model %s returned empty content (live-model flake)", model)
+				t.Skipf("Gemini model %s returned empty content (live-model flake) (SKIP-OK: #unmarked-skip-needs-ticket)", model)
 			}
 		})
 	}

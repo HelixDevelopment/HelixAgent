@@ -377,6 +377,19 @@ func (s *HealthService) GetCircuitBreaker(providerID string) *CircuitBreaker {
 	return cb
 }
 
+// GetAllCircuitBreakers returns a snapshot of all registered circuit breakers
+// keyed by provider ID. Used by /v1/health/circuit-breakers endpoint to list
+// all CB states without requiring a per-provider lookup.
+func (s *HealthService) GetAllCircuitBreakers() map[string]*CircuitBreaker {
+	out := make(map[string]*CircuitBreaker)
+	for _, k := range s.circuitBreakers.Keys() {
+		if cb, ok := s.circuitBreakers.Get(k); ok && cb != nil {
+			out[k] = cb
+		}
+	}
+	return out
+}
+
 // ExecuteWithFailover executes an operation with automatic failover
 func (s *HealthService) ExecuteWithFailover(ctx context.Context, providers []string, operation func(providerID string) error) error {
 	for _, providerID := range providers {

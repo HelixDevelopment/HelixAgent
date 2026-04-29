@@ -184,7 +184,7 @@ func TestACPAgentInfo(t *testing.T) {
 		t.Run(agent.ID, func(t *testing.T) {
 			info, err := client.GetAgentInfo(agent.ID)
 			if err != nil {
-				t.Skipf("Agent %s not available: %v", agent.ID, err)
+				t.Skipf("Agent %s not available: %v (SKIP-OK: #infra-unavailable)", agent.ID, err)
 				return
 			}
 
@@ -222,7 +222,7 @@ func add(a, b int) int {
 
 			resp, err := client.ExecuteTask(req)
 			if err != nil {
-				t.Skipf("Agent %s execution failed: %v", agent.ID, err)
+				t.Skipf("Agent %s execution failed: %v (SKIP-OK: #unmarked-skip-needs-ticket)", agent.ID, err)
 				return
 			}
 

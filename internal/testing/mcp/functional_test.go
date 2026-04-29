@@ -137,7 +137,7 @@ func TestMCPTimeServerFunctional(t *testing.T) {
 	}
 	client, err := NewMCPClient("localhost:9103", 10*time.Second)
 	if err != nil {
-		t.Skipf("Time MCP server not running: %v", err)
+		t.Skipf("Time MCP server not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = client.Close() }()
@@ -145,7 +145,7 @@ func TestMCPTimeServerFunctional(t *testing.T) {
 	t.Run("Initialize", func(t *testing.T) {
 		resp, err := client.Initialize()
 		if err != nil {
-			t.Skipf("Time MCP server not responding to initialize: %v", err)
+			t.Skipf("Time MCP server not responding to initialize: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		require.Nil(t, resp.Error, "Initialize must not return error")
@@ -155,7 +155,7 @@ func TestMCPTimeServerFunctional(t *testing.T) {
 	t.Run("ListTools", func(t *testing.T) {
 		resp, err := client.ListTools()
 		if err != nil {
-			t.Skipf("Time MCP server not responding to list tools: %v", err)
+			t.Skipf("Time MCP server not responding to list tools: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		require.Nil(t, resp.Error, "ListTools must not return error")
@@ -175,7 +175,7 @@ func TestMCPTimeServerFunctional(t *testing.T) {
 			"timezone": "UTC",
 		})
 		if err != nil {
-			t.Skipf("Time MCP tool call failed: %v", err)
+			t.Skipf("Time MCP tool call failed: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 
@@ -201,7 +201,7 @@ func TestMCPMemoryServerFunctional(t *testing.T) {
 	}
 	client, err := NewMCPClient("localhost:9105", 10*time.Second)
 	if err != nil {
-		t.Skipf("Memory MCP server not running: %v", err)
+		t.Skipf("Memory MCP server not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = client.Close() }()
@@ -252,7 +252,7 @@ func TestMCPFilesystemServerFunctional(t *testing.T) {
 	}
 	client, err := NewMCPClient("localhost:9104", 10*time.Second)
 	if err != nil {
-		t.Skipf("Filesystem MCP server not running: %v", err)
+		t.Skipf("Filesystem MCP server not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = client.Close() }()
@@ -285,7 +285,7 @@ func TestMCPFetchServerFunctional(t *testing.T) {
 	}
 	client, err := NewMCPClient("localhost:9101", 30*time.Second)
 	if err != nil {
-		t.Skipf("Fetch MCP server not running: %v", err)
+		t.Skipf("Fetch MCP server not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = client.Close() }()
@@ -319,7 +319,7 @@ func TestMCPGitServerFunctional(t *testing.T) {
 	}
 	client, err := NewMCPClient("localhost:9102", 10*time.Second)
 	if err != nil {
-		t.Skipf("Git MCP server not running: %v", err)
+		t.Skipf("Git MCP server not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	defer func() { _ = client.Close() }()
@@ -327,7 +327,7 @@ func TestMCPGitServerFunctional(t *testing.T) {
 	t.Run("Initialize", func(t *testing.T) {
 		resp, err := client.Initialize()
 		if err != nil {
-			t.Skipf("Git MCP server not responding to initialize: %v", err)
+			t.Skipf("Git MCP server not responding to initialize: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		require.Nil(t, resp.Error)

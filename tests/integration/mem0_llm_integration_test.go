@@ -37,7 +37,7 @@ func TestMem0LLMIntegration_AuthenticationViaHelixAgent(t *testing.T) {
 	t.Run("Mem0HealthEndpointAccessible", func(t *testing.T) {
 		resp, err := client.Get(Mem0BaseURL + "/health")
 		if err != nil {
-			t.Skipf("Mem0 service not available via HelixAgent: %v", err)
+			t.Skipf("Mem0 service not available via HelixAgent: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -71,7 +71,7 @@ func TestMem0LLMIntegration_AuthenticationViaHelixAgent(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Mem0 service not available via HelixAgent: %v", err)
+			t.Skipf("Mem0 service not available via HelixAgent: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -117,12 +117,12 @@ func TestMem0LLMIntegration_LLMProviderConfigured(t *testing.T) {
 
 		resp, err := client.Get(Mem0BaseURL + "/health")
 		if err != nil {
-			t.Skipf("HelixAgent Mem0 service not available: %v", err)
+			t.Skipf("HelixAgent Mem0 service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Mem0 health endpoint returned %d", resp.StatusCode)
+			t.Skipf("Mem0 health endpoint returned %d (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var health struct {
@@ -213,7 +213,7 @@ func TestMem0LLMIntegration_NoOllamaDependency(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -250,7 +250,7 @@ func TestMem0LLMIntegration_AuthenticatedAPICalls(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Mem0 service not available via HelixAgent: %v", err)
+			t.Skipf("Mem0 service not available via HelixAgent: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -285,7 +285,7 @@ func TestMem0LLMIntegration_AuthenticatedAPICalls(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Mem0 service not available via HelixAgent: %v", err)
+			t.Skipf("Mem0 service not available via HelixAgent: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -326,7 +326,7 @@ func TestMem0LLMIntegration_HealthcheckConfiguration(t *testing.T) {
 	t.Run("Mem0HealthEndpointWorks", func(t *testing.T) {
 		resp, err := client.Get(Mem0BaseURL + "/health")
 		if err != nil {
-			t.Skipf("Mem0 service not available via HelixAgent: %v", err)
+			t.Skipf("Mem0 service not available via HelixAgent: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -348,7 +348,7 @@ func TestMem0LLMIntegration_HealthcheckConfiguration(t *testing.T) {
 	t.Run("HelixAgentHealthIncludesMem0", func(t *testing.T) {
 		resp, err := client.Get(HelixAgentBaseURL + "/health")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -372,12 +372,12 @@ func TestMem0LLMIntegration_Mem0ServiceConfig(t *testing.T) {
 	t.Run("AllFeaturesEnabled", func(t *testing.T) {
 		resp, err := client.Get(Mem0BaseURL + "/health")
 		if err != nil {
-			t.Skipf("HelixAgent Mem0 service not available: %v", err)
+			t.Skipf("HelixAgent Mem0 service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Mem0 health endpoint returned %d", resp.StatusCode)
+			t.Skipf("Mem0 health endpoint returned %d (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var health struct {

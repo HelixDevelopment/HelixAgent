@@ -502,10 +502,10 @@ func TestProviderValidation_IndividualProviders(t *testing.T) {
 		t.Run(def.providerName, func(t *testing.T) {
 			key := os.Getenv(def.envVar)
 			if key == "" {
-				t.Skipf("No API key set for %s (%s)", def.providerName, def.envVar)
+				t.Skipf("No API key set for %s (%s) (SKIP-OK: #unmarked-skip-needs-ticket)", def.providerName, def.envVar)
 			}
 			if strings.HasPrefix(key, "$") || strings.HasPrefix(key, "<") {
-				t.Skipf("API key for %s is a placeholder: %q", def.providerName, key)
+				t.Skipf("API key for %s is a placeholder: %q (SKIP-OK: #unmarked-skip-needs-ticket)", def.providerName, key)
 			}
 
 			result := validateProvider(def)
@@ -514,7 +514,7 @@ func TestProviderValidation_IndividualProviders(t *testing.T) {
 				t.Logf("Provider %s is healthy (latency: %dms)", def.providerName, result.HealthLatency.Milliseconds())
 			} else {
 				t.Logf("Provider %s failed: %s\nRoot cause: %s", def.providerName, result.HealthError, result.RootCause)
-				t.Skipf("Provider %s is not healthy: %s (see comprehensive report for details)", def.providerName, result.OverallStatus)
+				t.Skipf("Provider %s is not healthy: %s (see comprehensive report for details) (SKIP-OK: #unmarked-skip-needs-ticket)", def.providerName, result.OverallStatus)
 			}
 		})
 	}

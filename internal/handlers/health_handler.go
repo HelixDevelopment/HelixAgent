@@ -272,6 +272,27 @@ func (h *HealthHandler) GetCircuitBreakerStatus(c *gin.Context) {
 	}
 	providerID := c.Param("provider_id")
 
+	// CONST-035 §c "Full usability": when called as /v1/health/circuit-breakers
+	// (no provider_id param), return a list of all registered breakers
+	// rather than 404 with cryptic "provider not found". Single-provider
+	// lookup keeps its existing /v1/health/circuit/:provider_id behaviour.
+	if providerID == "" {
+		all := h.healthService.GetAllCircuitBreakers()
+		out := make([]CircuitBreakerResponse, 0, len(all))
+		for id, cb := range all {
+			out = append(out, CircuitBreakerResponse{
+				ProviderID:  id,
+				State:       cb.State().String(),
+				IsAvailable: cb.IsAvailable(),
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"circuit_breakers": out,
+			"total":            len(out),
+		})
+		return
+	}
+
 	cb := h.healthService.GetCircuitBreaker(providerID)
 	if cb == nil {
 		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "provider not found"})

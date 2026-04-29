@@ -231,7 +231,7 @@ func TestModelsEndpointOnlyReturnsHelixAgentModel(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Models endpoint not available: %d", resp.StatusCode)
+			t.Skipf("Models endpoint not available: %d (SKIP-OK: #infra-unavailable)", resp.StatusCode)
 		}
 
 		var modelsResp OpenAIModelsResponse
@@ -264,7 +264,7 @@ func TestModelsEndpointOnlyReturnsHelixAgentModel(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Models endpoint not available: %d", resp.StatusCode)
+			t.Skipf("Models endpoint not available: %d (SKIP-OK: #infra-unavailable)", resp.StatusCode)
 		}
 
 		var modelsResp OpenAIModelsResponse
@@ -302,7 +302,7 @@ func TestModelsEndpointOnlyReturnsHelixAgentModel(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Models endpoint not available: %d", resp.StatusCode)
+			t.Skipf("Models endpoint not available: %d (SKIP-OK: #infra-unavailable)", resp.StatusCode)
 		}
 
 		var modelsResp OpenAIModelsResponse
@@ -491,7 +491,7 @@ func TestOpenCodeChatCompletionWithHelixAgentModel(t *testing.T) {
 			resp.StatusCode == http.StatusBadGateway ||
 			resp.StatusCode == http.StatusServiceUnavailable ||
 			resp.StatusCode == http.StatusGatewayTimeout {
-			t.Skipf("Server returned %d - providers may be unavailable", resp.StatusCode)
+			t.Skipf("Server returned %d - providers may be unavailable (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode,

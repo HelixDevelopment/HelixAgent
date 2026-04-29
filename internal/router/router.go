@@ -28,6 +28,7 @@ import (
 	"dev.helix.agent/internal/modelsdev"
 	httpmetrics "dev.helix.agent/internal/observability/metrics"
 	"dev.helix.agent/internal/search"
+	"dev.helix.agent/internal/verifier"
 	"dev.helix.agent/internal/search/indexer"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/services/debate_integration"
@@ -1231,7 +1232,14 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		logger.Info("Discovery endpoints registered at /v1/discovery/* (registry fallback active)")
 
 		// Scoring endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
-		scoringHandler := handlers.NewScoringHandler(nil)
+		// Scoring endpoints — wire a real verifier.ScoringService so endpoints
+		// return 200 with computed scores, not 503. CONST-035 §c "Completion":
+		// no stub / placeholder gaps that silently 503.
+		scoringSvc, scoringErr := verifier.NewScoringService(nil)
+		if scoringErr != nil {
+			logger.WithError(scoringErr).Warn("Failed to initialise ScoringService; /v1/scoring/* will return 503")
+		}
+		scoringHandler := handlers.NewScoringHandler(scoringSvc)
 		scoringGroup := protected.Group("/scoring")
 		{
 			scoringGroup.GET("/model/:model_id", scoringHandler.GetModelScore)
@@ -1244,10 +1252,17 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			scoringGroup.POST("/cache/invalidate", scoringHandler.InvalidateCache)
 			scoringGroup.POST("/compare", scoringHandler.CompareModels)
 		}
-		logger.Info("Scoring endpoints registered at /v1/scoring/* (services pending)")
+		if scoringSvc != nil {
+			logger.Info("Scoring endpoints registered at /v1/scoring/* (real ScoringService wired)")
+		} else {
+			logger.Warn("Scoring endpoints registered at /v1/scoring/* (ScoringService init failed; will 503)")
+		}
 
-		// Verification endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
-		verificationHandler := handlers.NewVerificationHandler(nil, nil, nil, nil)
+		// Verification endpoints — wire real verifier services so endpoints
+		// return 200, not 503. CONST-035 §c "Completion": no stub gaps.
+		verificationSvc := verifier.NewVerificationService(nil)
+		healthSvcForVerification := verifier.NewHealthService(nil)
+		verificationHandler := handlers.NewVerificationHandler(verificationSvc, scoringSvc, healthSvcForVerification, nil)
 		verificationGroup := protected.Group("/verification")
 		{
 			verificationGroup.POST("/model", verificationHandler.VerifyModel)
@@ -1259,10 +1274,11 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			verificationGroup.GET("/health", verificationHandler.GetVerificationHealth)
 			verificationGroup.POST("/code-visibility", verificationHandler.TestCodeVisibility)
 		}
-		logger.Info("Verification endpoints registered at /v1/verification/* (services pending)")
+		logger.Info("Verification endpoints registered at /v1/verification/* (real VerificationService wired)")
 
-		// Health monitoring endpoints — services wired lazily via SP4 LazyServiceProvider; handler returns 503 if services unavailable
-		healthHandler := handlers.NewHealthHandler(nil)
+		// Health monitoring endpoints — wire real HealthService so endpoints return 200, not 503.
+		healthSvc := verifier.NewHealthService(nil)
+		healthHandler := handlers.NewHealthHandler(healthSvc)
 		healthGroup := protected.Group("/health")
 		{
 			healthGroup.GET("/providers", healthHandler.GetAllProvidersHealth)
@@ -1278,7 +1294,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			healthGroup.DELETE("/provider/:provider_id", healthHandler.RemoveProvider)
 			healthGroup.GET("/status", healthHandler.GetHealthServiceStatus)
 		}
-		logger.Info("Health monitoring endpoints registered at /v1/health/* (services pending)")
+		logger.Info("Health monitoring endpoints registered at /v1/health/* (real HealthService wired)")
 
 		// Agentic workflow endpoints (graph-based workflow orchestration)
 		agenticHandler := handlers.NewAgenticHandler(logger)
@@ -1322,7 +1338,6 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		qaHandler := handlers.NewQAHandler(qaAdapter)
 		handlers.RegisterQARoutes(protected, qaHandler)
 		logger.Info("QA endpoints registered at /v1/qa/* (real HelixQA adapter wired)")
-		logger.Info("QA endpoints registered at /v1/qa/* (services pending)")
 
 		// Semantic Search endpoints — vector-based code search with ChromaDB/Qdrant
 		searchService, searchErr := initializeSearchService(cfg, logger, rc.containerAdapter)

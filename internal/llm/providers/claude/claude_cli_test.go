@@ -254,7 +254,7 @@ func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "403") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "Request not allowed") {
-			t.Skipf("Claude OAuth token is product-restricted (403 Forbidden). Get API key from console.anthropic.com: %v", err)
+			t.Skipf("Claude OAuth token is product-restricted (403 Forbidden). Get API key from console.anthropic.com: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		assert.NoError(t, err)
 		return
@@ -289,7 +289,7 @@ func TestClaudeCLIProvider_Integration_HealthCheck(t *testing.T) {
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "403") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "Request not allowed") {
-			t.Skipf("Claude OAuth token is product-restricted (403 Forbidden). Get API key from console.anthropic.com: %v", err)
+			t.Skipf("Claude OAuth token is product-restricted (403 Forbidden). Get API key from console.anthropic.com: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 	}
 

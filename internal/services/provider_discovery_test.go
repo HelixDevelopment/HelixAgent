@@ -119,7 +119,7 @@ func TestProviderMappingURLsAreValid(t *testing.T) {
 	for _, mapping := range providerMappings {
 		t.Run(mapping.ProviderName+"_url_format", func(t *testing.T) {
 			if cliOnlyProviders[mapping.ProviderType] {
-				t.Skipf("Skipping URL validation for CLI-only provider %s", mapping.ProviderName)
+				t.Skipf("Skipping URL validation for CLI-only provider %s (SKIP-OK: #unmarked-skip-needs-ticket)", mapping.ProviderName)
 				return
 			}
 			assert.True(t,

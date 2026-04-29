@@ -55,7 +55,7 @@ func skipMinIOIfUnavailable(t *testing.T) *minio.Client {
 
 	client, err := minio.NewClient(config, logger)
 	if err != nil {
-		t.Skipf("Skipping MinIO integration test: failed to create client: %v", err)
+		t.Skipf("Skipping MinIO integration test: failed to create client: %v (SKIP-OK: #integration-only)", err)
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func skipMinIOIfUnavailable(t *testing.T) *minio.Client {
 	defer cancel()
 
 	if err := client.Connect(ctx); err != nil {
-		t.Skipf("Skipping MinIO integration test: MinIO not available at %s: %v", minioEndpoint, err)
+		t.Skipf("Skipping MinIO integration test: MinIO not available at %s: %v (SKIP-OK: #integration-only)", minioEndpoint, err)
 		return nil
 	}
 

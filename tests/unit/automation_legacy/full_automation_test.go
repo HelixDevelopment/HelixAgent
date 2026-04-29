@@ -1578,7 +1578,7 @@ func TestExternalServer_IfRunning(t *testing.T) {
 	t.Run("ExternalHealthCheck", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/health")
 		if err != nil {
-			t.Skipf("Cannot connect to external server: %v", err)
+			t.Skipf("Cannot connect to external server: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -1590,7 +1590,7 @@ func TestExternalServer_IfRunning(t *testing.T) {
 	t.Run("ExternalModelsEndpoint", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/v1/models")
 		if err != nil {
-			t.Skipf("Cannot connect to external server: %v", err)
+			t.Skipf("Cannot connect to external server: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			return
 		}
 		defer resp.Body.Close()

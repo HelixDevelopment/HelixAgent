@@ -165,7 +165,7 @@ func TestNewPostgresDBWithFallback_RealConnection(t *testing.T) {
 
 	pgDB, memDB, err := NewPostgresDBWithFallback(cfg)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// If we have a real connection, pgDB should be set and memDB nil

@@ -39,7 +39,7 @@ func TestMultiProviderIntegration(t *testing.T) {
 	// Skip if database is not available (expected in CI/test environments without database)
 	db, err := database.NewPostgresDB(cfg)
 	if err != nil {
-		t.Skipf("Skipping integration test - database not available: %v", err)
+		t.Skipf("Skipping integration test - database not available: %v (SKIP-OK: #infra-db-unavailable)", err)
 	}
 	defer db.Close()
 

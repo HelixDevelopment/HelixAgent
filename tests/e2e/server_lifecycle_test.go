@@ -138,7 +138,7 @@ func TestServerHealthCheckWithExternalServer(t *testing.T) {
 	// Try to connect, skip if not available
 	resp, err := http.Get(serverURL + "/health")
 	if err != nil {
-		t.Skipf("Server not available at %s: %v", serverURL, err)
+		t.Skipf("Server not available at %s: %v (SKIP-OK: #infra-unavailable)", serverURL, err)
 	}
 	defer resp.Body.Close()
 

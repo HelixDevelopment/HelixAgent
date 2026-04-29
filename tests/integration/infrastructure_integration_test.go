@@ -60,7 +60,7 @@ func TestIntegration_PostgreSQL_Connection(t *testing.T) {
 
 	db, err := database.NewPostgresDB(cfg)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 	defer db.Close()
 
@@ -94,7 +94,7 @@ func TestIntegration_PostgreSQL_CRUD(t *testing.T) {
 
 	db, err := database.NewPostgresDB(cfg)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 	defer db.Close()
 
@@ -167,7 +167,7 @@ func TestIntegration_PostgreSQL_Transactions(t *testing.T) {
 
 	db, err := database.NewPostgresDB(cfg)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 	defer db.Close()
 
@@ -240,7 +240,7 @@ func TestIntegration_Redis_Connection(t *testing.T) {
 	// Test ping
 	err := client.Ping(ctx)
 	if err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("Redis not available: %v (SKIP-OK: #infra-redis-unavailable)", err)
 	}
 
 	t.Log("Redis connection successful")
@@ -265,7 +265,7 @@ func TestIntegration_Redis_CRUD(t *testing.T) {
 
 	// Skip if Redis not available
 	if err := client.Ping(ctx); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("Redis not available: %v (SKIP-OK: #infra-redis-unavailable)", err)
 	}
 
 	// Test Set
@@ -314,7 +314,7 @@ func TestIntegration_Redis_Expiration(t *testing.T) {
 
 	// Skip if Redis not available
 	if err := client.Ping(ctx); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("Redis not available: %v (SKIP-OK: #infra-redis-unavailable)", err)
 	}
 
 	// Set with short expiration
@@ -356,7 +356,7 @@ func TestIntegration_Redis_Pipeline(t *testing.T) {
 
 	// Skip if Redis not available
 	if err := client.Ping(ctx); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("Redis not available: %v (SKIP-OK: #infra-redis-unavailable)", err)
 	}
 
 	// Use pipeline for batch operations
@@ -416,7 +416,7 @@ func TestIntegration_MinIO_Connection(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("MinIO not available: %v", err)
+		t.Skipf("MinIO not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -450,7 +450,7 @@ func TestIntegration_MinIO_BucketOperations(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("MinIO not available: %v", err)
+		t.Skipf("MinIO not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -501,7 +501,7 @@ func TestIntegration_MinIO_ObjectOperations(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("MinIO not available: %v", err)
+		t.Skipf("MinIO not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -571,7 +571,7 @@ func TestIntegration_MinIO_PresignedURLs(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("MinIO not available: %v", err)
+		t.Skipf("MinIO not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -621,7 +621,7 @@ func TestIntegration_Qdrant_Connection(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("Qdrant not available: %v", err)
+		t.Skipf("Qdrant not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -645,7 +645,7 @@ func TestIntegration_Qdrant_CollectionOperations(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("Qdrant not available: %v", err)
+		t.Skipf("Qdrant not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -691,7 +691,7 @@ func TestIntegration_Qdrant_VectorOperations(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("Qdrant not available: %v", err)
+		t.Skipf("Qdrant not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -789,7 +789,7 @@ func TestIntegration_Qdrant_BatchSearch(t *testing.T) {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("Qdrant not available: %v", err)
+		t.Skipf("Qdrant not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer client.Close()
 
@@ -860,7 +860,7 @@ func TestIntegration_Kafka_Connection(t *testing.T) {
 	// Create a connection to verify Kafka is available
 	conn, err := kafka.Dial("tcp", brokers)
 	if err != nil {
-		t.Skipf("Kafka not available at %s: %v", brokers, err)
+		t.Skipf("Kafka not available at %s: %v (SKIP-OK: #infra-unavailable)", brokers, err)
 		return
 	}
 	defer conn.Close()
@@ -880,7 +880,7 @@ func TestIntegration_Kafka_TopicOperations(t *testing.T) {
 
 	conn, err := kafka.Dial("tcp", brokers)
 	if err != nil {
-		t.Skipf("Kafka not available: %v", err)
+		t.Skipf("Kafka not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	defer conn.Close()
@@ -927,7 +927,7 @@ func TestIntegration_Kafka_ProduceConsume(t *testing.T) {
 	// Create topic first
 	conn, err := kafka.Dial("tcp", brokers)
 	if err != nil {
-		t.Skipf("Kafka not available: %v", err)
+		t.Skipf("Kafka not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 
@@ -1011,7 +1011,7 @@ func TestIntegration_Kafka_ConsumerGroup(t *testing.T) {
 	// Create topic
 	conn, err := kafka.Dial("tcp", brokers)
 	if err != nil {
-		t.Skipf("Kafka not available: %v", err)
+		t.Skipf("Kafka not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 
@@ -1072,7 +1072,7 @@ func TestIntegration_Kafka_ConsumerGroup(t *testing.T) {
 
 	msg, err := reader.ReadMessage(readCtx)
 	if err != nil {
-		t.Skipf("Consumer group read failed (may be timing issue): %v", err)
+		t.Skipf("Consumer group read failed (may be timing issue): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return
 	}
 	assert.NotEmpty(t, msg.Value)
@@ -1106,7 +1106,7 @@ func TestIntegration_RabbitMQ_Connection(t *testing.T) {
 	// Try to connect using amqp library directly
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
-		t.Skipf("RabbitMQ not available at %s:%s: %v", host, port, err)
+		t.Skipf("RabbitMQ not available at %s:%s: %v (SKIP-OK: #infra-unavailable)", host, port, err)
 		return
 	}
 	defer conn.Close()
@@ -1138,7 +1138,7 @@ func TestIntegration_RabbitMQ_QueueOperations(t *testing.T) {
 
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
-		t.Skipf("RabbitMQ not available: %v", err)
+		t.Skipf("RabbitMQ not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	defer conn.Close()
@@ -1214,7 +1214,7 @@ func TestIntegration_RabbitMQ_ExchangeOperations(t *testing.T) {
 
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
-		t.Skipf("RabbitMQ not available: %v", err)
+		t.Skipf("RabbitMQ not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	defer conn.Close()
@@ -1290,7 +1290,7 @@ func TestIntegration_RabbitMQ_PublishConfirm(t *testing.T) {
 
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
-		t.Skipf("RabbitMQ not available: %v", err)
+		t.Skipf("RabbitMQ not available: %v (SKIP-OK: #infra-unavailable)", err)
 		return
 	}
 	defer conn.Close()

@@ -31,7 +31,7 @@ func TestNewManager(t *testing.T) {
 
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	require.NotNil(t, manager)
 	assert.NotNil(t, manager.pool)
@@ -72,7 +72,7 @@ func TestManager_Execute(t *testing.T) {
 	config := DefaultConfig()
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer manager.Close()
 
@@ -103,7 +103,7 @@ func TestManager_Execute_WithScreenshot(t *testing.T) {
 	config := DefaultConfig()
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer manager.Close()
 
@@ -138,7 +138,7 @@ func TestManager_Execute_WithExtract(t *testing.T) {
 	config := DefaultConfig()
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer manager.Close()
 
@@ -174,7 +174,7 @@ func TestManager_Execute_ActionError(t *testing.T) {
 	config := DefaultConfig()
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer manager.Close()
 
@@ -203,7 +203,7 @@ func TestManager_Close(t *testing.T) {
 	config := DefaultConfig()
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 
 	err = manager.Close()
@@ -219,7 +219,7 @@ func TestNewPool(t *testing.T) {
 
 	pool, err := NewPool(2, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	require.NotNil(t, pool)
 	assert.Equal(t, 2, pool.maxSize)
@@ -237,7 +237,7 @@ func TestPool_Acquire(t *testing.T) {
 
 	pool, err := NewPool(2, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 
@@ -263,7 +263,7 @@ func TestPool_Acquire_ContextCancelled(t *testing.T) {
 	// Create pool with small size
 	pool, err := NewPool(1, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 
@@ -297,7 +297,7 @@ func TestPool_Release(t *testing.T) {
 
 	pool, err := NewPool(2, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 
@@ -325,7 +325,7 @@ func TestPool_Release_Full(t *testing.T) {
 	// Create pool with size 1
 	pool, err := NewPool(1, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 
@@ -353,7 +353,7 @@ func TestPool_Close(t *testing.T) {
 
 	pool, err := NewPool(2, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 
 	err = pool.Close()
@@ -369,7 +369,7 @@ func TestInstance_Close(t *testing.T) {
 
 	pool, err := NewPool(1, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 
@@ -410,7 +410,7 @@ func TestInstance_Struct(t *testing.T) {
 
 	pool, err := NewPool(1, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 
@@ -435,7 +435,7 @@ func TestManager_Struct(t *testing.T) {
 	config := DefaultConfig()
 	manager, err := NewManager(config)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer manager.Close()
 
@@ -453,7 +453,7 @@ func TestPool_Struct(t *testing.T) {
 
 	pool, err := NewPool(2, true)
 	if err != nil {
-		t.Skipf("Skipping test - Playwright not available: %v", err)
+		t.Skipf("Skipping test - Playwright not available: %v (SKIP-OK: #infra-unavailable)", err)
 	}
 	defer pool.Close()
 

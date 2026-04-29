@@ -130,7 +130,7 @@ func TestMCPContainerJSONRPCCompliance(t *testing.T) {
 			url := fmt.Sprintf("http://%s:%d/", host, p.Port)
 			resp, err := client.Post(url, "application/json", strings.NewReader(string(requestBody)))
 			if err != nil {
-				t.Skipf("Container not available: %v", err)
+				t.Skipf("Container not available: %v (SKIP-OK: #infra-unavailable)", err)
 				return
 			}
 			defer resp.Body.Close()
@@ -190,7 +190,7 @@ func TestMCPContainerToolDiscovery(t *testing.T) {
 			url := fmt.Sprintf("http://%s:%d/", host, p.Port)
 			resp, err := client.Post(url, "application/json", strings.NewReader(string(requestBody)))
 			if err != nil {
-				t.Skipf("Container not available: %v", err)
+				t.Skipf("Container not available: %v (SKIP-OK: #infra-unavailable)", err)
 				return
 			}
 			defer resp.Body.Close()

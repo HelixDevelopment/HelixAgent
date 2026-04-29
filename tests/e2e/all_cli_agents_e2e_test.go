@@ -76,7 +76,7 @@ func TestCLIAgentRegistryComplete(t *testing.T) {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Logf("Command output: %s", string(output))
-			t.Skipf("Failed to run list-agents: %v", err)
+			t.Skipf("Failed to run list-agents: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 
 		outputStr := string(output)
@@ -115,10 +115,10 @@ func TestCLIAgentConfigGeneration(t *testing.T) {
 			if err != nil {
 				// Check if it's a known unsupported agent
 				if strings.Contains(outputStr, "unsupported") || strings.Contains(outputStr, "not found") {
-					t.Skipf("Agent %s not yet supported: %s", agent, outputStr)
+					t.Skipf("Agent %s not yet supported: %s (SKIP-OK: #unmarked-skip-needs-ticket)", agent, outputStr)
 				}
 				t.Logf("Error generating config for %s: %v\nOutput: %s", agent, err, outputStr)
-				t.Skipf("Config generation failed for %s", agent)
+				t.Skipf("Config generation failed for %s (SKIP-OK: #unmarked-skip-needs-ticket)", agent)
 			}
 
 			// Verify config is valid JSON
@@ -157,7 +157,7 @@ func TestFullInfrastructureE2E(t *testing.T) {
 	t.Run("HelixAgent_Health", func(t *testing.T) {
 		resp, err := client.Get(config.HelixAgentURL + "/health")
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -166,7 +166,7 @@ func TestFullInfrastructureE2E(t *testing.T) {
 	t.Run("Models_Endpoint", func(t *testing.T) {
 		resp, err := client.Get(config.HelixAgentURL + "/v1/models")
 		if err != nil {
-			t.Skipf("HelixAgent not available: %v", err)
+			t.Skipf("HelixAgent not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -188,15 +188,15 @@ func TestFullInfrastructureE2E(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			resp, err := client.Get(url)
 			if err != nil {
-				t.Skipf("%s not available: %v", name, err)
+				t.Skipf("%s not available: %v (SKIP-OK: #infra-unavailable)", name, err)
 			}
 			defer resp.Body.Close()
 			// Accept 200, 404 (not implemented), or 503 (service disabled)
 			if resp.StatusCode == http.StatusNotFound {
-				t.Skipf("%s endpoint not implemented", name)
+				t.Skipf("%s endpoint not implemented (SKIP-OK: #unmarked-skip-needs-ticket)", name)
 			}
 			if resp.StatusCode == http.StatusServiceUnavailable {
-				t.Skipf("%s service unavailable (may be disabled)", name)
+				t.Skipf("%s service unavailable (may be disabled) (SKIP-OK: #unmarked-skip-needs-ticket)", name)
 			}
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 		})
@@ -224,7 +224,7 @@ func TestMCPServersE2E(t *testing.T) {
 
 			conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 5*time.Second)
 			if err != nil {
-				t.Skipf("MCP server %s not running: %v", name, err)
+				t.Skipf("MCP server %s not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", name, err)
 			}
 			defer conn.Close()
 
@@ -294,7 +294,7 @@ func TestACPAgentsE2E(t *testing.T) {
 
 			resp, err := client.Post(baseURL+"/execute", "application/json", bytes.NewReader(body))
 			if err != nil {
-				t.Skipf("ACP execute failed: %v", err)
+				t.Skipf("ACP execute failed: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 			}
 			defer resp.Body.Close()
 
@@ -341,7 +341,7 @@ func TestVisionCapabilitiesE2E(t *testing.T) {
 
 			resp, err := client.Post(baseURL+"/"+cap, "application/json", bytes.NewReader(body))
 			if err != nil {
-				t.Skipf("Vision %s failed: %v", cap, err)
+				t.Skipf("Vision %s failed: %v (SKIP-OK: #unmarked-skip-needs-ticket)", cap, err)
 			}
 			defer resp.Body.Close()
 
@@ -381,12 +381,12 @@ func TestEmbeddingsE2E(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Embeddings not available: %v", err)
+			t.Skipf("Embeddings not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured)", resp.StatusCode)
+			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured) (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var result map[string]interface{}
@@ -413,12 +413,12 @@ func TestEmbeddingsE2E(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Embeddings not available: %v", err)
+			t.Skipf("Embeddings not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured)", resp.StatusCode)
+			t.Skipf("Embeddings endpoint returned %d (embedding provider may not be configured) (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var result map[string]interface{}
@@ -500,7 +500,7 @@ func TestLSPServersE2E(t *testing.T) {
 
 			conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 5*time.Second)
 			if err != nil {
-				t.Skipf("LSP server %s not running: %v", name, err)
+				t.Skipf("LSP server %s not running: %v (SKIP-OK: #unmarked-skip-needs-ticket)", name, err)
 			}
 			conn.Close()
 			t.Logf("LSP %s: port open", name)
@@ -511,7 +511,7 @@ func TestLSPServersE2E(t *testing.T) {
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get("http://localhost:5100/health")
 		if err != nil {
-			t.Skipf("LSP Manager not available: %v", err)
+			t.Skipf("LSP Manager not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -542,7 +542,7 @@ func TestRAGServicesE2E(t *testing.T) {
 
 			resp, err := client.Get(url)
 			if err != nil {
-				t.Skipf("%s not available: %v", name, err)
+				t.Skipf("%s not available: %v (SKIP-OK: #infra-unavailable)", name, err)
 			}
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)

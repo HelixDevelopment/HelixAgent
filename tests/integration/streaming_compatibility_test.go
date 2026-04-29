@@ -49,7 +49,7 @@ func skipIfNotRunning(t *testing.T) {
 	baseURL := getBaseURL()
 	resp, err := http.Get(baseURL + "/health")
 	if err != nil || resp.StatusCode != 200 {
-		t.Skipf("HelixAgent not running at %s, skipping integration test", baseURL)
+		t.Skipf("HelixAgent not running at %s, skipping integration test (SKIP-OK: #integration-only)", baseURL)
 	}
 	resp.Body.Close()
 }
@@ -521,7 +521,7 @@ func TestNonStreamingCompatibility(t *testing.T) {
 
 	// Check for error response
 	if errObj, hasError := result["error"]; hasError {
-		t.Skipf("API returned error (providers may be unavailable): %v", errObj)
+		t.Skipf("API returned error (providers may be unavailable): %v (SKIP-OK: #unmarked-skip-needs-ticket)", errObj)
 	}
 
 	// Verify non-streaming response structure

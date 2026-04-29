@@ -58,7 +58,7 @@ const (
 func TestPhase3_SLI_Live(t *testing.T) {
 	url := os.Getenv(phase3EnvVar)
 	if url == "" {
-		t.Skipf("skipping live SLI test: %s not set", phase3EnvVar)
+		t.Skipf("skipping live SLI test: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", phase3EnvVar)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

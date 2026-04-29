@@ -429,7 +429,7 @@ func TestLiveChatCompletionsErrorHandling(t *testing.T) {
 	healthClient := &http.Client{Timeout: 2 * time.Second}
 	resp, err := healthClient.Get(config.BaseURL + "/models")
 	if err != nil {
-		t.Skipf("Server not running at %s: %v", config.BaseURL, err)
+		t.Skipf("Server not running at %s: %v (SKIP-OK: #unmarked-skip-needs-ticket)", config.BaseURL, err)
 	}
 	resp.Body.Close()
 
@@ -453,7 +453,7 @@ func TestLiveChatCompletionsErrorHandling(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Request failed (provider may be unavailable): %v", err)
+			t.Skipf("Request failed (provider may be unavailable): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -492,7 +492,7 @@ func TestLiveChatCompletionsErrorHandling(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("Request failed (provider may be unavailable): %v", err)
+			t.Skipf("Request failed (provider may be unavailable): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 

@@ -348,7 +348,7 @@ func TestEnsembleStreaming(t *testing.T) {
 			resp.StatusCode == http.StatusServiceUnavailable ||
 			resp.StatusCode == http.StatusGatewayTimeout {
 			body, _ := io.ReadAll(resp.Body)
-			t.Skipf("Provider unavailable (status %d): %s", resp.StatusCode, string(body))
+			t.Skipf("Provider unavailable (status %d): %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode, string(body))
 		}
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -554,7 +554,7 @@ func TestTimeoutHandling(t *testing.T) {
 			resp.StatusCode == http.StatusServiceUnavailable ||
 			resp.StatusCode == http.StatusGatewayTimeout {
 			body, _ := io.ReadAll(resp.Body)
-			t.Skipf("Provider unavailable (status %d): %s", resp.StatusCode, string(body))
+			t.Skipf("Provider unavailable (status %d): %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode, string(body))
 		}
 		assert.Equal(t, http.StatusOK, resp.StatusCode, "Should succeed with long timeout")
 	})

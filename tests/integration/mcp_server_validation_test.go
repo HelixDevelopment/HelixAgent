@@ -261,7 +261,7 @@ func TestOpenCodeConfiguration(t *testing.T) {
 	cmd := exec.CommandContext(ctx, binaryPath, "-generate-opencode-config")
 	data, err := cmd.Output()
 	if err != nil {
-		t.Skipf("Failed to generate config: %v", err)
+		t.Skipf("Failed to generate config: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	var config map[string]interface{}

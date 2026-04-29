@@ -47,7 +47,7 @@ func TestConfigGeneration_ProducesValidJSON(t *testing.T) {
 				// Acceptable if API keys are missing; verify no panic.
 				assert.NotContains(t, outStr, "panic",
 					"config generation for %s should not panic", agent)
-				t.Skipf("config generation for %s returned error (likely missing API keys)", agent)
+				t.Skipf("config generation for %s returned error (likely missing API keys) (SKIP-OK: #unmarked-skip-needs-ticket)", agent)
 				return
 			}
 
@@ -72,7 +72,7 @@ func TestConfigGeneration_ContainsRequiredFields(t *testing.T) {
 	outStr := strings.TrimSpace(string(out))
 
 	if err != nil {
-		t.Skipf("config generation returned error (likely missing API keys)")
+		t.Skipf("config generation returned error (likely missing API keys) (SKIP-OK: #unmarked-skip-needs-ticket)")
 		return
 	}
 

@@ -1133,7 +1133,7 @@ func TestCheckPostgresHealth(t *testing.T) {
 	testutil.RequirePostgres(t)
 	// Requires running PostgreSQL - skip if not accessible
 	if err := checkPostgresHealth(); err != nil {
-		t.Skipf("Skipping: PostgreSQL not accessible: %v", err)
+		t.Skipf("Skipping: PostgreSQL not accessible: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 	err := checkPostgresHealth()
 	assert.NoError(t, err)
@@ -1160,10 +1160,10 @@ func TestVerifyServicesHealth_PostgresAndRedis(t *testing.T) {
 	testutil.RequireInfra(t)
 	// Requires running PostgreSQL and Redis - skip if not accessible
 	if err := checkPostgresHealth(); err != nil {
-		t.Skipf("Skipping: PostgreSQL not accessible: %v", err)
+		t.Skipf("Skipping: PostgreSQL not accessible: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 	if err := checkRedisHealth(); err != nil {
-		t.Skipf("Skipping: Redis not accessible: %v", err)
+		t.Skipf("Skipping: Redis not accessible: %v (SKIP-OK: #infra-redis-unavailable)", err)
 	}
 	logger := logrus.New()
 
@@ -1266,7 +1266,7 @@ func TestVerifyServicesHealth_SingleService(t *testing.T) {
 	t.Run("Postgres", func(t *testing.T) {
 		testutil.RequirePostgres(t)
 		if err := checkPostgresHealth(); err != nil {
-			t.Skipf("Skipping: PostgreSQL not accessible: %v", err)
+			t.Skipf("Skipping: PostgreSQL not accessible: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 		}
 		err := verifyServicesHealth([]string{"postgres"}, logger)
 		assert.NoError(t, err) // requires running postgres
@@ -1275,7 +1275,7 @@ func TestVerifyServicesHealth_SingleService(t *testing.T) {
 	t.Run("Redis", func(t *testing.T) {
 		testutil.RequireRedis(t)
 		if err := checkRedisHealth(); err != nil {
-			t.Skipf("Skipping: Redis not accessible: %v", err)
+			t.Skipf("Skipping: Redis not accessible: %v (SKIP-OK: #infra-redis-unavailable)", err)
 		}
 		err := verifyServicesHealth([]string{"redis"}, logger)
 		assert.NoError(t, err) // requires running redis
@@ -1363,7 +1363,7 @@ func TestCheckHealthFunctions(t *testing.T) {
 		testutil.RequirePostgres(t)
 		// Requires running PostgreSQL - skip if not accessible
 		if err := checkPostgresHealth(); err != nil {
-			t.Skipf("Skipping: PostgreSQL not accessible: %v", err)
+			t.Skipf("Skipping: PostgreSQL not accessible: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 		}
 		err := checkPostgresHealth()
 		assert.NoError(t, err)
@@ -1373,7 +1373,7 @@ func TestCheckHealthFunctions(t *testing.T) {
 		testutil.RequireRedis(t)
 		// Requires running Redis - skip if not accessible
 		if err := checkRedisHealth(); err != nil {
-			t.Skipf("Skipping: Redis not accessible: %v", err)
+			t.Skipf("Skipping: Redis not accessible: %v (SKIP-OK: #infra-redis-unavailable)", err)
 		}
 		err := checkRedisHealth()
 		assert.NoError(t, err)

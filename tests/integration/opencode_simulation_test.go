@@ -121,11 +121,11 @@ func TestOpenCode_CodebaseQuery(t *testing.T) {
 
 	resp, err := sendOpenCodeRequest(request)
 	if err != nil {
-		t.Skipf("OpenCode codebase query failed (network issue): %v", err)
+		t.Skipf("OpenCode codebase query failed (network issue): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	if resp.Error != nil {
-		t.Skipf("API returned error (may indicate service unavailable): %s", resp.Error.Message)
+		t.Skipf("API returned error (may indicate service unavailable): %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.Error.Message)
 	}
 
 	if len(resp.Choices) == 0 {
@@ -161,11 +161,11 @@ func TestOpenCode_InitRequest(t *testing.T) {
 
 	resp, err := sendOpenCodeRequest(request)
 	if err != nil {
-		t.Skipf("OpenCode init request failed (network issue): %v", err)
+		t.Skipf("OpenCode init request failed (network issue): %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	if resp.Error != nil {
-		t.Skipf("API returned error (may indicate service unavailable): %s", resp.Error.Message)
+		t.Skipf("API returned error (may indicate service unavailable): %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.Error.Message)
 	}
 
 	if len(resp.Choices) == 0 {

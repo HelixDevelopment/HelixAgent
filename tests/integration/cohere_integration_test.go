@@ -51,7 +51,7 @@ func skipOnCohereRateLimit(t *testing.T, err error) bool {
 		strings.Contains(err.Error(), "rate_limit") ||
 		strings.Contains(err.Error(), "Rate limit") ||
 		strings.Contains(err.Error(), "too many requests")) {
-		t.Skipf("Skipping due to Cohere API rate limit: %v", err)
+		t.Skipf("Skipping due to Cohere API rate limit: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		return true
 	}
 	return false

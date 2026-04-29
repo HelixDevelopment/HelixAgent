@@ -626,7 +626,7 @@ func skipIfNoPostgres(t *testing.T) *Client {
 
 	err = client.Connect(ctx)
 	if err != nil {
-		t.Skipf("Skipping integration test: cannot connect to PostgreSQL: %v", err)
+		t.Skipf("Skipping integration test: cannot connect to PostgreSQL: %v (SKIP-OK: #integration-only)", err)
 	}
 
 	return client

@@ -428,7 +428,7 @@ func findHelixAgentBinary(t *testing.T) string {
 	t.Log("HelixAgent binary not found, attempting to build...")
 	cmd := exec.Command("go", "build", "-o", "../../helixagent", "../../cmd/helixagent/")
 	if err := cmd.Run(); err != nil {
-		t.Skipf("Could not find or build helixagent binary: %v", err)
+		t.Skipf("Could not find or build helixagent binary: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	absPath, _ := filepath.Abs("../../helixagent")

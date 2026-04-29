@@ -382,7 +382,7 @@ func TestHotReloadManager_LoadPlugin_ValidPath(t *testing.T) {
 	// Create the file
 	f, err := os.Create(tmpFile)
 	if err != nil {
-		t.Skipf("Could not create temp file: %v", err)
+		t.Skipf("Could not create temp file: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	_ = f.Close()
 
@@ -480,13 +480,13 @@ func TestHotReloadManager_Start_WithRealWatcher(t *testing.T) {
 	// Create a manager with a real watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
-		t.Skipf("Could not add path to watcher: %v", err)
+		t.Skipf("Could not add path to watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{
@@ -516,13 +516,13 @@ func TestHotReloadManager_Stop_WithRealWatcher(t *testing.T) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
 		_ = watcher.Close()
-		t.Skipf("Could not add path to watcher: %v", err)
+		t.Skipf("Could not add path to watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{
@@ -683,13 +683,13 @@ func TestHotReloadManager_WatchLoop_ContextCancel(t *testing.T) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
-		t.Skipf("Could not add path: %v", err)
+		t.Skipf("Could not add path: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{
@@ -727,13 +727,13 @@ func TestHotReloadManager_WatchLoop_StopChannel(t *testing.T) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
-		t.Skipf("Could not add path: %v", err)
+		t.Skipf("Could not add path: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{
@@ -771,13 +771,13 @@ func TestHotReloadManager_WatchLoop_FileEvent(t *testing.T) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
 		_ = watcher.Close()
-		t.Skipf("Could not add path: %v", err)
+		t.Skipf("Could not add path: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{
@@ -861,7 +861,7 @@ func TestNewHotReloadManager_WithExistingPluginDir(t *testing.T) {
 	// Create ./plugins directory
 	err := os.MkdirAll("./plugins", 0755)
 	if err != nil {
-		t.Skipf("Could not create plugins directory: %v", err)
+		t.Skipf("Could not create plugins directory: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	defer func() { _ = os.RemoveAll("./plugins") }()
 
@@ -883,13 +883,13 @@ func TestHotReloadManager_StartStop_NoGoroutineLeak(t *testing.T) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
 		_ = watcher.Close()
-		t.Skipf("Could not add path to watcher: %v", err)
+		t.Skipf("Could not add path to watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{
@@ -936,13 +936,13 @@ func TestHotReloadManager_DoubleStop_NoPanic(t *testing.T) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		t.Skipf("Could not create watcher: %v", err)
+		t.Skipf("Could not create watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	err = watcher.Add(tmpDir)
 	if err != nil {
 		_ = watcher.Close()
-		t.Skipf("Could not add path to watcher: %v", err)
+		t.Skipf("Could not add path to watcher: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	manager := &HotReloadManager{

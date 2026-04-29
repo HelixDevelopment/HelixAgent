@@ -54,7 +54,7 @@ func TestLLMProviderConfiguration_GeminiIsPrimary(t *testing.T) {
 
 		resp, err := client.Get(HelixAgentBaseURL + "/v1/providers")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -119,7 +119,7 @@ func TestLLMProviderConfiguration_OllamaDeprecated(t *testing.T) {
 	t.Run("HelixAgentWorksWithoutOllama", func(t *testing.T) {
 		resp, err := client.Get(HelixAgentBaseURL + "/health")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -130,7 +130,7 @@ func TestLLMProviderConfiguration_OllamaDeprecated(t *testing.T) {
 	t.Run("CogneeWorksWithoutOllama", func(t *testing.T) {
 		resp, err := client.Get(HelixAgentBaseURL + "/v1/cognee/health")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -176,13 +176,13 @@ func TestLLMProviderConfiguration_EnsembleUsesVerifiedProviders(t *testing.T) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		// Skip on error status codes (providers may be temporarily unavailable)
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Ensemble returned non-200 status (%d), providers may be temporarily unavailable", resp.StatusCode)
+			t.Skipf("Ensemble returned non-200 status (%d), providers may be temporarily unavailable (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var result struct {
@@ -209,7 +209,7 @@ func TestLLMProviderConfiguration_EnsembleUsesVerifiedProviders(t *testing.T) {
 	t.Run("ModelListShowsVerifiedModels", func(t *testing.T) {
 		resp, err := client.Get(HelixAgentBaseURL + "/v1/models")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
@@ -251,12 +251,12 @@ func TestLLMProviderConfiguration_CogneeUsesGemini(t *testing.T) {
 
 		resp, err := client.Get(HelixAgentBaseURL + "/v1/cognee/health")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Skipf("Cognee health endpoint returned %d (container may still be starting)", resp.StatusCode)
+			t.Skipf("Cognee health endpoint returned %d (container may still be starting) (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 		}
 
 		var health struct {
@@ -293,7 +293,7 @@ func TestLLMProviderConfiguration_ProviderFallback(t *testing.T) {
 	t.Run("ProvidersShowFallbackConfig", func(t *testing.T) {
 		resp, err := client.Get(HelixAgentBaseURL + "/v1/providers")
 		if err != nil {
-			t.Skipf("HelixAgent service not available: %v", err)
+			t.Skipf("HelixAgent service not available: %v (SKIP-OK: #infra-unavailable)", err)
 		}
 		defer resp.Body.Close()
 

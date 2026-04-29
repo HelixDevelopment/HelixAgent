@@ -104,7 +104,7 @@ func testDebateGroupSizes(t *testing.T, baseURL string) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.minProviders > len(providers) {
-				t.Skipf("Not enough providers for %s (need %d, have %d)", tc.name, tc.minProviders, len(providers))
+				t.Skipf("Not enough providers for %s (need %d, have %d) (SKIP-OK: #unmarked-skip-needs-ticket)", tc.name, tc.minProviders, len(providers))
 				return
 			}
 
@@ -664,7 +664,7 @@ func TestDebateGroupWithMockedProviders(t *testing.T) {
 				t.Logf("  All providers healthy scenario: %s", result.Error)
 			}
 		} else {
-			t.Skipf("  Only %d healthy providers available, need 2 for this test", healthyCount)
+			t.Skipf("  Only %d healthy providers available, need 2 for this test (SKIP-OK: #unmarked-skip-needs-ticket)", healthyCount)
 		}
 	})
 

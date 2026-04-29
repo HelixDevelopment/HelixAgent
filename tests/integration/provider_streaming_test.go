@@ -169,7 +169,7 @@ func TestProviderStreamingOpenAICompatible(t *testing.T) {
 		t.Run(provider.Name+"_Streaming", func(t *testing.T) {
 			apiKey := getAPIKey(provider.EnvKey)
 			if apiKey == "" {
-				t.Skipf("Skipping %s: %s not set", provider.Name, provider.EnvKey)
+				t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.EnvKey)
 				return
 			}
 
@@ -203,7 +203,7 @@ func TestProviderNonStreamingOpenAICompatible(t *testing.T) {
 		t.Run(provider.Name+"_NonStreaming", func(t *testing.T) {
 			apiKey := getAPIKey(provider.EnvKey)
 			if apiKey == "" {
-				t.Skipf("Skipping %s: %s not set", provider.Name, provider.EnvKey)
+				t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.EnvKey)
 				return
 			}
 
@@ -361,19 +361,19 @@ func testOpenAICompatibleStreaming(t *testing.T, provider ProviderConfig, apiKey
 
 	// Skip test if provider returns auth error (invalid/expired credentials)
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		t.Skipf("%s returned %d - credentials may be invalid or expired", provider.Name, resp.StatusCode)
+		t.Skipf("%s returned %d - credentials may be invalid or expired (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, resp.StatusCode)
 		return
 	}
 
 	// Skip on rate limiting
 	if resp.StatusCode == http.StatusTooManyRequests {
-		t.Skipf("%s rate limited (429) - try again later", provider.Name)
+		t.Skipf("%s rate limited (429) - try again later (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		return
 	}
 
 	// Skip on payment required (insufficient credits / quota).
 	if resp.StatusCode == http.StatusPaymentRequired {
-		t.Skipf("%s returned 402 - insufficient credits", provider.Name)
+		t.Skipf("%s returned 402 - insufficient credits (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		return
 	}
 
@@ -381,7 +381,7 @@ func testOpenAICompatibleStreaming(t *testing.T, provider ProviderConfig, apiKey
 	// upstream and is no longer reachable. The streaming-path code is
 	// still exercised by the providers whose model list is still valid.
 	if resp.StatusCode == http.StatusNotFound {
-		t.Skipf("%s returned 404 - hardcoded model %q no longer exists upstream",
+		t.Skipf("%s returned 404 - hardcoded model %q no longer exists upstream (SKIP-OK: #unmarked-skip-needs-ticket)",
 			provider.Name, provider.Model)
 		return
 	}
@@ -462,19 +462,19 @@ func testOpenAICompatibleNonStreaming(t *testing.T, provider ProviderConfig, api
 
 	// Skip test if provider returns auth error (invalid/expired credentials)
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		t.Skipf("%s returned %d - credentials may be invalid or expired", provider.Name, resp.StatusCode)
+		t.Skipf("%s returned %d - credentials may be invalid or expired (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, resp.StatusCode)
 		return
 	}
 
 	// Skip on rate limiting
 	if resp.StatusCode == http.StatusTooManyRequests {
-		t.Skipf("%s rate limited (429) - try again later", provider.Name)
+		t.Skipf("%s rate limited (429) - try again later (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		return
 	}
 
 	// Skip on payment required (insufficient credits / quota).
 	if resp.StatusCode == http.StatusPaymentRequired {
-		t.Skipf("%s returned 402 - insufficient credits", provider.Name)
+		t.Skipf("%s returned 402 - insufficient credits (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name)
 		return
 	}
 
@@ -482,7 +482,7 @@ func testOpenAICompatibleNonStreaming(t *testing.T, provider ProviderConfig, api
 	// upstream and is no longer reachable. The streaming-path code is
 	// still exercised by the providers whose model list is still valid.
 	if resp.StatusCode == http.StatusNotFound {
-		t.Skipf("%s returned 404 - hardcoded model %q no longer exists upstream",
+		t.Skipf("%s returned 404 - hardcoded model %q no longer exists upstream (SKIP-OK: #unmarked-skip-needs-ticket)",
 			provider.Name, provider.Model)
 		return
 	}
@@ -541,10 +541,10 @@ func testGeminiStreaming(t *testing.T, apiKey, model string) {
 		t.Skip("Gemini rate limited")  // SKIP-OK: #legacy-untriaged
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		t.Skipf("Gemini returned %d - credentials invalid or expired", resp.StatusCode)
+		t.Skipf("Gemini returned %d - credentials invalid or expired (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		t.Skipf("Gemini returned 404 - hardcoded model %q no longer exists upstream", model)
+		t.Skipf("Gemini returned 404 - hardcoded model %q no longer exists upstream (SKIP-OK: #unmarked-skip-needs-ticket)", model)
 	}
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected 200 OK, got %d", resp.StatusCode)
@@ -630,10 +630,10 @@ func testGeminiNonStreaming(t *testing.T, apiKey, model string) {
 		t.Skip("Gemini rate limited")  // SKIP-OK: #legacy-untriaged
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		t.Skipf("Gemini returned %d - credentials invalid or expired", resp.StatusCode)
+		t.Skipf("Gemini returned %d - credentials invalid or expired (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		t.Skipf("Gemini returned 404 - hardcoded model %q no longer exists upstream", model)
+		t.Skipf("Gemini returned 404 - hardcoded model %q no longer exists upstream (SKIP-OK: #unmarked-skip-needs-ticket)", model)
 	}
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected 200 OK, got %d", resp.StatusCode)
@@ -694,7 +694,7 @@ func testHelixAgentStreaming(t *testing.T) {
 		errStr := err.Error()
 		if strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection") ||
 			strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline") {
-			t.Skipf("HelixAgent connection issue: %v", err)
+			t.Skipf("HelixAgent connection issue: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		require.NoError(t, err)
 	}
@@ -706,7 +706,7 @@ func testHelixAgentStreaming(t *testing.T) {
 	}
 	if resp.StatusCode >= 500 {
 		body, _ := io.ReadAll(resp.Body)
-		t.Skipf("HelixAgent returned server error %d: %s", resp.StatusCode, string(body))
+		t.Skipf("HelixAgent returned server error %d: %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode, string(body))
 	}
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected 200 OK")
@@ -793,7 +793,7 @@ func testHelixAgentNonStreaming(t *testing.T) {
 	require.NoError(t, err)
 
 	if resp.StatusCode >= 500 {
-		t.Skipf("HelixAgent returned server error %d: %s", resp.StatusCode, string(body))
+		t.Skipf("HelixAgent returned server error %d: %s (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode, string(body))
 	}
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected 200 OK")
@@ -964,7 +964,7 @@ func TestStreamingContentIntegrity(t *testing.T) {
 	for _, provider := range providers {
 		apiKey := getAPIKey(provider.EnvKey)
 		if apiKey == "" {
-			t.Skipf("Skipping %s: %s not set", provider.Name, provider.EnvKey)
+			t.Skipf("Skipping %s: %s not set (SKIP-OK: #unmarked-skip-needs-ticket)", provider.Name, provider.EnvKey)
 			continue
 		}
 

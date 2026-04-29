@@ -23,7 +23,7 @@ func setupVectorDocumentTestDB(t *testing.T) (*pgxpool.Pool, *VectorDocumentRepo
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		t.Skipf("Skipping test: database not available: %v", err)
+		t.Skipf("Skipping test: database not available: %v (SKIP-OK: #infra-db-unavailable)", err)
 		return nil, nil
 	}
 
@@ -33,7 +33,7 @@ func setupVectorDocumentTestDB(t *testing.T) (*pgxpool.Pool, *VectorDocumentRepo
 	defer cancel()
 
 	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("Skipping test: database connection failed: %v", err)
+		t.Skipf("Skipping test: database connection failed: %v (SKIP-OK: #infra-db-unavailable)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -48,7 +48,7 @@ func setupVectorDocumentTestDB(t *testing.T) (*pgxpool.Pool, *VectorDocumentRepo
 	`).Scan(&exists)
 
 	if err != nil {
-		t.Skipf("Skipping test: failed to check table existence: %v", err)
+		t.Skipf("Skipping test: failed to check table existence: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		pool.Close()
 		return nil, nil
 	}
@@ -69,7 +69,7 @@ func setupVectorDocumentTestDB(t *testing.T) (*pgxpool.Pool, *VectorDocumentRepo
 			)
 		`)
 		if createErr != nil {
-			t.Skipf("Skipping test: vector_documents table not available and could not be created: %v", createErr)
+			t.Skipf("Skipping test: vector_documents table not available and could not be created: %v (SKIP-OK: #infra-unavailable)", createErr)
 			pool.Close()
 			return nil, nil
 		}

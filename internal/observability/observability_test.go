@@ -438,7 +438,7 @@ func TestSetupTraceExporter_NoOp(t *testing.T) {
 	tp, err := SetupTraceExporter(context.Background(), config)
 	// May fail due to OpenTelemetry schema version conflicts in test environment
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	assert.NotNil(t, tp)
 
@@ -458,7 +458,7 @@ func TestSetupTraceExporter_Console(t *testing.T) {
 	tp, err := SetupTraceExporter(context.Background(), config)
 	// May fail due to OpenTelemetry schema version conflicts in test environment
 	if err != nil {
-		t.Skipf("Skipping due to OTel schema conflict: %v", err)
+		t.Skipf("Skipping due to OTel schema conflict: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 	assert.NotNil(t, tp)
 

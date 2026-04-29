@@ -26,7 +26,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Get(baseURL + "/v1/bigdata/health")
 		if err != nil {
-			t.Skipf("BigData health endpoint unreachable: %v", err)
+			t.Skipf("BigData health endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -48,7 +48,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Get(baseURL + "/v1/memory/sync/status")
 		if err != nil {
-			t.Skipf("Memory sync status endpoint unreachable: %v", err)
+			t.Skipf("Memory sync status endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -70,7 +70,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		client := &http.Client{Timeout: 30 * time.Second}
 		resp, err := client.Post(baseURL+"/v1/memory/sync/force", "application/json", nil)
 		if err != nil {
-			t.Skipf("Force memory sync endpoint unreachable: %v", err)
+			t.Skipf("Force memory sync endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -98,7 +98,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 
 		resp, err := client.Post(baseURL+"/v1/knowledge/search", "application/json", bytes.NewReader(bodyBytes))
 		if err != nil {
-			t.Skipf("Knowledge search endpoint unreachable: %v", err)
+			t.Skipf("Knowledge search endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -124,7 +124,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 
 		resp, err := client.Post(baseURL+"/v1/context/replay", "application/json", bytes.NewReader(bodyBytes))
 		if err != nil {
-			t.Skipf("Context replay endpoint unreachable: %v", err)
+			t.Skipf("Context replay endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -144,7 +144,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 
 		resp, err := client.Get(baseURL + "/v1/learning/insights")
 		if err != nil {
-			t.Skipf("Learning insights endpoint unreachable: %v", err)
+			t.Skipf("Learning insights endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		resp.Body.Close()
 
@@ -174,7 +174,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 			forceResp, forceErr := (&http.Client{Timeout: 60 * time.Second}).Post(
 				baseURL+"/v1/memory/sync/force", "application/json", nil)
 			if forceErr != nil {
-				t.Skipf("Cannot trigger lazy boot: %v", forceErr)
+				t.Skipf("Cannot trigger lazy boot: %v (SKIP-OK: #unmarked-skip-needs-ticket)", forceErr)
 			}
 			forceResp.Body.Close()
 
@@ -238,7 +238,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 
 		resp, err := client.Get(baseURL + "/v1/analytics/provider/test-provider")
 		if err != nil {
-			t.Skipf("Analytics endpoint unreachable: %v", err)
+			t.Skipf("Analytics endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 
@@ -254,7 +254,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 
 		resp, err := client.Get(baseURL + "/v1/analytics/debate/challenge-test-debate")
 		if err != nil {
-			t.Skipf("Debate analytics endpoint unreachable: %v", err)
+			t.Skipf("Debate analytics endpoint unreachable: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 		}
 		defer resp.Body.Close()
 

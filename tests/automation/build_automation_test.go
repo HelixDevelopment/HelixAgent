@@ -87,7 +87,7 @@ func TestDockerAutomation_ComposeValidation(t *testing.T) {
 	for _, composeFile := range composeFiles {
 		t.Run(composeFile, func(t *testing.T) {
 			if _, err := os.Stat(composeFile); os.IsNotExist(err) {
-				t.Skipf("%s not found", composeFile)
+				t.Skipf("%s not found (SKIP-OK: #unmarked-skip-needs-ticket)", composeFile)
 			}
 
 			cmd := exec.Command("docker", "compose", "-f", composeFile, "config", "--quiet")
@@ -200,7 +200,7 @@ func TestEnvAutomation_ConfigValidation(t *testing.T) {
 	for _, envFile := range envFiles {
 		t.Run(envFile, func(t *testing.T) {
 			if _, err := os.Stat(envFile); os.IsNotExist(err) {
-				t.Skipf("%s not found", envFile)
+				t.Skipf("%s not found (SKIP-OK: #unmarked-skip-needs-ticket)", envFile)
 			}
 
 			content, err := os.ReadFile(envFile)

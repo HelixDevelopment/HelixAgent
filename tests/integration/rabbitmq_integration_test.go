@@ -61,7 +61,7 @@ func skipIfNoRabbitMQ(t *testing.T) *rabbitmq.Broker {
 	defer cancel()
 
 	if err := broker.Connect(ctx); err != nil {
-		t.Skipf("Skipping RabbitMQ integration test - infrastructure not available: %v", err)
+		t.Skipf("Skipping RabbitMQ integration test - infrastructure not available: %v (SKIP-OK: #integration-only)", err)
 	}
 
 	return broker

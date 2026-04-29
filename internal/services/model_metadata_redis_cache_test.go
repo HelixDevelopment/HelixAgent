@@ -309,7 +309,7 @@ func TestModelMetadataRedisCache_Integration_Clear(t *testing.T) {
 	// Verify connection
 	err := redisClient.Ping(ctx)
 	if err != nil {
-		t.Skipf("Skipping: Cannot connect to Redis: %v", err)
+		t.Skipf("Skipping: Cannot connect to Redis: %v (SKIP-OK: #unmarked-skip-needs-ticket)", err)
 	}
 
 	// Create cache with unique prefix for this test

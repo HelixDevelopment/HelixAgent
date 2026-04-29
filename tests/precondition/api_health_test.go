@@ -24,12 +24,12 @@ func TestAPIHealthConnectivity(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
-		t.Skipf("HelixAgent API not available at %s: %v", url, err)
+		t.Skipf("HelixAgent API not available at %s: %v (SKIP-OK: #infra-unavailable)", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 500 {
-		t.Skipf("HelixAgent API returned server error at %s: status %d", url, resp.StatusCode)
+		t.Skipf("HelixAgent API returned server error at %s: status %d (SKIP-OK: #unmarked-skip-needs-ticket)", url, resp.StatusCode)
 	}
 
 	t.Logf("HelixAgent API reachable at %s (status %d)", url, resp.StatusCode)

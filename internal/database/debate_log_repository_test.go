@@ -22,7 +22,7 @@ func getTestPool(t *testing.T) *pgxpool.Pool {
 
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		t.Skipf("Failed to connect to test database: %v", err)
+		t.Skipf("Failed to connect to test database: %v (SKIP-OK: #infra-db-unavailable)", err)
 	}
 
 	return pool

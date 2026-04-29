@@ -101,7 +101,7 @@ func TestConsensusNotEmpty_EndToEnd(t *testing.T) {
 		strings.Contains(fullResponse, "## Consensus") ||
 		strings.Contains(fullResponse, "**Final Decision**")
 	if !hasAnyEnsembleMarker {
-		t.Skipf("Smart-routing returned a short-circuit response without ensemble framing — cannot assert ensemble structure. Response excerpt: %s",
+		t.Skipf("Smart-routing returned a short-circuit response without ensemble framing — cannot assert ensemble structure. Response excerpt: %s (SKIP-OK: #unmarked-skip-needs-ticket)",
 			truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
 	}
 
@@ -247,7 +247,7 @@ func TestConsensusHasSubstantiveContent(t *testing.T) {
 		strings.Contains(fullResponse, "## Final Answer") ||
 		strings.Contains(fullResponse, "CONSENSUS REACHED")
 	if !hasConsensusMarker {
-		t.Skipf("Response has no ensemble consensus marker (`**Final Decision**` or legacy equivalent) — explicit-debate override may have regressed. Response excerpt: %s",
+		t.Skipf("Response has no ensemble consensus marker (`**Final Decision**` or legacy equivalent) — explicit-debate override may have regressed. Response excerpt: %s (SKIP-OK: #unmarked-skip-needs-ticket)",
 			truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
 	}
 
@@ -384,7 +384,7 @@ func TestAllDebatePositionsHaveRealResponses(t *testing.T) {
 		strings.Contains(fullResponse, "## Final Answer") ||
 		strings.Contains(fullResponse, "CONSENSUS REACHED")
 	if !hasConsensusAnchor {
-		t.Skipf("Response has no ensemble consensus marker (`**Final Decision**` or legacy equivalent) — explicit-debate override may have regressed. Response excerpt: %s",
+		t.Skipf("Response has no ensemble consensus marker (`**Final Decision**` or legacy equivalent) — explicit-debate override may have regressed. Response excerpt: %s (SKIP-OK: #unmarked-skip-needs-ticket)",
 			truncate(fullResponse, 300)) // SKIP-OK: #ensemble-not-engaged
 	}
 

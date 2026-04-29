@@ -218,7 +218,7 @@ func TestDebateFullFlow_DebateStatus(t *testing.T) {
 
 	if createResp.StatusCode != http.StatusOK &&
 		createResp.StatusCode != http.StatusAccepted {
-		t.Skipf("Could not create debate (HTTP %d): %s",
+		t.Skipf("Could not create debate (HTTP %d): %s (SKIP-OK: #unmarked-skip-needs-ticket)",
 			createResp.StatusCode, string(createBody))
 	}
 
@@ -286,7 +286,7 @@ func TestDebateFullFlow_DebateComplete(t *testing.T) {
 
 	if createResp.StatusCode != http.StatusOK &&
 		createResp.StatusCode != http.StatusAccepted {
-		t.Skipf("Could not create debate (HTTP %d): %s",
+		t.Skipf("Could not create debate (HTTP %d): %s (SKIP-OK: #unmarked-skip-needs-ticket)",
 			createResp.StatusCode, string(createBody))
 	}
 

@@ -127,7 +127,7 @@ func TestInitConnection_PoolAssignmentOnSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Lines 65-66: pool assignment
@@ -157,7 +157,7 @@ func TestExec_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 220-221: real pg path
@@ -187,7 +187,7 @@ func TestQuery_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Lines 234-236: real pg path
@@ -218,7 +218,7 @@ func TestQueryRow_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 262: real pg path
@@ -253,7 +253,7 @@ func TestBegin_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 273: real pg path
@@ -288,7 +288,7 @@ func TestPing_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 194: real pg path
@@ -318,7 +318,7 @@ func TestHealthCheck_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 207: real pg path
@@ -348,7 +348,7 @@ func TestMigrate_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 281: real pg path
@@ -381,7 +381,7 @@ func TestPool_RealPGSuccess(t *testing.T) {
 
 	err = client.initConnection(ctx)
 	if err != nil {
-		t.Skipf("PostgreSQL not available: %v", err)
+		t.Skipf("PostgreSQL not available: %v (SKIP-OK: #infra-postgres-unavailable)", err)
 	}
 
 	// Line 167: return c.pool

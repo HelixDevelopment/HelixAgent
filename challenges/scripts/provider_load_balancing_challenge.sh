@@ -35,7 +35,7 @@ test_load_distribution() {
         local distribution=$(echo "$body" | jq -e '.distribution | length' 2>/dev/null || echo "0")
         record_assertion "load_distribution" "working" "true" "Balanced: $balanced, Providers: $distribution"
     else
-        record_assertion "load_distribution" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "load_distribution" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_failover_handling() {
         local active_provider=$(echo "$body" | jq -r '.active_provider' 2>/dev/null || echo "null")
         record_assertion "failover_handling" "working" "true" "Failed over: $failed_over, Active: $active_provider"
     else
-        record_assertion "failover_handling" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "failover_handling" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_capacity_management() {
         local at_capacity=$(echo "$body" | jq -e '.at_capacity' 2>/dev/null || echo "null")
         record_assertion "capacity_management" "working" "true" "Available: $available_capacity, At capacity: $at_capacity"
     else
-        record_assertion "capacity_management" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "capacity_management" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

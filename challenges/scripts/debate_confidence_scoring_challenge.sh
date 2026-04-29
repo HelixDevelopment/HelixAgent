@@ -35,7 +35,7 @@ test_score_calculation() {
         local score_count=$(echo "$body" | jq -e '.scores | length' 2>/dev/null || echo "0")
         record_assertion "score_calculation" "working" "true" "Avg: $avg_confidence, Count: $score_count"
     else
-        record_assertion "score_calculation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "score_calculation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_confidence_thresholds() {
         local rejected_count=$(echo "$body" | jq -e '.rejected_count' 2>/dev/null || echo "0")
         record_assertion "confidence_thresholds" "working" "true" "Meets: $meets_threshold, Rejected: $rejected_count"
     else
-        record_assertion "confidence_thresholds" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "confidence_thresholds" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -82,7 +82,7 @@ test_score_normalization() {
         local normalized=$(echo "$body" | jq -e '.normalized_scores | length' 2>/dev/null || echo "0")
         record_assertion "score_normalization" "working" "true" "Normalized $normalized scores"
     else
-        record_assertion "score_normalization" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "score_normalization" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

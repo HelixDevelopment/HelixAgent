@@ -35,7 +35,7 @@ test_rate_limit_detection() {
         local remaining=$(echo "$body" | jq -e '.remaining_requests' 2>/dev/null || echo "0")
         record_assertion "rate_limit_detection" "working" "true" "Near limit: $near_limit, Remaining: $remaining"
     else
-        record_assertion "rate_limit_detection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "rate_limit_detection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_backoff_strategy() {
         local retry_after=$(echo "$body" | jq -e '.retry_after_seconds' 2>/dev/null || echo "0")
         record_assertion "backoff_strategy" "working" "true" "Delay: ${next_delay}ms, Retry after: ${retry_after}s"
     else
-        record_assertion "backoff_strategy" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "backoff_strategy" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_quota_management() {
         local quota_used=$(echo "$body" | jq -e '.quota_used' 2>/dev/null || echo "0")
         record_assertion "quota_management" "working" "true" "Used: $quota_used, Remaining: $quota_remaining"
     else
-        record_assertion "quota_management" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "quota_management" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

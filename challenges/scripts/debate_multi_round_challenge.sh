@@ -36,7 +36,7 @@ test_round_progression() {
         local current_round=$(echo "$body" | jq -e '.current_round' 2>/dev/null || echo "0")
         record_assertion "round_progression" "working" "true" "Debate: $debate_id, Round: $current_round/$total_rounds"
     else
-        record_assertion "round_progression" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "round_progression" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -60,7 +60,7 @@ test_state_persistence() {
         local state_size=$(echo "$body" | jq -e '.state_size_bytes' 2>/dev/null || echo "0")
         record_assertion "state_persistence" "working" "true" "Checkpoints: $checkpoints, Size: $state_size bytes"
     else
-        record_assertion "state_persistence" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "state_persistence" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -84,7 +84,7 @@ test_round_transitions() {
         local context_preserved=$(echo "$body" | jq -e '.context_preserved' 2>/dev/null || echo "null")
         record_assertion "round_transitions" "working" "true" "Transitioned: $transitioned, Context: $context_preserved"
     else
-        record_assertion "round_transitions" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "round_transitions" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

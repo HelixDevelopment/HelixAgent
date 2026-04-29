@@ -35,7 +35,7 @@ test_cost_tracking() {
         local currency=$(echo "$body" | jq -r '.currency' 2>/dev/null || echo "USD")
         record_assertion "cost_tracking" "working" "true" "Cost: $estimated_cost $currency"
     else
-        record_assertion "cost_tracking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "cost_tracking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_budget_limits() {
         local remaining=$(echo "$body" | jq -e '.remaining_budget' 2>/dev/null || echo "0.0")
         record_assertion "budget_limits" "working" "true" "Within budget: $within_budget, Remaining: $remaining"
     else
-        record_assertion "budget_limits" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "budget_limits" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_cost_effective_selection() {
         local cost_savings=$(echo "$body" | jq -e '.estimated_savings_percent' 2>/dev/null || echo "0")
         record_assertion "cost_effective_selection" "working" "true" "Provider: $recommended, Savings: $cost_savings%"
     else
-        record_assertion "cost_effective_selection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "cost_effective_selection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

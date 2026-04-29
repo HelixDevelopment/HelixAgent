@@ -35,7 +35,7 @@ test_consensus_detection() {
         local agreement_level=$(echo "$body" | jq -e '.agreement_level' 2>/dev/null || echo "0.0")
         record_assertion "consensus_detection" "working" "true" "Consensus: $has_consensus, Level: $agreement_level"
     else
-        record_assertion "consensus_detection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "consensus_detection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -58,7 +58,7 @@ test_agreement_threshold() {
         local meets_threshold=$(echo "$body" | jq -e '.meets_threshold' 2>/dev/null || echo "null")
         record_assertion "agreement_threshold" "working" "true" "Meets threshold: $meets_threshold"
     else
-        record_assertion "agreement_threshold" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "agreement_threshold" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -81,7 +81,7 @@ test_conflict_resolution() {
         local resolved=$(echo "$body" | jq -e '.conflicts_resolved' 2>/dev/null || echo "0")
         record_assertion "conflict_resolution" "working" "true" "Resolved $resolved conflicts"
     else
-        record_assertion "conflict_resolution" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "conflict_resolution" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

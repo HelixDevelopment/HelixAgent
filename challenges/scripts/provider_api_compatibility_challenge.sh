@@ -35,7 +35,7 @@ test_api_version_compatibility() {
         local supported_versions=$(echo "$body" | jq -e '.supported_versions | length' 2>/dev/null || echo "0")
         record_assertion "api_version_compatibility" "working" "true" "Compatible: $is_compatible, Versions: $supported_versions"
     else
-        record_assertion "api_version_compatibility" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "api_version_compatibility" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_endpoint_validation() {
         local invalid_endpoints=$(echo "$body" | jq -e '.invalid_endpoints | length' 2>/dev/null || echo "0")
         record_assertion "endpoint_validation" "working" "true" "Valid: $valid_endpoints, Invalid: $invalid_endpoints"
     else
-        record_assertion "endpoint_validation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "endpoint_validation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,20 +83,30 @@ test_request_response_format() {
         local warnings=$(echo "$body" | jq -e '.warnings | length' 2>/dev/null || echo "0")
         record_assertion "request_response_format" "working" "true" "Valid: $format_valid, Warnings: $warnings"
     else
-        record_assertion "request_response_format" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "request_response_format" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
 test_backward_compatibility() {
     log_info "Test 4: Backward compatibility validation"
 
-    local resp_body=$(curl -s "$BASE_URL/v1/providers/backward-compat?provider=gemini&current_version=v1&target_version=v1beta" \
+    # CONST-035 fix: previously this assertion recorded "true" unconditionally
+    # regardless of what the endpoint returned. Now we check status and skip
+    # honestly when the endpoint is not implemented.
+    local resp=$(curl -s -w "\n%{http_code}" "$BASE_URL/v1/providers/backward-compat?provider=gemini&current_version=v1&target_version=v1beta" \
         -H "Authorization: Bearer ${HELIXAGENT_API_KEY:-test}" \
-        --max-time 10 2>/dev/null || echo '{}')
+        --max-time 10 2>/dev/null || true)
 
-    local is_backward_compatible=$(echo "$resp_body" | jq -e '.backward_compatible' 2>/dev/null || echo "null")
-    local breaking_changes=$(echo "$resp_body" | jq -e '.breaking_changes | length' 2>/dev/null || echo "0")
-    record_assertion "backward_compatibility" "checked" "true" "Compatible: $is_backward_compatible, Breaking: $breaking_changes"
+    local code=$(echo "$resp" | tail -n1)
+    local body=$(echo "$resp" | head -n -1)
+
+    if [[ "$code" == "200" ]]; then
+        local is_backward_compatible=$(echo "$body" | jq -r '.backward_compatible' 2>/dev/null || echo "null")
+        local breaking_changes=$(echo "$body" | jq -r '.breaking_changes | length' 2>/dev/null || echo "0")
+        record_assertion "backward_compatibility" "checked" "true" "Compatible: $is_backward_compatible, Breaking: $breaking_changes"
+    else
+        record_skip "backward_compatibility" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
+    fi
 }
 
 main() {

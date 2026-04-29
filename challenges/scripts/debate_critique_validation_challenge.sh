@@ -35,7 +35,7 @@ test_critique_quality() {
         local is_constructive=$(echo "$body" | jq -e '.is_constructive' 2>/dev/null || echo "null")
         record_assertion "critique_quality" "working" "true" "Quality: $quality_score, Constructive: $is_constructive"
     else
-        record_assertion "critique_quality" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "critique_quality" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_validation_rules() {
         local violations=$(echo "$body" | jq -e '.violations | length' 2>/dev/null || echo "0")
         record_assertion "validation_rules" "working" "true" "Valid: $is_valid, Violations: $violations"
     else
-        record_assertion "validation_rules" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "validation_rules" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -82,7 +82,7 @@ test_feedback_assessment() {
         local feedback_score=$(echo "$body" | jq -e '.feedback_score' 2>/dev/null || echo "0.0")
         record_assertion "feedback_assessment" "working" "true" "Feedback score: $feedback_score"
     else
-        record_assertion "feedback_assessment" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "feedback_assessment" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

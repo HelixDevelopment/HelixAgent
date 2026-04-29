@@ -37,7 +37,7 @@ test_latency_optimization() {
         local optimized=$(echo "$body" | jq -e '.optimized' 2>/dev/null || echo "null")
         record_assertion "latency_optimization" "working" "true" "Optimized: $optimized, Duration: ${duration}ms"
     else
-        record_assertion "latency_optimization" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "latency_optimization" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -60,7 +60,7 @@ test_throughput_improvement() {
         local throughput=$(echo "$body" | jq -e '.requests_per_second' 2>/dev/null || echo "0.0")
         record_assertion "throughput_improvement" "working" "true" "Throughput: $throughput req/s"
     else
-        record_assertion "throughput_improvement" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "throughput_improvement" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -84,7 +84,7 @@ test_resource_efficiency() {
         local cpu_saved=$(echo "$body" | jq -e '.cpu_saved_percent' 2>/dev/null || echo "0")
         record_assertion "resource_efficiency" "working" "true" "Memory: ${memory_saved}MB, CPU: ${cpu_saved}%"
     else
-        record_assertion "resource_efficiency" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "resource_efficiency" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

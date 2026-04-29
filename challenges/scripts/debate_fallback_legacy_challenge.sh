@@ -35,7 +35,7 @@ test_fallback_triggers() {
         local triggers_met=$(echo "$body" | jq -e '.triggers_met | length' 2>/dev/null || echo "0")
         record_assertion "fallback_triggers" "working" "true" "Fallback: $should_fallback, Triggers: $triggers_met"
     else
-        record_assertion "fallback_triggers" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "fallback_triggers" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_legacy_activation() {
         local mode=$(echo "$body" | jq -e '.debate_mode' 2>/dev/null || echo "null")
         record_assertion "legacy_activation" "working" "true" "Activated: $activated, Mode: $mode"
     else
-        record_assertion "legacy_activation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "legacy_activation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_compatibility_checks() {
         local warnings=$(echo "$body" | jq -e '.warnings | length' 2>/dev/null || echo "0")
         record_assertion "compatibility_checks" "working" "true" "Compatible: $is_compatible, Warnings: $warnings"
     else
-        record_assertion "compatibility_checks" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "compatibility_checks" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -35,7 +35,7 @@ test_health_endpoint_validation() {
         local response_time=$(echo "$body" | jq -e '.response_time_ms' 2>/dev/null || echo "0")
         record_assertion "health_endpoint_validation" "working" "true" "Status: $health_status, Response: ${response_time}ms"
     else
-        record_assertion "health_endpoint_validation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "health_endpoint_validation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_status_monitoring() {
         local monitored_count=$(echo "$body" | jq -e '.monitored_providers | length' 2>/dev/null || echo "0")
         record_assertion "status_monitoring" "working" "true" "Active: $monitoring_active, Count: $monitored_count"
     else
-        record_assertion "status_monitoring" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "status_monitoring" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -78,7 +78,7 @@ test_uptime_tracking() {
         local total_checks=$(echo "$body" | jq -e '.total_checks' 2>/dev/null || echo "0")
         record_assertion "uptime_tracking" "working" "true" "Uptime: $uptime_percent%, Checks: $total_checks"
     else
-        record_assertion "uptime_tracking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "uptime_tracking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

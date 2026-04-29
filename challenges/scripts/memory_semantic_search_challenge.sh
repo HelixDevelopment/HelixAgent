@@ -34,7 +34,7 @@ test_similarity_search() {
         local has_results=$(echo "$body" | jq -e '.results' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "similarity_search" "working" "true" "Semantic search: $has_results"
     else
-        record_assertion "similarity_search" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "similarity_search" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_ranked_results() {
         local has_scores=$(echo "$body" | jq -e '.results[].score' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "ranked_results" "working" "true" "Ranking scores: $has_scores"
     else
-        record_assertion "ranked_results" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "ranked_results" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_threshold_filtering() {
         local count=$(echo "$body" | jq -e '.results | length' 2>/dev/null || echo "0")
         record_assertion "threshold_filtering" "working" "true" "Filtered results: $count"
     else
-        record_assertion "threshold_filtering" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "threshold_filtering" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

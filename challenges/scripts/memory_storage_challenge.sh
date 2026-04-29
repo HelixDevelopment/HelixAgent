@@ -35,7 +35,7 @@ test_memory_creation() {
         local has_id=$(echo "$body" | jq -e '.memory_id' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "memory_creation" "working" "true" "Created memory, has_id:$has_id"
     else
-        record_assertion "memory_creation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "memory_creation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -86,7 +86,7 @@ test_memory_persistence() {
         local count=$(echo "$body" | jq -e '.memories | length' 2>/dev/null || echo "0")
         record_assertion "memory_persistence" "verified" "true" "Memories: $count, has_memories:$has_memories"
     else
-        record_assertion "memory_persistence" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "memory_persistence" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -34,7 +34,7 @@ test_error_detection() {
         local error_detected=$(echo "$body" | jq -e '.error' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "error_detection" "working" "true" "Detected: $error_detected, Code: $code"
     else
-        record_assertion "error_detection" "checked" "true" "HTTP $code (simulation may not be implemented)"
+        record_skip "error_detection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -58,7 +58,7 @@ test_error_categorization() {
         local is_retryable=$(echo "$body" | jq -e '.retryable' 2>/dev/null || echo "null")
         record_assertion "error_categorization" "working" "true" "Category: $category, Retryable: $is_retryable"
     else
-        record_assertion "error_categorization" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "error_categorization" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -82,7 +82,7 @@ test_retry_logic() {
         local success=$(echo "$body" | jq -e '.success' 2>/dev/null || echo "null")
         record_assertion "retry_logic" "working" "true" "Retries: $retries_attempted, Success: $success"
     else
-        record_assertion "retry_logic" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "retry_logic" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

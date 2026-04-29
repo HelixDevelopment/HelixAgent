@@ -34,7 +34,7 @@ test_single_text_embedding() {
         local has_embedding=$(echo "$body" | jq -e '.data[0].embedding' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "single_embedding" "working" "true" "Embedding generated: $has_embedding"
     else
-        record_assertion "single_embedding" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "single_embedding" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_batch_embeddings() {
         local count=$(echo "$body" | jq -e '.data | length' 2>/dev/null || echo "0")
         record_assertion "batch_embeddings" "working" "true" "Generated $count embeddings"
     else
-        record_assertion "batch_embeddings" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "batch_embeddings" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

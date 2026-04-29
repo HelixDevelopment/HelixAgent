@@ -34,7 +34,7 @@ test_position_allocation() {
         local allocated=$(echo "$body" | jq -e '.allocations | length' 2>/dev/null || echo "0")
         record_assertion "position_allocation" "working" "true" "Allocated $allocated positions"
     else
-        record_assertion "position_allocation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "position_allocation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_role_assignment() {
         local assignments=$(echo "$body" | jq -e '.assignments | length' 2>/dev/null || echo "0")
         record_assertion "role_assignment" "working" "true" "Assigned $assignments roles"
     else
-        record_assertion "role_assignment" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "role_assignment" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -78,7 +78,7 @@ test_position_balancing() {
         local is_balanced=$(echo "$body" | jq -e '.balanced' 2>/dev/null || echo "null")
         record_assertion "position_balancing" "working" "true" "Balanced: $is_balanced"
     else
-        record_assertion "position_balancing" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "position_balancing" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

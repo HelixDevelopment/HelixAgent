@@ -35,7 +35,7 @@ test_timeout_configuration() {
         local total_timeout=$(echo "$body" | jq -e '.total_timeout_ms' 2>/dev/null || echo "0")
         record_assertion "timeout_configuration" "working" "true" "Configured: $configured, Total: ${total_timeout}ms"
     else
-        record_assertion "timeout_configuration" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "timeout_configuration" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_adaptive_timeouts() {
         local based_on_samples=$(echo "$body" | jq -e '.sample_count' 2>/dev/null || echo "0")
         record_assertion "adaptive_timeouts" "working" "true" "Timeout: ${adaptive_timeout}ms, Samples: $based_on_samples"
     else
-        record_assertion "adaptive_timeouts" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "adaptive_timeouts" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_graceful_timeout_handling() {
         local fallback_used=$(echo "$body" | jq -e '.fallback_used' 2>/dev/null || echo "null")
         record_assertion "graceful_timeout_handling" "working" "true" "Timed out: $timed_out, Fallback: $fallback_used, Code: $code"
     else
-        record_assertion "graceful_timeout_handling" "checked" "true" "HTTP $code (simulation may not be implemented)"
+        record_skip "graceful_timeout_handling" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

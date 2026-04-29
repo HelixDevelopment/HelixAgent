@@ -34,7 +34,7 @@ test_entity_relationships() {
         local has_nodes=$(echo "$body" | jq -e '.nodes' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "entity_relationships" "working" "true" "Graph traversal: $has_nodes"
     else
-        record_assertion "entity_relationships" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "entity_relationships" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_path_finding() {
         local has_path=$(echo "$body" | jq -e '.path' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "path_finding" "working" "true" "Path found: $has_path"
     else
-        record_assertion "path_finding" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "path_finding" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_neighborhood_queries() {
         local neighbor_count=$(echo "$body" | jq -e '.neighbors | length' 2>/dev/null || echo "0")
         record_assertion "neighborhood_queries" "working" "true" "Found $neighbor_count neighbors"
     else
-        record_assertion "neighborhood_queries" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "neighborhood_queries" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

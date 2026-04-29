@@ -35,7 +35,7 @@ test_retry_configuration() {
         local max_retries=$(echo "$body" | jq -e '.max_retries' 2>/dev/null || echo "0")
         record_assertion "retry_configuration" "working" "true" "Configured: $configured, Max retries: $max_retries"
     else
-        record_assertion "retry_configuration" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "retry_configuration" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_conditional_retry() {
         local reason=$(echo "$body" | jq -r '.reason' 2>/dev/null || echo "unknown")
         record_assertion "conditional_retry" "working" "true" "Should retry: $should_retry, Reason: $reason"
     else
-        record_assertion "conditional_retry" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "conditional_retry" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_jitter_implementation() {
         local jitter_applied=$(echo "$body" | jq -e '.jitter_ms' 2>/dev/null || echo "0")
         record_assertion "jitter_implementation" "working" "true" "Delay: ${actual_delay}ms, Jitter: ${jitter_applied}ms"
     else
-        record_assertion "jitter_implementation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "jitter_implementation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

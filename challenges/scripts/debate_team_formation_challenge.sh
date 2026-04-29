@@ -30,7 +30,7 @@ test_team_composition() {
         local total_models=$(echo "$body" | jq -e '[.positions[].models | length] | add' 2>/dev/null || echo "0")
         record_assertion "team_composition" "valid" "true" "Positions: $positions, Models: $total_models"
     else
-        record_assertion "team_composition" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "team_composition" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -51,7 +51,7 @@ test_role_distribution() {
         local has_critic=$(echo "$body" | jq -e '.positions[] | select(.role=="critic")' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "role_distribution" "complete" "true" "Proposer: $has_proposer, Opponent: $has_opponent, Critic: $has_critic"
     else
-        record_assertion "role_distribution" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "role_distribution" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -76,7 +76,7 @@ test_model_selection() {
             record_assertion "model_selection" "partial" "true" "$empty_positions/$position_count positions empty"
         fi
     else
-        record_assertion "model_selection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "model_selection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -100,7 +100,7 @@ test_team_size_validation() {
         local team_size=$(echo "$body" | jq -e '.team_size' 2>/dev/null || echo "0")
         record_assertion "team_size_validation" "working" "true" "Valid: $is_valid, Size: $team_size"
     else
-        record_assertion "team_size_validation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "team_size_validation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -35,7 +35,7 @@ test_response_quality_scoring() {
         local clarity=$(echo "$body" | jq -e '.metrics.clarity' 2>/dev/null || echo "0.0")
         record_assertion "response_quality_scoring" "working" "true" "Overall: $overall_score, Clarity: $clarity"
     else
-        record_assertion "response_quality_scoring" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "response_quality_scoring" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_coherence_validation() {
         local is_consistent=$(echo "$body" | jq -e '.is_consistent' 2>/dev/null || echo "null")
         record_assertion "coherence_validation" "working" "true" "Score: $coherence_score, Consistent: $is_consistent"
     else
-        record_assertion "coherence_validation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "coherence_validation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_factual_accuracy() {
         local verified=$(echo "$body" | jq -e '.verified' 2>/dev/null || echo "null")
         record_assertion "factual_accuracy" "working" "true" "Accuracy: $accuracy, Verified: $verified"
     else
-        record_assertion "factual_accuracy" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "factual_accuracy" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

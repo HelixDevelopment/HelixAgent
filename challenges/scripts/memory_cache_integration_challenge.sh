@@ -96,7 +96,7 @@ test_cache_hit_metrics() {
         local has_metrics=$(echo "$body" | jq -e '.cache_hit_rate' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "cache_metrics" "available" "true" "Metrics: $has_metrics"
     else
-        record_assertion "cache_metrics" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "cache_metrics" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -35,7 +35,7 @@ test_performance_based_selection() {
         local score=$(echo "$body" | jq -e '.performance_score' 2>/dev/null || echo "0.0")
         record_assertion "performance_based_selection" "working" "true" "Provider: $selected, Score: $score"
     else
-        record_assertion "performance_based_selection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "performance_based_selection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_cost_based_selection() {
         local estimated_cost=$(echo "$body" | jq -e '.estimated_cost' 2>/dev/null || echo "0.0")
         record_assertion "cost_based_selection" "working" "true" "Provider: $selected, Cost: $estimated_cost"
     else
-        record_assertion "cost_based_selection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "cost_based_selection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_capability_matching() {
         local best_match=$(echo "$body" | jq -r '.best_match' 2>/dev/null || echo "null")
         record_assertion "capability_matching" "working" "true" "Matched: $matched, Best: $best_match"
     else
-        record_assertion "capability_matching" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "capability_matching" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -34,7 +34,7 @@ test_memory_merging() {
         local has_result=$(echo "$body" | jq -e '.consolidated_memory' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "memory_merging" "working" "true" "Merged: $has_result"
     else
-        record_assertion "memory_merging" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "memory_merging" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_memory_summarization() {
         local has_summary=$(echo "$body" | jq -e '.summary' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "memory_summarization" "working" "true" "Summary: $has_summary"
     else
-        record_assertion "memory_summarization" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "memory_summarization" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_deduplication() {
         local removed=$(echo "$body" | jq -e '.duplicates_removed' 2>/dev/null || echo "0")
         record_assertion "deduplication" "working" "true" "Removed $removed duplicates"
     else
-        record_assertion "deduplication" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "deduplication" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

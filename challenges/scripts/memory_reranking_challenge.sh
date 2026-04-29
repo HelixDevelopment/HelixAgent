@@ -34,7 +34,7 @@ test_relevance_reranking() {
         local has_scores=$(echo "$body" | jq -e '.results[].rerank_score' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "relevance_reranking" "working" "true" "Scores: $has_scores"
     else
-        record_assertion "relevance_reranking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "relevance_reranking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -89,7 +89,7 @@ test_hybrid_reranking() {
         local count=$(echo "$body" | jq -e '.results | length' 2>/dev/null || echo "0")
         record_assertion "hybrid_reranking" "working" "true" "Combined $count results"
     else
-        record_assertion "hybrid_reranking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "hybrid_reranking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

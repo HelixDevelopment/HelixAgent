@@ -35,7 +35,7 @@ test_error_detection() {
         local is_healthy=$(echo "$body" | jq -e '.is_healthy' 2>/dev/null || echo "null")
         record_assertion "error_detection" "working" "true" "Errors: $errors_found, Healthy: $is_healthy"
     else
-        record_assertion "error_detection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "error_detection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_recovery_strategies() {
         local strategy_used=$(echo "$body" | jq -e '.strategy_used' 2>/dev/null || echo "null")
         record_assertion "recovery_strategies" "working" "true" "Recovered: $recovered, Strategy: $strategy_used"
     else
-        record_assertion "recovery_strategies" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "recovery_strategies" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_rollback_mechanisms() {
         local current_round=$(echo "$body" | jq -e '.current_round' 2>/dev/null || echo "0")
         record_assertion "rollback_mechanisms" "working" "true" "Rolled back: $rolled_back, Round: $current_round"
     else
-        record_assertion "rollback_mechanisms" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "rollback_mechanisms" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -34,7 +34,7 @@ test_vote_collection() {
         local votes_recorded=$(echo "$body" | jq -e '.votes_recorded' 2>/dev/null || echo "0")
         record_assertion "vote_collection" "working" "true" "Recorded $votes_recorded votes"
     else
-        record_assertion "vote_collection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "vote_collection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_vote_weighting() {
         local weighted_result=$(echo "$body" | jq -e '.weighted_result' 2>/dev/null || echo "null")
         record_assertion "vote_weighting" "working" "true" "Result: $weighted_result"
     else
-        record_assertion "vote_weighting" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "vote_weighting" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_tie_breaking() {
         local winner=$(echo "$body" | jq -e '.winner' 2>/dev/null || echo "null")
         record_assertion "tie_breaking" "working" "true" "Winner: $winner"
     else
-        record_assertion "tie_breaking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "tie_breaking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

@@ -333,6 +333,32 @@ record_assertion() {
     fi
 }
 
+# record_skip — emit a SKIPPED assertion (CONST-035 §4 "Skips are loud").
+#
+# Use this when a probe cannot exercise the feature (endpoint returns 404,
+# upstream service unreachable, env var unset). NEVER use record_assertion
+# with status=true to mask a missing feature — that's a wrapper bluff per
+# CONST-035 bluff taxonomy. SKIPPED is mechanically distinguishable from
+# PASSED in the master aggregator so absence of coverage is loud rather
+# than silent.
+#
+# Args: assertion_type target reason
+#   reason MUST include a SKIP-OK ticket reference (e.g. "#endpoint-not-impl")
+record_skip() {
+    local assertion_type="$1"
+    local target="$2"
+    local reason="$3"
+
+    if [[ "$reason" != *"SKIP-OK:"* ]]; then
+        reason="$reason (SKIP-OK: #unmarked-skip-needs-ticket)"
+    fi
+
+    echo "${assertion_type}|${target}|SKIPPED|${reason}" >> "$OUTPUT_DIR/logs/assertions.log"
+    ASSERTION_LOG="${ASSERTION_LOG}${assertion_type}|${target}|SKIPPED|${reason}\n"
+
+    log_warning "Assertion $assertion_type ($target): SKIPPED - $reason"
+}
+
 # Record metric
 record_metric() {
     local name="$1"
@@ -369,13 +395,16 @@ finalize_challenge() {
     # needed; default to 0 only if the result is empty.
     local passed=0
     local failed=0
+    local skipped=0
     if [[ -f "$OUTPUT_DIR/logs/assertions.log" ]]; then
         set +e
         passed=$(grep -c "|PASSED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null)
         failed=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null)
+        skipped=$(grep -c "|SKIPPED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null)
         set -e
         [[ -z "$passed" ]] && passed=0
         [[ -z "$failed" ]] && failed=0
+        [[ -z "$skipped" ]] && skipped=0
     fi
 
     # Create results JSON (simple format)
@@ -388,7 +417,8 @@ finalize_challenge() {
   "end_time": "$(date -Iseconds)",
   "duration_seconds": $duration,
   "assertions_passed": $passed,
-  "assertions_failed": $failed
+  "assertions_failed": $failed,
+  "assertions_skipped": $skipped
 }
 EOF
 
@@ -419,6 +449,7 @@ EOF
 
 **Passed:** $passed
 **Failed:** $failed
+**Skipped:** $skipped
 
 ## Metrics
 
@@ -444,10 +475,10 @@ EOF
 
     if [[ "$status" == "PASSED" ]]; then
         log_success "Challenge $CHALLENGE_NAME completed: $status (${duration}s)"
-        log_success "Assertions: $passed passed, $failed failed"
+        log_success "Assertions: $passed passed, $failed failed, $skipped skipped"
     else
         log_error "Challenge $CHALLENGE_NAME completed: $status (${duration}s)"
-        log_error "Assertions: $passed passed, $failed failed"
+        log_error "Assertions: $passed passed, $failed failed, $skipped skipped"
     fi
 
     log_info "Results: $RESULTS_FILE"
@@ -485,4 +516,4 @@ export -f load_env detect_container_runtime check_binary
 export -f get_helixagent_binary get_verifier_binary
 export -f start_helixagent stop_helixagent
 export -f start_infrastructure stop_infrastructure
-export -f api_request record_assertion record_metric finalize_challenge
+export -f api_request record_assertion record_skip record_metric finalize_challenge

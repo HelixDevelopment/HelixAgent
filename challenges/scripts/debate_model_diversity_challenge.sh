@@ -35,7 +35,7 @@ test_selection_diversity() {
         local diversity_score=$(echo "$body" | jq -e '.diversity_score' 2>/dev/null || echo "0.0")
         record_assertion "selection_diversity" "working" "true" "Providers: $provider_count, Diversity: $diversity_score"
     else
-        record_assertion "selection_diversity" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "selection_diversity" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -54,7 +54,7 @@ test_provider_distribution() {
         local balanced=$(echo "$body" | jq -e '.is_balanced' 2>/dev/null || echo "null")
         record_assertion "provider_distribution" "working" "true" "Providers: $total_providers, Balanced: $balanced"
     else
-        record_assertion "provider_distribution" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "provider_distribution" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -78,7 +78,7 @@ test_capability_mix() {
         local models_selected=$(echo "$body" | jq -e '.selected_models | length' 2>/dev/null || echo "0")
         record_assertion "capability_mix" "working" "true" "Coverage: $coverage, Models: $models_selected"
     else
-        record_assertion "capability_mix" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "capability_mix" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

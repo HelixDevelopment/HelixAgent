@@ -34,7 +34,7 @@ test_semantic_keyword_fusion() {
         local has_results=$(echo "$body" | jq -e '.results' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "fusion_search" "working" "true" "Hybrid results: $has_results"
     else
-        record_assertion "fusion_search" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "fusion_search" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_weighted_combination() {
         local count=$(echo "$body" | jq -e '.results | length' 2>/dev/null || echo "0")
         record_assertion "weighted_combination" "working" "true" "Found $count weighted results"
     else
-        record_assertion "weighted_combination" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "weighted_combination" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

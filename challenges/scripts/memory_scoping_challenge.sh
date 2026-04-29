@@ -34,7 +34,7 @@ test_user_scope() {
         local has_scope=$(echo "$body" | jq -e '.scope' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "user_scope" "working" "true" "User scope: $has_scope"
     else
-        record_assertion "user_scope" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "user_scope" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -85,7 +85,7 @@ test_scope_isolation() {
         local count=$(echo "$body" | jq -e '.memories | length' 2>/dev/null || echo "0")
         record_assertion "scope_isolation" "verified" "true" "User scope: $count memories"
     else
-        record_assertion "scope_isolation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "scope_isolation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

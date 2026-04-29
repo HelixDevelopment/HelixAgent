@@ -35,7 +35,7 @@ test_round_sequencing() {
         local current_round=$(echo "$body" | jq -e '.current_round' 2>/dev/null || echo "0")
         record_assertion "round_sequencing" "working" "true" "Debate: $debate_id, Round: $current_round"
     else
-        record_assertion "round_sequencing" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "round_sequencing" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -58,7 +58,7 @@ test_timing_management() {
         local configured=$(echo "$body" | jq -e '.configured' 2>/dev/null || echo "false")
         record_assertion "timing_management" "working" "true" "Configured: $configured"
     else
-        record_assertion "timing_management" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "timing_management" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -81,7 +81,7 @@ test_turn_taking() {
         local next_speaker=$(echo "$body" | jq -e '.next_speaker' 2>/dev/null || echo "null")
         record_assertion "turn_taking" "working" "true" "Next speaker: $next_speaker"
     else
-        record_assertion "turn_taking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "turn_taking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

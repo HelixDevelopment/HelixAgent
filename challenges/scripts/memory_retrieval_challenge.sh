@@ -52,7 +52,7 @@ test_retrieval_by_time_range() {
         local count=$(echo "$body" | jq -e '.memories | length' 2>/dev/null || echo "0")
         record_assertion "retrieval_by_time" "working" "true" "Found $count memories"
     else
-        record_assertion "retrieval_by_time" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "retrieval_by_time" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -71,7 +71,7 @@ test_retrieval_by_entity() {
         local has_memories=$(echo "$body" | jq -e '.memories' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "retrieval_by_entity" "working" "true" "Entity search: $has_memories"
     else
-        record_assertion "retrieval_by_entity" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "retrieval_by_entity" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -95,7 +95,7 @@ test_context_filtered_retrieval() {
         local count=$(echo "$body" | jq -e '.memories | length' 2>/dev/null || echo "0")
         record_assertion "context_filtering" "working" "true" "Filtered: $count memories"
     else
-        record_assertion "context_filtering" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "context_filtering" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

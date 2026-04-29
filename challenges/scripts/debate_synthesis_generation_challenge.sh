@@ -35,7 +35,7 @@ test_synthesis_creation() {
         local word_count=$(echo "$body" | jq -e '.word_count' 2>/dev/null || echo "0")
         record_assertion "synthesis_creation" "working" "true" "Created: $has_synthesis, Words: $word_count"
     else
-        record_assertion "synthesis_creation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "synthesis_creation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_argument_integration() {
         local balance_score=$(echo "$body" | jq -e '.balance_score' 2>/dev/null || echo "0.0")
         record_assertion "argument_integration" "working" "true" "Integrated: $integrated, Balance: $balance_score"
     else
-        record_assertion "argument_integration" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "argument_integration" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_conclusion_generation() {
         local has_recommendations=$(echo "$body" | jq -e '.recommendations' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "conclusion_generation" "working" "true" "Conclusion: $has_conclusion, Recommendations: $has_recommendations"
     else
-        record_assertion "conclusion_generation" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "conclusion_generation" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

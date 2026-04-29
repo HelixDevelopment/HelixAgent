@@ -35,7 +35,7 @@ test_response_combining() {
         local selected_model=$(echo "$body" | jq -e '.selected_model' 2>/dev/null || echo "null")
         record_assertion "response_combining" "working" "true" "Combined: $combined, Model: $selected_model"
     else
-        record_assertion "response_combining" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "response_combining" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -59,7 +59,7 @@ test_weighted_merging() {
         local total_weight=$(echo "$body" | jq -e '.total_weight' 2>/dev/null || echo "0.0")
         record_assertion "weighted_merging" "working" "true" "Merged: $merged, Total weight: $total_weight"
     else
-        record_assertion "weighted_merging" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "weighted_merging" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -83,7 +83,7 @@ test_conflict_resolution() {
         local confidence=$(echo "$body" | jq -e '.final_confidence' 2>/dev/null || echo "0.0")
         record_assertion "conflict_resolution" "working" "true" "Resolved: $resolved, Confidence: $confidence"
     else
-        record_assertion "conflict_resolution" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "conflict_resolution" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

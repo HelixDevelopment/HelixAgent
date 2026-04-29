@@ -34,7 +34,7 @@ test_memory_retrieval_for_rag() {
         local has_context=$(echo "$body" | jq -e '.context' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "rag_retrieval" "working" "true" "Context retrieved: $has_context"
     else
-        record_assertion "rag_retrieval" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "rag_retrieval" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_relevance_scoring() {
         local has_scores=$(echo "$body" | jq -e '.results[].relevance_score' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "relevance_scoring" "working" "true" "Scores present: $has_scores"
     else
-        record_assertion "relevance_scoring" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "relevance_scoring" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

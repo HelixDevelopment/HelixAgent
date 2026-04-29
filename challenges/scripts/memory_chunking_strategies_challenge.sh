@@ -34,7 +34,7 @@ test_fixed_size_chunking() {
         local chunk_count=$(echo "$body" | jq -e '.chunks | length' 2>/dev/null || echo "0")
         record_assertion "fixed_chunking" "working" "true" "Created $chunk_count chunks"
     else
-        record_assertion "fixed_chunking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "fixed_chunking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_semantic_chunking() {
         local has_chunks=$(echo "$body" | jq -e '.chunks' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "semantic_chunking" "working" "true" "Semantic chunks: $has_chunks"
     else
-        record_assertion "semantic_chunking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "semantic_chunking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_sentence_boundary_chunking() {
         local chunk_count=$(echo "$body" | jq -e '.chunks | length' 2>/dev/null || echo "0")
         record_assertion "sentence_chunking" "working" "true" "$chunk_count sentence-based chunks"
     else
-        record_assertion "sentence_chunking" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "sentence_chunking" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

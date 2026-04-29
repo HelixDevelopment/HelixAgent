@@ -34,7 +34,7 @@ test_context_window_management() {
         local token_count=$(echo "$body" | jq -e '.token_count' 2>/dev/null || echo "0")
         record_assertion "context_window" "managed" "true" "Tokens: $token_count"
     else
-        record_assertion "context_window" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "context_window" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -73,7 +73,7 @@ test_context_compression() {
         local compressed=$(echo "$body" | jq -e '.compressed_context' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "context_compression" "working" "true" "Compressed: $compressed"
     else
-        record_assertion "context_compression" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "context_compression" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

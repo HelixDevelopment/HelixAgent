@@ -34,7 +34,7 @@ test_entity_detection() {
         local has_entities=$(echo "$body" | jq -e '.entities' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "entity_detection" "working" "true" "Entities detected: $has_entities"
     else
-        record_assertion "entity_detection" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "entity_detection" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -57,7 +57,7 @@ test_relationship_extraction() {
         local has_relationships=$(echo "$body" | jq -e '.relationships' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "relationship_extraction" "working" "true" "Relationships: $has_relationships"
     else
-        record_assertion "relationship_extraction" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "relationship_extraction" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -80,7 +80,7 @@ test_entity_types() {
         local has_types=$(echo "$body" | jq -e '.entities[].type' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "entity_types" "classified" "true" "Types identified: $has_types"
     else
-        record_assertion "entity_types" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "entity_types" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

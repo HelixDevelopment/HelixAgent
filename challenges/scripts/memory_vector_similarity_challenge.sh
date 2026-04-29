@@ -34,7 +34,7 @@ test_cosine_similarity() {
         local has_results=$(echo "$body" | jq -e '.results' > /dev/null 2>&1 && echo "yes" || echo "no")
         record_assertion "cosine_similarity" "working" "true" "Results: $has_results"
     else
-        record_assertion "cosine_similarity" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "cosine_similarity" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 
@@ -73,7 +73,7 @@ test_dot_product_similarity() {
         local count=$(echo "$body" | jq -e '.results | length' 2>/dev/null || echo "0")
         record_assertion "dot_product" "working" "true" "Found $count results"
     else
-        record_assertion "dot_product" "checked" "true" "HTTP $code (may not be implemented)"
+        record_skip "dot_product" "checked" "HTTP $code (endpoint not implemented; SKIP-OK: #endpoint-not-impl)"
     fi
 }
 

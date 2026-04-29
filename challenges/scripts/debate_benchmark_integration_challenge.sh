@@ -97,7 +97,7 @@ fi
 
 # --- Finalize ---
 
-FAILURES=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
+FAILURES=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null | head -1 || echo 0)
 if [ "$FAILURES" -eq 0 ]; then
     finalize_challenge "PASSED"
 else

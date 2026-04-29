@@ -351,7 +351,7 @@ main() {
     test_no_tool_when_not_needed
     test_tool_with_streaming
 
-    local failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
+    local failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null | head -1 || echo 0)
 
     if [[ $failed_count -eq 0 ]]; then
         log_info "All tool calling tests passed!"

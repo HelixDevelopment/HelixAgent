@@ -76,7 +76,7 @@ fi
 # Test 4: Claude OAuth2 models defined (10 models)
 TOTAL=$((TOTAL + 1))
 log_info "Test 4: Claude OAuth2 models defined"
-claude_models=$(grep -c "claude-.*-4" "$PROJECT_ROOT/internal/services/debate_team_config.go" 2>/dev/null || echo 0)
+claude_models=$(grep -c "claude-.*-4" "$PROJECT_ROOT/internal/services/debate_team_config.go" 2>/dev/null | head -1 || echo 0)
 if [ "$claude_models" -ge 5 ]; then
     log_success "Claude OAuth2 models defined ($claude_models models)"
     PASSED=$((PASSED + 1))
@@ -99,7 +99,7 @@ fi
 # Test 6: Free models with :free suffix defined
 TOTAL=$((TOTAL + 1))
 log_info "Test 6: OpenRouter :free models defined"
-free_count=$(grep -c ":free" "$PROJECT_ROOT/internal/services/debate_team_config.go" 2>/dev/null || echo 0)
+free_count=$(grep -c ":free" "$PROJECT_ROOT/internal/services/debate_team_config.go" 2>/dev/null | head -1 || echo 0)
 if [ "$free_count" -ge 15 ]; then
     log_success "Found $free_count :free model definitions"
     PASSED=$((PASSED + 1))

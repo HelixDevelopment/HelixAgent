@@ -239,7 +239,7 @@ main() {
     test_fallback_chain
     test_error_state_recovery
 
-    local failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
+    local failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null | head -1 || echo 0)
 
     if [[ $failed_count -eq 0 ]]; then
         log_info "All error recovery tests passed!"

@@ -161,7 +161,7 @@ fi
 # Test 11: Count total free models (should be >= 10)
 TOTAL=$((TOTAL + 1))
 log_info "Test 11: Minimum 10 free models defined"
-free_model_count=$(grep -c ":free" "$PROJECT_ROOT/internal/llm/providers/openrouter/openrouter.go" 2>/dev/null || echo 0)
+free_model_count=$(grep -c ":free" "$PROJECT_ROOT/internal/llm/providers/openrouter/openrouter.go" 2>/dev/null | head -1 || echo 0)
 if [ "$free_model_count" -ge 10 ]; then
     log_success "Found $free_model_count free models (>= 10)"
     PASSED=$((PASSED + 1))

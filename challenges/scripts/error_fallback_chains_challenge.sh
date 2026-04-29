@@ -165,7 +165,7 @@ main() {
     test_fallback_order
     test_fallback_error_reporting
 
-    local failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
+    local failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null | head -1 || echo 0)
 
     if [[ $failed_count -eq 0 ]]; then
         log_info "All fallback chain tests passed!"

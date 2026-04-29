@@ -124,7 +124,7 @@ echo -e "${YELLOW}=== Section 2: Docker Compose Configuration ===${NC}"
 echo ""
 
 # Test 2.1: Verify MCP servers defined in compose
-MCP_COUNT=$(grep -c "mcp-" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null || echo 0)
+MCP_COUNT=$(grep -c "mcp-" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null | head -1 || echo 0)
 if [ "$MCP_COUNT" -ge 20 ]; then
     pass_test "2.1 At least 20 MCP servers defined in docker-compose.protocols.yml (found: $MCP_COUNT)"
 else
@@ -132,7 +132,7 @@ else
 fi
 
 # Test 2.2: Verify LSP servers defined
-LSP_COUNT=$(grep -c "lsp-" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null || echo 0)
+LSP_COUNT=$(grep -c "lsp-" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null | head -1 || echo 0)
 if [ "$LSP_COUNT" -ge 3 ]; then
     pass_test "2.2 At least 3 LSP servers defined (found: $LSP_COUNT)"
 else
@@ -147,7 +147,7 @@ else
 fi
 
 # Test 2.4: Verify embedding servers defined
-EMBED_COUNT=$(grep -c "embedding-" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null || echo 0)
+EMBED_COUNT=$(grep -c "embedding-" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null | head -1 || echo 0)
 if [ "$EMBED_COUNT" -ge 2 ]; then
     pass_test "2.4 At least 2 embedding servers defined (found: $EMBED_COUNT)"
 else
@@ -176,7 +176,7 @@ else
 fi
 
 # Test 2.8: Verify restart policy is set for auto-boot
-RESTART_COUNT=$(grep -c "restart: unless-stopped" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null || echo 0)
+RESTART_COUNT=$(grep -c "restart: unless-stopped" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null | head -1 || echo 0)
 if [ "$RESTART_COUNT" -ge 20 ]; then
     pass_test "2.8 Auto-restart policy set for servers (found: $RESTART_COUNT)"
 else
@@ -184,7 +184,7 @@ else
 fi
 
 # Test 2.9: Verify healthchecks defined
-HEALTH_COUNT=$(grep -c "healthcheck:" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null || echo 0)
+HEALTH_COUNT=$(grep -c "healthcheck:" "$PROJECT_DIR/docker-compose.protocols.yml" 2>/dev/null | head -1 || echo 0)
 if [ "$HEALTH_COUNT" -ge 5 ]; then
     pass_test "2.9 Healthchecks defined for key services (found: $HEALTH_COUNT)"
 else

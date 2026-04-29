@@ -135,7 +135,7 @@ record_metric "prompts_with_content" "$prompts_with_content"
 
 main() {
     local failed_count
-    failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null || echo 0)
+    failed_count=$(grep -c "|FAILED|" "$OUTPUT_DIR/logs/assertions.log" 2>/dev/null | head -1 || echo 0)
     failed_count=$(echo "$failed_count" | tr -d '[:space:]')
     [[ -z "$failed_count" ]] && failed_count=0
     if [[ "$failed_count" -eq 0 ]]; then

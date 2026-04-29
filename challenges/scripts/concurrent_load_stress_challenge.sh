@@ -270,7 +270,7 @@ calculate_stats() {
     fi
 
     local total=$(wc -l < "$results_file" | tr -d ' ')
-    local success=$(grep -c "^200$" "$results_file" 2>/dev/null || echo 0)
+    local success=$(grep -c "^200$" "$results_file" 2>/dev/null | head -1 || echo 0)
     local failed=$((total - success))
     local error_rate=0
 

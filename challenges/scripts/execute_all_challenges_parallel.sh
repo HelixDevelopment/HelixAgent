@@ -171,9 +171,9 @@ echo "GENERATING SUMMARY"
 echo "=========================================="
 
 TOTAL=$(tail -n +2 "$CSV_FILE" | wc -l)
-PASSED=$(grep -c ",PASS," "$CSV_FILE" 2>/dev/null || echo 0)
-FAILED=$(grep -c ",FAIL," "$CSV_FILE" 2>/dev/null || echo 0)
-ERRORS=$(grep -c ",ERROR," "$CSV_FILE" 2>/dev/null || echo 0)
+PASSED=$(grep -c ",PASS," "$CSV_FILE" 2>/dev/null | head -1 || echo 0)
+FAILED=$(grep -c ",FAIL," "$CSV_FILE" 2>/dev/null | head -1 || echo 0)
+ERRORS=$(grep -c ",ERROR," "$CSV_FILE" 2>/dev/null | head -1 || echo 0)
 
 # Calculate pass rate
 if [ "$TOTAL" -gt 0 ]; then

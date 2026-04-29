@@ -10,6 +10,7 @@ import (
 	authadapter "dev.helix.agent/internal/adapters/auth"
 	containeradapter "dev.helix.agent/internal/adapters/containers"
 	helixqaadapter "dev.helix.agent/internal/adapters/helixqa"
+	"dev.helix.agent/internal/background"
 	"dev.helix.agent/internal/benchmark"
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
@@ -1199,19 +1200,20 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			logger.Info("Skills endpoints registered at /v1/skills/*")
 		}
 
-		// Background Task endpoints — handler currently constructed with nil
-		// services because TaskRepository requires a Postgres pool that's
-		// not yet plumbed through RouterContext. Endpoints return 503 with
-		// "service_unavailable" until the DB pool wiring lands. This is a
-		// genuine CONST-035 §c gap (not a comment bluff): no in-memory
-		// fallback exists for the production TaskRepository interface, and
-		// the route is registered so the API surface stays present for
-		// SDK / CLI agent contract validation. Tracking: #task-repo-wiring.
+		// Background Task endpoints — wire the in-memory TaskRepository so
+		// /v1/tasks/* serves real responses, not 503. CONST-035 §c
+		// "Completion": no stub gaps. The InMemoryTaskRepository is
+		// process-local (tasks don't survive restart). For durability swap
+		// for the Postgres-backed BackgroundTaskRepository in
+		// internal/database/ via the same TaskRepository interface; see
+		// docs/issues for the production-DB-pool plumbing plan.
+		taskRepo := background.NewInMemoryTaskRepository()
+		taskQueue := background.NewInMemoryTaskQueue(logger)
 		backgroundTaskHandler := handlers.NewBackgroundTaskHandler(
-			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, logger,
+			taskRepo, taskQueue, nil, nil, nil, nil, nil, nil, nil, nil, logger,
 		)
 		backgroundTaskHandler.RegisterRoutes(protected)
-		logger.Warn("Background task endpoints registered at /v1/tasks/* (will 503 — TaskRepository requires Postgres pool not yet plumbed; tracking #task-repo-wiring)")
+		logger.Info("Background task endpoints registered at /v1/tasks/* (in-memory TaskRepository wired; non-durable across restarts)")
 
 		// Discovery endpoints — wired with ProviderRegistry fallback so
 		// /v1/discovery/models always returns real data (each provider's

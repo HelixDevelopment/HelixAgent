@@ -221,9 +221,29 @@ func (h *BackgroundTaskHandler) CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Persist to repository BEFORE enqueueing so list / status / detail
+	// reads see the new task immediately. CONST-035 §c "Completion": the
+	// queue and repository are two separate stores; without an explicit
+	// write-through, GET /v1/tasks would return empty even after a
+	// successful POST (contract bluff: "task created" claim that the
+	// catalog endpoint contradicts).
+	if err := h.repository.Create(c.Request.Context(), task); err != nil {
+		h.logger.WithError(err).Error("Failed to persist task to repository")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"message": "Failed to create task",
+				"details": err.Error(),
+			},
+		})
+		return
+	}
+
 	// Enqueue task
 	if err := h.queue.Enqueue(c.Request.Context(), task); err != nil {
 		h.logger.WithError(err).Error("Failed to enqueue task")
+		// Best-effort rollback: delete the repository entry so the
+		// catalog doesn't show a task that's not actually queued.
+		_ = h.repository.Delete(c.Request.Context(), task.ID) //nolint:errcheck
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": gin.H{
 				"message": "Failed to create task",

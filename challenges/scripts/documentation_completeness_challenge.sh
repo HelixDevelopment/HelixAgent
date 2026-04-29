@@ -109,7 +109,7 @@ echo "--- Test Group 3: Debate Subdirectory Documentation ---"
 DEBATE_DIRS=("audit" "evaluation" "gates" "reflexion" "testing" "tools")
 
 for dir in "${DEBATE_DIRS[@]}"; do
-    check_file_exists "$PROJECT_ROOT/internal/debate/$dir/README.md" "internal/debate/$dir has README.md"
+    check_file_exists "$PROJECT_ROOT/DebateOrchestrator/$dir/README.md" "DebateOrchestrator/$dir has README.md"
 done
 
 echo ""
@@ -136,7 +136,7 @@ done
 
 # Debate READMEs should have at least 30 lines
 for dir in "${DEBATE_DIRS[@]}"; do
-    check_min_lines "$PROJECT_ROOT/internal/debate/$dir/README.md" 30 "internal/debate/$dir/README.md >= 30 lines"
+    check_min_lines "$PROJECT_ROOT/DebateOrchestrator/$dir/README.md" 30 "DebateOrchestrator/$dir/README.md >= 30 lines"
 done
 
 echo ""

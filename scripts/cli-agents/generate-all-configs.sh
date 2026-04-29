@@ -93,7 +93,7 @@ declare -A CLI_AGENTS
 CLI_AGENTS["claude_code"]="TypeScript|~/.claude|settings.json"
 CLI_AGENTS["aider"]="Python|~/.aider.conf.yml|yaml"
 CLI_AGENTS["cline"]="TypeScript|~/.cline|config.json"
-CLI_AGENTS["opencode"]="Go|~/.config/opencode|.opencode.json"
+CLI_AGENTS["opencode"]="Go|~/.config/opencode|opencode.json"
 CLI_AGENTS["kilo_code"]="TypeScript|~/.kilo-code|config.json"
 CLI_AGENTS["gemini_cli"]="Python|~/.config/gemini-cli|config.yaml"
 CLI_AGENTS["qwen_code"]="Python|~/.qwen|config.json"
@@ -448,9 +448,11 @@ generate_opencode_config() {
 
     # Generate config with correct OpenCode schema (mcpServers, providers, agents)
     # env is an array of strings like ["KEY=VALUE"], NOT an object
-    # IMPORTANT: OpenCode expects the config to be named .opencode.json (with leading dot)
+    # IMPORTANT: OpenCode v1.2.6+ requires "opencode.json" WITHOUT a leading
+    # dot (the prior ".opencode.json" filename is no longer recognised — see
+    # CLAUDE.md "CLI Agent Config Rules" rule #1).
     # IMPORTANT: Uses "local" provider which reads LOCAL_ENDPOINT env var for HelixAgent URL
-    cat > "$output_dir/.opencode.json" << 'OPENCODE_EOF'
+    cat > "$output_dir/opencode.json" << 'OPENCODE_EOF'
 {
   "providers": {
     "local": {
@@ -661,8 +663,8 @@ generate_opencode_config() {
 OPENCODE_EOF
 
     # Replace placeholders with actual values
-    sed -i "s|HELIX_URL_PLACEHOLDER|${helix_url}|g" "$output_dir/.opencode.json"
-    sed -i "s|HELIX_API_KEY_PLACEHOLDER|${helix_api_key}|g" "$output_dir/.opencode.json"
+    sed -i "s|HELIX_URL_PLACEHOLDER|${helix_url}|g" "$output_dir/opencode.json"
+    sed -i "s|HELIX_API_KEY_PLACEHOLDER|${helix_api_key}|g" "$output_dir/opencode.json"
 
     log_success "Generated OpenCode config with 37 MCPs: $output_dir"
 }

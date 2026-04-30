@@ -18,6 +18,7 @@ import (
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/llmops"
 	"dev.helix.agent/internal/checkpoints"
+	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/database"
 	"dev.helix.agent/internal/features"
@@ -1128,15 +1129,29 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		logger.Info("RAG endpoints registered at /v1/rag/*")
 
 		// Ensemble session/team management endpoints — wire a real
-		// multi_instance.Coordinator. Constructor accepts nil db/InstanceManager/
-		// SyncManager (uses defaults: in-memory sessions, RoundRobinBalancer,
-		// HealthMonitor, WorkerPool(100), EventBus). The standard-lib
-		// *log.Logger arg is also nil-tolerant (constructor falls back to
-		// log.New(os.Stdout)).
-		ensembleCoordinator := multi_instance.NewCoordinator(nil, nil, nil, nil)
+		// multi_instance.Coordinator AND a real clis.InstanceManager so
+		// /v1/ensemble/sessions POST creates real CLI-agent instances
+		// instead of the previous "created_without_instances" bluff.
+		//
+		// CONST-035 §c: closes #ensemble-instance-manager-wiring tracking
+		// ticket from rounds 11-12. The InstanceManager runs fully
+		// in-memory (no Postgres pool needed; persistInstance and
+		// recoverInstances both nil-check m.db and skip persistence
+		// when no DB is configured). Sessions don't survive restart, but
+		// the documented session lifecycle (create → execute → status)
+		// works end-to-end.
+		ensembleInstanceMgr, ensembleInstanceMgrErr := clis.NewInstanceManager(nil, nil)
+		if ensembleInstanceMgrErr != nil {
+			logger.WithError(ensembleInstanceMgrErr).Warn("Failed to init clis.InstanceManager; /v1/ensemble/sessions will return created_without_instances")
+		}
+		ensembleCoordinator := multi_instance.NewCoordinator(nil, nil, ensembleInstanceMgr, nil)
 		ensembleHandler := handlers.NewEnsembleHandler(ensembleCoordinator, logger)
 		ensembleHandler.RegisterRoutes(protected)
-		logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/* (real Coordinator wired)")
+		if ensembleInstanceMgr != nil {
+			logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/* (real Coordinator + InstanceManager wired)")
+		} else {
+			logger.Warn("Ensemble session/team endpoints registered at /v1/ensemble/* (Coordinator wired; InstanceManager init failed — sessions will be created_without_instances)")
+		}
 
 		// Completion endpoints (skills-enhanced completion with intent routing)
 		completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())

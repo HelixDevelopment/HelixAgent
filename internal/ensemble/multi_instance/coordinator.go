@@ -387,13 +387,15 @@ func (c *Coordinator) ExecuteSession(
 	now := time.Now()
 	session.StartedAt = &now
 
-	// Update database
-	_, err = c.db.ExecContext(ctx,
-		"UPDATE ensemble_sessions SET status = $1, started_at = NOW() WHERE id = $2",
-		SessionStatusActive, sessionID,
-	)
-	if err != nil {
-		c.logger.Printf("Warning: failed to update session status: %v", err)
+	// Update database (CONST-035 §c: nil-guard for in-memory mode)
+	if c.db != nil {
+		_, err = c.db.ExecContext(ctx,
+			"UPDATE ensemble_sessions SET status = $1, started_at = NOW() WHERE id = $2",
+			SessionStatusActive, sessionID,
+		)
+		if err != nil {
+			c.logger.Printf("Warning: failed to update session status: %v", err)
+		}
 	}
 
 	// Execute based on strategy
@@ -477,11 +479,13 @@ func (c *Coordinator) CancelSession(ctx context.Context, sessionID string) error
 		})
 	}
 
-	// Update database
-	_, err = c.db.ExecContext(ctx,
-		"UPDATE ensemble_sessions SET status = $1 WHERE id = $2",
-		SessionStatusCancelled, sessionID,
-	)
+	// Update database (CONST-035 §c: nil-guard for in-memory mode)
+	if c.db != nil {
+		_, err = c.db.ExecContext(ctx,
+			"UPDATE ensemble_sessions SET status = $1 WHERE id = $2",
+			SessionStatusCancelled, sessionID,
+		)
+	}
 
 	return err
 }
@@ -954,6 +958,13 @@ func (c *Coordinator) persistSession(
 	session *EnsembleSession,
 	participantTypes []clis.AgentType,
 ) error {
+	// CONST-035 §c: nil-guard for in-memory deployments (no Postgres
+	// pool plumbed). Sessions live in c.sessions safe.Store across
+	// CreateSession+ListSessions+UpdateStatus.
+	if c.db == nil {
+		return nil
+	}
+
 	// Get instance IDs
 	var primaryID *string
 	if session.Primary != nil {
@@ -1003,6 +1014,12 @@ func (c *Coordinator) persistResult(
 	result *ConsensusResult,
 	execErr error,
 ) error {
+	// CONST-035 §c: nil-guard for in-memory mode (sibling of
+	// persistSession's guard).
+	if c.db == nil {
+		return nil
+	}
+
 	var resultJSON []byte
 	if result != nil {
 		resultJSON, _ = json.Marshal(result)

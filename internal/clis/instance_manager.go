@@ -46,17 +46,20 @@ type InstanceManager struct {
 }
 
 // NewInstanceManager creates a new instance manager.
+//
+// CONST-035 §c: db may be nil for in-memory deployments. The
+// persistInstance and recoverInstances methods both nil-check m.db
+// and skip persistence/recovery when no DB is configured. The manager
+// still tracks instances in memory via m.instances (safe.Store) and
+// supports the full /v1/ensemble/sessions lifecycle without durability.
+// Closes #ensemble-instance-manager-wiring tracking ticket.
 func NewInstanceManager(db *sql.DB, logger *log.Logger) (*InstanceManager, error) {
-	if db == nil {
-		return nil, fmt.Errorf("database connection required")
-	}
-
 	if logger == nil {
 		logger = log.Default()
 	}
 
 	im := &InstanceManager{
-		db:              db,
+		db:              db, // may be nil — see comment above
 		logger:          logger,
 		pools:           safe.NewStore[AgentType, *InstancePool](),
 		instances:       safe.NewStore[string, *AgentInstance](),
@@ -68,7 +71,7 @@ func NewInstanceManager(db *sql.DB, logger *log.Logger) (*InstanceManager, error
 	// Start background health checks
 	go im.healthCheckLoop()
 
-	// Recover existing instances from database
+	// Recover existing instances from database (no-op when db == nil)
 	if err := im.recoverInstances(context.Background()); err != nil {
 		logger.Printf("Warning: failed to recover instances: %v", err)
 	}
@@ -135,13 +138,15 @@ func (m *InstanceManager) CreateInstance(
 	now := time.Now()
 	instance.StartedAt = &now
 
-	// Update database status
-	_, err := m.db.ExecContext(ctx,
-		"UPDATE agent_instances SET status = $1, health_status = $2, started_at = NOW() WHERE id = $3",
-		StatusIdle, HealthHealthy, instance.ID,
-	)
-	if err != nil {
-		m.logger.Printf("Warning: failed to update instance status: %v", err)
+	// Update database status (CONST-035 §c: nil-guard for in-memory mode)
+	if m.db != nil {
+		_, err := m.db.ExecContext(ctx,
+			"UPDATE agent_instances SET status = $1, health_status = $2, started_at = NOW() WHERE id = $3",
+			StatusIdle, HealthHealthy, instance.ID,
+		)
+		if err != nil {
+			m.logger.Printf("Warning: failed to update instance status: %v", err)
+		}
 	}
 
 	// Publish event
@@ -256,10 +261,13 @@ func (m *InstanceManager) TerminateInstance(ctx context.Context, id string) erro
 		close(instance.EventCh)
 	}
 
-	// Update database
+	// Update database (CONST-035 §c: nil-guard for in-memory mode)
+	if m.db == nil {
+		return nil
+	}
 	_, err := m.db.ExecContext(ctx,
-		`UPDATE agent_instances 
-		 SET status = $1, terminated_at = NOW(), updated_at = NOW() 
+		`UPDATE agent_instances
+		 SET status = $1, terminated_at = NOW(), updated_at = NOW()
 		 WHERE id = $2`,
 		StatusTerminated, id,
 	)
@@ -668,13 +676,15 @@ func (m *InstanceManager) instanceHealthLoop(inst *AgentInstance) {
 			now := time.Now()
 			inst.LastHealthCheck = &now
 
-			// Update database
-			_, err := m.db.Exec(
-				"UPDATE agent_instances SET health_status = $1, last_health_check = NOW() WHERE id = $2",
-				inst.Health, inst.ID,
-			)
-			if err != nil {
-				m.logger.Printf("Error updating health check for %s: %v", inst.ID, err)
+			// Update database (CONST-035 §c: nil-guard for in-memory mode)
+			if m.db != nil {
+				_, err := m.db.Exec(
+					"UPDATE agent_instances SET health_status = $1, last_health_check = NOW() WHERE id = $2",
+					inst.Health, inst.ID,
+				)
+				if err != nil {
+					m.logger.Printf("Error updating health check for %s: %v", inst.ID, err)
+				}
 			}
 
 		case <-m.healthCheckStop:
@@ -878,10 +888,12 @@ func (m *InstanceManager) healthCheckLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			// Clean up expired locks
-			_, err := m.db.Exec("DELETE FROM distributed_locks WHERE expires_at < NOW()")
-			if err != nil {
-				m.logger.Printf("Error cleaning locks: %v", err)
+			// Clean up expired locks (CONST-035 §c: nil-guard for in-memory mode)
+			if m.db != nil {
+				_, err := m.db.Exec("DELETE FROM distributed_locks WHERE expires_at < NOW()")
+				if err != nil {
+					m.logger.Printf("Error cleaning locks: %v", err)
+				}
 			}
 
 		case <-m.healthCheckStop:

@@ -26,11 +26,16 @@ func NewGofmtFormatter(logger *logrus.Logger) *NativeFormatter {
 		SupportsConfig:  false,
 	}
 
-	return NewNativeFormatter(
+	// gofmt reads stdin when given NO filename arguments. It treats `-`
+	// as a literal filename (and lstats it, failing with exit 2). Use
+	// NewNativeFormatterStdinNoDash instead of NewNativeFormatter so
+	// the executor wires stdin without appending `-` to args.
+	// CONST-035 §c regression-fix (2026-04-30): every /v1/format Go
+	// request returned 200 with success:false because of this.
+	return NewNativeFormatterStdinNoDash(
 		metadata,
 		"gofmt",
-		[]string{}, // no args needed
-		true,
+		[]string{}, // no args = read stdin
 		logger,
 	)
 }

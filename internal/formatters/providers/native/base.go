@@ -17,11 +17,20 @@ type NativeFormatter struct {
 	*formatters.BaseFormatter
 	binaryPath string
 	args       []string
-	stdinFlag  bool
-	logger     *logrus.Logger
+	stdinFlag  bool // whether to append `-` arg AND wire stdin (most CLIs)
+	// stdinNoDash: when true, wire stdin but DO NOT append `-`. Required by
+	// gofmt and similar tools that treat `-` as a filename rather than
+	// "read stdin". CONST-035 §c bug fix from 2026-04-30: previously
+	// gofmt was constructed with stdinFlag=true so the executor ran
+	// `gofmt -` which lstat'd a file named `-` and exited 2. Result: every
+	// /v1/format request for Go silently failed with `success:false`.
+	stdinNoDash bool
+	logger      *logrus.Logger
 }
 
-// NewNativeFormatter creates a new native binary formatter
+// NewNativeFormatter creates a new native binary formatter that wires
+// stdin AND appends `-` to args when stdinFlag is true. This is the
+// common convention (prettier --, stylua -, taplo fmt -).
 func NewNativeFormatter(
 	metadata *formatters.FormatterMetadata,
 	binaryPath string,
@@ -38,6 +47,27 @@ func NewNativeFormatter(
 	}
 }
 
+// NewNativeFormatterStdinNoDash creates a native formatter that wires
+// stdin WITHOUT appending `-`. Required for tools like gofmt that read
+// stdin when given no filename arguments and treat `-` as a literal
+// filename. Fixes CONST-035 §c "every /v1/format Go request silently
+// fails" bug.
+func NewNativeFormatterStdinNoDash(
+	metadata *formatters.FormatterMetadata,
+	binaryPath string,
+	args []string,
+	logger *logrus.Logger,
+) *NativeFormatter {
+	return &NativeFormatter{
+		BaseFormatter: formatters.NewBaseFormatter(metadata),
+		binaryPath:    binaryPath,
+		args:          args,
+		stdinFlag:     false,
+		stdinNoDash:   true,
+		logger:        logger,
+	}
+}
+
 // Format formats code using the native binary
 func (n *NativeFormatter) Format(ctx context.Context, req *formatters.FormatRequest) (*formatters.FormatResult, error) {
 	start := time.Now()
@@ -46,8 +76,8 @@ func (n *NativeFormatter) Format(ctx context.Context, req *formatters.FormatRequ
 	cmdArgs := n.buildArgs(req)
 	cmd := exec.CommandContext(ctx, n.binaryPath, cmdArgs...)
 
-	// Set stdin if supported
-	if n.stdinFlag {
+	// Set stdin if supported (either stdinFlag with `-` OR stdinNoDash)
+	if n.stdinFlag || n.stdinNoDash {
 		cmd.Stdin = strings.NewReader(req.Content)
 	}
 

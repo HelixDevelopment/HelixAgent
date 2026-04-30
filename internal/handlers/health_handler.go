@@ -448,6 +448,15 @@ func (h *HealthHandler) IsProviderAvailable(c *gin.Context) {
 	}
 	providerID := c.Param("provider_id")
 
+	// CONST-035 §c: distinguish "provider not registered" (404) from
+	// "provider registered but unavailable" (200 with available=false).
+	// Previously the handler returned 200 + available:false for ANY id,
+	// including ones that had never been registered — a structural bluff.
+	if cb := h.healthService.GetCircuitBreaker(providerID); cb == nil {
+		c.JSON(http.StatusNotFound, VerifierErrorResponse{Error: "provider not found: " + providerID})
+		return
+	}
+
 	available := h.healthService.IsProviderAvailable(providerID)
 
 	c.JSON(http.StatusOK, gin.H{

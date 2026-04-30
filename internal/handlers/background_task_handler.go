@@ -360,6 +360,21 @@ func (h *BackgroundTaskHandler) GetTaskLogs(c *gin.Context) {
 		limit = 100
 	}
 
+	// CONST-035 §c: validate the task exists BEFORE returning empty logs.
+	// Previously the handler returned 200 with `{"logs":[],"count":0}` for
+	// any bogus task ID, which is a structural bluff: caller can't tell
+	// "task exists but no logs" from "task doesn't exist". Now we 404 when
+	// the task isn't in the repository.
+	if _, getErr := h.repository.GetByID(c.Request.Context(), taskID); getErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": gin.H{
+				"message": "Task not found",
+				"task_id": taskID,
+			},
+		})
+		return
+	}
+
 	history, err := h.repository.GetTaskHistory(c.Request.Context(), taskID, limit)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -399,6 +414,18 @@ func (h *BackgroundTaskHandler) GetTaskResources(c *gin.Context) {
 	limit, _ := strconv.Atoi(limitStr) //nolint:errcheck
 	if limit <= 0 {
 		limit = 10
+	}
+
+	// CONST-035 §c: same fix as GetTaskLogs — validate task exists
+	// before returning empty resources list.
+	if _, getErr := h.repository.GetByID(c.Request.Context(), taskID); getErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": gin.H{
+				"message": "Task not found",
+				"task_id": taskID,
+			},
+		})
+		return
 	}
 
 	snapshots, err := h.repository.GetResourceSnapshots(c.Request.Context(), taskID, limit)

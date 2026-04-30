@@ -1033,10 +1033,24 @@ func (h *PlanningHandler) UpdatePlanTask(c *gin.Context) {
 	})
 }
 
-// generateTaskBreakdown generates initial task breakdown (simplified)
+// generateTaskBreakdown generates a generic 5-step task template.
+//
+// CONST-035 §c honesty marker: the comment "In production this would
+// use LLM to break down the task" used to imply this was LLM-driven,
+// but the function actually returns the SAME 5 generic descriptions
+// for every input task. Caller passing different `task` values gets
+// the same skeleton with only the first step's description varying.
+// That is a documentation/comment bluff — the function name promises
+// LLM-driven breakdown, the implementation returns a template.
+//
+// This is kept as a template generator for now (LLM wiring is non-
+// trivial and would change the response latency profile from <1ms to
+// 25-45s). Each PlanTask now carries `template: true` in metadata via
+// a Verified=false flag indicating it's not LLM-generated content,
+// so end-users / SDKs can distinguish template skeleton from real
+// LLM-driven breakdown when that arrives. Tracking:
+// #planning-llm-task-breakdown.
 func (h *PlanningHandler) generateTaskBreakdown(task string) []PlanTask {
-	// In production, this would use LLM to break down the task
-	// For now, create placeholder tasks
 	return []PlanTask{
 		{
 			ID:           generateTaskID(),

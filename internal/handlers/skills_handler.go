@@ -106,6 +106,28 @@ func (h *SkillsHandler) ListSkills(c *gin.Context) {
 func (h *SkillsHandler) GetSkillsByCategory(c *gin.Context) {
 	category := c.Param("category")
 	service := h.integration.GetService()
+
+	// CONST-035 §c: validate the category exists before returning skills.
+	// Previously returned 200 + empty list for ANY category string —
+	// caller couldn't distinguish "valid category, no skills" from
+	// "invalid category". Now 404 if not in the known categories list.
+	known := service.GetCategories()
+	exists := false
+	for _, k := range known {
+		if k == category {
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":      "category not found: " + category,
+			"category":   category,
+			"known_count": len(known),
+		})
+		return
+	}
+
 	categorySkills := service.GetSkillsByCategory(category)
 
 	response := ListSkillsResponse{

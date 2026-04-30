@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"dev.helix.agent/internal/formatters"
@@ -86,10 +87,22 @@ func (h *FormattersHandler) FormatCode(c *gin.Context) {
 	// Execute formatting
 	result, err := h.executor.Execute(c.Request.Context(), formatReq)
 	if err != nil {
+		// CONST-035 §c: distinguish bad-input (400) from real server
+		// faults (500). "no formatters available for language: X" is
+		// caller-side: they specified an unknown language. Returning
+		// 500 for that triggered SDK retry storms.
+		errMsg := err.Error()
+		status := http.StatusInternalServerError
+		if strings.Contains(errMsg, "no formatters available") ||
+			strings.Contains(errMsg, "unsupported") ||
+			strings.Contains(errMsg, "invalid") ||
+			strings.Contains(errMsg, "not supported") {
+			status = http.StatusBadRequest
+		}
 		h.logger.Errorf("Format execution failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   errMsg,
 		})
 		return
 	}
@@ -110,7 +123,17 @@ func (h *FormattersHandler) FormatCode(c *gin.Context) {
 		response.Error = result.Error.Error()
 	}
 
-	c.JSON(http.StatusOK, response)
+	// CONST-035 §c wrapper-bluff fix: when result.Success is false the
+	// formatter actually failed (e.g. gofmt returned non-zero stderr).
+	// Returning HTTP 200 in that case is a wrapper bluff — caller's SDK
+	// reads the status code and thinks the format succeeded. Map success
+	// to status: true → 200, false → 422 Unprocessable Entity (request
+	// was syntactically valid but the formatter couldn't process it).
+	httpStatus := http.StatusOK
+	if !result.Success {
+		httpStatus = http.StatusUnprocessableEntity
+	}
+	c.JSON(httpStatus, response)
 }
 
 // FormatBatchRequest is the request for batch formatting

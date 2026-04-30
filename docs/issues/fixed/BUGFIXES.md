@@ -2588,3 +2588,92 @@ Issue #56 (anti-bluff sweep) is now fully resolved. The 16 mutation-
 tested anti-bluff Challenges (132 assertions, all green) protect
 every fix from silent regression.
 
+---
+
+## Issue #57: Empty embedding input silently returns "success" + OpenAI `input` field dropped (FIXED 2026-04-30, round 29)
+
+### Issue
+Two compounding bluffs found while running the round-29 anti-bluff
+re-validation pass:
+
+1. **Structural bluff** — `POST /v1/embeddings/generate {}` with an
+   empty body returned `200 OK` with a real 1536-dimension embedding
+   "for empty string". The cache key was `sha256("" + model)` so every
+   empty-body probe collided on the same cache entry, making the
+   embedding count appear stuck at 1 forever even under heavy load.
+   This is a class-A structural bluff per CONST-035 §c: invalid input
+   gets a fake-success response that the caller cannot distinguish
+   from a real result.
+
+2. **Contract bluff** — the handler bound `services.EmbeddingRequest`
+   which only declares `Text string \`json:"text"\``. Callers
+   following the OpenAI Embeddings API documentation send
+   `{"input":"..."}` (the canonical OpenAI field name). The `input`
+   field was silently dropped by Gin's struct binding, the resulting
+   `req.Text` was empty, and the handler returned a fake-success
+   embedding for that empty string. Real CLI agents pointing their
+   OpenAI SDK at HelixAgent would have appeared to work (200 OK,
+   1536-dim vector returned) while every input was silently
+   replaced by an empty string.
+
+### Affected Files
+- `internal/handlers/embeddings.go:38-58` — `GenerateEmbeddings`
+  handler used Gin auto-binding with the native-only `Text` field and
+  did no validation.
+
+### Root Cause
+The native HelixAgent embedding endpoint pre-dates the OpenAI compat
+work in this repo. The OpenAI compat layer added `/v1/messages`
+(Anthropic) and `/v1beta/models/:action` (Google) but never extended
+the embeddings surface. The `EmbeddingRequest` struct only declared
+`text`, and the handler trusted Gin to fail-fast on missing fields —
+which it doesn't, since all fields were optional.
+
+### Fix
+`internal/handlers/embeddings.go:38-95` (round 29):
+1. Parse the JSON body as `map[string]any` instead of struct-binding,
+   so we can accept BOTH `text` and `input` as the input field name.
+2. Reject empty/whitespace-only input with HTTP 400 + a clear error
+   message:
+   `{"error":"embedding input is required: provide non-empty 'text' or 'input' field"}`.
+3. Preserve backward compatibility: existing `{"text":"..."}` callers
+   keep working unchanged.
+
+### Verification
+New regression Challenge:
+`challenges/scripts/embeddings_input_validation_challenge.sh` (6
+assertions, mutation-tested):
+- POST `{}` → 400 ✓
+- POST `{"text":""}` → 400 ✓
+- POST `{"text":"native-text-field-probe", ...}` → 200 with ≥1536-dim
+  embedding ✓
+- POST `{"input":"openai-input-field-probe", ...}` → 200 with
+  ≥1536-dim embedding ✓
+- Two distinct inputs grow the cache count (proves caching writes
+  are real, not no-ops on the same empty-string key) ✓
+
+Mutation matrix (CONST-035 §1):
+| Mutation | Expected failure |
+|---|---|
+| Comment out the empty-input 400 guard | `empty_body.returns_400` and `empty_text.returns_400` fail |
+| Remove the `raw["input"]` alias branch | `openai_input.returns_200` fails (or returns embedding for empty string), `cache_grows.post_gt_pre` fails |
+| Remove the `raw["text"]` branch | `native_text.returns_200` fails |
+
+### Wrapper Bluff Found in `multi_endpoint_roundtrip_challenge.sh`
+The same round also fixed a real bluff that the new validation
+exposed in an existing Challenge: `multi_endpoint_roundtrip` test 2
+sent `{"input":"..."}` and asserted `cachedEmbeddings` would
+increment. Pre-fix: the `input` field was dropped, every probe hit
+the same empty-string cache key, the count stayed at 1 forever, and
+the assertion failed with `stats cachedEmbeddings did not change
+(1→1)`. Post-fix: distinct inputs hash to distinct cache keys, the
+count grows monotonically across runs, and the assertion passes
+naturally — no Challenge change required, the test was honest, the
+PRODUCT was the bluff.
+
+### Tally
+- 16 anti-bluff Challenges → **17** (added embeddings_input_validation)
+- 132 assertions → **138** (6 new in the new Challenge)
+- 4 originally-tracked pending gaps → still 0 (this issue was found
+  by re-running the suite, not previously tracked)
+

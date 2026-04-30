@@ -41,10 +41,41 @@ func (h *EmbeddingHandler) GenerateEmbeddings(c *gin.Context) {
 		return
 	}
 
-	var req services.EmbeddingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	// CONST-035 §c: parse the body as a permissive map first so we can
+	// accept both HelixAgent's native {"text":"..."} and OpenAI's
+	// canonical {"input":"..."} payload shape. Without this, a CLI
+	// agent following the OpenAI Embeddings docs sends {"input":"..."},
+	// the field gets silently dropped, and an embedding for an empty
+	// string is returned with success=true — a structural bluff that
+	// hides the missing input from the caller.
+	var raw map[string]any
+	if err := c.ShouldBindJSON(&raw); err != nil {
 		h.log.WithError(err).Error("Failed to bind embedding request")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var req services.EmbeddingRequest
+	if v, ok := raw["text"].(string); ok {
+		req.Text = v
+	} else if v, ok := raw["input"].(string); ok {
+		// OpenAI compatibility — accept the canonical field name.
+		req.Text = v
+	}
+	if v, ok := raw["model"].(string); ok {
+		req.Model = v
+	}
+	if v, ok := raw["dimension"].(float64); ok {
+		req.Dimension = int(v)
+	}
+	if v, ok := raw["batch"].(bool); ok {
+		req.Batch = v
+	}
+
+	if strings.TrimSpace(req.Text) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "embedding input is required: provide non-empty 'text' or 'input' field",
+		})
 		return
 	}
 

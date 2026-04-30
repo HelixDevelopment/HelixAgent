@@ -132,10 +132,17 @@ test_vision_analyze() {
     else
         record_assertion "vision" "capability_echoed" "false" "capability='$cap'"
     fi
-    if [[ "$status" == "completed" ]]; then
-        record_assertion "vision" "completed" "true" "status=completed"
+    # CONST-035 §c: vision endpoints honestly distinguish "completed"
+    # (real vision provider returned a result) from "stub_only" (no
+    # vision provider wired in — see vision_stub_honesty_challenge.sh).
+    # Both are valid honest responses; what we MUST NOT see is the
+    # pre-round-30 fabricated "completed" with hardcoded
+    # colors/captions, which is now caught separately. Here we just
+    # confirm the response carries one of the honest status values.
+    if [[ "$status" == "completed" || "$status" == "stub_only" ]]; then
+        record_assertion "vision" "honest_status" "true" "status=$status"
     else
-        record_assertion "vision" "completed" "false" "status='$status'"
+        record_assertion "vision" "honest_status" "false" "status='$status' (expected completed or stub_only)"
     fi
 }
 

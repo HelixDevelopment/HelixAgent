@@ -1097,6 +1097,13 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		{
 			embeddingGroup.POST("/generate", embeddingHandler.GenerateEmbeddings)
 			embeddingGroup.POST("/search", embeddingHandler.VectorSearch)
+			// CONST-035 §c: SimilaritySearch was a contract bluff — the
+			// handler was implemented and documented as
+			// "POST /v1/embeddings/similarity" but never registered in
+			// the router. Wired now (round 30) so the documented surface
+			// matches what the binary serves. Functionally an alias for
+			// VectorSearch sharing the same VectorSearchRequest shape.
+			embeddingGroup.POST("/similarity", embeddingHandler.SimilaritySearch)
 			embeddingGroup.POST("/index", embeddingHandler.IndexDocument)
 			embeddingGroup.POST("/batch-index", embeddingHandler.BatchIndexDocuments)
 			embeddingGroup.GET("/stats", embeddingHandler.GetEmbeddingStats)

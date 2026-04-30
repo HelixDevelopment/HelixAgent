@@ -30,10 +30,21 @@ type VisionRequest struct {
 	Prompt     string `json:"prompt,omitempty"`
 }
 
-// VisionResponse represents a vision analysis response
+// VisionResponse represents a vision analysis response.
+//
+// CONST-035 §c (anti-bluff): the Verified field discriminates a real
+// vision-provider-driven analysis (Verified=true, Status="completed")
+// from a stub response that returns hard-coded labels/captions
+// without ever calling a vision-capable LLM (Verified=false,
+// Status="stub_only"). Until a real vision provider is wired into
+// VisionHandler, every analysis endpoint returns Verified=false so
+// CLI agents and SDK consumers can detect that the rich response
+// fields (confidence scores, captions, categories) are fabricated
+// stubs, not actual model output.
 type VisionResponse struct {
 	Capability string                 `json:"capability"`
 	Status     string                 `json:"status"`
+	Verified   bool                   `json:"verified"`
 	Result     interface{}            `json:"result,omitempty"`
 	Text       string                 `json:"text,omitempty"`
 	OCRText    string                 `json:"ocr_text,omitempty"`
@@ -42,6 +53,23 @@ type VisionResponse struct {
 	Duration   int64                  `json:"duration_ms"`
 	Timestamp  int64                  `json:"timestamp"`
 }
+
+// validateVisionInput rejects requests with neither image nor image_url.
+// Without this guard, every vision endpoint silently returned 200 with
+// a fabricated "successful analysis" of an empty input — a structural
+// bluff per CONST-035 §c.
+func validateVisionInput(req VisionRequest) error {
+	if strings.TrimSpace(req.Image) == "" && strings.TrimSpace(req.ImageURL) == "" {
+		return fmt.Errorf("vision request requires either 'image' (base64) or 'image_url' field")
+	}
+	return nil
+}
+
+// stubOnlyStatus is the canonical status value emitted by every vision
+// endpoint until a real vision-capable provider is wired into
+// VisionHandler. Callers checking `status` can detect that the
+// response did not originate from a real model.
+const stubOnlyStatus = "stub_only"
 
 // Detection represents a detected object in an image
 type Detection struct {
@@ -226,44 +254,39 @@ func (h *VisionHandler) HandleCapability(c *gin.Context) {
 	}
 }
 
-// Analyze performs general image analysis
+// Analyze performs general image analysis.
+//
+// CONST-035 §c: this is a stub implementation. Until a real
+// vision-capable provider is wired in (OpenAI Vision / Gemini Vision
+// / Claude Vision), the rich analysis fields (dominant colors,
+// quality score, detected objects) are NOT computed from the input
+// — they are fabricated constants. The Verified=false discriminator
+// and Status="stub_only" tell callers exactly that.
 func (h *VisionHandler) Analyze(c *gin.Context) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	startTime := time.Now()
-
-	// Process the image
 	imageInfo := h.processImage(req.Image, req.ImageURL)
 
 	result := map[string]interface{}{
-		"analysis": map[string]interface{}{
-			"description":  "Image analysis completed successfully",
-			"content_type": imageInfo["content_type"],
-			"dimensions": map[string]interface{}{
-				"width":  imageInfo["width"],
-				"height": imageInfo["height"],
-			},
-			"features":        []string{"color", "composition", "objects"},
-			"dominant_colors": []string{"#FF0000", "#00FF00", "#0000FF"},
-			"quality_score":   0.85,
-		},
-		"objects_detected": []map[string]interface{}{
-			{
-				"label":      "general_content",
-				"confidence": 0.95,
-			},
-		},
+		"note":         "stub-only response: no vision-capable provider is wired into VisionHandler yet",
+		"content_type": imageInfo["content_type"],
+		"source":       imageInfo["source"],
 	}
 
 	response := VisionResponse{
 		Capability: "analyze",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
-		Text:       "Image analysis completed",
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
 		Timestamp:  time.Now().Unix(),
@@ -272,44 +295,32 @@ func (h *VisionHandler) Analyze(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// OCR extracts text from images
+// OCR extracts text from images. Stub-only — see Analyze for details.
 func (h *VisionHandler) OCR(c *gin.Context) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	startTime := time.Now()
-
-	// Process the image
-	imageInfo := h.processImage(req.Image, req.ImageURL)
-
-	// Simulate OCR result
-	ocrText := ""
-	if imageInfo["has_text"] == true {
-		ocrText = "Sample extracted text from image"
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
+	startTime := time.Now()
+	imageInfo := h.processImage(req.Image, req.ImageURL)
+
 	result := map[string]interface{}{
-		"extracted_text": ocrText,
-		"confidence":     0.92,
-		"text_blocks": []map[string]interface{}{
-			{
-				"text":         ocrText,
-				"confidence":   0.92,
-				"bounding_box": []float64{0, 0, 100, 20},
-			},
-		},
-		"language_detected": "en",
+		"note":           "stub-only response: no vision-capable OCR provider is wired in",
+		"extracted_text": "",
+		"content_type":   imageInfo["content_type"],
 	}
 
 	response := VisionResponse{
 		Capability: "ocr",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
-		OCRText:    ocrText,
-		Text:       ocrText,
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
 		Timestamp:  time.Now().Unix(),
@@ -318,38 +329,33 @@ func (h *VisionHandler) OCR(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Detect performs object detection
+// Detect performs object detection. Stub-only — see Analyze for details.
 func (h *VisionHandler) Detect(c *gin.Context) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	startTime := time.Now()
-
-	// Process the image
-	imageInfo := h.processImage(req.Image, req.ImageURL)
-
-	detections := []Detection{
-		{
-			Label:       "object",
-			Confidence:  0.95,
-			BoundingBox: []float64{10, 10, 90, 90},
-		},
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
+	startTime := time.Now()
+	imageInfo := h.processImage(req.Image, req.ImageURL)
+
 	result := map[string]interface{}{
-		"detections":         detections,
-		"total_objects":      len(detections),
-		"processing_time_ms": time.Since(startTime).Milliseconds(),
+		"note":          "stub-only response: no object-detection provider is wired in",
+		"detections":    []Detection{},
+		"total_objects": 0,
+		"content_type":  imageInfo["content_type"],
 	}
 
 	response := VisionResponse{
 		Capability: "detect",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
-		Detections: detections,
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
 		Timestamp:  time.Now().Unix(),
@@ -358,35 +364,32 @@ func (h *VisionHandler) Detect(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Caption generates a caption for the image
+// Caption generates a caption for the image. Stub-only — see Analyze.
 func (h *VisionHandler) Caption(c *gin.Context) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	startTime := time.Now()
-
-	// Process the image
 	imageInfo := h.processImage(req.Image, req.ImageURL)
 
-	caption := "An image showing visual content"
-
 	result := map[string]interface{}{
-		"caption":    caption,
-		"confidence": 0.88,
-		"alternative_captions": []string{
-			"Visual content captured in image format",
-			"A picture containing various elements",
-		},
+		"note":         "stub-only response: no caption-generating vision provider is wired in",
+		"caption":      "",
+		"content_type": imageInfo["content_type"],
 	}
 
 	response := VisionResponse{
 		Capability: "caption",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
-		Text:       caption,
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
 		Timestamp:  time.Now().Unix(),
@@ -395,42 +398,32 @@ func (h *VisionHandler) Caption(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Describe generates a detailed description of the image
+// Describe generates a detailed description. Stub-only — see Analyze.
 func (h *VisionHandler) Describe(c *gin.Context) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	startTime := time.Now()
-
-	// Process the image
 	imageInfo := h.processImage(req.Image, req.ImageURL)
 
-	description := "This image contains visual content. The image appears to show graphical elements with various colors and patterns."
-
 	result := map[string]interface{}{
-		"description": description,
-		"sections": []map[string]interface{}{
-			{
-				"area":        "foreground",
-				"description": "Main visual elements",
-			},
-			{
-				"area":        "background",
-				"description": "Supporting visual context",
-			},
-		},
-		"tags":       []string{"image", "visual", "content"},
-		"confidence": 0.85,
+		"note":         "stub-only response: no description-generating vision provider is wired in",
+		"description":  "",
+		"content_type": imageInfo["content_type"],
 	}
 
 	response := VisionResponse{
 		Capability: "describe",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
-		Text:       description,
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
 		Timestamp:  time.Now().Unix(),
@@ -439,46 +432,32 @@ func (h *VisionHandler) Describe(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// Classify classifies the image into categories
+// Classify classifies the image into categories. Stub-only — see Analyze.
 func (h *VisionHandler) Classify(c *gin.Context) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	startTime := time.Now()
-
-	// Process the image
-	imageInfo := h.processImage(req.Image, req.ImageURL)
-
-	classifications := []map[string]interface{}{
-		{
-			"category":   "general",
-			"confidence": 0.90,
-		},
-		{
-			"category":   "digital",
-			"confidence": 0.85,
-		},
-		{
-			"category":   "graphic",
-			"confidence": 0.75,
-		},
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
+	startTime := time.Now()
+	imageInfo := h.processImage(req.Image, req.ImageURL)
+
 	result := map[string]interface{}{
-		"classifications":  classifications,
-		"primary_category": "general",
-		"confidence":       0.90,
-		"all_categories":   []string{"general", "digital", "graphic"},
+		"note":            "stub-only response: no classification provider is wired in",
+		"classifications": []map[string]interface{}{},
+		"content_type":    imageInfo["content_type"],
 	}
 
 	response := VisionResponse{
 		Capability: "classify",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
-		Text:       "Image classified as: general",
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
 		Timestamp:  time.Now().Unix(),
@@ -487,28 +466,31 @@ func (h *VisionHandler) Classify(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// genericAnalyze handles generic analysis requests
+// genericAnalyze handles generic analysis requests. Stub-only — see Analyze.
 func (h *VisionHandler) genericAnalyze(c *gin.Context, capability string) {
 	var req VisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateVisionInput(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	startTime := time.Now()
-
-	// Process the image
 	imageInfo := h.processImage(req.Image, req.ImageURL)
 
 	result := map[string]interface{}{
-		"capability": capability,
-		"status":     "completed",
-		"message":    fmt.Sprintf("Analysis using %s capability completed", capability),
+		"capability":   capability,
+		"note":         fmt.Sprintf("stub-only response: capability '%s' is not backed by a real vision provider yet", capability),
+		"content_type": imageInfo["content_type"],
 	}
 
 	response := VisionResponse{
 		Capability: capability,
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     result,
 		Metadata:   imageInfo,
 		Duration:   time.Since(startTime).Milliseconds(),
@@ -518,14 +500,19 @@ func (h *VisionHandler) genericAnalyze(c *gin.Context, capability string) {
 	c.JSON(http.StatusOK, response)
 }
 
-// processImage extracts information from the image
+// processImage extracts information from the image.
+//
+// CONST-035 §c: previously this function fabricated width=100,
+// height=100 for every input regardless of what was actually
+// provided. Real dimensions require an image decode (we don't do
+// one here yet — that's a vision-provider job), so we no longer
+// emit dimension fields at all rather than emit lying ones.
+// content_type IS real — derived from base64 magic bytes or URL
+// extension.
 func (h *VisionHandler) processImage(imageBase64, imageURL string) map[string]interface{} {
 	info := map[string]interface{}{
 		"source":       "unknown",
-		"content_type": "image/png",
-		"width":        100,
-		"height":       100,
-		"has_text":     false,
+		"content_type": "application/octet-stream",
 	}
 
 	if imageBase64 != "" {

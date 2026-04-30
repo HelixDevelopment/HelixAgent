@@ -2677,3 +2677,123 @@ PRODUCT was the bluff.
 - 4 originally-tracked pending gaps → still 0 (this issue was found
   by re-running the suite, not previously tracked)
 
+---
+
+## Issue #58: Vision endpoints fabricated rich analysis results regardless of input (FIXED 2026-04-30, round 30)
+
+### Issue
+The most egregious structural bluff cluster found so far. All six
+`/v1/vision/*` analysis endpoints — `/analyze`, `/ocr`, `/detect`,
+`/caption`, `/describe`, `/classify` — were stubs that returned 200
+OK with hardcoded plausible-looking output regardless of input:
+
+| Endpoint | Fabricated output |
+|---|---|
+| `/v1/vision/analyze` | `dominant_colors: ["#FF0000","#00FF00","#0000FF"]`, `quality_score: 0.85`, `objects_detected: [{"label":"general_content","confidence":0.95}]`, `dimensions: 100x100` |
+| `/v1/vision/ocr` | `confidence: 0.92`, `language_detected: "en"`, `text_blocks: [{"text":"","confidence":0.92,"bounding_box":[0,0,100,20]}]` |
+| `/v1/vision/detect` | `detections: [{"label":"object","confidence":0.95,"bounding_box":[10,10,90,90]}]` |
+| `/v1/vision/caption` | `caption: "An image showing visual content"`, `confidence: 0.88`, `alternative_captions: [...]` |
+| `/v1/vision/describe` | A long pre-written paragraph + section breakdown (foreground/background) + tag list + `confidence: 0.85` |
+| `/v1/vision/classify` | `primary_category: "general"`, `confidence: 0.90`, `all_categories: ["general","digital","graphic"]` |
+
+`processImage` always returned `width=100, height=100` regardless of
+the actual image. Every endpoint returned `status: "completed"` and
+no discriminator existed to distinguish a real vision-provider
+result from the stub.
+
+A CLI agent or SDK consumer pointing their OpenAI Vision SDK or
+Gemini Vision SDK at HelixAgent's `/v1/vision/*` would receive
+plausible-looking responses and conclude the system worked — when in
+reality every input got the same fabricated output.
+
+Worse: 8 unit tests in
+`internal/handlers/vision_handler_test.go` were ENFORCING the bluff:
+they asserted `Status: "completed"`, `Detections[0].Label: "object"`
+with `Confidence: 0.95`, `Caption: "An image showing visual
+content"`, and so on. The tests passed every time because they
+locked in the buggy behavior.
+
+### Affected Files
+- `internal/handlers/vision_handler.go` — 6 analysis handlers + the
+  `genericAnalyze` fallback + `processImage` all fabricated output.
+- `internal/handlers/vision_handler_test.go` — 11 tests that
+  asserted the fabricated output as if it were correct.
+
+### Root Cause
+The vision handlers were originally written as a façade for a future
+vision-provider integration that never landed. Instead of returning
+a clear "not implemented" / "no provider configured" error, the
+authors filled in plausible mock data and shipped it. The unit tests
+were written against the mock data, locking the bluff in place. Over
+time the tests passed every CI run, every adversarial review, every
+"all green" status check — while the feature was never actually
+backed by a real vision model.
+
+### Fix (round 30, 2026-04-30)
+1. Added input validation:
+   `validateVisionInput()` rejects requests with neither `image` nor
+   `image_url` with HTTP 400 + clear error message.
+2. Added an honest discriminator field:
+   `VisionResponse.Verified bool` (always false until a real vision
+   provider is wired in) + `Status: "stub_only"` (was `"completed"`).
+3. Removed all fabricated rich fields:
+   - No more hardcoded `#FF0000`/`#00FF00`/`#0000FF` colors.
+   - No more `confidence: 0.95` on detections that didn't run.
+   - No more `caption: "An image showing visual content"`.
+   - No more 100x100 dimensions in `processImage` metadata.
+4. Each response now carries a `result.note` field explaining
+   "stub-only response: no vision-capable provider is wired in" so
+   callers see the honest status in plain English.
+5. Updated all 11 enforcing tests:
+   - Tests now assert `Status: stubOnlyStatus` and `Verified: false`.
+   - `TestVisionHandler_Analyze_EmptyRequest` and
+     `TestVisionHandler_ProcessImage_NoImageProvided` flipped from
+     "asserts 200 with `unknown` source" to "asserts 400".
+   - `TestVisionHandler_Detect_Success` no longer asserts a
+     fabricated detection — it asserts `Detections` is empty (the
+     honest stub-only output).
+
+### Verification
+New regression Challenge:
+`challenges/scripts/vision_stub_honesty_challenge.sh` (17
+assertions, mutation-tested):
+- All 6 endpoints return 400 on empty body ✓
+- All 6 endpoints emit `verified=false` + `status=stub_only` ✓
+- `analyze` response no longer contains the `#FF0000`/`#00FF00`/
+  `#0000FF` color sentinels ✓
+- `caption` response no longer contains the
+  `"An image showing visual content"` sentinel ✓
+- `describe` response no longer contains the
+  `"graphical elements with various colors and patterns"` sentinel ✓
+- `classify` response no longer carries the hardcoded
+  `general,digital,graphic` category triple ✓
+
+Mutation matrix (CONST-035 §1):
+| Mutation | Expected failure |
+|---|---|
+| Comment out `validateVisionInput` in any handler | `vision_<ep>.empty_400` fails for that endpoint |
+| Hardcode `Verified: true` | `honest_discriminator` fails for that endpoint |
+| Re-introduce the fabricated colors/captions/categories | `no_fabricated_*` assertions fail |
+| Revert processImage to return width=100,height=100 | metadata-shape regression visible (no direct assertion yet — separate guard would be useful) |
+
+### Side Effect: Existing Test Was a Bluff
+The pre-existing `multi_endpoint_roundtrip_challenge.sh` test 5
+(`test_vision_analyze`) asserted `status == "completed"` — which
+required the bluff to remain in place to pass. Updated to accept
+EITHER `"completed"` (when a real vision provider runs) OR
+`"stub_only"` (the honest current behavior), with a comment pointing
+at the dedicated honesty Challenge for the strict assertions.
+
+### Side Effect: SimilaritySearch Was Unreachable
+The `EmbeddingHandler.SimilaritySearch` method was implemented and
+documented as `POST /v1/embeddings/similarity` but never registered
+in `internal/router/router.go` — a contract bluff. Wired now (round
+30); also added the same 400-vs-500 discriminator that VectorSearch
+has so missing-input errors don't bubble up as 500.
+
+### Tally
+- 17 anti-bluff Challenges → **18** (added vision_stub_honesty)
+- 138 assertions → **155** (17 new in the new Challenge,
+  +1 reframed in multi_endpoint, -1 dropped from the pre-existing
+  vision assertion)
+

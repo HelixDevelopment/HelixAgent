@@ -107,7 +107,8 @@ func TestVisionResponse_Fields(t *testing.T) {
 	t.Parallel()
 	resp := VisionResponse{
 		Capability: "analyze",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Result:     map[string]interface{}{"key": "value"},
 		Text:       "result text",
 		OCRText:    "ocr text",
@@ -119,7 +120,8 @@ func TestVisionResponse_Fields(t *testing.T) {
 	}
 
 	assert.Equal(t, "analyze", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 	assert.NotNil(t, resp.Result)
 	assert.Equal(t, "result text", resp.Text)
 	assert.Equal(t, "ocr text", resp.OCRText)
@@ -145,7 +147,8 @@ func TestVisionResponse_JSONSerialization(t *testing.T) {
 	t.Parallel()
 	resp := VisionResponse{
 		Capability: "ocr",
-		Status:     "completed",
+		Status:     stubOnlyStatus,
+		Verified:   false,
 		Text:       "Hello World",
 		Duration:   100,
 		Timestamp:  1700000000,
@@ -306,8 +309,8 @@ func TestVisionHandler_Analyze_WithBase64Image(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "analyze", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
-	assert.Equal(t, "Image analysis completed", resp.Text)
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 	assert.NotNil(t, resp.Result)
 	assert.NotNil(t, resp.Metadata)
 	assert.True(t, resp.Timestamp > 0)
@@ -333,12 +336,17 @@ func TestVisionHandler_Analyze_WithImageURL(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "analyze", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 	metadata := resp.Metadata
 	assert.Equal(t, "url", metadata["source"])
 	assert.Equal(t, "image/png", metadata["content_type"])
 }
 
+// TestVisionHandler_Analyze_EmptyRequest verifies the empty-body
+// validation guard added in round 30 (CONST-035 §c). Empty input used
+// to silently return 200 with a fabricated "successful analysis" of
+// nothing — now rejected with 400 + a clear error message.
 func TestVisionHandler_Analyze_EmptyRequest(t *testing.T) {
 	t.Parallel()
 	_, r := setupVisionHandler()
@@ -350,15 +358,8 @@ func TestVisionHandler_Analyze_EmptyRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var resp VisionResponse
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	require.NoError(t, err)
-
-	assert.Equal(t, "analyze", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
-	assert.Equal(t, "unknown", resp.Metadata["source"])
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "image")
 }
 
 func TestVisionHandler_Analyze_InvalidJSON(t *testing.T) {
@@ -401,7 +402,8 @@ func TestVisionHandler_OCR_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "ocr", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 	assert.NotNil(t, resp.Result)
 }
 
@@ -445,11 +447,13 @@ func TestVisionHandler_Detect_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "detect", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
-	assert.Len(t, resp.Detections, 1)
-	assert.Equal(t, "object", resp.Detections[0].Label)
-	assert.Equal(t, 0.95, resp.Detections[0].Confidence)
-	assert.Len(t, resp.Detections[0].BoundingBox, 4)
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
+	// CONST-035 §c: stub-only path no longer fabricates a detection.
+	// The previous "1 object @ 0.95 confidence" output was a structural
+	// bluff. Real detections will appear here only when a real object
+	// detection provider is wired into VisionHandler.
+	assert.Empty(t, resp.Detections)
 }
 
 func TestVisionHandler_Detect_InvalidJSON(t *testing.T) {
@@ -492,8 +496,8 @@ func TestVisionHandler_Caption_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "caption", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
-	assert.Contains(t, resp.Text, "image")
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 }
 
 func TestVisionHandler_Caption_InvalidJSON(t *testing.T) {
@@ -536,8 +540,8 @@ func TestVisionHandler_Describe_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "describe", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
-	assert.Contains(t, resp.Text, "visual content")
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 }
 
 func TestVisionHandler_Describe_InvalidJSON(t *testing.T) {
@@ -580,8 +584,8 @@ func TestVisionHandler_Classify_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "classify", resp.Capability)
-	assert.Equal(t, "completed", resp.Status)
-	assert.Contains(t, resp.Text, "general")
+	assert.Equal(t, stubOnlyStatus, resp.Status)
+	assert.False(t, resp.Verified)
 }
 
 func TestVisionHandler_Classify_InvalidJSON(t *testing.T) {
@@ -644,7 +648,8 @@ func TestVisionHandler_HandleCapability_RoutesCorrectly(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.expected, resp.Capability)
-			assert.Equal(t, "completed", resp.Status)
+			assert.Equal(t, stubOnlyStatus, resp.Status)
+			assert.False(t, resp.Verified)
 		})
 	}
 }
@@ -837,6 +842,12 @@ func TestVisionHandler_ProcessImage_InvalidBase64(t *testing.T) {
 	assert.Equal(t, "unknown", resp.Metadata["source"])
 }
 
+// TestVisionHandler_ProcessImage_NoImageProvided was previously a
+// structural-bluff test: it asserted that an empty request body
+// produced 200 OK with metadata.source="unknown" — i.e. it locked
+// in the buggy behavior. Round 30 (CONST-035 §c) flips it to assert
+// the new honest behavior: empty body → 400 with a clear error
+// message.
 func TestVisionHandler_ProcessImage_NoImageProvided(t *testing.T) {
 	t.Parallel()
 	_, r := setupVisionHandler()
@@ -848,13 +859,8 @@ func TestVisionHandler_ProcessImage_NoImageProvided(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var resp VisionResponse
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	require.NoError(t, err)
-
-	assert.Equal(t, "unknown", resp.Metadata["source"])
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "image")
 }
 
 // ============================================================================

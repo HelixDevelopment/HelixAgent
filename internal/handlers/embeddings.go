@@ -220,7 +220,10 @@ func (h *EmbeddingHandler) ConfigureProvider(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Vector provider configured successfully", "provider": req.Provider})
 }
 
-// SimilaritySearch handles POST /v1/embeddings/similarity
+// SimilaritySearch handles POST /v1/embeddings/similarity.
+// Functionally identical to VectorSearch — same input shape, same
+// downstream call. Maintained as a separate handler for symmetry with
+// the documented endpoint surface.
 func (h *EmbeddingHandler) SimilaritySearch(c *gin.Context) {
 	if !h.checkEmbeddingManager(c) {
 		return
@@ -236,8 +239,19 @@ func (h *EmbeddingHandler) SimilaritySearch(c *gin.Context) {
 
 	response, err := h.embeddingManager.VectorSearch(c.Request.Context(), req)
 	if err != nil {
+		// CONST-035 §c: same 400-vs-500 discriminator as VectorSearch.
+		// Returning 500 for "missing query/vector" was a status-code
+		// bluff — the caller's request was malformed, not the
+		// server's fault.
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "must be provided") ||
+			strings.Contains(errMsg, "invalid") ||
+			strings.Contains(errMsg, "required") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+			return
+		}
 		h.log.WithError(err).Error("Failed to perform similarity search")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMsg})
 		return
 	}
 

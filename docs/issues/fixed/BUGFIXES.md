@@ -2431,3 +2431,112 @@ forever, or panicked invisibly. The 14 mutation-tested Challenges
 ensure each fix is a regression guard that fails loud when the
 underlying behavior breaks again.
 
+
+---
+
+## Issue #56 follow-up: 3 of 4 tracked-pending gaps closed (FIXED 2026-04-30, rounds 22-25)
+
+After Issue #56 closed 22+ bluffs, four tracked tickets remained as
+honestly-documented "still pending" gaps. Three of those are now
+closed end-to-end:
+
+### Round 22 — `#task-worker-pool-wiring` CLOSED (commit `1b8bfb35`)
+
+**Gap**: tasks created via POST `/v1/tasks` persisted but stayed in
+"pending" status forever because no worker drained the queue.
+
+**Fix**: new `internal/background/inmemory_worker.go` polls
+`repo.Dequeue` every 500ms and transitions tasks
+pending → running → completed (no-op execution; pluggable executors
+via `RegisterExecutor`). Includes 8-assertion mutation-tested
+Challenge `tasks_worker_drain_challenge.sh`.
+
+**Anti-bluff verification (live)**:
+- Real binary: task POST → "pending" → "completed" within 2s
+- Mutation (taskWorker.Start commented out): Challenge fails with
+  "Task stuck at status='pending' after 10s — DRAINER NOT WORKING"
+
+### Round 24 — `#ensemble-instance-manager-wiring` CLOSED (commit `5b634b35`)
+
+**Gap**: POST `/v1/ensemble/sessions` returned `status:
+"created_without_instances"` because the InstanceManager required a
+non-nil database connection that wasn't plumbed through RouterContext.
+
+**Fix**: relaxed `clis.NewInstanceManager` to accept nil db; added
+nil-guards at 5 instance_manager.go db-touch sites and 4
+coordinator.go db-touch sites. Sessions live in-memory via
+safe.Store; non-durable but lifecycle works end-to-end. Includes
+6-assertion mutation-tested Challenge
+`ensemble_session_lifecycle_challenge.sh`.
+
+**Real bugs found via the wiring**: 9 nil-deref panic sites:
+- instance_manager.go:142 CreateInstance second db.ExecContext
+- instance_manager.go:265 TerminateInstance db.ExecContext
+- instance_manager.go:680 healthCheckLoop db.Exec
+- instance_manager.go:892 lock cleanup db.Exec
+- coordinator.go:391 ExecuteSession db.ExecContext
+- coordinator.go:483 CancelSession db.ExecContext
+- coordinator.go:986 persistSession db.ExecContext
+- coordinator.go:1041 persistResult db.ExecContext
+- coordinator.go:1056 persistResult error_message db.ExecContext
+
+All 9 sites now nil-check m.db / c.db before dereferencing.
+
+### Round 25 — `#planning-llm-task-breakdown` CLOSED (commit `7868e53b`)
+
+**Gap**: `generateTaskBreakdown` returned the same 5-step skeleton
+for every input task. Function name implied LLM-driven decomposition
+(commit `6457574c` documented this as a comment-bluff).
+
+**Fix**: split into `llmTaskBreakdown` (production path, calls
+real LLM via `services.RequestService.ProcessRequest` with
+model="helixagent-llm") and `templateTaskBreakdown` (graceful
+fallback when LLM is unreachable). The `Verified` flag on each
+PlanTask honestly distinguishes the two paths: true=LLM-driven,
+false=template. Wired via `planningHandler.SetRequestService(
+providerRegistry.GetRequestService())` in router.go. Includes
+6-assertion mutation-tested Challenge
+`planning_llm_breakdown_challenge.sh`.
+
+**Honest-fallback semantics**: when the chosen LLM provider is
+unreachable (e.g., Zen returned HTML auth-redirect during one test
+run), the function logs a WARN with the specific error and falls
+through to template. End user always gets a valid response with
+≥1 task; operator gets a loud diagnosis of the underlying issue.
+
+### Final tracked-gap status
+
+| Ticket | Status |
+|--------|--------|
+| `#task-worker-pool-wiring` | ✅ CLOSED (round 22) |
+| `#ensemble-instance-manager-wiring` | ✅ CLOSED (round 24) |
+| `#planning-llm-task-breakdown` | ✅ CLOSED (round 25) |
+| `#ensemble-db-wiring` | 🟡 still pending (Postgres pool plumbing through RouterContext is a larger architectural lift; sessions are in-memory only with explicit nil-guards documenting the gap) |
+
+### Final regression suite — 16 mutation-tested Challenges, 132 assertions
+
+Each Challenge is mutation-verified: real binary → 100% PASS,
+mutated binary (deliberate feature break) → specific assertion FAILS
+with explicit BLUFF/PANIC/404 message. Total green:
+**132 passed / 0 failed / 2 skipped (honest skips for missing
+binaries)**.
+
+| Challenge | Assertions |
+|-----------|-----------:|
+| tasks_roundtrip | 11 |
+| tasks_worker_drain | 8 |
+| health_providers_bridge | 8 |
+| verification_health_field | 5 |
+| streaming_and_tools_roundtrip | 6-9 (variable: 4 extra fire when LLM picks tool_calls path) |
+| model_alias_dispatch | 4 |
+| agentic_planning_benchmark_llmops_roundtrip | 15 |
+| discovery_endpoints_no_panic | 9 |
+| multi_endpoint_roundtrip | 12 |
+| http_status_correctness | 7 |
+| silent_200_on_bogus_id | 10 |
+| format_skills_status | 6 |
+| format_multi_language | 5 (+2 honest skips for missing binaries) |
+| protocol_endpoints | 14 |
+| ensemble_session_lifecycle | 6 |
+| planning_llm_breakdown | 6 |
+

@@ -63,6 +63,7 @@ type RouterContext struct {
 	CogneeService           *services.CogneeService                // Exposed for container adapter injection
 	logger                  *logrus.Logger                         // For IntentBasedRouter creation
 	intentBasedRouter       *services.IntentBasedRouter            // For re-initialization with StartupVerifier
+	taskWorker              *background.InMemoryWorker             // Drains /v1/tasks queue (closes #task-worker-pool-wiring)
 }
 
 // Shutdown stops all background services started by the router
@@ -84,6 +85,9 @@ func (rc *RouterContext) Shutdown() {
 	}
 	if rc.debateService != nil {
 		rc.debateService.StopConstitutionWatcher()
+	}
+	if rc.taskWorker != nil {
+		rc.taskWorker.Stop()
 	}
 }
 
@@ -1208,20 +1212,23 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// BackgroundTaskRepository in internal/database/ via the same
 		// TaskRepository interface.
 		//
-		// Known gap (#task-worker-pool-wiring): no WorkerPool is plumbed
-		// here, so tasks created via POST stay in `pending` status — the
-		// queue accepts them but nothing drains it. The CRUD/list/detail
-		// API surface is fully usable and exercised by
-		// challenges/scripts/tasks_roundtrip_challenge.sh; execution
-		// behavior remains an explicit future-work item rather than a
-		// silent-503 bluff.
+		// #task-worker-pool-wiring CLOSED (round 22): the in-memory
+		// drainer below polls the queue and transitions every task
+		// pending → running → completed. Without registered executors,
+		// tasks complete with `task.completed_noop` events; with executors
+		// (RegisterExecutor) they run real work. Either way, the documented
+		// state-machine progresses, closing the contract bluff where every
+		// task stayed in "pending" forever.
 		taskRepo := background.NewInMemoryTaskRepository()
 		taskQueue := background.NewInMemoryTaskQueue(logger)
 		backgroundTaskHandler := handlers.NewBackgroundTaskHandler(
 			taskRepo, taskQueue, nil, nil, nil, nil, nil, nil, nil, nil, logger,
 		)
 		backgroundTaskHandler.RegisterRoutes(protected)
-		logger.Info("Background task endpoints registered at /v1/tasks/* (real CRUD wired; no worker-pool execution yet — tracking #task-worker-pool-wiring)")
+		taskWorker := background.NewInMemoryWorker(taskRepo, taskQueue, logger)
+		taskWorker.Start(context.Background())
+		rc.taskWorker = taskWorker // store for graceful shutdown
+		logger.Info("Background task endpoints registered at /v1/tasks/* (real CRUD + drainer worker wired; tasks transition pending→running→completed)")
 
 		// Discovery endpoints — wired with ProviderRegistry fallback so
 		// /v1/discovery/models always returns real data (each provider's

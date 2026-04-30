@@ -181,6 +181,22 @@ func (h *DiscoveryHandler) GetSelectedModels(c *gin.Context) {
 	if !h.checkDiscoveryService(c) {
 		return
 	}
+
+	// CONST-035 §c "Completion": when discoveryService isn't wired but
+	// registry IS, return an empty selected-models list with a clear
+	// `source` indicator instead of panicking on nil dereference.
+	// The full discoveryService selects/ranks models by verification
+	// score; without it there's no ranked subset to expose.
+	if h.discoveryService == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"models":      []SelectedModelResponse{},
+			"total":       0,
+			"source":      "registry",
+			"description": "discoveryService not wired; selected-model ranking requires verifier scores. Use /v1/discovery/models for the unranked registry-derived list.",
+		})
+		return
+	}
+
 	models := h.discoveryService.GetSelectedModels()
 
 	response := make([]SelectedModelResponse, len(models))
@@ -201,6 +217,7 @@ func (h *DiscoveryHandler) GetSelectedModels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"models":      response,
 		"total":       len(response),
+		"source":      "discovery_service",
 		"description": "These models are automatically selected for AI debate ensemble based on verification and scoring",
 	})
 }
@@ -217,6 +234,36 @@ func (h *DiscoveryHandler) GetDiscoveryStats(c *gin.Context) {
 	if !h.checkDiscoveryService(c) {
 		return
 	}
+
+	// CONST-035 §c: nil-check + registry fallback (see GetSelectedModels)
+	if h.discoveryService == nil {
+		fallback := h.fallbackDiscoveredModels()
+		byProvider := map[string]int{}
+		for _, m := range fallback {
+			byProvider[m.Provider]++
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"stats": gin.H{
+				"total_discovered":   len(fallback),
+				"total_verified":     0,
+				"total_selected":     0,
+				"code_visible_count": 0,
+				"average_score":      0,
+				"by_provider":        byProvider,
+			},
+			"source": "registry",
+			"description": map[string]string{
+				"total_discovered":   "Total models from registry fallback (verifier scores unavailable until discoveryService is wired)",
+				"total_verified":     "0 — no verifier service",
+				"total_selected":     "0 — no verifier service",
+				"code_visible_count": "0 — no verifier service",
+				"average_score":      "0 — no verifier service",
+				"by_provider":        "Breakdown by provider name from registry",
+			},
+		})
+		return
+	}
+
 	stats := h.discoveryService.GetDiscoveryStats()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -301,6 +348,18 @@ func (h *DiscoveryHandler) GetEnsembleModels(c *gin.Context) {
 	if !h.checkDiscoveryService(c) {
 		return
 	}
+
+	// CONST-035 §c: nil-check + empty fallback (see GetSelectedModels)
+	if h.discoveryService == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"models":      []any{},
+			"total":       0,
+			"source":      "registry",
+			"description": "Ensemble selection requires discoveryService (verifier-driven). Without it the ranked ensemble is empty.",
+		})
+		return
+	}
+
 	models := h.discoveryService.GetSelectedModels()
 
 	type EnsembleModel struct {
@@ -368,6 +427,17 @@ func (h *DiscoveryHandler) GetModelForDebate(c *gin.Context) {
 	if !h.checkDiscoveryService(c) {
 		return
 	}
+
+	// CONST-035 §c: nil-check (see GetSelectedModels). Without
+	// discoveryService there's no per-model debate metadata available.
+	if h.discoveryService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "service_unavailable",
+			"message": "discoveryService not wired; per-model debate metadata is verifier-driven and unavailable in registry-fallback mode.",
+		})
+		return
+	}
+
 	modelID := c.Param("model_id")
 
 	model, found := h.discoveryService.GetModelForDebate(modelID)

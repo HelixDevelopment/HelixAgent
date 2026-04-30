@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"dev.helix.agent/internal/services"
 	"github.com/gin-gonic/gin"
@@ -72,8 +73,19 @@ func (h *EmbeddingHandler) VectorSearch(c *gin.Context) {
 
 	response, err := h.embeddingManager.VectorSearch(c.Request.Context(), req)
 	if err != nil {
+		// CONST-035 §c: distinguish bad-input (400) from server-side
+		// failure (500). Returning 500 for "missing query/vector" was a
+		// status-code bluff — the caller's request was malformed, not the
+		// server's fault.
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "must be provided") ||
+			strings.Contains(errMsg, "invalid") ||
+			strings.Contains(errMsg, "required") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+			return
+		}
 		h.log.WithError(err).Error("Failed to perform vector search")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMsg})
 		return
 	}
 

@@ -3,12 +3,31 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"dev.helix.agent/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+// cogneeStatusFromError chooses the right HTTP status for a cognee error.
+// CONST-035 §c: "cognee service is disabled" is a configuration state
+// (503 Service Unavailable), not a server error (500). Caller's request
+// was syntactically valid; the service simply isn't enabled in this
+// deployment. Returning 500 for this case was a status-code bluff.
+func cogneeStatusFromError(err error) int {
+	if err == nil {
+		return http.StatusOK
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "service is disabled") ||
+		strings.Contains(msg, "not ready") ||
+		strings.Contains(msg, "service unavailable") {
+		return http.StatusServiceUnavailable
+	}
+	return http.StatusInternalServerError
+}
 
 // CogneeAPIHandler handles all Cognee API endpoints
 type CogneeAPIHandler struct {
@@ -105,7 +124,7 @@ func (h *CogneeAPIHandler) AddMemory(c *gin.Context) {
 	memory, err := h.cogneeService.AddMemory(ctx, req.Content, req.Dataset, req.ContentType, req.Metadata)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to add memory")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -142,7 +161,7 @@ func (h *CogneeAPIHandler) SearchMemory(c *gin.Context) {
 	result, err := h.cogneeService.SearchMemory(ctx, req.Query, req.Dataset, req.Limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to search memory")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -188,7 +207,7 @@ func (h *CogneeAPIHandler) Cognify(c *gin.Context) {
 
 	if err := h.cogneeService.Cognify(ctx, req.Datasets); err != nil {
 		h.logger.WithError(err).Error("Failed to cognify")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -230,7 +249,7 @@ func (h *CogneeAPIHandler) GetInsights(c *gin.Context) {
 	insights, err := h.cogneeService.GetInsights(ctx, req.Query, req.Datasets, req.Limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get insights")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -268,7 +287,7 @@ func (h *CogneeAPIHandler) GetGraphCompletion(c *gin.Context) {
 	completions, err := h.cogneeService.GetGraphCompletion(ctx, req.Query, req.Datasets, req.Limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get graph completion")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -303,7 +322,7 @@ func (h *CogneeAPIHandler) ProcessCode(c *gin.Context) {
 	result, err := h.cogneeService.ProcessCode(ctx, req.Code, req.Language, req.Dataset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to process code")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -339,7 +358,7 @@ func (h *CogneeAPIHandler) CreateDataset(c *gin.Context) {
 	ctx := c.Request.Context()
 	if err := h.cogneeService.CreateDataset(ctx, req.Name, req.Description, req.Metadata); err != nil {
 		h.logger.WithError(err).Error("Failed to create dataset")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -357,7 +376,7 @@ func (h *CogneeAPIHandler) ListDatasets(c *gin.Context) {
 	datasets, err := h.cogneeService.ListDatasets(ctx)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list datasets")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -379,7 +398,7 @@ func (h *CogneeAPIHandler) DeleteDataset(c *gin.Context) {
 	ctx := c.Request.Context()
 	if err := h.cogneeService.DeleteDataset(ctx, name); err != nil {
 		h.logger.WithError(err).Error("Failed to delete dataset")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -404,7 +423,7 @@ func (h *CogneeAPIHandler) VisualizeGraph(c *gin.Context) {
 	graph, err := h.cogneeService.VisualizeGraph(ctx, dataset, format)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to visualize graph")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -440,7 +459,7 @@ func (h *CogneeAPIHandler) ProvideFeedback(c *gin.Context) {
 	ctx := c.Request.Context()
 	if err := h.cogneeService.ProvideFeedback(ctx, req.QueryID, req.Query, req.Response, req.Relevance, req.Approved); err != nil {
 		h.logger.WithError(err).Error("Failed to record feedback")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -487,7 +506,7 @@ func (h *CogneeAPIHandler) EnsureRunning(c *gin.Context) {
 	ctx := c.Request.Context()
 	if err := h.cogneeService.EnsureRunning(ctx); err != nil {
 		h.logger.WithError(err).Error("Failed to start Cognee")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(cogneeStatusFromError(err), gin.H{"error": err.Error()})
 		return
 	}
 

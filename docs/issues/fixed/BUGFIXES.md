@@ -2250,3 +2250,184 @@ lost terminals, killed AI agents, half-flushed Android builds. CONST-036
 closes this with both a code-layer ban (no command may directly terminate a
 session) and an operational discipline (don't spawn workloads that will
 plausibly force a manual logout).
+
+---
+
+## Issue #56: Anti-bluff sweep — 22+ contract/structural/wrapper bluffs across 16 endpoint groups (FIXED 2026-04-30)
+
+**Summary:** Multi-round CONST-035 §c "Full usability" sweep that drove
+HelixAgent's HTTP API from "looks fine in tests" to "actually works for
+end users." Discovered and fixed 22+ bugs across nil-deref panics,
+status-code bluffs, structural silent-200s, formatter `-` argument
+bugs, response-shape omissions, comment bluffs, and one comment-bluff
+in code that promised LLM-driven behavior delivered template-only
+output.
+
+### Bugs fixed (chronological by commit on 2026-04-30 main):
+
+#### Wiring + nil-deref panics
+1. **`/v1/scoring/*`, `/v1/verification/*`, `/v1/health/*`, `/v1/monitoring/*`** —
+   handlers constructed with `nil` services silently returned 503.
+   Wired real `verifier.NewScoringService`, `NewVerificationService`,
+   `NewHealthService`, `llm.NewDefaultCircuitBreakerManager`, and
+   `adapters.NewExtendedProviderRegistry`. (Commits up through
+   `8ef648ca`)
+
+2. **`/v1/discovery/{models/selected,stats,ensemble,debate-model}`** —
+   4 of 5 handlers panicked with nil-pointer deref when
+   discoveryService was nil (registry-only mode). Symptom: 500 with
+   empty body. Fix: explicit nil-check + graceful registry fallback.
+   (Commit `bdad3927`)
+
+3. **`/v1/ensemble/sessions` POST** — two layered nil-deref panics
+   (`m.db` in InstanceManager.persistInstance, `c.instanceMgr` in
+   Coordinator.CreateSession). Fix: nil-guard at both sites; sessions
+   created in-memory with status="created_without_instances" when
+   InstanceManager unwired. (Commit `d879b943`)
+
+#### HTTP status-code bluffs (5xx for client-side errors)
+4. **`/v1/embeddings/search`** — empty body returned 500 with body
+   "either query or vector must be provided". That's a 400 (bad input).
+   Fix: route "must be provided"/"invalid"/"required" errors to 400.
+   (Commit `7647e621`)
+
+5. **`/v1/cognee/*` (12 sites)** — service-disabled returned 500. New
+   `cogneeStatusFromError` helper routes "service is disabled" /
+   "not ready" to 503. (Commit `7647e621`)
+
+6. **`/v1/benchmark/run`** — unknown benchmark_type returned 500 "benchmark
+   not found". Fix: route that error to 400. (Commit `ec5902f7`)
+
+7. **`/v1/format`** — invalid language returned 500 "no formatters
+   available for language: X". Fix: route to 400. (Commit `c2c623c9`)
+
+#### Structural silent-200 bluffs
+8. **`/v1/embeddings/{index,batch-index}`** — accepted `{}` body and
+   returned 200 "Document indexed successfully" — a no-op. Fix: add
+   `binding:"required"` on `id`/`content`/`documents`. (Commit `ec5902f7`)
+
+9. **`/v1/tasks/<bogus>/{logs,resources}`** — returned 200 with empty
+   list for ANY id. Caller couldn't distinguish "task exists, no logs"
+   from "task doesn't exist". Fix: GetByID-then-return — 404 if not
+   found. (Commit `7e245080`)
+
+10. **`/v1/health/provider/<bogus>/available`** — same pattern, 200
+    with `available:false` for unregistered providers. Fix: 404 if not
+    in CircuitBreaker registry. (Commit `7e245080`)
+
+11. **`/v1/skills/<bogus_category>`** — returned 200 with empty skill
+    list for ANY category string. Fix: validate against
+    `service.GetCategories()`; 404 if not found. (Commit `c2c623c9`)
+
+#### Wrapper bluffs (200 with success:false in body)
+12. **`/v1/format` failed formatter** — returned HTTP 200 with body
+    `{"success":false,"error":"..."}`. SDK consumers reading status
+    code alone thought format succeeded. Fix: when result.Success is
+    false, return HTTP 422 Unprocessable Entity. (Commit `c2c623c9`)
+
+#### Field-naming + omitempty bluffs
+13. **`/v1/verification/health`** — `total_providers` was assigned
+    `stats.TotalVerifications` (verification-attempt count, not
+    provider count). End user saw `healthy_providers: 25,
+    total_providers: 0` — contradictory. Fix: use
+    `len(GetAllProviderHealth())`. New method added to registry.
+    (Commit `b6a78977`)
+
+14. **`/v1/embeddings/search`** — `Results` field tagged `omitempty` so
+    empty result sets stripped the field entirely. Caller couldn't
+    iterate. Fix: remove `omitempty`, add explicit `Count` field, fill
+    nil → empty slice before serialization. (Commit `e00c6d03`)
+
+#### Formatter binary-invocation bugs (every Go/Rust/Python format silently failed)
+15. **gofmt** — invoked as `gofmt -` which lstats a literal file `-`
+    and exits 2. Caller saw `success:false`. Fix: new
+    `NewNativeFormatterStdinNoDash` constructor that wires stdin
+    without appending `-`. gofmt switched to it. (Commit `d82d631c`)
+
+16. **rustfmt** — same `-` bug. Fixed identically. (Commit `da10a8ca`)
+
+17. **yamlfmt + biome + prettier** — same pattern. Each uses a flag
+    (`--in`, `--stdin-file-path=`, `--stdin-filepath`) that activates
+    stdin mode without needing positional `-`. Fixed identically.
+    (Commit `a86721b4`)
+
+18. **Python ruff/black registration order** — black registered first
+    in `register.go`. On systems without black installed (most fresh
+    deployments), the system tried black, failed with "executable not
+    found", returned `success:false`. ruff was registered second and
+    never tried. Fix: swap order so ruff is registered first per the
+    documented preference in `internal/formatters/config.go`. (Commit
+    `da10a8ca`)
+
+#### Bridge wirings (closing connectivity gaps)
+19. **`/v1/health/providers` empty list** — verifier `HealthService`
+    started empty even though `/v1/health` (different system) reported
+    25 providers. Fix: at boot, iterate `providerRegistry.ListProviders()`
+    and call `healthSvc.AddProvider`. 25 providers now visible. (Commit
+    `e0d06b96`)
+
+20. **`/v1/verification/models` total=0** — `ExtendedProviderRegistry`
+    not populated. Fix: at boot, iterate providers and call
+    `extRegistry.RegisterProvider` with each provider's
+    `GetCapabilities().SupportedModels`. 982 models registered across
+    25 providers. (Commit `8ef648ca`)
+
+21. **`/v1/health/circuit-breakers` route mismatch** — route was
+    plural-no-param but handler read `:provider_id`. Fix: new
+    `GetAllCircuitBreakers()` method; handler returns list-all when
+    no param, single lookup when param. (Commit `a84d3175`)
+
+22. **`/v1/tasks/*` lifecycle** — tasks created via POST stayed in
+    "pending" forever because no worker drained the queue. Fix: new
+    `internal/background/inmemory_worker.go` polls
+    `repo.Dequeue` every 500ms and transitions tasks
+    pending→running→completed (no-op execution; pluggable executors
+    via `RegisterExecutor`). Closes #task-worker-pool-wiring tracking
+    ticket. (Commit `1b8bfb35`)
+
+#### Comment bluffs
+23. **`generateTaskBreakdown` in planning_handler.go** — comment said
+    "In production this would use LLM" but the function returned the
+    SAME 5-step skeleton for every input task. Caller saw
+    LLM-looking responses but they were templates. Fix: rewrote the
+    doc comment to be honest about template behavior; documented
+    `Verified=false` as the discriminator between template and
+    LLM-generated content. Tracking: #planning-llm-task-breakdown.
+    (Commit `6457574c`)
+
+### Anti-bluff regression suite (14 mutation-tested Challenges)
+
+Each Challenge follows the canonical pattern: real binary → 100% PASS,
+mutated binary (deliberate feature break) → specific assertion FAILS
+with explicit BLUFF/PANIC/404 message.
+
+| Challenge | Assertions |
+|-----------|-----------:|
+| tasks_roundtrip | 11 |
+| tasks_worker_drain | 8 |
+| health_providers_bridge | 8 |
+| verification_health_field | 5 |
+| streaming_and_tools_roundtrip | 9 |
+| model_alias_dispatch | 4 |
+| agentic_planning_benchmark_llmops_roundtrip | 15 |
+| discovery_endpoints_no_panic | 9 |
+| multi_endpoint_roundtrip | 12 |
+| http_status_correctness | 7 |
+| silent_200_on_bogus_id | 10 |
+| format_skills_status | 6 |
+| format_multi_language | 5 (+ 2 honest skips for missing binaries) |
+| protocol_endpoints | 14 |
+| **Total** | **123 passed / 0 failed / 2 skipped** |
+
+### Why this matters for end users
+
+The user mandate "execution of tests and Challenges MUST guarantee the
+quality, the completion and full usability by end users of the
+product" was being silently violated. Every bug above had this shape:
+HelixAgent's existing tests passed, the API surface looked fine on
+inspection, but trying to actually USE the documented endpoint
+returned wrong status codes, missing fields, fabricated data, hung
+forever, or panicked invisibly. The 14 mutation-tested Challenges
+ensure each fix is a regression guard that fails loud when the
+underlying behavior breaks again.
+

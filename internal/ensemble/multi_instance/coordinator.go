@@ -283,6 +283,18 @@ func (c *Coordinator) CreateSession(
 		CreatedAt:    time.Now(),
 	}
 
+	// CONST-035 §c "Completion": when no InstanceManager is wired (the
+	// Coordinator was constructed with nil for testing/SDK probing) we
+	// can't create real CLI-agent instances. Returning a session with
+	// no instances + an explicit "no_instance_manager" status is more
+	// honest than the silent nil-deref panic at instanceMgr.CreateInstance.
+	// Tracking: #ensemble-instance-manager-wiring.
+	if c.instanceMgr == nil {
+		session.Status = "created_without_instances"
+		c.sessions.Put(session.ID, session)
+		return session, nil
+	}
+
 	// Create primary instance
 	if participants.Primary.Type != "" {
 		inst, err := c.instanceMgr.CreateInstance(

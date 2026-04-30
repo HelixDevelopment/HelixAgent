@@ -507,6 +507,15 @@ func (m *InstanceManager) cleanupInstance(ctx context.Context, inst *AgentInstan
 }
 
 func (m *InstanceManager) persistInstance(ctx context.Context, inst *AgentInstance) error {
+	// CONST-035 §c: when no DB is wired (test/dev mode), skip persistence
+	// rather than panicking on m.db.ExecContext nil deref. The instance is
+	// still tracked in-memory by m.instances.Put() in CreateInstance, so
+	// /v1/ensemble/sessions stays usable; durability is sacrificed when
+	// no DB is configured. Tracking: #ensemble-db-wiring.
+	if m.db == nil {
+		return nil
+	}
+
 	configJSON, err := json.Marshal(inst.Config)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
@@ -544,6 +553,13 @@ func (m *InstanceManager) persistInstance(ctx context.Context, inst *AgentInstan
 }
 
 func (m *InstanceManager) recoverInstances(ctx context.Context) error {
+	// CONST-035 §c: skip recovery when no DB is wired (sibling of the
+	// persistInstance nil-guard). No persisted state means nothing to
+	// recover; constructor logs a warning rather than crashing.
+	if m.db == nil {
+		return nil
+	}
+
 	// Query instances that should be active
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT id, agent_type, instance_name, status, config, provider_config,

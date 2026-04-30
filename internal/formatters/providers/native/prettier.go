@@ -26,11 +26,17 @@ func NewPrettierFormatter(logger *logrus.Logger) *NativeFormatter {
 		SupportsConfig:  true,
 	}
 
-	return NewNativeFormatter(
+	// prettier's `--stdin-filepath temp.js` flag activates stdin mode
+	// and supplies a virtual filename for parser inference. Adding the
+	// conventional trailing `-` (via stdinFlag=true) gives prettier an
+	// extra positional that it interprets as a filename to format
+	// alongside stdin. Use the no-dash variant. CONST-035 §c
+	// regression-fix (2026-04-30) — same pattern as gofmt/rustfmt/
+	// yamlfmt/biome fixes.
+	return NewNativeFormatterStdinNoDash(
 		metadata,
 		"prettier",
 		[]string{"--stdin-filepath", "temp.js"},
-		true,
 		logger,
 	)
 }

@@ -26,5 +26,11 @@ func NewYamlfmtFormatter(logger *logrus.Logger) *NativeFormatter {
 		SupportsConfig:  true,
 	}
 
-	return NewNativeFormatter(metadata, "yamlfmt", []string{"-in"}, true, logger)
+	// yamlfmt's `-in` flag activates stdin mode. Adding the conventional
+	// trailing `-` (via stdinFlag=true) makes yamlfmt try to read a file
+	// named `-` AND produce noisy "Failed reading file: stat -" output
+	// alongside legitimate stdin processing. Use the no-dash variant so
+	// the invocation is just `yamlfmt -in`. CONST-035 §c regression-fix
+	// (2026-04-30) — same pattern as gofmt/rustfmt fixes.
+	return NewNativeFormatterStdinNoDash(metadata, "yamlfmt", []string{"-in"}, logger)
 }

@@ -60,8 +60,13 @@ type VectorSearchRequest struct {
 
 // VectorSearchResponse represents the response from vector search
 type VectorSearchResponse struct {
-	Success   bool                 `json:"success"`
-	Results   []VectorSearchResult `json:"results,omitempty"`
+	Success bool                 `json:"success"`
+	// Results is intentionally NOT omitempty: when no documents match,
+	// callers expect `results: []` to appear in JSON so they can iterate
+	// without testing for field presence first. CONST-035 §c (no
+	// surprising omissions in documented response shape).
+	Results   []VectorSearchResult `json:"results"`
+	Count     int                  `json:"count"`
 	Error     string               `json:"error,omitempty"`
 	Timestamp time.Time            `json:"timestamp"`
 }
@@ -521,10 +526,14 @@ func (e *EmbeddingManager) VectorSearch(ctx context.Context, req VectorSearchReq
 		results = results[:limit]
 	}
 
+	if results == nil {
+		results = []VectorSearchResult{}
+	}
 	response := &VectorSearchResponse{
 		Timestamp: time.Now(),
 		Success:   true,
 		Results:   results,
+		Count:     len(results),
 	}
 
 	e.log.WithField("resultCount", len(results)).Info("Vector search completed")

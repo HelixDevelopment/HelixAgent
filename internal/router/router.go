@@ -1103,9 +1103,19 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			embeddingGroup.GET("/providers", embeddingHandler.ListEmbeddingProviders)
 		}
 
-		// RAG (Retrieval Augmented Generation) endpoints
+		// RAG (Retrieval Augmented Generation) endpoints.
+		//
+		// Pipeline is intentionally nil: RAG requires both an embedding
+		// model registry AND a reachable vector database (Chroma /
+		// Qdrant / Weaviate). Wiring requires non-trivial config that
+		// HelixAgent does not currently surface as env vars. Until that
+		// config is added, every /v1/rag/* endpoint returns 503 with
+		// {"status":"not_configured","details":{"error":"RAG pipeline
+		// not initialized"}} — honest behavior, no bluff. To enable
+		// RAG, construct rag.NewPipeline(cfg, embeddingRegistry), call
+		// pipeline.Initialize(ctx), and pass the result here.
 		ragHandler := handlers.NewRAGHandler(handlers.RAGHandlerConfig{
-			Pipeline: nil, // Pipeline initialized lazily on first use
+			Pipeline: nil,
 			Logger:   logger,
 		})
 		ragGroup := protected.Group("/rag")

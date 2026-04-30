@@ -1384,6 +1384,11 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 
 		// Planning algorithm endpoints (HiPlan, MCTS, Tree of Thoughts)
 		planningHandler := handlers.NewPlanningHandler(logger)
+		// Wire LLM RequestService so generateTaskBreakdown produces real
+		// task-specific decomposition (not the 5-step template). Closes
+		// #planning-llm-task-breakdown. Falls back to template when the
+		// LLM is unreachable.
+		planningHandler.SetRequestService(providerRegistry.GetRequestService())
 		handlers.RegisterPlanningRoutes(protected, planningHandler)
 		logger.Info("Planning algorithm endpoints registered at /v1/planning/*")
 

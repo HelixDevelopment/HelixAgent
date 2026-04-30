@@ -2,15 +2,19 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
+	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/planning"
+	"dev.helix.agent/internal/services"
 )
 
 // PlanningHandler provides HTTP endpoints for AI planning algorithms.
@@ -20,7 +24,8 @@ import (
 //	POST /v1/planning/mcts   - Monte Carlo Tree Search
 //	POST /v1/planning/tot    - Tree of Thoughts
 type PlanningHandler struct {
-	logger *logrus.Logger
+	logger         *logrus.Logger
+	requestService *services.RequestService // optional — when wired, generateTaskBreakdown uses real LLM
 }
 
 // NewPlanningHandler creates a new planning handler.
@@ -31,6 +36,13 @@ func NewPlanningHandler(logger *logrus.Logger) *PlanningHandler {
 	return &PlanningHandler{
 		logger: logger,
 	}
+}
+
+// SetRequestService wires the LLM request service so generateTaskBreakdown
+// can call a real LLM instead of returning the 5-step template. CONST-035 §c
+// (closing #planning-llm-task-breakdown).
+func (h *PlanningHandler) SetRequestService(rs *services.RequestService) {
+	h.requestService = rs
 }
 
 // --- HiPlan ---
@@ -1033,24 +1045,122 @@ func (h *PlanningHandler) UpdatePlanTask(c *gin.Context) {
 	})
 }
 
-// generateTaskBreakdown generates a generic 5-step task template.
+// generateTaskBreakdown decomposes a goal into PlanTasks. When a
+// RequestService is wired (the production path, set up in router.go),
+// it calls a real LLM to produce task-specific decomposition. When
+// not wired (test/dev mode), it falls back to a 5-step generic
+// template documented as such on each task's Verified=false flag.
 //
-// CONST-035 §c honesty marker: the comment "In production this would
-// use LLM to break down the task" used to imply this was LLM-driven,
-// but the function actually returns the SAME 5 generic descriptions
-// for every input task. Caller passing different `task` values gets
-// the same skeleton with only the first step's description varying.
-// That is a documentation/comment bluff — the function name promises
-// LLM-driven breakdown, the implementation returns a template.
-//
-// This is kept as a template generator for now (LLM wiring is non-
-// trivial and would change the response latency profile from <1ms to
-// 25-45s). Each PlanTask now carries `template: true` in metadata via
-// a Verified=false flag indicating it's not LLM-generated content,
-// so end-users / SDKs can distinguish template skeleton from real
-// LLM-driven breakdown when that arrives. Tracking:
-// #planning-llm-task-breakdown.
+// CONST-035 §c: closes #planning-llm-task-breakdown. The previous
+// version was always template-only, which made the function name
+// (generateTaskBreakdown) a comment-bluff. Now the production code
+// path actually runs LLM decomposition; the template path is reserved
+// for graceful fallback when the LLM is unreachable or no
+// RequestService is configured.
 func (h *PlanningHandler) generateTaskBreakdown(task string) []PlanTask {
+	if h.requestService != nil {
+		tasks, err := h.llmTaskBreakdown(task)
+		if err == nil && len(tasks) > 0 {
+			return tasks
+		}
+		// LLM call failed — log the error detail (per CONST-035 §c
+		// honest gap-marking) and fall through to template
+		// (fail-OPEN per CLAUDE.md cold-start guidance).
+		if err != nil {
+			h.logger.WithError(err).Warn("LLM task breakdown failed; falling back to template")
+		} else {
+			h.logger.Warn("LLM task breakdown returned 0 tasks; falling back to template")
+		}
+	}
+	return h.templateTaskBreakdown(task)
+}
+
+// llmTaskBreakdown calls the LLM via the wired RequestService, parses
+// the response as a JSON array of {description, can_parallel, dependencies},
+// and converts to PlanTasks.
+func (h *PlanningHandler) llmTaskBreakdown(task string) ([]PlanTask, error) {
+	if h.requestService == nil {
+		return nil, fmt.Errorf("no request service")
+	}
+
+	prompt := fmt.Sprintf(`You are a planning agent. Break down the following goal into a list of concrete, actionable tasks. Return ONLY a JSON array of objects with this exact shape (no prose, no markdown fences):
+
+[
+  {"description": "concise task description", "can_parallel": false, "dependencies": []},
+  ...
+]
+
+Each description should be ≤ 80 chars. dependencies are a list of task indices (0-based) that must complete before this task. can_parallel is true if this task can run alongside other can_parallel tasks. Aim for 3-7 tasks.
+
+Goal: %s`, truncate(task, 500))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req := &models.LLMRequest{
+		ID:     "planning-breakdown-" + generateTaskID(),
+		Prompt: prompt,
+		ModelParams: models.ModelParameters{
+			Model:       "helixagent-llm",
+			Temperature: 0.3,
+			MaxTokens:   1200,
+		},
+	}
+
+	resp, err := h.requestService.ProcessRequest(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("ProcessRequest: %w", err)
+	}
+	if resp == nil || resp.Content == "" {
+		return nil, fmt.Errorf("empty LLM response")
+	}
+
+	// Strip markdown code fences if the LLM ignored the instruction
+	body := strings.TrimSpace(resp.Content)
+	body = strings.TrimPrefix(body, "```json")
+	body = strings.TrimPrefix(body, "```")
+	body = strings.TrimSuffix(body, "```")
+	body = strings.TrimSpace(body)
+
+	type llmTask struct {
+		Description  string   `json:"description"`
+		CanParallel  bool     `json:"can_parallel"`
+		Dependencies []int    `json:"dependencies"`
+	}
+	var raw []llmTask
+	if err := json.Unmarshal([]byte(body), &raw); err != nil {
+		return nil, fmt.Errorf("parse LLM JSON: %w", err)
+	}
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("LLM returned empty task list")
+	}
+
+	// Convert to PlanTasks; resolve dependency indices to task IDs
+	out := make([]PlanTask, len(raw))
+	for i, t := range raw {
+		out[i] = PlanTask{
+			ID:           generateTaskID(),
+			Description:  truncate(t.Description, 200),
+			Status:       TaskStatusPending,
+			Dependencies: []string{},
+			CanParallel:  t.CanParallel,
+			Verified:     true, // LLM-generated, not template — discriminator for callers
+		}
+	}
+	// Second pass to resolve indices → IDs (avoid use-before-definition)
+	for i, t := range raw {
+		for _, depIdx := range t.Dependencies {
+			if depIdx >= 0 && depIdx < len(out) && depIdx != i {
+				out[i].Dependencies = append(out[i].Dependencies, out[depIdx].ID)
+			}
+		}
+	}
+	return out, nil
+}
+
+// templateTaskBreakdown is the fallback when no LLM is wired or the
+// LLM call fails. Returns the canonical 5-step skeleton.
+func (h *PlanningHandler) templateTaskBreakdown(task string) []PlanTask {
 	return []PlanTask{
 		{
 			ID:           generateTaskID(),

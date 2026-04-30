@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"strconv"
@@ -65,6 +66,7 @@ type RouterContext struct {
 	logger                  *logrus.Logger                         // For IntentBasedRouter creation
 	intentBasedRouter       *services.IntentBasedRouter            // For re-initialization with StartupVerifier
 	taskWorker              *background.InMemoryWorker             // Drains /v1/tasks queue (closes #task-worker-pool-wiring)
+	ensembleSQLDB           *sql.DB                                // Optional Postgres pool for ensemble durability (closes #ensemble-db-wiring when reachable)
 }
 
 // Shutdown stops all background services started by the router
@@ -89,6 +91,9 @@ func (rc *RouterContext) Shutdown() {
 	}
 	if rc.taskWorker != nil {
 		rc.taskWorker.Stop()
+	}
+	if rc.ensembleSQLDB != nil {
+		_ = rc.ensembleSQLDB.Close() //nolint:errcheck
 	}
 }
 
@@ -1128,30 +1133,46 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		protocolSSEHandler.SetRAGHandler(ragHandler)
 		logger.Info("RAG endpoints registered at /v1/rag/*")
 
-		// Ensemble session/team management endpoints — wire a real
-		// multi_instance.Coordinator AND a real clis.InstanceManager so
-		// /v1/ensemble/sessions POST creates real CLI-agent instances
-		// instead of the previous "created_without_instances" bluff.
+		// Ensemble session/team management endpoints — wire real
+		// multi_instance.Coordinator + clis.InstanceManager + (when
+		// reachable) Postgres *sql.DB for durable session persistence.
 		//
-		// CONST-035 §c: closes #ensemble-instance-manager-wiring tracking
-		// ticket from rounds 11-12. The InstanceManager runs fully
-		// in-memory (no Postgres pool needed; persistInstance and
-		// recoverInstances both nil-check m.db and skip persistence
-		// when no DB is configured). Sessions don't survive restart, but
-		// the documented session lifecycle (create → execute → status)
-		// works end-to-end.
-		ensembleInstanceMgr, ensembleInstanceMgrErr := clis.NewInstanceManager(nil, nil)
+		// CONST-035 §c: closed #ensemble-instance-manager-wiring (round
+		// 24, in-memory) and #ensemble-db-wiring (round 26, this commit
+		// — Postgres connection optional with graceful nil-fallback).
+		//
+		// When Postgres is reachable: sessions persist across restarts
+		// via the existing INSERT/UPDATE statements in coordinator.go
+		// and instance_manager.go that the round-24 nil-guards now run
+		// instead of skipping.
+		//
+		// When Postgres is NOT reachable (test/dev/CI environments
+		// without infra running): db == nil; the same nil-guards skip
+		// persistence and the system falls back to in-memory mode. End
+		// users see identical lifecycle behavior either way.
+		ensembleSQLCtx, ensembleSQLCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ensembleSQLDB, ensembleSQLErr := database.OpenSQLDB(ensembleSQLCtx)
+		ensembleSQLCancel()
+		if ensembleSQLErr != nil {
+			logger.WithError(ensembleSQLErr).Info("Ensemble: Postgres unreachable; using in-memory session storage (durability disabled)")
+		}
+		ensembleInstanceMgr, ensembleInstanceMgrErr := clis.NewInstanceManager(ensembleSQLDB, nil)
 		if ensembleInstanceMgrErr != nil {
 			logger.WithError(ensembleInstanceMgrErr).Warn("Failed to init clis.InstanceManager; /v1/ensemble/sessions will return created_without_instances")
 		}
-		ensembleCoordinator := multi_instance.NewCoordinator(nil, nil, ensembleInstanceMgr, nil)
+		ensembleCoordinator := multi_instance.NewCoordinator(ensembleSQLDB, nil, ensembleInstanceMgr, nil)
 		ensembleHandler := handlers.NewEnsembleHandler(ensembleCoordinator, logger)
 		ensembleHandler.RegisterRoutes(protected)
-		if ensembleInstanceMgr != nil {
-			logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/* (real Coordinator + InstanceManager wired)")
-		} else {
+		switch {
+		case ensembleInstanceMgr != nil && ensembleSQLDB != nil:
+			logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/* (Coordinator + InstanceManager + Postgres *sql.DB all wired — durable)")
+		case ensembleInstanceMgr != nil:
+			logger.Info("Ensemble session/team endpoints registered at /v1/ensemble/* (Coordinator + InstanceManager wired in-memory; Postgres unreachable)")
+		default:
 			logger.Warn("Ensemble session/team endpoints registered at /v1/ensemble/* (Coordinator wired; InstanceManager init failed — sessions will be created_without_instances)")
 		}
+		// Track sql.DB on RouterContext for graceful Close() on shutdown.
+		rc.ensembleSQLDB = ensembleSQLDB
 
 		// Completion endpoints (skills-enhanced completion with intent routing)
 		completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())

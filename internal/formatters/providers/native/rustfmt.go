@@ -26,5 +26,10 @@ func NewRustfmtFormatter(logger *logrus.Logger) *NativeFormatter {
 		SupportsConfig:  true,
 	}
 
-	return NewNativeFormatter(metadata, "rustfmt", []string{"--edition=2024"}, true, logger)
+	// rustfmt has the same gofmt-style bug: it treats `-` as a literal
+	// filename ("file `-` does not exist") rather than "read stdin".
+	// rustfmt with NO filename arguments reads stdin; use the no-dash
+	// constructor. CONST-035 §c regression-fix (2026-04-30) — same
+	// pattern as gofmt fix in commit d82d631c.
+	return NewNativeFormatterStdinNoDash(metadata, "rustfmt", []string{"--edition=2024"}, logger)
 }

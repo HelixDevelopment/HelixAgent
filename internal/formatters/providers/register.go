@@ -30,19 +30,12 @@ func RegisterAllFormatters(registry *formatters.FormatterRegistry, logger *logru
 		}
 	}
 
-	// Python formatters
-	registerLazy(
-		func() (formatters.Formatter, error) {
-			return native.NewBlackFormatter(logger), nil
-		},
-		&formatters.FormatterMetadata{
-			Name: "black", Type: formatters.FormatterTypeNative, Version: "26.1a1",
-			Languages: []string{"python"}, Performance: "medium",
-			SupportsStdin: true, SupportsInPlace: true, SupportsCheck: true,
-			SupportsConfig: true,
-		},
-	)
-
+	// Python formatters — ruff registered FIRST because it's the
+	// canonical preference per internal/formatters/config.go (and 30x
+	// faster than black). Was registered after black, which caused the
+	// system to pick black first; if black wasn't installed (common on
+	// fresh systems) /v1/format silently failed for Python. CONST-035
+	// §c regression-fix companion to commit d82d631c (gofmt fix).
 	registerLazy(
 		func() (formatters.Formatter, error) {
 			return native.NewRuffFormatter(logger), nil
@@ -50,6 +43,18 @@ func RegisterAllFormatters(registry *formatters.FormatterRegistry, logger *logru
 		&formatters.FormatterMetadata{
 			Name: "ruff", Type: formatters.FormatterTypeNative, Version: "0.9.6",
 			Languages: []string{"python"}, Performance: "very_fast",
+			SupportsStdin: true, SupportsInPlace: true, SupportsCheck: true,
+			SupportsConfig: true,
+		},
+	)
+
+	registerLazy(
+		func() (formatters.Formatter, error) {
+			return native.NewBlackFormatter(logger), nil
+		},
+		&formatters.FormatterMetadata{
+			Name: "black", Type: formatters.FormatterTypeNative, Version: "26.1a1",
+			Languages: []string{"python"}, Performance: "medium",
 			SupportsStdin: true, SupportsInPlace: true, SupportsCheck: true,
 			SupportsConfig: true,
 		},

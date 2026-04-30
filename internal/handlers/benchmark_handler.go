@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -139,10 +140,17 @@ func (h *BenchmarkHandler) StartBenchmark(c *gin.Context) {
 	}
 
 	if err := runner.StartRun(c.Request.Context(), run.ID); err != nil {
-		c.JSON(
-			http.StatusInternalServerError,
-			VerifierErrorResponse{Error: err.Error()},
-		)
+		// CONST-035 §c: "benchmark not found" / "invalid benchmark_type"
+		// is bad-input, not a server error. Returning 500 for client-side
+		// fault triggers SDK retry storms — route to 400.
+		errMsg := err.Error()
+		status := http.StatusInternalServerError
+		if strings.Contains(errMsg, "not found") ||
+			strings.Contains(errMsg, "invalid") ||
+			strings.Contains(errMsg, "unsupported") {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, VerifierErrorResponse{Error: errMsg})
 		return
 	}
 

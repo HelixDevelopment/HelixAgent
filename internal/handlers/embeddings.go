@@ -99,9 +99,9 @@ func (h *EmbeddingHandler) IndexDocument(c *gin.Context) {
 	}
 
 	var req struct {
-		ID       string                 `json:"id"`
+		ID       string                 `json:"id"       binding:"required"`
 		Title    string                 `json:"title"`
-		Content  string                 `json:"content"`
+		Content  string                 `json:"content"  binding:"required"`
 		Metadata map[string]interface{} `json:"metadata,omitempty"`
 	}
 
@@ -128,7 +128,7 @@ func (h *EmbeddingHandler) BatchIndexDocuments(c *gin.Context) {
 	}
 
 	var req struct {
-		Documents []map[string]interface{} `json:"documents"`
+		Documents []map[string]interface{} `json:"documents" binding:"required,min=1"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {

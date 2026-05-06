@@ -38,7 +38,7 @@ MODULES=(
     "Auth"
     "Storage"
     "Streaming"
-    "Security"
+    # Security removed — canonical at meta-repo root Security/ (P1.5-T03.03)
     "VectorDB"
     "Embeddings"
     "Database"

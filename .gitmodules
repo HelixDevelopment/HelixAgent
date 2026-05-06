@@ -19,9 +19,6 @@
 [submodule "Streaming"]
 	path = Streaming
 	url = git@github.com:vasic-digital/Streaming.git
-[submodule "Security"]
-	path = Security
-	url = git@github.com:vasic-digital/Security.git
 [submodule "VectorDB"]
 	path = VectorDB
 	url = git@github.com:vasic-digital/VectorDB.git

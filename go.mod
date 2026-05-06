@@ -215,7 +215,7 @@ require (
 
 replace dev.helix.agent/pkg/api => ./pkg/api
 
-replace digital.vasic.containers => ./Containers
+replace digital.vasic.containers => ../Containers
 
 replace digital.vasic.challenges => ./Challenges
 
@@ -229,7 +229,7 @@ replace digital.vasic.planning => ./Planning
 
 replace digital.vasic.benchmark => ./Benchmark
 
-replace digital.vasic.llmsverifier => ./LLMsVerifier/llm-verifier
+replace digital.vasic.llmsverifier => ../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier
 
 replace digital.vasic.auth => ./Auth
 
@@ -263,7 +263,7 @@ replace digital.vasic.plugins => ./Plugins
 
 replace digital.vasic.rag => ./RAG
 
-replace digital.vasic.security => ./Security
+replace digital.vasic.security => ../Security
 
 replace digital.vasic.storage => ./Storage
 
@@ -285,7 +285,7 @@ replace digital.vasic.llmprovider => ./LLMProvider
 
 replace digital.vasic.debate => ./DebateOrchestrator
 
-replace digital.vasic.helixqa => ./HelixQA
+replace digital.vasic.helixqa => ../HelixQA
 
 replace digital.vasic.docprocessor => ./DocProcessor
 

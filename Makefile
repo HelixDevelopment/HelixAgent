@@ -9,6 +9,11 @@ RESOURCE_PREFIX := nice -n 19 ionice -c 3
 GO_TEST_FLAGS := -p 1
 export GOMAXPROCS := 2
 
+# P1.5-WP4: API-key loader. Sourced before test/build recipes so credentials
+# from $HOME/api_keys.sh (or .env fallback) are available in the env.
+# Guard ensures recipe still works when the loader is absent.
+LOAD_KEYS := if [ -f scripts/load_api_keys.sh ]; then . scripts/load_api_keys.sh; fi
+
 all: fmt vet lint test build
 
 # =============================================================================
@@ -201,7 +206,8 @@ run-dev:
 
 test:
 	@echo "🧪 Running tests..."
-	@if nc -z localhost $${POSTGRES_PORT:-15432} 2>/dev/null && nc -z localhost $${REDIS_PORT:-16379} 2>/dev/null; then \
+	@$(LOAD_KEYS); \
+	if nc -z localhost $${POSTGRES_PORT:-15432} 2>/dev/null && nc -z localhost $${REDIS_PORT:-16379} 2>/dev/null; then \
 		echo "✅ Infrastructure available - running full tests"; \
 		DB_HOST=localhost DB_PORT=$${POSTGRES_PORT:-15432} DB_USER=helixagent DB_PASSWORD=helixagent123 DB_NAME=helixagent_db \
 		DATABASE_URL="postgres://helixagent:helixagent123@localhost:$${POSTGRES_PORT:-15432}/helixagent_db?sslmode=disable" \

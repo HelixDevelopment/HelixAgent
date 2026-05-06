@@ -220,9 +220,6 @@
 [submodule "cli_agents/gemini-cli"]
 	path = cli_agents/gemini-cli
 	url = git@github.com:google-gemini/gemini-cli.git
-[submodule "cli_agents/fauxpilot"]
-	path = cli_agents/fauxpilot
-	url = git@github.com:fauxpilot/fauxpilot.git
 [submodule "cli_agents/codex"]
 	path = cli_agents/codex
 	url = git@github.com:openai/codex.git
@@ -235,9 +232,6 @@
 [submodule "cli_agents/amazon-q"]
 	path = cli_agents/amazon-q
 	url = git@github.com:aws/amazon-q-developer-cli.git
-[submodule "cli_agents/forge"]
-	path = cli_agents/forge
-	url = git@github.com:antinomyhq/forge.git
 [submodule "cli_agents/noi"]
 	path = cli_agents/noi
 	url = git@github.com:lencx/Noi.git
@@ -268,18 +262,12 @@
 [submodule "cli_agents/openhands"]
 	path = cli_agents/openhands
 	url = git@github.com:All-Hands-AI/OpenHands.git
-[submodule "cli_agents/deepseek-cli"]
-	path = cli_agents/deepseek-cli
-	url = git@github.com:holasoymalva/deepseek-cli.git
 [submodule "cli_agents/gpt-engineer"]
 	path = cli_agents/gpt-engineer
 	url = git@github.com:AntonOsika/gpt-engineer.git
 [submodule "cli_agents/bridle"]
 	path = cli_agents/bridle
 	url = git@github.com:jeremylongshore/claude-code-plugins-plus-skills.git
-[submodule "cli_agents/copilot-cli"]
-	path = cli_agents/copilot-cli
-	url = git@github.com:github/copilot-cli.git
 [submodule "cli_agents/superset"]
 	path = cli_agents/superset
 	url = git@github.com:superset-sh/superset.git
@@ -394,15 +382,9 @@
 [submodule "cli_agents/xela-cli"]
 	path = cli_agents/xela-cli
 	url = git@github.com:xelauvas/codeclau.git
-[submodule "cli_agents/deepseek-cli-youkpan"]
-	path = cli_agents/deepseek-cli-youkpan
-	url = git@github.com:youkpan/deepseek-cli.git
 [submodule "cli_agents/zeroshot"]
 	path = cli_agents/zeroshot
 	url = git@github.com:covibes/zeroshot.git
-[submodule "cli_agents/crush"]
-	path = cli_agents/crush
-	url = git@github.com:charmbracelet/crush.git
 [submodule "cli_agents/x-cmd"]
 	path = cli_agents/x-cmd
 	url = git@github.com:x-cmd/x-cmd.git

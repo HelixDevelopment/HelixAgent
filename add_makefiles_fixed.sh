@@ -33,7 +33,7 @@ MODULES=(
     "Memory"
     "Optimization"
     "Plugins"
-    "Containers"
+    # Containers removed — canonical at meta-repo root Containers/ (P1.5-T03.02)
     "Challenges"
     "Agentic"
     "LLMOps"

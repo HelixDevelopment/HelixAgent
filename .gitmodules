@@ -214,15 +214,9 @@
 [submodule "cli_agents/kilo-code"]
 	path = cli_agents/kilo-code
 	url = git@github.com:Kilo-Org/kilocode.git
-[submodule "cli_agents/superset"]
-	path = cli_agents/superset
-	url = git@github.com:superset-sh/superset.git
 [submodule "cli_agents/mobile-agent"]
 	path = cli_agents/mobile-agent
 	url = git@github.com:X-PLUG/MobileAgent.git
-[submodule "cli_agents/spec-kit"]
-	path = cli_agents/spec-kit
-	url = git@github.com:github/spec-kit.git
 [submodule "external/cognee"]
 	path = external/cognee
 	url = git@github.com:topoteretes/cognee.git

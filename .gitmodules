@@ -271,9 +271,6 @@
 [submodule "cli_agents/snow-cli"]
 	path = cli_agents/snow-cli
 	url = git@github.com:MayDay-wpf/snow-cli.git
-[submodule "cli_agents/vtcode"]
-	path = cli_agents/vtcode
-	url = git@github.com:vinhnx/vtcode.git
 [submodule "cli_agents/claude-plugins"]
 	path = cli_agents/claude-plugins
 	url = git@github.com:jeremylongshore/claude-code-plugins-plus-skills.git
@@ -283,21 +280,12 @@
 [submodule "cli_agents/codex-skills"]
 	path = cli_agents/codex-skills
 	url = git@github.com:openai/skills.git
-[submodule "cli_agents/ui-ux-pro-max"]
-	path = cli_agents/ui-ux-pro-max
-	url = git@github.com:nextlevelbuilder/ui-ux-pro-max-skill.git
 [submodule "cli_agents/shai"]
 	path = cli_agents/shai
 	url = git@github.com:ovh/shai.git
 [submodule "cli_agents/qwen-code"]
 	path = cli_agents/qwen-code
 	url = git@github.com:QwenLM/qwen-code.git
-[submodule "cli_agents/taskweaver"]
-	path = cli_agents/taskweaver
-	url = git@github.com:microsoft/TaskWeaver.git
-[submodule "cli_agents/warp"]
-	path = cli_agents/warp
-	url = git@github.com:warpdotdev/Warp.git
 [submodule "cli_agents/mobile-agent"]
 	path = cli_agents/mobile-agent
 	url = git@github.com:X-PLUG/MobileAgent.git
@@ -376,15 +364,6 @@
 [submodule "cli_agents/cli-agent"]
 	path = cli_agents/cli-agent
 	url = git@github.com:NathanGr33n/CLI_Tool.git
-[submodule "cli_agents/xela-cli"]
-	path = cli_agents/xela-cli
-	url = git@github.com:xelauvas/codeclau.git
-[submodule "cli_agents/zeroshot"]
-	path = cli_agents/zeroshot
-	url = git@github.com:covibes/zeroshot.git
-[submodule "cli_agents/x-cmd"]
-	path = cli_agents/x-cmd
-	url = git@github.com:x-cmd/x-cmd.git
 [submodule "cli_agents/roo-code"]
 	path = cli_agents/roo-code
 	url = git@github.com:RooVetGit/Roo-Code.git
@@ -397,9 +376,6 @@
 [submodule "tools/snow-cli"]
 	path = tools/snow-cli
 	url = git@github.com:MayDay-wpf/snow-cli.git
-[submodule "cli_agents/swe-agent"]
-	path = cli_agents/swe-agent
-	url = git@github.com:princeton-nlp/SWE-agent.git
 [submodule "HelixLLM"]
 	path = HelixLLM
 	url = git@github.com:HelixDevelopment/HelixLLM.git

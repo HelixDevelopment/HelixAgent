@@ -6,7 +6,7 @@ skip-dirs:
   - .git
   - cli_agents
   - MCP/submodules
-  - LLMsVerifier/llm-verifier/vendor
+  - ../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier/vendor
 skip-files:
   - "*.test"
   - "*_test.go"

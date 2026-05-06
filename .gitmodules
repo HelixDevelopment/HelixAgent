@@ -67,9 +67,6 @@
 [submodule "Toolkit/Toolkit/Chutes"]
 	path = Toolkit/Toolkit/Chutes
 	url = git@github.com:vasic-digital/Chutes-Toolkit.git
-[submodule "LLMsVerifier"]
-	path = LLMsVerifier
-	url = git@github.com:vasic-digital/LLMsVerifier.git
 [submodule "external/mcp-servers/servers"]
 	path = external/mcp-servers/servers
 	url = git@github.com:modelcontextprotocol/servers.git

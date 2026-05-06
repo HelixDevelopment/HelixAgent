@@ -256,9 +256,6 @@
 [submodule "cli_agents/postgres-mcp"]
 	path = cli_agents/postgres-mcp
 	url = git@github.com:timescale/pg-aiguide.git
-[submodule "cli_agents/multiagent-coding"]
-	path = cli_agents/multiagent-coding
-	url = git@github.com:Danau5tin/multi-agent-coding-system.git
 [submodule "cli_agents/openhands"]
 	path = cli_agents/openhands
 	url = git@github.com:All-Hands-AI/OpenHands.git

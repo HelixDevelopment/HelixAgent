@@ -214,9 +214,6 @@
 [submodule "cli_agents/kilo-code"]
 	path = cli_agents/kilo-code
 	url = git@github.com:Kilo-Org/kilocode.git
-[submodule "cli_agents/openhands"]
-	path = cli_agents/openhands
-	url = git@github.com:All-Hands-AI/OpenHands.git
 [submodule "cli_agents/superset"]
 	path = cli_agents/superset
 	url = git@github.com:superset-sh/superset.git

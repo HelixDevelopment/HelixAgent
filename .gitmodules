@@ -253,9 +253,6 @@
 [submodule "cli_agents/octogen"]
 	path = cli_agents/octogen
 	url = git@github.com:dbpunk-labs/octogen.git
-[submodule "cli_agents/ollama-code"]
-	path = cli_agents/ollama-code
-	url = git@github.com:tcsenpai/ollama-code.git
 [submodule "cli_agents/plandex"]
 	path = cli_agents/plandex
 	url = git@github.com:plandex-ai/plandex.git
@@ -295,9 +292,6 @@
 [submodule "cli_agents/superset"]
 	path = cli_agents/superset
 	url = git@github.com:superset-sh/superset.git
-[submodule "cli_agents/kiro-cli"]
-	path = cli_agents/kiro-cli
-	url = git@github.com:stark1tty/kiro-cli.git
 [submodule "cli_agents/snow-cli"]
 	path = cli_agents/snow-cli
 	url = git@github.com:MayDay-wpf/snow-cli.git
@@ -385,9 +379,6 @@
 [submodule "LLMProvider"]
 	path = LLMProvider
 	url = git@github.com:vasic-digital/LLMProvider.git
-[submodule "DebateOrchestrator"]
-	path = DebateOrchestrator
-	url = git@github.com:vasic-digital/DebateOrchestrator.git
 [submodule "BackgroundTasks"]
 	path = BackgroundTasks
 	url = git@github.com:vasic-digital/BackgroundTasks.git

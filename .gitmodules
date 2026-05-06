@@ -344,3 +344,6 @@
 [submodule "Ouroborous"]
 	path = Ouroborous
 	url = git@github.com:vasic-digital/Ouroborous.git
+[submodule "cli_agents/openhands"]
+	path = cli_agents/openhands
+	url = git@github.com:All-Hands-AI/OpenHands.git

@@ -232,9 +232,6 @@
 [submodule "cli_agents/claude-code"]
 	path = cli_agents/claude-code
 	url = git@github.com:anthropics/claude-code.git
-[submodule "cli_agents/codename-goose"]
-	path = cli_agents/codename-goose
-	url = git@github.com:jgenerali/codename-goose.git
 [submodule "cli_agents/amazon-q"]
 	path = cli_agents/amazon-q
 	url = git@github.com:aws/amazon-q-developer-cli.git
@@ -319,9 +316,6 @@
 [submodule "cli_agents/mobile-agent"]
 	path = cli_agents/mobile-agent
 	url = git@github.com:X-PLUG/MobileAgent.git
-[submodule "cli_agents/codai"]
-	path = cli_agents/codai
-	url = git@github.com:meysamhadeli/codai.git
 [submodule "cli_agents/mistral-code"]
 	path = cli_agents/mistral-code
 	url = git@github.com:Wylgrif/Mistral-code.git

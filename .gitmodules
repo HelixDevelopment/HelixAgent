@@ -52,15 +52,6 @@
 [submodule "Plugins"]
 	path = Plugins
 	url = git@github.com:vasic-digital/Plugins.git
-[submodule "Toolkit/SiliconFlow"]
-	path = Toolkit/SiliconFlow
-	url = git@github.com:vasic-digital/SiliconFlow-Toolkit.git
-[submodule "Toolkit/Chutes"]
-	path = Toolkit/Chutes
-	url = git@github.com:vasic-digital/Chutes-Toolkit.git
-[submodule "Toolkit/Toolkit/Chutes"]
-	path = Toolkit/Toolkit/Chutes
-	url = git@github.com:vasic-digital/Chutes-Toolkit.git
 [submodule "external/mcp-servers/servers-archived"]
 	path = external/mcp-servers/servers-archived
 	url = git@github.com:modelcontextprotocol/servers-archived.git

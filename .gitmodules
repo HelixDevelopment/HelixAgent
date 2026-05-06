@@ -61,15 +61,9 @@
 [submodule "Toolkit/Toolkit/Chutes"]
 	path = Toolkit/Toolkit/Chutes
 	url = git@github.com:vasic-digital/Chutes-Toolkit.git
-[submodule "external/mcp-servers/servers"]
-	path = external/mcp-servers/servers
-	url = git@github.com:modelcontextprotocol/servers.git
 [submodule "external/mcp-servers/servers-archived"]
 	path = external/mcp-servers/servers-archived
 	url = git@github.com:modelcontextprotocol/servers-archived.git
-[submodule "MCP-Servers"]
-	path = MCP-Servers
-	url = git@github.com:modelcontextprotocol/servers.git
 [submodule "MCP/submodules/microsoft-mcp"]
 	path = MCP/submodules/microsoft-mcp
 	url = git@github.com:microsoft/mcp.git

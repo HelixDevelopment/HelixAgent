@@ -211,81 +211,18 @@
 [submodule "MCP/submodules/docs-mcp"]
 	path = MCP/submodules/docs-mcp
 	url = git@github.com:RohitKrish46/docs-mcp-server.git
-[submodule "cli_agents/claude-squad"]
-	path = cli_agents/claude-squad
-	url = git@github.com:smtg-ai/claude-squad.git
-[submodule "cli_agents/gemini-cli"]
-	path = cli_agents/gemini-cli
-	url = git@github.com:google-gemini/gemini-cli.git
-[submodule "cli_agents/conduit"]
-	path = cli_agents/conduit
-	url = git@github.com:lostintangent/conduit-release.git
-[submodule "cli_agents/claude-code"]
-	path = cli_agents/claude-code
-	url = git@github.com:anthropics/claude-code.git
-[submodule "cli_agents/amazon-q"]
-	path = cli_agents/amazon-q
-	url = git@github.com:aws/amazon-q-developer-cli.git
-[submodule "cli_agents/noi"]
-	path = cli_agents/noi
-	url = git@github.com:lencx/Noi.git
 [submodule "cli_agents/kilo-code"]
 	path = cli_agents/kilo-code
 	url = git@github.com:Kilo-Org/kilocode.git
-[submodule "cli_agents/octogen"]
-	path = cli_agents/octogen
-	url = git@github.com:dbpunk-labs/octogen.git
-[submodule "cli_agents/plandex"]
-	path = cli_agents/plandex
-	url = git@github.com:plandex-ai/plandex.git
-[submodule "cli_agents/get-shit-done"]
-	path = cli_agents/get-shit-done
-	url = git@github.com:glittercowboy/get-shit-done.git
-[submodule "cli_agents/nanocoder"]
-	path = cli_agents/nanocoder
-	url = git@github.com:Nano-Collective/nanocoder.git
-[submodule "cli_agents/git-mcp"]
-	path = cli_agents/git-mcp
-	url = git@github.com:idosal/git-mcp.git
-[submodule "cli_agents/postgres-mcp"]
-	path = cli_agents/postgres-mcp
-	url = git@github.com:timescale/pg-aiguide.git
 [submodule "cli_agents/openhands"]
 	path = cli_agents/openhands
 	url = git@github.com:All-Hands-AI/OpenHands.git
-[submodule "cli_agents/gpt-engineer"]
-	path = cli_agents/gpt-engineer
-	url = git@github.com:AntonOsika/gpt-engineer.git
-[submodule "cli_agents/bridle"]
-	path = cli_agents/bridle
-	url = git@github.com:jeremylongshore/claude-code-plugins-plus-skills.git
 [submodule "cli_agents/superset"]
 	path = cli_agents/superset
 	url = git@github.com:superset-sh/superset.git
-[submodule "cli_agents/snow-cli"]
-	path = cli_agents/snow-cli
-	url = git@github.com:MayDay-wpf/snow-cli.git
-[submodule "cli_agents/claude-plugins"]
-	path = cli_agents/claude-plugins
-	url = git@github.com:jeremylongshore/claude-code-plugins-plus-skills.git
-[submodule "cli_agents/gptme"]
-	path = cli_agents/gptme
-	url = git@github.com:ErikBjare/gptme.git
-[submodule "cli_agents/codex-skills"]
-	path = cli_agents/codex-skills
-	url = git@github.com:openai/skills.git
-[submodule "cli_agents/shai"]
-	path = cli_agents/shai
-	url = git@github.com:ovh/shai.git
-[submodule "cli_agents/qwen-code"]
-	path = cli_agents/qwen-code
-	url = git@github.com:QwenLM/qwen-code.git
 [submodule "cli_agents/mobile-agent"]
 	path = cli_agents/mobile-agent
 	url = git@github.com:X-PLUG/MobileAgent.git
-[submodule "cli_agents/mistral-code"]
-	path = cli_agents/mistral-code
-	url = git@github.com:Wylgrif/Mistral-code.git
 [submodule "cli_agents/spec-kit"]
 	path = cli_agents/spec-kit
 	url = git@github.com:github/spec-kit.git
@@ -337,9 +274,6 @@
 [submodule "BackgroundTasks"]
 	path = BackgroundTasks
 	url = git@github.com:vasic-digital/BackgroundTasks.git
-[submodule "cli_agents/junie"]
-	path = cli_agents/junie
-	url = git@github.com:JetBrains/junie.git
 [submodule "HelixQA"]
 	path = HelixQA
 	url = git@github.com:HelixDevelopment/HelixQA.git
@@ -352,18 +286,9 @@
 [submodule "VisionEngine"]
 	path = VisionEngine
 	url = git@github.com:vasic-digital/VisionEngine.git
-[submodule "cli_agents/claude-code-source"]
-	path = cli_agents/claude-code-source
-	url = git@gitlab.com:milos85vasic/ccode-private.git
-[submodule "cli_agents/cli-agent"]
-	path = cli_agents/cli-agent
-	url = git@github.com:NathanGr33n/CLI_Tool.git
 [submodule "cli_agents/roo-code"]
 	path = cli_agents/roo-code
 	url = git@github.com:RooVetGit/Roo-Code.git
-[submodule "cli_agents/open-interpreter"]
-	path = cli_agents/open-interpreter
-	url = git@github.com:KillianLucas/open-interpreter.git
 [submodule "cli_agents/continue"]
 	path = cli_agents/continue
 	url = git@github.com:continuedev/continue.git

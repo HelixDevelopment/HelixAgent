@@ -222,6 +222,6 @@ Swap:           15Gi          0B        15Gi
 - `CLAUDE.md` — CONST-036 added; CONST-033 narrative tightened
 - `AGENTS.md` — CONST-036 cascade
 - `challenges/scripts/no_session_termination_calls_challenge.sh` (NEW)
-- `scripts/host-power-management/check-no-session-termination-calls.sh` (NEW)
+- `scripts/host_power_management/check-no-session-termination-calls.sh` (NEW)
 - Per-submodule cascade of CONST-036 into every project-owned `CLAUDE.md` /
   `AGENTS.md` / `CONSTITUTION.md` (see commit message for the list)

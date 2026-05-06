@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 find_project_root() {
   local d="$1"
   while [[ "$d" != "/" ]]; do
-    if [[ -f "$d/scripts/host-power-management/check-no-session-termination-calls.sh" ]]; then
+    if [[ -f "$d/scripts/host_power_management/check-no-session-termination-calls.sh" ]]; then
       echo "$d"; return 0
     fi
     d=$(dirname "$d")
@@ -32,11 +32,11 @@ find_project_root() {
 
 PROJECT_ROOT=$(find_project_root "$SCRIPT_DIR" || true)
 if [[ -z "${PROJECT_ROOT:-}" ]]; then
-  echo "FAIL: cannot locate scripts/host-power-management/check-no-session-termination-calls.sh" >&2
+  echo "FAIL: cannot locate scripts/host_power_management/check-no-session-termination-calls.sh" >&2
   exit 2
 fi
 
-SCANNER="$PROJECT_ROOT/scripts/host-power-management/check-no-session-termination-calls.sh"
+SCANNER="$PROJECT_ROOT/scripts/host_power_management/check-no-session-termination-calls.sh"
 echo "=== no_session_termination_calls_challenge ==="
 echo "Scanner: $SCANNER"
 echo "Root:    $PROJECT_ROOT"

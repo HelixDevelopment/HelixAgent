@@ -7,11 +7,11 @@
 				"error": "could not import core/autocomplete/context/root-path-context/test/files/models (invalid package name: \"\")"
 			}
 		],
-		"cli_agents/HelixCode/HelixCode/tests/e2e/test-bank": [
+		"cli_agents/HelixCode/HelixCode/tests/e2e/test_bank": [
 			{
 				"line": 0,
 				"column": 0,
-				"error": "importing dir \"cli_agents/HelixCode/HelixCode/tests/e2e/test-bank\": found packages testbank (loader.go) and performance (performance_security_tests.go) in cli_agents/HelixCode/HelixCode/tests/e2e/test-bank"
+				"error": "importing dir \"cli_agents/HelixCode/HelixCode/tests/e2e/test_bank\": found packages testbank (loader.go) and performance (performance_security_tests.go) in cli_agents/HelixCode/HelixCode/tests/e2e/test_bank"
 			}
 		],
 		"cli_agents/HelixCode/isolated_files": [

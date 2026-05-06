@@ -2216,7 +2216,7 @@ all legitimate and not running by default.
    `/usr/bin/{poweroff,reboot,halt}`. Includes operational discipline
    clauses on parallel heavy workloads, slice placement, AI-agent
    concurrency caps, and recovery flow design.
-2. **New scanner.** `scripts/host-power-management/check-no-session-termination-calls.sh`
+2. **New scanner.** `scripts/host_power_management/check-no-session-termination-calls.sh`
    greps the source tree (with the same exclusion taxonomy as CONST-033's
    scanner) and fails on any forbidden invocation.
 3. **New challenge.** `challenges/scripts/no_session_termination_calls_challenge.sh`
@@ -2228,7 +2228,7 @@ all legitimate and not running by default.
 ### Verification
 
 ```text
-$ bash scripts/host-power-management/check-no-session-termination-calls.sh .
+$ bash scripts/host_power_management/check-no-session-termination-calls.sh .
 OK: no forbidden session-termination calls in .
 
 $ bash challenges/scripts/no_session_termination_calls_challenge.sh

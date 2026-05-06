@@ -24,61 +24,61 @@ This document outlines the comprehensive development plan for creating plugins f
 ### Tier 1 - Primary Support (10 agents)
 | Agent | Language | Source Location |
 |-------|----------|-----------------|
-| Claude Code | TypeScript | `Example_Projects/Claude_Code` |
-| Aider | Python | `Example_Projects/Aider` |
-| Cline | TypeScript | `Example_Projects/Cline` |
-| OpenCode | Go | `Example_Projects/OpenCode` |
-| Kilo Code | TypeScript | `Example_Projects/Kilo-Code` |
-| Gemini CLI | Python | `Example_Projects/Gemini_CLI` |
-| Qwen Code | Python | `Example_Projects/Qwen_Code` |
-| DeepSeek CLI | Python | `Example_Projects/DeepSeek_CLI` |
-| Forge | TypeScript | `Example_Projects/Forge` |
-| Codename Goose | Go | `Example_Projects/Codename_Goose` |
+| Claude Code | TypeScript | `cli_agents/Claude_Code` |
+| Aider | Python | `cli_agents/Aider` |
+| Cline | TypeScript | `cli_agents/Cline` |
+| OpenCode | Go | `cli_agents/OpenCode` |
+| Kilo Code | TypeScript | `cli_agents/Kilo-Code` |
+| Gemini CLI | Python | `cli_agents/Gemini_CLI` |
+| Qwen Code | Python | `cli_agents/Qwen_Code` |
+| DeepSeek CLI | Python | `cli_agents/DeepSeek_CLI` |
+| Forge | TypeScript | `cli_agents/Forge` |
+| Codename Goose | Go | `cli_agents/Codename_Goose` |
 
 ### Tier 2 - Secondary Support (15 agents)
 | Agent | Language | Source Location |
 |-------|----------|-----------------|
-| Amazon Q Developer CLI | TypeScript | `Example_Projects/Amazon-Q-Developer-CLI` |
-| Kiro (Stark Kitty) | Python | `Example_Projects/Stark-Kitty-Kiro-Cli` |
-| GPT Engineer | Python | `Example_Projects/GPT_Engineer` |
-| Mistral Code | Python | `Example_Projects/Mistral_Code` |
-| Ollama Code | Python | `Example_Projects/Ollama_Code` |
-| Plandex | Go | `Example_Projects/Plandex` |
-| Codex | TypeScript | `Example_Projects/Codex` |
-| vtcode | TypeScript | `Example_Projects/vtcode` |
-| Nanocoder | Python | `Example_Projects/Nanocoder` |
-| GitMCP | TypeScript | `Example_Projects/GitMCP` |
-| TaskWeaver | Python | `Example_Projects/TaskWeaver` |
-| Octogen | Python | `Example_Projects/Octogen` |
-| FauxPilot | Python | `Example_Projects/FauxPilot` |
-| Bridle | Go | `Example_Projects/Bridle` |
-| Agent Deck | TypeScript | `Example_Projects/Agent-Deck` |
+| Amazon Q Developer CLI | TypeScript | `cli_agents/Amazon-Q-Developer-CLI` |
+| Kiro (Stark Kitty) | Python | `cli_agents/Stark-Kitty-Kiro-Cli` |
+| GPT Engineer | Python | `cli_agents/GPT_Engineer` |
+| Mistral Code | Python | `cli_agents/Mistral_Code` |
+| Ollama Code | Python | `cli_agents/Ollama_Code` |
+| Plandex | Go | `cli_agents/Plandex` |
+| Codex | TypeScript | `cli_agents/Codex` |
+| vtcode | TypeScript | `cli_agents/vtcode` |
+| Nanocoder | Python | `cli_agents/Nanocoder` |
+| GitMCP | TypeScript | `cli_agents/GitMCP` |
+| TaskWeaver | Python | `cli_agents/TaskWeaver` |
+| Octogen | Python | `cli_agents/Octogen` |
+| FauxPilot | Python | `cli_agents/FauxPilot` |
+| Bridle | Go | `cli_agents/Bridle` |
+| Agent Deck | TypeScript | `cli_agents/Agent-Deck` |
 
 ### Tier 3 - Extended Support (22 agents)
 | Agent | Source Location |
 |-------|-----------------|
-| Claude Squad | `Example_Projects/Claude-Squad` |
-| Codai | `Example_Projects/Codai` |
-| Emdash | `Example_Projects/Emdash` |
-| Get Shit Done | `Example_Projects/Get-Shit-Done` |
-| GitHub Copilot CLI | `Example_Projects/GitHub-Copilot-CLI` |
-| GitHub Spec Kit | `Example_Projects/GitHub-Spec-Kit` |
-| gptme | `Example_Projects/gptme` |
-| Linear | `Example_Projects/Linear` (via MCP) |
-| MobileAgent | `Example_Projects/MobileAgent` |
-| Multiagent Coding | `Example_Projects/Multiagent-Coding-System` |
-| Noi | `Example_Projects/Noi` |
-| OpenHands | `Example_Projects/OpenHands` |
-| Postgres MCP | `Example_Projects/Postgres-MCP` |
-| Shai | `Example_Projects/Shai` |
-| SnowCLI | `Example_Projects/SnowCLI` |
-| Superset | `Example_Projects/Superset` |
-| UI/UX Pro Max Skill | `Example_Projects/ui-ux-pro-max-skill` |
-| Warp | `Example_Projects/Warp` |
-| Cheshire Cat AI | `Example_Projects/Cheshire-Cat-Ai` |
-| Conduit | `Example_Projects/Conduit` |
-| Codex Skills | `Example_Projects/Codex-Skills` |
-| Claude Code Plugins | `Example_Projects/Claude-Code-Plugins-And-Skills` |
+| Claude Squad | `cli_agents/Claude-Squad` |
+| Codai | `cli_agents/Codai` |
+| Emdash | `cli_agents/Emdash` |
+| Get Shit Done | `cli_agents/Get-Shit-Done` |
+| GitHub Copilot CLI | `cli_agents/GitHub-Copilot-CLI` |
+| GitHub Spec Kit | `cli_agents/GitHub-Spec-Kit` |
+| gptme | `cli_agents/gptme` |
+| Linear | `cli_agents/Linear` (via MCP) |
+| MobileAgent | `cli_agents/MobileAgent` |
+| Multiagent Coding | `cli_agents/Multiagent-Coding-System` |
+| Noi | `cli_agents/Noi` |
+| OpenHands | `cli_agents/OpenHands` |
+| Postgres MCP | `cli_agents/Postgres-MCP` |
+| Shai | `cli_agents/Shai` |
+| SnowCLI | `cli_agents/SnowCLI` |
+| Superset | `cli_agents/Superset` |
+| UI/UX Pro Max Skill | `cli_agents/ui-ux-pro-max-skill` |
+| Warp | `cli_agents/Warp` |
+| Cheshire Cat AI | `cli_agents/Cheshire-Cat-Ai` |
+| Conduit | `cli_agents/Conduit` |
+| Codex Skills | `cli_agents/Codex-Skills` |
+| Claude Code Plugins | `cli_agents/Claude-Code-Plugins-And-Skills` |
 
 ---
 
@@ -677,21 +677,21 @@ require (
 
 All agent source code available at:
 ```
-/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/
+/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/
 ```
 
 ### B. Existing Plugin Examples
 
 Reference plugins at:
 ```
-/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/Claude-Code-Plugins-And-Skills/plugins/
+/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/Claude-Code-Plugins-And-Skills/plugins/
 ```
 
 ### C. Skills Reference
 
 Reference skills at:
 ```
-/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/Claude-Code-Plugins-And-Skills/skills/
+/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/Claude-Code-Plugins-And-Skills/skills/
 ```
 
 ---

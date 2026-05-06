@@ -779,7 +779,7 @@ func isContainersRemoteEnabled() bool {
 	// Try to read from Containers/.env file
 	envPaths := []string{
 		"Containers/.env",
-		"/run/media/milosvasic/DATA4TB/Projects/HelixAgent/Containers/.env",
+		"/run/media/milosvasic/DATA4TB/Projects/HelixCode/Containers/.env",
 	}
 
 	for _, path := range envPaths {

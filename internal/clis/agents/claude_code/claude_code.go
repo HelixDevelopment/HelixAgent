@@ -141,7 +141,7 @@ func (c *ClaudeCode) Initialize(ctx context.Context, config interface{}) error {
 	sourceDir := filepath.Join(c.workDir, "cli_agents", "claude-code-source")
 	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
 		// Try alternate location
-		sourceDir = "/run/media/milosvasic/DATA4TB/Projects/HelixAgent/cli_agents/claude-code-source"
+		sourceDir = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/claude-code-source"
 	}
 
 	return nil

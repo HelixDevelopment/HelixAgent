@@ -23,10 +23,10 @@ const (
 	// Project paths
 	helixCodePath    = "/run/media/milosvasic/DATA4TB/Projects/HelixCode"
 	helixCodeCLIPath = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/HelixCode/bin/helixcode"
-	openCodePath     = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/OpenCode/OpenCode"
-	openCodeCLIPath  = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/OpenCode/OpenCode/opencode"
-	clinePath        = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/Cline"
-	clineCLIPath     = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects/Cline/cli/cline"
+	openCodePath     = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/opencode"
+	openCodeCLIPath  = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/opencode/opencode"
+	clinePath        = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/cline"
+	clineCLIPath     = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/cline/cli/cline"
 
 	// Repository URLs for auto-cloning
 	helixCodeRepoSSH   = "git@github.com:helix-org/HelixCode.git"

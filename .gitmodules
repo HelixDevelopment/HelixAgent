@@ -256,9 +256,6 @@
 [submodule "BackgroundTasks"]
 	path = BackgroundTasks
 	url = git@github.com:vasic-digital/BackgroundTasks.git
-[submodule "HelixQA"]
-	path = HelixQA
-	url = git@github.com:HelixDevelopment/HelixQA.git
 [submodule "DocProcessor"]
 	path = DocProcessor
 	url = git@github.com:vasic-digital/DocProcessor.git

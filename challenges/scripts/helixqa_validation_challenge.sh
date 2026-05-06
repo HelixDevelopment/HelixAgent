@@ -134,14 +134,14 @@ else
 fi
 
 # Test 14: HelixQA autonomous command has stub agent wiring
-if grep -q "stubAgent" "$PROJECT_ROOT/HelixQA/cmd/helixqa/main.go" 2>/dev/null; then
+if grep -q "stubAgent" "$PROJECT_ROOT/../HelixQA/cmd/helixqa/main.go" 2>/dev/null; then
     record_result "Autonomous command has stub agent wiring" "PASS"
 else
     record_result "Autonomous command has stub agent wiring" "FAIL"
 fi
 
 # Test 15: HelixQA module compiles
-if (cd "$PROJECT_ROOT/HelixQA" && go build ./... 2>/dev/null); then
+if (cd "$PROJECT_ROOT/../HelixQA" && go build ./... 2>/dev/null); then
     record_result "HelixQA module compiles" "PASS"
 else
     record_result "HelixQA module compiles" "FAIL"

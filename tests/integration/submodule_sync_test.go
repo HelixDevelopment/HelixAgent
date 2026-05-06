@@ -160,7 +160,7 @@ func TestSubmoduleSyncHelixQAOpensourceTools(t *testing.T) {
 	err := os.Chdir(projectRoot)
 	require.NoError(t, err)
 
-	helixQAPath := "HelixQA"
+	helixQAPath := "../HelixQA"  // canonical at meta-repo root per P1.5-T03.04
 	if _, err := os.Stat(helixQAPath); os.IsNotExist(err) {
 		t.Skip("HelixQA submodule not present")  // SKIP-OK: #legacy-untriaged
 	}
@@ -250,7 +250,7 @@ func TestSubmoduleSyncHelixQAGitHubVsGitLab(t *testing.T) {
 	err := os.Chdir(projectRoot)
 	require.NoError(t, err)
 
-	helixQAPath := "HelixQA"
+	helixQAPath := "../HelixQA"  // canonical at meta-repo root per P1.5-T03.04
 	if _, err := os.Stat(helixQAPath); os.IsNotExist(err) {
 		t.Skip("HelixQA submodule not present")  // SKIP-OK: #legacy-untriaged
 	}
@@ -443,7 +443,7 @@ func BenchmarkSubmoduleSyncHelixQAOpensourceTools(b *testing.B) {
 	os.Chdir(wd)
 
 	for i := 0; i < b.N; i++ {
-		cmd := exec.Command("git", "submodule", "status", "HelixQA/tools/opensource")
+		cmd := exec.Command("git", "submodule", "status", "../HelixQA/tools/opensource")
 		_, _ = cmd.CombinedOutput()
 	}
 }

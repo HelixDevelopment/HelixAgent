@@ -88,17 +88,17 @@ fi
 # Step 4: Run HelixQA tests if banks exist
 echo ""
 echo "=== Running HelixQA Tests ==="
-if [ -d "./HelixQA" ] && [ -f "./HelixQA/banks/all-formats.yaml" ]; then
+if [ -d "../HelixQA" ] && [ -f "../HelixQA/banks/all-formats.yaml" ]; then
     echo "HelixQA module found. Running QA tests..."
     # Build helixqa binary if needed
-    if [ ! -f "./HelixQA/bin/helixqa" ]; then
+    if [ ! -f "../HelixQA/bin/helixqa" ]; then
         echo "Building HelixQA binary..."
-        (cd "./HelixQA" && go build -o ./bin/helixqa ./cmd/helixqa)
+        (cd "../HelixQA" && go build -o ./bin/helixqa ./cmd/helixqa)
     fi
     # Create output directory
     mkdir -p "${PROJECT_ROOT}/reports/helixqa"
     # Run HelixQA with default banks
-    ./HelixQA/bin/helixqa --banks ./HelixQA/banks/all-formats.yaml --output-dir "${PROJECT_ROOT}/reports/helixqa" --report-format markdown 2>&1 | tee "${PROJECT_ROOT}/reports/helixqa.log"
+    ../HelixQA/bin/helixqa --banks ../HelixQA/banks/all-formats.yaml --output-dir "${PROJECT_ROOT}/reports/helixqa" --report-format markdown 2>&1 | tee "${PROJECT_ROOT}/reports/helixqa.log"
     HELIXQA_EXIT_CODE=${PIPESTATUS[0]}
     if [ ${HELIXQA_EXIT_CODE} -eq 0 ]; then
         echo "✓ HelixQA tests passed"

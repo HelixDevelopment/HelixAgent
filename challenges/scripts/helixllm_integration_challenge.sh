@@ -105,7 +105,7 @@ test_adapter_implementation() {
 
 # Test 7: HelixQA test bank exists
 test_helixqa_bank() {
-    [ -f "${PROJECT_ROOT}/HelixQA/banks/helixllm.yaml" ]
+    [ -f "${PROJECT_ROOT}/../HelixQA/banks/helixllm.yaml" ]
 }
 
 # Test 8: Integration test script exists

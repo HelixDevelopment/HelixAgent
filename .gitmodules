@@ -211,18 +211,12 @@
 [submodule "MCP/submodules/docs-mcp"]
 	path = MCP/submodules/docs-mcp
 	url = git@github.com:RohitKrish46/docs-mcp-server.git
-[submodule "cli_agents/cline"]
-	path = cli_agents/cline
-	url = git@github.com:cline/cline.git
 [submodule "cli_agents/claude-squad"]
 	path = cli_agents/claude-squad
 	url = git@github.com:smtg-ai/claude-squad.git
 [submodule "cli_agents/gemini-cli"]
 	path = cli_agents/gemini-cli
 	url = git@github.com:google-gemini/gemini-cli.git
-[submodule "cli_agents/codex"]
-	path = cli_agents/codex
-	url = git@github.com:openai/codex.git
 [submodule "cli_agents/conduit"]
 	path = cli_agents/conduit
 	url = git@github.com:lostintangent/conduit-release.git

@@ -75,7 +75,7 @@ test.describe("Dedicated repo servers", () => {
       // Conditionally skip this test for mrdoob/three.js
       const shouldSkipFetchTest = path === 'mrdoob/three.js';
       test(`should run fetch_X_documentation for ${path}`, async ({ page }) => {
-         test.skip(shouldSkipFetchTest, 'Skipping fetch_X_documentation test for mrdoob/three.js as it uses a different tool name.');
+         test.skip(shouldSkipFetchTest, 'Skipping fetch_X_documentation test for mrdoob/three.js as it uses a different tool name.'); // SKIP-OK: #upstream-tool-renamed
 
          await page.goto("/");
          await page.getByRole("combobox", { name: "Transport Type" }).click();

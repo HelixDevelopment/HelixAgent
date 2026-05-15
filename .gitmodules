@@ -4,21 +4,6 @@
 [submodule "Streaming"]
 	path = Streaming
 	url = git@github.com:vasic-digital/Streaming.git
-[submodule "VectorDB"]
-	path = VectorDB
-	url = git@github.com:vasic-digital/VectorDB.git
-[submodule "Embeddings"]
-	path = Embeddings
-	url = git@github.com:vasic-digital/Embeddings.git
-[submodule "Database"]
-	path = Database
-	url = git@github.com:vasic-digital/Database.git
-[submodule "Cache"]
-	path = Cache
-	url = git@github.com:vasic-digital/Cache.git
-[submodule "Messaging"]
-	path = Messaging
-	url = git@github.com:vasic-digital/Messaging.git
 [submodule "Formatters"]
 	path = Formatters
 	url = git@github.com:vasic-digital/Formatters.git

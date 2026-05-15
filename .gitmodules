@@ -4,9 +4,6 @@
 [submodule "Streaming"]
 	path = Streaming
 	url = git@github.com:vasic-digital/Streaming.git
-[submodule "Plugins"]
-	path = Plugins
-	url = git@github.com:vasic-digital/Plugins.git
 [submodule "external/mcp-servers/servers-archived"]
 	path = external/mcp-servers/servers-archived
 	url = git@github.com:modelcontextprotocol/servers-archived.git
@@ -154,21 +151,9 @@
 [submodule "cli_agents/opencode-cli"]
 	path = cli_agents/opencode-cli
 	url = git@github.com:anomalyco/opencode.git
-[submodule "HelixMemory"]
-	path = HelixMemory
-	url = git@github.com:HelixDevelopment/HelixMemory.git
-[submodule "HelixSpecifier"]
-	path = HelixSpecifier
-	url = git@github.com:HelixDevelopment/HelixSpecifier.git
 [submodule "BuildCheck"]
 	path = BuildCheck
 	url = git@github.com:milos85vasic/BuildCheck.git
-[submodule "Agentic"]
-	path = Agentic
-	url = git@github.com:vasic-digital/Agentic.git
-[submodule "LLMOps"]
-	path = LLMOps
-	url = git@github.com:vasic-digital/LLMOps.git
 [submodule "SelfImprove"]
 	path = SelfImprove
 	url = git@github.com:vasic-digital/SelfImprove.git

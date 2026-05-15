@@ -219,9 +219,9 @@ replace digital.vasic.containers => ../Containers
 
 replace digital.vasic.challenges => ./Challenges
 
-replace digital.vasic.agentic => ./Agentic
+replace digital.vasic.agentic => ../Dependencies/vasic-digital/Agentic
 
-replace digital.vasic.llmops => ./LLMOps
+replace digital.vasic.llmops => ../Dependencies/vasic-digital/LLMOps
 
 replace digital.vasic.selfimprove => ./SelfImprove
 
@@ -243,9 +243,9 @@ replace digital.vasic.embeddings => ../Dependencies/vasic-digital/Embeddings
 
 replace digital.vasic.eventbus => ../Dependencies/vasic-digital/EventBus
 
-replace digital.vasic.helixmemory => ./HelixMemory
+replace digital.vasic.helixmemory => ../Dependencies/HelixDevelopment/HelixMemory
 
-replace digital.vasic.helixspecifier => ./HelixSpecifier
+replace digital.vasic.helixspecifier => ../Dependencies/HelixDevelopment/HelixSpecifier
 
 replace digital.vasic.formatters => ../Dependencies/vasic-digital/Formatters
 
@@ -259,7 +259,7 @@ replace digital.vasic.observability => ../Dependencies/vasic-digital/Observabili
 
 replace digital.vasic.optimization => ../Dependencies/vasic-digital/Optimization
 
-replace digital.vasic.plugins => ./Plugins
+replace digital.vasic.plugins => ../Dependencies/vasic-digital/Plugins
 
 replace digital.vasic.rag => ../Dependencies/vasic-digital/RAG
 

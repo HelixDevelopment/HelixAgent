@@ -275,19 +275,19 @@ replace digital.vasic.toolschema => ../Dependencies/vasic-digital/ToolSchema
 
 replace digital.vasic.skillregistry => ../Dependencies/vasic-digital/SkillRegistry
 
-replace digital.vasic.conversation => ./ConversationContext
+replace digital.vasic.conversation => ../Dependencies/vasic-digital/conversation
 
-replace digital.vasic.models => ./Models
+replace digital.vasic.models => ../Dependencies/vasic-digital/Models
 
-replace digital.vasic.background => ./BackgroundTasks
+replace digital.vasic.background => ../Dependencies/vasic-digital/BackgroundTasks
 
-replace digital.vasic.llmprovider => ./LLMProvider
+replace digital.vasic.llmprovider => ../Dependencies/vasic-digital/LLMProvider
 
 replace digital.vasic.debate => ./DebateOrchestrator
 
 replace digital.vasic.helixqa => ../HelixQA
 
-replace digital.vasic.docprocessor => ./DocProcessor
+replace digital.vasic.docprocessor => ../Dependencies/vasic-digital/DocProcessor
 
 replace digital.vasic.llmorchestrator => ./LLMOrchestrator
 

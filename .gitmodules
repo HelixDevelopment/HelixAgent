@@ -154,21 +154,6 @@
 [submodule "BuildCheck"]
 	path = BuildCheck
 	url = git@github.com:milos85vasic/BuildCheck.git
-[submodule "ConversationContext"]
-	path = ConversationContext
-	url = git@github.com:vasic-digital/conversation.git
-[submodule "Models"]
-	path = Models
-	url = git@github.com:vasic-digital/Models.git
-[submodule "LLMProvider"]
-	path = LLMProvider
-	url = git@github.com:vasic-digital/LLMProvider.git
-[submodule "BackgroundTasks"]
-	path = BackgroundTasks
-	url = git@github.com:vasic-digital/BackgroundTasks.git
-[submodule "DocProcessor"]
-	path = DocProcessor
-	url = git@github.com:vasic-digital/DocProcessor.git
 [submodule "LLMOrchestrator"]
 	path = LLMOrchestrator
 	url = git@github.com:vasic-digital/LLMOrchestrator.git

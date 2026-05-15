@@ -223,11 +223,11 @@ replace digital.vasic.agentic => ../Dependencies/vasic-digital/Agentic
 
 replace digital.vasic.llmops => ../Dependencies/vasic-digital/LLMOps
 
-replace digital.vasic.selfimprove => ./SelfImprove
+replace digital.vasic.selfimprove => ../Dependencies/vasic-digital/SelfImprove
 
-replace digital.vasic.planning => ./Planning
+replace digital.vasic.planning => ../Dependencies/vasic-digital/Planning
 
-replace digital.vasic.benchmark => ./Benchmark
+replace digital.vasic.benchmark => ../Dependencies/vasic-digital/Benchmark
 
 replace digital.vasic.llmsverifier => ../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier
 
@@ -271,9 +271,9 @@ replace digital.vasic.streaming => ./Streaming
 
 replace digital.vasic.vectordb => ../Dependencies/vasic-digital/VectorDB
 
-replace digital.vasic.toolschema => ./ToolSchema
+replace digital.vasic.toolschema => ../Dependencies/vasic-digital/ToolSchema
 
-replace digital.vasic.skillregistry => ./SkillRegistry
+replace digital.vasic.skillregistry => ../Dependencies/vasic-digital/SkillRegistry
 
 replace digital.vasic.conversation => ./ConversationContext
 

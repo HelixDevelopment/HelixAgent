@@ -154,21 +154,6 @@
 [submodule "BuildCheck"]
 	path = BuildCheck
 	url = git@github.com:milos85vasic/BuildCheck.git
-[submodule "SelfImprove"]
-	path = SelfImprove
-	url = git@github.com:vasic-digital/SelfImprove.git
-[submodule "Planning"]
-	path = Planning
-	url = git@github.com:vasic-digital/Planning.git
-[submodule "Benchmark"]
-	path = Benchmark
-	url = git@github.com:vasic-digital/Benchmark.git
-[submodule "ToolSchema"]
-	path = ToolSchema
-	url = git@github.com:vasic-digital/ToolSchema.git
-[submodule "SkillRegistry"]
-	path = SkillRegistry
-	url = git@github.com:vasic-digital/SkillRegistry.git
 [submodule "ConversationContext"]
 	path = ConversationContext
 	url = git@github.com:vasic-digital/conversation.git

@@ -217,7 +217,7 @@ replace dev.helix.agent/pkg/api => ./pkg/api
 
 replace digital.vasic.containers => ../Containers
 
-replace digital.vasic.challenges => ./Challenges
+replace digital.vasic.challenges => ../Challenges
 
 replace digital.vasic.agentic => ../Dependencies/vasic-digital/Agentic
 
@@ -267,7 +267,7 @@ replace digital.vasic.security => ../Security
 
 replace digital.vasic.storage => ../Dependencies/vasic-digital/Storage
 
-replace digital.vasic.streaming => ./Streaming
+replace digital.vasic.streaming => ../Dependencies/vasic-digital/Streaming
 
 replace digital.vasic.vectordb => ../Dependencies/vasic-digital/VectorDB
 

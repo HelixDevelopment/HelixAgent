@@ -1,9 +1,3 @@
-[submodule "Challenges"]
-	path = Challenges
-	url = git@github.com:vasic-digital/Challenges.git
-[submodule "Streaming"]
-	path = Streaming
-	url = git@github.com:vasic-digital/Streaming.git
 [submodule "external/mcp-servers/servers-archived"]
 	path = external/mcp-servers/servers-archived
 	url = git@github.com:modelcontextprotocol/servers-archived.git
@@ -178,18 +172,6 @@
 [submodule "docs/research/CLAUDE-CODE-SYSTEM-PROMPT"]
 	path = docs/research/CLAUDE-CODE-SYSTEM-PROMPT
 	url = git@github.com:elder-plinius/CLAUDE-CODE-SYSTEM-PROMPT.git
-[submodule "Veritas"]
-	path = Veritas
-	url = git@github.com:vasic-digital/Veritas.git
-[submodule "LeakHub"]
-	path = LeakHub
-	url = git@github.com:vasic-digital/LeakHub.git
-[submodule "Claritas"]
-	path = Claritas
-	url = git@github.com:vasic-digital/Claritas.git
-[submodule "Ouroborous"]
-	path = Ouroborous
-	url = git@github.com:vasic-digital/Ouroborous.git
 [submodule "cli_agents/openhands"]
 	path = cli_agents/openhands
 	url = git@github.com:All-Hands-AI/OpenHands.git

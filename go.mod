@@ -231,17 +231,17 @@ replace digital.vasic.benchmark => ./Benchmark
 
 replace digital.vasic.llmsverifier => ../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier
 
-replace digital.vasic.auth => ./Auth
+replace digital.vasic.auth => ../Dependencies/vasic-digital/Auth
 
 replace digital.vasic.cache => ./Cache
 
-replace digital.vasic.concurrency => ./Concurrency
+replace digital.vasic.concurrency => ../Dependencies/vasic-digital/Concurrency
 
 replace digital.vasic.database => ./Database
 
 replace digital.vasic.embeddings => ./Embeddings
 
-replace digital.vasic.eventbus => ./EventBus
+replace digital.vasic.eventbus => ../Dependencies/vasic-digital/EventBus
 
 replace digital.vasic.helixmemory => ./HelixMemory
 
@@ -255,7 +255,7 @@ replace digital.vasic.memory => ./Memory
 
 replace digital.vasic.messaging => ./Messaging
 
-replace digital.vasic.observability => ./Observability
+replace digital.vasic.observability => ../Dependencies/vasic-digital/Observability
 
 replace digital.vasic.optimization => ./Optimization
 
@@ -265,7 +265,7 @@ replace digital.vasic.rag => ./RAG
 
 replace digital.vasic.security => ../Security
 
-replace digital.vasic.storage => ./Storage
+replace digital.vasic.storage => ../Dependencies/vasic-digital/Storage
 
 replace digital.vasic.streaming => ./Streaming
 

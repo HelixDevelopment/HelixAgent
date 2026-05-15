@@ -1,21 +1,6 @@
 [submodule "Challenges"]
 	path = Challenges
 	url = git@github.com:vasic-digital/Challenges.git
-[submodule "EventBus"]
-	path = EventBus
-	url = git@github.com:vasic-digital/EventBus.git
-[submodule "Concurrency"]
-	path = Concurrency
-	url = git@github.com:vasic-digital/Concurrency.git
-[submodule "Observability"]
-	path = Observability
-	url = git@github.com:vasic-digital/Observability.git
-[submodule "Auth"]
-	path = Auth
-	url = git@github.com:vasic-digital/Auth.git
-[submodule "Storage"]
-	path = Storage
-	url = git@github.com:vasic-digital/Storage.git
 [submodule "Streaming"]
 	path = Streaming
 	url = git@github.com:vasic-digital/Streaming.git

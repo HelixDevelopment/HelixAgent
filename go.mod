@@ -247,21 +247,21 @@ replace digital.vasic.helixmemory => ./HelixMemory
 
 replace digital.vasic.helixspecifier => ./HelixSpecifier
 
-replace digital.vasic.formatters => ./Formatters
+replace digital.vasic.formatters => ../Dependencies/vasic-digital/Formatters
 
-replace digital.vasic.mcp => ./MCP_Module
+replace digital.vasic.mcp => ../Dependencies/vasic-digital/MCP_Module
 
-replace digital.vasic.memory => ./Memory
+replace digital.vasic.memory => ../Dependencies/vasic-digital/Memory
 
 replace digital.vasic.messaging => ../Dependencies/vasic-digital/Messaging
 
 replace digital.vasic.observability => ../Dependencies/vasic-digital/Observability
 
-replace digital.vasic.optimization => ./Optimization
+replace digital.vasic.optimization => ../Dependencies/vasic-digital/Optimization
 
 replace digital.vasic.plugins => ./Plugins
 
-replace digital.vasic.rag => ./RAG
+replace digital.vasic.rag => ../Dependencies/vasic-digital/RAG
 
 replace digital.vasic.security => ../Security
 

@@ -4,21 +4,6 @@
 [submodule "Streaming"]
 	path = Streaming
 	url = git@github.com:vasic-digital/Streaming.git
-[submodule "Formatters"]
-	path = Formatters
-	url = git@github.com:vasic-digital/Formatters.git
-[submodule "MCP_Module"]
-	path = MCP_Module
-	url = git@github.com:vasic-digital/MCP_Module.git
-[submodule "RAG"]
-	path = RAG
-	url = git@github.com:vasic-digital/RAG.git
-[submodule "Memory"]
-	path = Memory
-	url = git@github.com:vasic-digital/Memory.git
-[submodule "Optimization"]
-	path = Optimization
-	url = git@github.com:vasic-digital/Optimization.git
 [submodule "Plugins"]
 	path = Plugins
 	url = git@github.com:vasic-digital/Plugins.git

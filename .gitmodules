@@ -154,12 +154,6 @@
 [submodule "BuildCheck"]
 	path = BuildCheck
 	url = git@github.com:milos85vasic/BuildCheck.git
-[submodule "LLMOrchestrator"]
-	path = LLMOrchestrator
-	url = git@github.com:vasic-digital/LLMOrchestrator.git
-[submodule "VisionEngine"]
-	path = VisionEngine
-	url = git@github.com:vasic-digital/VisionEngine.git
 [submodule "cli_agents/roo-code"]
 	path = cli_agents/roo-code
 	url = git@github.com:RooVetGit/Roo-Code.git
@@ -169,10 +163,6 @@
 [submodule "tools/snow-cli"]
 	path = tools/snow-cli
 	url = git@github.com:MayDay-wpf/snow-cli.git
-[submodule "HelixLLM"]
-	path = HelixLLM
-	url = git@github.com:HelixDevelopment/HelixLLM.git
-	branch = main
 [submodule "docs/research/CL4R1T4S"]
 	path = docs/research/CL4R1T4S
 	url = git@github.com:elder-plinius/CL4R1T4S.git
@@ -188,12 +178,6 @@
 [submodule "docs/research/CLAUDE-CODE-SYSTEM-PROMPT"]
 	path = docs/research/CLAUDE-CODE-SYSTEM-PROMPT
 	url = git@github.com:elder-plinius/CLAUDE-CODE-SYSTEM-PROMPT.git
-[submodule "Normalize"]
-	path = Normalize
-	url = git@github.com:vasic-digital/Normalize.git
-[submodule "RedTeam"]
-	path = RedTeam
-	url = git@github.com:vasic-digital/RedTeam.git
 [submodule "PliniusCommon"]
 	path = PliniusCommon
 	url = git@github.com:vasic-digital/PliniusCommon.git

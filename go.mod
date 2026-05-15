@@ -289,12 +289,12 @@ replace digital.vasic.helixqa => ../HelixQA
 
 replace digital.vasic.docprocessor => ../Dependencies/vasic-digital/DocProcessor
 
-replace digital.vasic.llmorchestrator => ./LLMOrchestrator
+replace digital.vasic.llmorchestrator => ../Dependencies/vasic-digital/LLMOrchestrator
 
-replace digital.vasic.visionengine => ./VisionEngine
+replace digital.vasic.visionengine => ../Dependencies/vasic-digital/VisionEngine
 
-replace digital.vasic.normalize => ./Normalize
+replace digital.vasic.normalize => ../Dependencies/vasic-digital/Normalize
 
-replace digital.vasic.redteam => ./RedTeam
+replace digital.vasic.redteam => ../Dependencies/vasic-digital/RedTeam
 
 replace github.com/HelixDevelopment/HelixAgent/Toolkit => ./Toolkit

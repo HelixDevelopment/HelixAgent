@@ -215,7 +215,7 @@ require (
 
 replace dev.helix.agent/pkg/api => ./pkg/api
 
-replace digital.vasic.containers => ../Containers
+replace digital.vasic.containers => ../containers
 
 replace digital.vasic.challenges => ../Challenges
 

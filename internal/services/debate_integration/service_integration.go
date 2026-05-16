@@ -357,11 +357,28 @@ func (si *ServiceIntegration) PopulateFromDebateTeam(teamConfig *services.Debate
 	// Register real LLM invokers in the comprehensive debate package so that
 	// specialized agents (Architect, Generator, Critic, etc.) call real
 	// providers instead of returning hardcoded template strings.
+	//
+	// comprehensive.LLMInvoker is a `func(ctx, prompt) (string, error)`
+	// callback, so we wrap each ProviderLLMInvoker's Invoke method into a
+	// matching closure (collapsing the systemPrompt + userPrompt pair into
+	// a single string for the simpler callback contract).
 	invokerCount := 0
 	for _, vllm := range verifiedLLMs {
 		if vllm.Provider != nil {
-			invoker := NewProviderLLMInvoker(vllm.Provider, vllm.ModelName)
-			comprehensive.RegisterInvoker(vllm.ProviderName, vllm.ModelName, invoker)
+			pi := NewProviderLLMInvoker(vllm.Provider, vllm.ModelName)
+			cb := func(ctx context.Context, prompt string) (string, error) {
+				out, _, err := pi.Invoke(ctx, "", prompt)
+				return out, err
+			}
+			if err := comprehensive.RegisterInvoker(vllm.ProviderName, vllm.ModelName, cb); err != nil {
+				if si.logger != nil {
+					si.logger.WithError(err).WithFields(logrus.Fields{
+						"provider": vllm.ProviderName,
+						"model":    vllm.ModelName,
+					}).Warn("RegisterInvoker failed")
+				}
+				continue
+			}
 			invokerCount++
 		}
 	}
@@ -370,9 +387,11 @@ func (si *ServiceIntegration) PopulateFromDebateTeam(teamConfig *services.Debate
 	// whose provider/model pair was not explicitly registered still get
 	// real LLM calls.
 	if len(verifiedLLMs) > 0 && verifiedLLMs[0].Provider != nil {
-		comprehensive.SetFallbackInvoker(
-			NewProviderLLMInvoker(verifiedLLMs[0].Provider, verifiedLLMs[0].ModelName),
-		)
+		fpi := NewProviderLLMInvoker(verifiedLLMs[0].Provider, verifiedLLMs[0].ModelName)
+		comprehensive.SetFallbackInvoker(func(ctx context.Context, prompt string) (string, error) {
+			out, _, err := fpi.Invoke(ctx, "", prompt)
+			return out, err
+		})
 	}
 
 	// Also populate the comprehensive IntegrationManager's agent pool
@@ -393,8 +412,19 @@ func (si *ServiceIntegration) PopulateFromDebateTeam(teamConfig *services.Debate
 					continue
 				}
 				role := roles[i%len(roles)]
-				agent := comprehensive.NewAgent(role, vllm.ProviderName, vllm.ModelName, vllm.Score)
-				compPool.Add(agent)
+				// comprehensive.NewAgent returns *comprehensive.Agent, but
+				// the underlying pool is *orchestrator.AgentPool (which
+				// stores *orchestrator.Agent). Construct the orchestrator
+				// variant directly with the same fields so the pool
+				// accepts it.
+				cAgent := comprehensive.NewAgent(role, vllm.ProviderName, vllm.ModelName, vllm.Score)
+				compPool.Add(&orchestrator.Agent{
+					ID:       cAgent.ID,
+					Provider: cAgent.Provider,
+					Model:    cAgent.Model,
+					Score:    cAgent.Score,
+					Role:     string(cAgent.Role),
+				})
 			}
 			compPoolSize = compPool.Size()
 		}

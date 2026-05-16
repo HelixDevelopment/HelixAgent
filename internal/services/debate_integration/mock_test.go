@@ -62,7 +62,7 @@ func newMockProviderRegistry() *mockProviderRegistry {
 	}
 }
 
-func (r *mockProviderRegistry) GetProvider(name string) (llmprovider.LLMProvider, error) {
+func (r *mockProviderRegistry) GetProvider(name string) (interface{}, error) {
 	provider, ok := r.providers[name]
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %s", name)
@@ -80,6 +80,46 @@ func (r *mockProviderRegistry) GetAvailableProviders() []string {
 
 func (r *mockProviderRegistry) AddProvider(name string, provider *mockLLMProvider) {
 	r.providers[name] = provider
+}
+
+// GetProvidersByScore returns provider names. Mock just returns them in
+// insertion order — score is not tracked.
+func (r *mockProviderRegistry) GetProvidersByScore() []string {
+	return r.GetAvailableProviders()
+}
+
+// IsProviderHealthy reports whether the named mock provider exists.
+func (r *mockProviderRegistry) IsProviderHealthy(name string) bool {
+	_, ok := r.providers[name]
+	return ok
+}
+
+// ListProviders is an alias for GetAvailableProviders to satisfy the
+// orchestrator.ProviderRegistry interface.
+func (r *mockProviderRegistry) ListProviders() []string {
+	return r.GetAvailableProviders()
+}
+
+// RegisterProvider adds a provider under the given name. The mock only
+// accepts *mockLLMProvider values; any other type returns an error.
+func (r *mockProviderRegistry) RegisterProvider(name string, provider interface{}) error {
+	mp, ok := provider.(*mockLLMProvider)
+	if !ok {
+		return fmt.Errorf("mockProviderRegistry: only *mockLLMProvider accepted, got %T", provider)
+	}
+	r.providers[name] = mp
+	return nil
+}
+
+// UnregisterProvider removes a provider by name.
+func (r *mockProviderRegistry) UnregisterProvider(name string) error {
+	delete(r.providers, name)
+	return nil
+}
+
+// Count returns the number of registered providers.
+func (r *mockProviderRegistry) Count() int {
+	return len(r.providers)
 }
 
 // =============================================================================

@@ -124,7 +124,7 @@ func (ds *DebateService) conductComprehensiveDebateStreaming(
 	}
 
 	// Execute streaming debate through comprehensive system
-	compResp, err := ds.comprehensiveIntegration.StreamDebate(ctx, compReq)
+	compResp, err := ds.comprehensiveIntegration.StreamDebateRequest(ctx, compReq)
 	if err != nil {
 		ds.logger.WithError(err).Error("[Comprehensive Debate] Streaming debate execution failed")
 		return nil, fmt.Errorf("comprehensive streaming debate failed: %w", err)

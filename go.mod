@@ -184,7 +184,7 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
@@ -281,17 +281,17 @@ replace digital.vasic.models => ../Dependencies/vasic-digital/Models
 
 replace digital.vasic.background => ../Dependencies/vasic-digital/BackgroundTasks
 
-replace digital.vasic.llmprovider => ../Dependencies/vasic-digital/LLMProvider
+replace digital.vasic.llmprovider => ../Dependencies/HelixDevelopment/LLMProvider
 
-replace digital.vasic.debate => ./DebateOrchestrator
+replace digital.vasic.debate => ../Dependencies/HelixDevelopment/DebateOrchestrator
 
 replace digital.vasic.helixqa => ../HelixQA
 
-replace digital.vasic.docprocessor => ../Dependencies/vasic-digital/DocProcessor
+replace digital.vasic.docprocessor => ../Dependencies/HelixDevelopment/DocProcessor
 
-replace digital.vasic.llmorchestrator => ../Dependencies/vasic-digital/LLMOrchestrator
+replace digital.vasic.llmorchestrator => ../Dependencies/HelixDevelopment/LLMOrchestrator
 
-replace digital.vasic.visionengine => ../Dependencies/vasic-digital/VisionEngine
+replace digital.vasic.visionengine => ../Dependencies/HelixDevelopment/VisionEngine
 
 replace digital.vasic.normalize => ../Dependencies/vasic-digital/Normalize
 

@@ -5,6 +5,7 @@ package debate_integration
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"dev.helix.agent/internal/llm"
@@ -167,10 +168,22 @@ func (b *ProviderRegistryBridge) SetDebateTeamConfig(teamConfig *services.Debate
 	b.debateTeamCfg = teamConfig
 }
 
-// GetProvider implements ProviderRegistry interface.
-// It first tries the standard registry, then falls back to the debate team
-// config's verified provider instances for OAuth/CLI providers.
-func (b *ProviderRegistryBridge) GetProvider(name string) (llmprovider.LLMProvider, error) {
+// GetProvider implements orchestrator.ProviderRegistry. It first tries
+// the standard registry, then falls back to the debate team config's
+// verified provider instances for OAuth/CLI providers.
+//
+// The return type is interface{} so the bridge satisfies the
+// orchestrator-facing contract verbatim; callers that know the concrete
+// type (typically llmprovider.LLMProvider) should type-assert. Use
+// GetLLMProvider for a typed accessor.
+func (b *ProviderRegistryBridge) GetProvider(name string) (interface{}, error) {
+	return b.GetLLMProvider(name)
+}
+
+// GetLLMProvider is the typed sibling of GetProvider — it returns the
+// adapted llmprovider.LLMProvider so HelixAgent code that already has a
+// concrete type to consume does not need to type-assert.
+func (b *ProviderRegistryBridge) GetLLMProvider(name string) (llmprovider.LLMProvider, error) {
 	internalProvider, err := b.registry.GetProvider(name)
 	if err == nil {
 		return NewAdaptedProvider(internalProvider), nil
@@ -252,6 +265,40 @@ func (b *ProviderRegistryBridge) GetAllProviderScores() map[string]float64 {
 		scores[name] = b.GetProviderScore(name)
 	}
 	return scores
+}
+
+// ListProviders implements orchestrator.ProviderRegistry. It returns
+// the names of every provider known to the wrapped services registry.
+func (b *ProviderRegistryBridge) ListProviders() []string {
+	if b == nil || b.registry == nil {
+		return nil
+	}
+	return b.registry.ListProviders()
+}
+
+// RegisterProvider implements orchestrator.ProviderRegistry. The wrapped
+// services.ProviderRegistry is OAuth/CLI-driven and does not accept
+// runtime provider injection through this surface, so callers receive an
+// explicit error rather than a silent success.
+func (b *ProviderRegistryBridge) RegisterProvider(name string, provider interface{}) error {
+	return fmt.Errorf("debate_integration: ProviderRegistryBridge.RegisterProvider(%q) not supported via bridge — use services.ProviderRegistry directly", name)
+}
+
+// UnregisterProvider implements orchestrator.ProviderRegistry. Same
+// rationale as RegisterProvider.
+func (b *ProviderRegistryBridge) UnregisterProvider(name string) error {
+	return fmt.Errorf("debate_integration: ProviderRegistryBridge.UnregisterProvider(%q) not supported via bridge — use services.ProviderRegistry directly", name)
+}
+
+// Count implements orchestrator.ProviderRegistry. It returns the number
+// of providers visible to the bridge (standard registry providers).
+// OAuth/CLI verified-team providers are intentionally not counted here
+// because they live in a separate config object.
+func (b *ProviderRegistryBridge) Count() int {
+	if b == nil || b.registry == nil {
+		return 0
+	}
+	return len(b.registry.ListProviders())
 }
 
 // Ensure ProviderRegistryBridge implements ProviderRegistry

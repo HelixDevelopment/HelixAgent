@@ -285,7 +285,7 @@ replace digital.vasic.llmprovider => ../Dependencies/HelixDevelopment/LLMProvide
 
 replace digital.vasic.debate => ../Dependencies/HelixDevelopment/DebateOrchestrator
 
-replace digital.vasic.helixqa => ../HelixQA
+replace digital.vasic.helixqa => ../helix_qa
 
 replace digital.vasic.docprocessor => ../Dependencies/HelixDevelopment/DocProcessor
 

@@ -1,4 +1,4 @@
-# HelixAgent/HelixAgent Comprehensive Project Completion Report
+# helix_agent/HelixAgent Comprehensive Project Completion Report
 
 ## Executive Summary
 
@@ -157,7 +157,7 @@ This report provides a complete inventory of all unfinished, broken, disabled, a
 |-------|--------|-----------------|
 | Plugin System User Guide | Missing | `docs/guides/PLUGIN_DEVELOPMENT_GUIDE.md` |
 | Circuit Breaker Usage | Missing | `docs/architecture/CIRCUIT_BREAKER.md` |
-| Security/Sandboxing Features | Missing | `docs/security/SANDBOXING.md` |
+| security/Sandboxing Features | Missing | `docs/security/SANDBOXING.md` |
 | Advanced LSP/MCP/ACP Examples | Incomplete | `docs/protocols/` |
 | Debate HTTP API Endpoints | Not Exposed | `docs/api/debate-api.md` |
 
@@ -1099,4 +1099,4 @@ See Phase 3-8 for complete file listings with test requirements.
 
 **Report Generated**: 2026-01-05
 **Report Version**: 1.0
-**Project**: HelixAgent/HelixAgent
+**Project**: helix_agent/HelixAgent

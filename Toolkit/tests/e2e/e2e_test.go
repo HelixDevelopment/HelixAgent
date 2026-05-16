@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	testingutils "github.com/HelixDevelopment/HelixAgent/Toolkit/Commons/testing"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	testingutils "github.com/HelixDevelopment/helix_agent/Toolkit/Commons/testing"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 // TestCompleteChatWorkflow tests a complete chat workflow from start to finish

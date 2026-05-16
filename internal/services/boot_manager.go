@@ -541,7 +541,7 @@ func (bm *BootManager) startComposeServices(composeFile, profile string, service
 	// Container orchestration MUST go through the Containers module adapter.
 	ca := bm.getContainerAdapter()
 	if ca == nil {
-		return fmt.Errorf("container adapter not available: container orchestration must be handled by HelixAgent binary via Containers/.env configuration. Run ./bin/helixagent to start services automatically")
+		return fmt.Errorf("container adapter not available: container orchestration must be handled by HelixAgent binary via containers/.env configuration. Run ./bin/helixagent to start services automatically")
 	}
 	if composeFile == "" {
 		return fmt.Errorf("compose file path is empty")
@@ -569,7 +569,7 @@ func (bm *BootManager) stopComposeServices(composeFile, profile string, services
 	// Container orchestration MUST go through the Containers module adapter.
 	ca := bm.getContainerAdapter()
 	if ca == nil {
-		return fmt.Errorf("container adapter not available: container orchestration must be handled by HelixAgent binary via Containers/.env configuration. Run ./bin/helixagent to manage services automatically")
+		return fmt.Errorf("container adapter not available: container orchestration must be handled by HelixAgent binary via containers/.env configuration. Run ./bin/helixagent to manage services automatically")
 	}
 	if composeFile == "" {
 		return fmt.Errorf("compose file path is empty")

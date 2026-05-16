@@ -446,7 +446,7 @@ chmod +x challenges/scripts/my_challenge.sh
 
 - [User Manual 20: Testing Strategies](20-testing-strategies.md) -- Testing framework and conventions
 - [User Manual 18: Performance Monitoring](18-performance-monitoring.md) -- Monitoring challenge metrics
-- Challenges module: `Challenges/`
+- Challenges module: `challenges/`
 - Challenge scripts: `challenges/scripts/`
 - Go-native challenges: `tests/challenge/`
 - Userflow challenges: `internal/challenges/`

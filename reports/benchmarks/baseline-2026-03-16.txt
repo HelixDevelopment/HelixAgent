@@ -1179,48 +1179,48 @@ PASS
 ok  	dev.helix.agent/internal/formatters/providers/service	0.005s
 --- FAIL: TestExecuteQuery_WithVariables (0.00s)
     schema_test.go:129: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:129
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:129
         	Error:      	Should be empty, but was [provider service unavailable]
         	Test:       	TestExecuteQuery_WithVariables
 --- FAIL: TestResolveProvider (0.00s)
     schema_test.go:158: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:158
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:158
         	Error:      	Received unexpected error:
         	            	provider service unavailable
         	Test:       	TestResolveProvider
 --- FAIL: TestResolveDebate (0.00s)
     schema_test.go:178: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:178
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:178
         	Error:      	Received unexpected error:
         	            	debate service unavailable
         	Test:       	TestResolveDebate
 --- FAIL: TestResolveCreateDebate (0.00s)
     schema_test.go:228: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:228
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:228
         	Error:      	Received unexpected error:
         	            	debate service unavailable
         	Test:       	TestResolveCreateDebate
 --- FAIL: TestResolveSubmitDebateResponse (0.00s)
     schema_test.go:244: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:244
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:244
         	Error:      	Received unexpected error:
         	            	debate service unavailable
         	Test:       	TestResolveSubmitDebateResponse
 --- FAIL: TestResolveCreateTask (0.00s)
     schema_test.go:259: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:259
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:259
         	Error:      	Received unexpected error:
         	            	task service unavailable
         	Test:       	TestResolveCreateTask
 --- FAIL: TestResolveCancelTask (0.00s)
     schema_test.go:271: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:271
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:271
         	Error:      	Received unexpected error:
         	            	task service unavailable
         	Test:       	TestResolveCancelTask
 --- FAIL: TestResolveRefreshProvider (0.00s)
     schema_test.go:283: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/schema_test.go:283
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/schema_test.go:283
         	Error:      	Received unexpected error:
         	            	provider service unavailable
         	Test:       	TestResolveRefreshProvider
@@ -1229,13 +1229,13 @@ exit status 1
 FAIL	dev.helix.agent/internal/graphql	0.004s
 --- FAIL: TestResolveProvider_NoContext (0.00s)
     resolvers_test.go:267: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/resolvers/resolvers_test.go:267
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/resolvers/resolvers_test.go:267
         	Error:      	Received unexpected error:
         	            	provider service unavailable
         	Test:       	TestResolveProvider_NoContext
 --- FAIL: TestResolveCreateDebate_NoContext (0.00s)
     resolvers_test.go:490: 
-        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/graphql/resolvers/resolvers_test.go:490
+        	Error Trace:	/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/graphql/resolvers/resolvers_test.go:490
         	Error:      	Received unexpected error:
         	            	debate service unavailable
         	Test:       	TestResolveCreateDebate_NoContext

@@ -24,9 +24,9 @@ echo "  CONTAINERS_REMOTE_ENABLED=$CONTAINERS_REMOTE_ENABLED"
 echo "  CONTAINERS_REMOTE_HOST_1_NAME=$CONTAINERS_REMOTE_HOST_1_NAME"
 echo ""
 
-# Verify Containers/.env
-echo "Containers/.env contents:"
-cat Containers/.env
+# Verify containers/.env
+echo "containers/.env contents:"
+cat containers/.env
 echo ""
 
 # Start HelixAgent with maximum debug logging

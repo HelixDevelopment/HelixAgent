@@ -105,7 +105,7 @@ DebateOrchestrator/
       phase_review.go         <-- MODIFIED
       # Inject HallucinationDetector before Review phase
 
-HelixAgent/
+helix_agent/
   internal/
     ensemble/
       completions.go          <-- MODIFIED
@@ -250,7 +250,7 @@ LLMsVerifier/
       safety_score.go         <-- MODIFIED
       # Add RedTeamScore component
 
-HelixQA/
+helix_qa/
   internal/
     testing/
       security_suite.go       <-- NEW FILE
@@ -328,7 +328,7 @@ Formatters/
       transform_engine.go     <-- NEW FILE
       # go-p4rs3lt0ngv3 encode/decode pipeline
 
-HelixAgent/
+helix_agent/
   internal/
     security/
       secure_channel.go       <-- NEW FILE
@@ -474,7 +474,7 @@ hacking techniques for adversarial testing.
 **Exact Integration Points:**
 
 ```
-Challenges/
+challenges/
   internal/
     prompts/
       prompt_hacks.go         <-- NEW FILE
@@ -484,7 +484,7 @@ Challenges/
       adversarial_tests.go    <-- NEW FILE
       # Convert solutions into automated tests
 
-HelixQA/
+helix_qa/
   internal/
     test_cases/
       injection_suite.go      <-- NEW FILE
@@ -565,7 +565,7 @@ via natural language for penetration testing and security research.
 **Exact Integration Points:**
 
 ```
-MCP-Servers/
+mcp_servers/
   internal/
     hardware/
       flipper_server.go       <-- NEW FILE
@@ -617,7 +617,7 @@ LLMsVerifier/
       leak_detector.go        <-- NEW FILE
       # go-leakhub.DetectLeak() on every model response
 
-HelixQA/
+helix_qa/
   internal/
     quality/
       leak_checks.go          <-- NEW FILE
@@ -976,7 +976,7 @@ Critical for classified or sensitive use cases.
 10. DebateOrchestrator/internal/phases/synthesis.go
 11. LLMsVerifier/internal/security/safety_score.go
 12. HelixMemory/internal/memory/reflection_store.go
-13. HelixQA/internal/testing/security_suite.go
+13. helix_qa/internal/testing/security_suite.go
 
 ### New Files (22):
 1. LLMsVerifier/internal/security/adversarial_testing.go
@@ -991,13 +991,13 @@ Critical for classified or sensitive use cases.
 10. Agentic/internal/arena/arena.go
 11. Formatters/internal/transforms/transform_engine.go
 12. Formatters/internal/conlang/conlang_engine.go
-13. HelixAgent/internal/security/secure_channel.go
-14. Challenges/internal/prompts/prompt_hacks.go
-15. HelixQA/internal/test_cases/injection_suite.go
-16. HelixQA/internal/quality/leak_checks.go
+13. helix_agent/internal/security/secure_channel.go
+14. challenges/internal/prompts/prompt_hacks.go
+15. helix_qa/internal/test_cases/injection_suite.go
+16. helix_qa/internal/quality/leak_checks.go
 17. Benchmark/internal/suites/hyperparameter_suite.go
 18. Benchmark/internal/suites/autonomy_suite.go
 19. BackgroundTasks/internal/git/git_ai.go
-20. MCP-Servers/internal/hardware/flipper_server.go
+20. mcp_servers/internal/hardware/flipper_server.go
 21. HelixLLM/internal/context/environmental.go
 22. DocProcessor/internal/creative/story_generator.go

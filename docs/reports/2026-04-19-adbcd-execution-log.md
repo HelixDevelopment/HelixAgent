@@ -137,7 +137,7 @@ releases/helixagent/linux-amd64/9/
 
 The binary followed the Constitutional boot path correctly:
 
-1. Loaded `Containers/.env` — `CONTAINERS_REMOTE_ENABLED=true`, host `thinker.local`.
+1. Loaded `containers/.env` — `CONTAINERS_REMOTE_ENABLED=true`, host `thinker.local`.
 2. Initialised `ContainerAdapter` (podman runtime detected).
 3. `BootManager` discovered 18 services — 2 remote (postgres+redis → thinker), 1 local (chromadb), 15 skipped lazily.
 4. SSH-deployed 12 build contexts to `thinker.local` → remote `podman-compose up -d` (24.9 s wall).

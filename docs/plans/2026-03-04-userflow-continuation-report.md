@@ -124,7 +124,7 @@ helix-full-system (independent, E2E)
 | `helix_plugin.go` | Plugin system integration |
 | `infra_bridge.go` | Infrastructure provider bridge |
 
-### Challenges Module (Challenges/pkg/userflow/) — 9 new adapters
+### Challenges Module (challenges/pkg/userflow/) — 9 new adapters
 
 | Adapter File | Lines | Interface | Technology |
 |-------------|-------|-----------|------------|
@@ -156,8 +156,8 @@ helix-full-system (independent, E2E)
 |---------|--------------|------------|--------|
 | `internal/challenges/userflow/` | 32 | 8 | ALL PASS |
 | `internal/challenges/` | 77 | 4 | ALL PASS |
-| `Challenges/pkg/userflow/` | 530 | — | ALL PASS |
-| `Challenges/pkg/challenge/` | 110 | — | ALL PASS |
+| `challenges/pkg/userflow/` | 530 | — | ALL PASS |
+| `challenges/pkg/challenge/` | 110 | — | ALL PASS |
 | `tests/integration/` (userflow) | 11 | — | ALL PASS |
 | `tests/security/` (userflow) | 17 (131 subtests) | — | ALL PASS |
 | `tests/stress/` (userflow) | 11 | — | ALL PASS |
@@ -174,7 +174,7 @@ GOMAXPROCS=2 go test -count=1 -short -p 1 -v ./internal/challenges/userflow/
 GOMAXPROCS=2 go test -count=1 -short -p 1 -v ./internal/challenges/
 
 # Challenges module userflow (530 tests)
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Challenges
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/Challenges
 GOMAXPROCS=2 go test -count=1 -short -p 1 ./pkg/userflow/...
 
 # Challenges module base (110 tests)
@@ -255,7 +255,7 @@ b948688e feat(challenges): integrate Challenges module with userflow testing
 - Wiring to main orchestrator: confirmed working
 - Category override via `SetCategory`: confirmed working
 - Shell challenge script: exists and works
-- Challenges/README.md userflow section: comprehensive and accurate
+- challenges/README.md userflow section: comprehensive and accurate
 
 ---
 

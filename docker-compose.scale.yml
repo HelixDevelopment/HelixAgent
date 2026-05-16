@@ -8,7 +8,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d
 #
 # Each value is overridable per-environment. Set
-# `<SERVICE_UPPER>_MEM_LIMIT` etc. in your shell or in Containers/.env to
+# `<SERVICE_UPPER>_MEM_LIMIT` etc. in your shell or in containers/.env to
 # override. See docs/development/container-resource-policy.md for the full
 # tier table and the rationale behind these numbers.
 #

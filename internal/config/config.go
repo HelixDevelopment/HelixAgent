@@ -486,7 +486,7 @@ func DefaultServicesConfig() ServicesConfig {
 	remoteEnabled := isContainersRemoteEnabled()
 
 	// Remote configuration is determined by CONTAINERS_REMOTE_ENABLED environment variable
-	// or Containers/.env file. When true, all services are marked as Remote=true for
+	// or containers/.env file. When true, all services are marked as Remote=true for
 	// distribution to remote hosts.
 
 	cfg := ServicesConfig{
@@ -733,7 +733,7 @@ func DefaultServicesConfig() ServicesConfig {
 }
 
 // LoadServicesFromEnv applies environment variable overrides to the services config.
-// MANDATORY: When CONTAINERS_REMOTE_ENABLED=true in Containers/.env, ALL services
+// MANDATORY: When CONTAINERS_REMOTE_ENABLED=true in containers/.env, ALL services
 // (except HelixAgent itself) are automatically marked as Remote=true for distribution
 // to remote hosts via the Containers module with resource-aware scheduling.
 func LoadServicesFromEnv(cfg *ServicesConfig) {
@@ -767,7 +767,7 @@ func LoadServicesFromEnv(cfg *ServicesConfig) {
 	}
 }
 
-// isContainersRemoteEnabled checks if CONTAINERS_REMOTE_ENABLED=true in Containers/.env
+// isContainersRemoteEnabled checks if CONTAINERS_REMOTE_ENABLED=true in containers/.env
 func isContainersRemoteEnabled() bool {
 	// First check environment variable directly
 	if v := os.Getenv("CONTAINERS_REMOTE_ENABLED"); v != "" {
@@ -776,10 +776,10 @@ func isContainersRemoteEnabled() bool {
 		}
 	}
 
-	// Try to read from Containers/.env file
+	// Try to read from containers/.env file
 	envPaths := []string{
-		"Containers/.env",
-		"/run/media/milosvasic/DATA4TB/Projects/HelixCode/Containers/.env",
+		"containers/.env",
+		"/run/media/milosvasic/DATA4TB/Projects/helix_code/containers/.env",
 	}
 
 	for _, path := range envPaths {

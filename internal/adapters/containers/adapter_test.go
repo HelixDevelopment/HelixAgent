@@ -852,7 +852,7 @@ func TestNewAdapterFromConfig_NoRuntime(t *testing.T) {
 	err = os.Chdir(tmpDir)
 	require.NoError(t, err)
 
-	// Create Containers/.env file with remote distribution disabled
+	// Create containers/.env file with remote distribution disabled
 	containersDir := filepath.Join(tmpDir, "Containers")
 	err = os.MkdirAll(containersDir, 0755)
 	require.NoError(t, err)

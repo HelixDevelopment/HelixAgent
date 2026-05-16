@@ -117,7 +117,7 @@ Centralized metadata for all HelixAgent video courses. Use this file to track co
 - **Prerequisites:** Course 01, Course 06, Course 70
 - **Modules:** 6 (QA Orchestrator Setup, Test Bank YAML Format, Crash/ANR Detection, Evidence Collection Pipeline, Ticket Generation, Session Management)
 - **Key Topics:** SessionCoordinator lifecycle, YAML test banks with platform/priority filtering, real-time crash/ANR detection (Android/Web/Desktop), evidence artifacts (screenshots/video/logs), Markdown ticket generation, curiosity-driven exploration
-- **Source Modules:** `HelixQA/` (`digital.vasic.helixqa`)
+- **Source Modules:** `helix_qa/` (`digital.vasic.helixqa`)
 - **Assessment:** Quiz (10 questions) + practical QA session build
 
 ### Course 72: LLMOrchestrator Mastery

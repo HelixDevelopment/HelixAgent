@@ -85,7 +85,7 @@ the ones that hurt this project most:
 5. CONST-030 / CONST-031 violations.
    - Direct docker/podman commands instead of the HelixAgent binary
      orchestrating containers.
-   - Hardcoded host names not loaded from Containers/.env via the
+   - Hardcoded host names not loaded from containers/.env via the
      CONTAINERS_REMOTE_HOST_N_* mechanism.
 
 6. Goroutine / resource leaks introduced.

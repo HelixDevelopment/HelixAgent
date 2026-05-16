@@ -4,8 +4,8 @@
 
 set -o pipefail
 
-SCRIPT_DIR="/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/scripts"
-RESULTS_DIR="/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/results"
+SCRIPT_DIR="/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/scripts"
+RESULTS_DIR="/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/results"
 CSV_FILE="$RESULTS_DIR/all_challenges_report.csv"
 LOG_DIR="$RESULTS_DIR/logs"
 

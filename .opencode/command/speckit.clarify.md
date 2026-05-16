@@ -183,9 +183,9 @@ Context for prioritization: $ARGUMENTS
 ## Prerequisites Check
 
 ✅ **Feature Branch**: `001-ai-coding-cli-agents-integration`  
-✅ **Feature Spec**: `/Volumes/T7/Projects/HelixAgent/specs/001-helix-agent/spec.md`  
-✅ **Implementation Plan**: `/Volumes/T7/Projects/HelixAgent/specs/001-helix-agent/plan.md`  
-✅ **Tasks**: `/Volumes/T7/Projects/HelixAgent/specs/001-helix-agent/tasks.md`
+✅ **Feature Spec**: `/Volumes/T7/Projects/helix_agent/specs/001-helix-agent/spec.md`  
+✅ **Implementation Plan**: `/Volumes/T7/Projects/helix_agent/specs/001-helix-agent/plan.md`  
+✅ **Tasks**: `/Volumes/T7/Projects/helix_agent/specs/001-helix-agent/tasks.md`
 
 ## Ambiguity & Coverage Analysis
 

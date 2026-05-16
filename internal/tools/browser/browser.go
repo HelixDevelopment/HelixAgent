@@ -49,7 +49,7 @@ func DefaultConfig() Config {
 		Headless:  true,
 		Timeout:   30 * time.Second,
 		Viewport:  DefaultViewport(),
-		UserAgent: "HelixAgent/1.0",
+		UserAgent: "helix_agent/1.0",
 	}
 }
 

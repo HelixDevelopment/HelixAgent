@@ -278,7 +278,7 @@ As a challenge validator, I need every component to have Challenge scripts (per 
 - Video course materials in docs/courses/
 - User manuals in docs/user-guides/
 - Test banks (qa-banks/, test_banks/)
-- Challenge test framework (challenges/, Challenges/)
+- Challenge test framework (challenges/, challenges/)
 - Security scanning infrastructure (docker/security/)
 - Monitoring infrastructure (monitoring/)
 - Concurrency packages (Concurrency/, internal/concurrency/)

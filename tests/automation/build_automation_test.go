@@ -194,7 +194,7 @@ func TestGitAutomation_Status(t *testing.T) {
 func TestEnvAutomation_ConfigValidation(t *testing.T) {
 	envFiles := []string{
 		".env.example",
-		"Containers/.env",
+		"containers/.env",
 	}
 
 	for _, envFile := range envFiles {

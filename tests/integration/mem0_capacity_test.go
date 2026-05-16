@@ -432,7 +432,7 @@ func TestMem0FullCapacity_LLMProviderConfigured(t *testing.T) {
 	geminiKey := os.Getenv("GEMINI_API_KEY")
 	if geminiKey == "" {
 		// Try to read from .env file
-		envContent, err := os.ReadFile("/run/media/milosvasic/DATA4TB/Projects/HelixAgent/.env")
+		envContent, err := os.ReadFile("/run/media/milosvasic/DATA4TB/Projects/helix_agent/.env")
 		if err == nil && strings.Contains(string(envContent), "GEMINI_API_KEY=") {
 			t.Logf("GEMINI_API_KEY configured in .env file")
 			return

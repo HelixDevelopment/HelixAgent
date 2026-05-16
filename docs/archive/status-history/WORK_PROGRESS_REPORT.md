@@ -13,7 +13,7 @@
 - **Status:** Dependencies now download correctly
 
 ### 2. HelixQA Submodule Fixed
-- **Created** `HelixQA/pkg/visionremote/types.go` with required types:
+- **Created** `helix_qa/pkg/visionremote/types.go` with required types:
   - `HardwareInfo` struct
   - `DistributionConfig` struct
   - `ProbeHosts()` function
@@ -133,7 +133,7 @@ Added comprehensive type definitions for:
 - Health monitoring
 - Resource management
 
-#### 2. HelixQA/pkg/visionremote/types.go
+#### 2. helix_qa/pkg/visionremote/types.go
 Created new package with:
 - Distributed vision processing types
 - Hardware capability detection

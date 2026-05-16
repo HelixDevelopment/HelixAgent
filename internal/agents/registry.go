@@ -72,7 +72,7 @@ var CLIAgentRegistry = map[string]*CLIAgent{
 		SystemPrompt:   "You are Kiro, an AI coding agent that helps developers write better code. You have access to tools for code analysis, git operations, and testing.",
 	},
 
-	// New agents from HelixCode/Example_Projects
+	// New agents from helix_code/Example_Projects
 	"Aider": {
 		Name:           "Aider",
 		Description:    "AI pair programming in your terminal",
@@ -277,7 +277,7 @@ var CLIAgentRegistry = map[string]*CLIAgent{
 	},
 
 	// =========================================================================
-	// Additional 30 agents (from HelixCode/Example_Projects and external sources)
+	// Additional 30 agents (from helix_code/Example_Projects and external sources)
 	// Total: 48 agents
 	// =========================================================================
 

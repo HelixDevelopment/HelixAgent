@@ -118,7 +118,7 @@ Validate documentation integrity manually:
 
 ```bash
 # Check for broken internal links (requires markdown-link-check or similar)
-find /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Website/user-manuals -name "*.md" \
+find /run/media/milosvasic/DATA4TB/Projects/helix_agent/Website/user-manuals -name "*.md" \
   | xargs grep -l '\[.*\](\.\./' | head -20
 
 # Verify sequential numbering has no gaps

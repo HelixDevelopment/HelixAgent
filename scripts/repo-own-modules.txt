@@ -4,7 +4,7 @@
 #
 # Only project-owned modules (vasic-digital/*, HelixDevelopment/*,
 # milos85vasic/*) belong here. Third-party submodules (cli_agents/*,
-# MCP/*, external/*, tools/snow-cli, HelixQA/tools/opensource/*)
+# MCP/*, external/*, tools/snow-cli, helix_qa/tools/opensource/*)
 # MUST NOT appear here per CLAUDE.md Rule 10.
 Agentic
 Auth

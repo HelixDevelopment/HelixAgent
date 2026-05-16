@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup script for rootless Podman - enables container support for HelixAgent/Cognee
+# Setup script for rootless Podman - enables container support for helix_agent/Cognee
 # Run with: sudo ./scripts/setup-podman-rootless.sh
 
 set -e

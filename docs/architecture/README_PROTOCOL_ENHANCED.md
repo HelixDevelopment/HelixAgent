@@ -452,4 +452,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **HelixAgent: Orchestrating the Future of AI Integration** 🚀</content>
-<parameter name="filePath">/media/milosvasic/DATA4TB/Projects/HelixAgent/README.md
+<parameter name="filePath">/media/milosvasic/DATA4TB/Projects/helix_agent/README.md

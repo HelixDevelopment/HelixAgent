@@ -37,9 +37,9 @@ coverage/
 __pycache__/
 
 # MCP Servers (submodule build artifacts)
-MCP-Servers/node_modules/
-MCP-Servers/src/*/dist/
-MCP-Servers/src/*/node_modules/
+mcp_servers/node_modules/
+mcp_servers/src/*/dist/
+mcp_servers/src/*/node_modules/
 
 # MCP Submodules build artifacts
 MCP/submodules/*/node_modules/

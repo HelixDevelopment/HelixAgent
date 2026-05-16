@@ -249,7 +249,7 @@ OpenHands and HelixAgent are the two most capable multi-provider platforms:
 ### Recommendations
 
 **Use OpenHands when:**
-- Security/sandboxing is critical
+- security/sandboxing is critical
 - Interactive web development
 - Jupyter workflows
 - Untrusted code execution

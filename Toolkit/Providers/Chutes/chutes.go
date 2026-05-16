@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 func init() {

@@ -57,7 +57,7 @@ make build
 # The service will be available at http://localhost:7061
 ```
 
-**Important:** HelixAgent automatically orchestrates all required containers (PostgreSQL, Redis, ChromaDB, MCP servers, etc.) on startup based on `Containers/.env`. Do **not** start containers manually with `docker-compose` or `podman-compose`. The binary is the sole orchestrator.
+**Important:** HelixAgent automatically orchestrates all required containers (PostgreSQL, Redis, ChromaDB, MCP servers, etc.) on startup based on `containers/.env`. Do **not** start containers manually with `docker-compose` or `podman-compose`. The binary is the sole orchestrator.
 
 ## First API Call
 

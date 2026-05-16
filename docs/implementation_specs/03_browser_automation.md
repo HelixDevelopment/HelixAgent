@@ -386,7 +386,7 @@ browser:
     viewport:
       width: 1280
       height: 720
-    user_agent: "HelixAgent/1.0"
+    user_agent: "helix_agent/1.0"
     
   security:
     allowed_domains: []

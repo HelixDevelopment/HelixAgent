@@ -25,7 +25,7 @@
 | Test Coverage | 11 internal adapter files — 0% coverage | HIGH |
 | Test Coverage | `internal/utils` — 6 untested files | MEDIUM |
 | Test Coverage | `LLMsVerifier/` — 80% coverage (52 untested files) | MEDIUM |
-| Test Coverage | `Containers/` — 78% coverage (21 untested files) | MEDIUM |
+| Test Coverage | `containers/` — 78% coverage (21 untested files) | MEDIUM |
 | Test Coverage | `tests/chaos`, `tests/compliance` — 1 file each | MEDIUM |
 | Go Vet | `mcp_container_test.go` — unkeyed struct fields, IPv6 format | MEDIUM |
 | Commit Quality | `a8a76e6b` — "Auto-commit" violates Conventional Commits | LOW |
@@ -195,7 +195,7 @@ Each module gets:
 
 ### Priority 4: Module Coverage Improvements
 - `LLMsVerifier/` — 52 untested files → target top 30 by import frequency
-- `Containers/` — 21 untested files → add connection and runtime tests
+- `containers/` — 21 untested files → add connection and runtime tests
 - `MCP_Module/` — 4 untested files → add adapter tests
 - `Memory/` — 1 untested file → add test
 - `Messaging/` — 2 untested files → add tests

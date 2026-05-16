@@ -192,7 +192,7 @@ func NewAdapterFromConfig(cfg *config.Config) (*Adapter, error) {
 	// Set up health checker.
 	a.healthChecker = health.NewDefaultChecker()
 
-	// Load Containers/.env as the single source of truth for
+	// Load containers/.env as the single source of truth for
 	// remote distribution config. Try project-relative path first,
 	// then the Containers submodule.
 	for _, envPath := range []string{

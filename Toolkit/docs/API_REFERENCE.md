@@ -1,6 +1,6 @@
 # Toolkit - API Reference
 
-**Module:** `github.com/HelixDevelopment/HelixAgent/Toolkit`
+**Module:** `github.com/HelixDevelopment/helix_agent/Toolkit`
 
 ## Core Interfaces (`pkg/toolkit`)
 

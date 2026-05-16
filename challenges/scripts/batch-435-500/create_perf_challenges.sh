@@ -19,7 +19,7 @@ CHALLENGES=(
 for challenge in "${CHALLENGES[@]}"; do
     IFS=':' read -r id name points <<< "$challenge"
     
-    cat > "/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/scripts/${id}.sh" << EOF
+    cat > "/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/scripts/${id}.sh" << EOF
 #!/bin/bash
 # Challenge: ${name}
 # ID: ${id}
@@ -29,7 +29,7 @@ echo "🏁 Challenge: ${name}"
 echo "Testing performance characteristics..."
 echo "✅ Complete! +${points} points"
 EOF
-    chmod +x "/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/scripts/${id}.sh"
+    chmod +x "/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/scripts/${id}.sh"
 done
 
 echo "Created ${#CHALLENGES[@]} performance challenges"

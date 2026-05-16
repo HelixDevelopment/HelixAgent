@@ -41,10 +41,10 @@ run_test "Security directory exists" \
     "test -d '$PROJECT_ROOT/../Security'"
 
 run_test "Security go.mod exists" \
-    "test -f '$PROJECT_ROOT/../Security/go.mod'"
+    "test -f '$PROJECT_ROOT/../security/go.mod'"
 
 run_test "Security module name correct" \
-    "grep -q 'module digital.vasic.security' '$PROJECT_ROOT/../Security/go.mod'"
+    "grep -q 'module digital.vasic.security' '$PROJECT_ROOT/../security/go.mod'"
 
 run_test "Main go.mod has security require" \
     "grep -q 'digital.vasic.security' '$PROJECT_ROOT/go.mod'"
@@ -58,16 +58,16 @@ run_test "Main go.mod has security replace directive" \
 log_info "Section 2: Documentation"
 
 run_test "README.md exists" \
-    "test -f '$PROJECT_ROOT/../Security/README.md'"
+    "test -f '$PROJECT_ROOT/../security/README.md'"
 
 run_test "CLAUDE.md exists" \
-    "test -f '$PROJECT_ROOT/../Security/CLAUDE.md'"
+    "test -f '$PROJECT_ROOT/../security/CLAUDE.md'"
 
 run_test "AGENTS.md exists" \
-    "test -f '$PROJECT_ROOT/../Security/AGENTS.md'"
+    "test -f '$PROJECT_ROOT/../security/AGENTS.md'"
 
 run_test "docs/ directory exists" \
-    "test -d '$PROJECT_ROOT/../Security/docs'"
+    "test -d '$PROJECT_ROOT/../security/docs'"
 
 # ============================================================================
 # Section 3: Package Structure
@@ -75,19 +75,19 @@ run_test "docs/ directory exists" \
 log_info "Section 3: Package Structure"
 
 run_test "pkg/guardrails package exists" \
-    "test -d '$PROJECT_ROOT/../Security/pkg/guardrails'"
+    "test -d '$PROJECT_ROOT/../security/pkg/guardrails'"
 
 run_test "pkg/pii package exists" \
-    "test -d '$PROJECT_ROOT/../Security/pkg/pii'"
+    "test -d '$PROJECT_ROOT/../security/pkg/pii'"
 
 run_test "pkg/content package exists" \
-    "test -d '$PROJECT_ROOT/../Security/pkg/content'"
+    "test -d '$PROJECT_ROOT/../security/pkg/content'"
 
 run_test "pkg/policy package exists" \
-    "test -d '$PROJECT_ROOT/../Security/pkg/policy'"
+    "test -d '$PROJECT_ROOT/../security/pkg/policy'"
 
 run_test "pkg/scanner package exists" \
-    "test -d '$PROJECT_ROOT/../Security/pkg/scanner'"
+    "test -d '$PROJECT_ROOT/../security/pkg/scanner'"
 
 # ============================================================================
 # Section 4: Compilation
@@ -114,19 +114,19 @@ run_test "Security unit tests pass" \
 log_info "Section 6: Test Type Spectrum"
 
 run_test "Integration tests exist" \
-    "ls '$PROJECT_ROOT/../Security/tests/integration/'*_test.go 2>/dev/null | head -1"
+    "ls '$PROJECT_ROOT/../security/tests/integration/'*_test.go 2>/dev/null | head -1"
 
 run_test "E2E tests exist" \
-    "ls '$PROJECT_ROOT/../Security/tests/e2e/'*_test.go 2>/dev/null | head -1"
+    "ls '$PROJECT_ROOT/../security/tests/e2e/'*_test.go 2>/dev/null | head -1"
 
 run_test "Security tests exist" \
-    "ls '$PROJECT_ROOT/../Security/tests/security/'*_test.go 2>/dev/null | head -1"
+    "ls '$PROJECT_ROOT/../security/tests/security/'*_test.go 2>/dev/null | head -1"
 
 run_test "Stress tests exist" \
-    "ls '$PROJECT_ROOT/../Security/tests/stress/'*_test.go 2>/dev/null | head -1"
+    "ls '$PROJECT_ROOT/../security/tests/stress/'*_test.go 2>/dev/null | head -1"
 
 run_test "Benchmark tests exist" \
-    "ls '$PROJECT_ROOT/../Security/tests/benchmark/'*_test.go 2>/dev/null | head -1"
+    "ls '$PROJECT_ROOT/../security/tests/benchmark/'*_test.go 2>/dev/null | head -1"
 
 # ============================================================================
 # Section 7: Adapter Integration

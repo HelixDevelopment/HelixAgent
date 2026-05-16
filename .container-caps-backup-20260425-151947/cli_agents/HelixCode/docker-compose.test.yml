@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./HelixCode/test/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./helix_code/test/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U helixcode -d helixcode_test"]
       interval: 10s
@@ -82,7 +82,7 @@ services:
     networks:
       - helixcode_test
     volumes:
-      - ./HelixCode/test:/app/test
+      - ./helix_code/test:/app/test
       - ./test-config.yaml:/app/config.yaml
       - ./test-config.yaml:/app/config.yaml
 
@@ -110,7 +110,7 @@ services:
     networks:
       - helixcode_test
     volumes:
-      - ./HelixCode/test:/app/test
+      - ./helix_code/test:/app/test
       - ./test-config.yaml:/app/config.yaml
       - ./test-config.yaml:/app/config.yaml
 
@@ -138,7 +138,7 @@ services:
     networks:
       - helixcode_test
     volumes:
-      - ./HelixCode/test:/app/test
+      - ./helix_code/test:/app/test
       - ./test-config.yaml:/app/config.yaml
       - ./test-config.yaml:/app/config.yaml
 

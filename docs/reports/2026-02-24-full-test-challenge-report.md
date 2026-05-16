@@ -134,7 +134,7 @@ All infrastructure containers were running throughout the test run:
 ### Bug 13 — full_system_boot_challenge Remote/Local Port Check Confusion
 **File:** `challenges/scripts/full_system_boot_challenge.sh`
 **Symptom:** 3 tests failing because `check_port` routed to `thinker.local` (remote) while containers were running locally.
-**Root Cause:** `Containers/.env` has `CONTAINERS_REMOTE_ENABLED=true` pointing to `thinker.local`. When remote host was unreachable for port checks, tests failed instead of falling back to local.
+**Root Cause:** `containers/.env` has `CONTAINERS_REMOTE_ENABLED=true` pointing to `thinker.local`. When remote host was unreachable for port checks, tests failed instead of falling back to local.
 **Fix:** Updated `check_port` to try remote SSH port check first, then fall back to local `nc`/TCP check. Updated test 50 to fall back to local Docker container count when remote doesn't have sufficient containers.
 **Commit:** `b5ba4a1e`
 
@@ -269,7 +269,7 @@ Any test that creates a `FormatterCache` must call `cache.Stop()` in `t.Cleanup(
 Otherwise the 300s cleanup ticker goroutine will prevent test process exit.
 
 ### Pattern: Remote/local container check fallback
-When `CONTAINERS_REMOTE_ENABLED=true` in `Containers/.env` but tests run against local infra,
+When `CONTAINERS_REMOTE_ENABLED=true` in `containers/.env` but tests run against local infra,
 challenge scripts must try remote first, then fall back to local port checks.
 
 ---

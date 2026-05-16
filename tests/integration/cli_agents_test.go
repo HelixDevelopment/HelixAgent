@@ -22,11 +22,11 @@ import (
 const (
 	// Project paths
 	helixCodePath    = "/run/media/milosvasic/DATA4TB/Projects/HelixCode"
-	helixCodeCLIPath = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/HelixCode/bin/helixcode"
-	openCodePath     = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/opencode"
-	openCodeCLIPath  = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/opencode/opencode"
-	clinePath        = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/cline"
-	clineCLIPath     = "/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/cline/cli/cline"
+	helixCodeCLIPath = "/run/media/milosvasic/DATA4TB/Projects/helix_code/helix_code/bin/helixcode"
+	openCodePath     = "/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/opencode"
+	openCodeCLIPath  = "/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/opencode/opencode"
+	clinePath        = "/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/cline"
+	clineCLIPath     = "/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/cline/cli/cline"
 
 	// Repository URLs for auto-cloning
 	helixCodeRepoSSH   = "git@github.com:helix-org/HelixCode.git"

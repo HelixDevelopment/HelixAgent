@@ -11,7 +11,7 @@
 ### Phase 1: Challenges Module — 9 New Testing Framework Adapters
 
 All adapters are generic, reusable across projects, and committed to the
-`Challenges/` submodule (`digital.vasic.challenges`).
+`challenges/` submodule (`digital.vasic.challenges`).
 
 | Adapter | Interface | Technology | Lines |
 |---------|-----------|------------|-------|
@@ -97,9 +97,9 @@ All adapters are generic, reusable across projects, and committed to the
 
 ### Phase 5: Documentation
 
-- 23 markdown files in `Challenges/docs/userflow/`
-- `Challenges/README.md` updated with userflow section
-- `Challenges/CLAUDE.md` updated with adapter listings
+- 23 markdown files in `challenges/docs/userflow/`
+- `challenges/README.md` updated with userflow section
+- `challenges/CLAUDE.md` updated with adapter listings
 - HelixAgent `CLAUDE.md` updated with challenge listing
 
 ### Audit Fixes Applied
@@ -129,7 +129,7 @@ All adapters are generic, reusable across projects, and committed to the
 - ~~Tool/function calling challenge~~ DONE
 - ~~Provider failover challenge~~ DONE
 - ~~Orchestrator `RunAll()` and `RunByID()` Untested~~ DONE (6 tests)
-- ~~`Challenges/README.md` Has No Userflow Mention~~ DONE
+- ~~`challenges/README.md` Has No Userflow Mention~~ DONE
 - ~~Missing Benchmark Tests~~ DONE (8 benchmarks)
 - ~~Playwright CLI Adapter Test Failures~~ FIXED
 - ~~Silent error handling in registerChallenges()~~ FIXED
@@ -155,8 +155,8 @@ All adapters are generic, reusable across projects, and committed to the
 | `tests/integration/` (userflow) | 11 | — | ALL PASS |
 | `tests/security/` (userflow) | 17 (131 subtests) | — | ALL PASS |
 | `tests/stress/` (userflow) | 11 | — | ALL PASS |
-| `Challenges/pkg/challenge/` | 45+ | — | ALL PASS |
-| `Challenges/pkg/userflow/` (all) | 531+ | — | ALL PASS |
+| `challenges/pkg/challenge/` | 45+ | — | ALL PASS |
+| `challenges/pkg/userflow/` (all) | 531+ | — | ALL PASS |
 
 **Total new test functions across all work: 330+**
 **Total new benchmark functions: 12**
@@ -167,22 +167,22 @@ All adapters are generic, reusable across projects, and committed to the
 
 ### Challenges Module (Submodule)
 ```
-Challenges/pkg/userflow/selenium_adapter.go            # W3C WebDriver
-Challenges/pkg/userflow/appium_adapter.go               # Appium 2.0
-Challenges/pkg/userflow/cypress_adapter.go              # Cypress CLI
-Challenges/pkg/userflow/puppeteer_adapter.go            # Puppeteer Node.js
-Challenges/pkg/userflow/maestro_adapter.go              # Maestro YAML
-Challenges/pkg/userflow/espresso_adapter.go             # Espresso Gradle+ADB
-Challenges/pkg/userflow/robolectric_adapter.go          # Robolectric JVM
-Challenges/pkg/userflow/adapter_grpc.go                 # gRPC via grpcurl
-Challenges/pkg/userflow/adapter_websocket_flow.go       # WebSocket gorilla
-Challenges/pkg/userflow/challenge_grpc_flow.go          # gRPC challenge template
-Challenges/pkg/userflow/challenge_websocket_flow.go     # WebSocket challenge template
-Challenges/pkg/userflow/playwright_http_adapter_test.go # 40 tests
-Challenges/pkg/userflow/playwright_cli_adapter_test.go  # 8 tests (fixed)
-Challenges/pkg/userflow/options_test.go                 # 12 tests
-Challenges/pkg/userflow/flow_ipc_test.go                # 11 tests
-Challenges/docs/userflow/                               # 23 documentation files
+challenges/pkg/userflow/selenium_adapter.go            # W3C WebDriver
+challenges/pkg/userflow/appium_adapter.go               # Appium 2.0
+challenges/pkg/userflow/cypress_adapter.go              # Cypress CLI
+challenges/pkg/userflow/puppeteer_adapter.go            # Puppeteer Node.js
+challenges/pkg/userflow/maestro_adapter.go              # Maestro YAML
+challenges/pkg/userflow/espresso_adapter.go             # Espresso Gradle+ADB
+challenges/pkg/userflow/robolectric_adapter.go          # Robolectric JVM
+challenges/pkg/userflow/adapter_grpc.go                 # gRPC via grpcurl
+challenges/pkg/userflow/adapter_websocket_flow.go       # WebSocket gorilla
+challenges/pkg/userflow/challenge_grpc_flow.go          # gRPC challenge template
+challenges/pkg/userflow/challenge_websocket_flow.go     # WebSocket challenge template
+challenges/pkg/userflow/playwright_http_adapter_test.go # 40 tests
+challenges/pkg/userflow/playwright_cli_adapter_test.go  # 8 tests (fixed)
+challenges/pkg/userflow/options_test.go                 # 12 tests
+challenges/pkg/userflow/flow_ipc_test.go                # 11 tests
+challenges/docs/userflow/                               # 23 documentation files
 ```
 
 ### HelixAgent
@@ -209,7 +209,7 @@ GOMAXPROCS=2 go test -count=1 -short -p 1 -v ./internal/challenges/userflow/
 GOMAXPROCS=2 go test -count=1 -short -p 1 -v ./internal/challenges/
 
 # Challenges module tests (all pass)
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Challenges
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/Challenges
 GOMAXPROCS=2 go test -count=1 -short -p 1 ./pkg/userflow/...
 GOMAXPROCS=2 go test -count=1 -short -p 1 ./pkg/challenge/
 

@@ -1,7 +1,7 @@
 # Remote Distribution — Mode B (label-based sharding)
 
 How HelixAgent deploys its containerised stack across multiple
-remote hosts registered via `Containers/.env`.
+remote hosts registered via `containers/.env`.
 
 ## Two modes, one mechanism
 
@@ -33,7 +33,7 @@ Combined with compose-file-level service tagging, this gives you:
 Mode B requires **both** changes — setting labels alone does
 nothing if the compose file doesn't tag services.
 
-### Step 1 — label hosts in `Containers/.env`
+### Step 1 — label hosts in `containers/.env`
 
 Extend the `_LABELS` entry for each host with a `deploy_profile` tag
 and add your service-group labels:

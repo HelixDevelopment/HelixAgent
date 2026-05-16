@@ -276,7 +276,7 @@ test_background_task_wait() {
     log_info "Test 9: Testing background task wait functionality..."
 
     # Check if WaitForCompletion interface exists
-    if grep -q "WaitForCompletion" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/background/interfaces.go 2>/dev/null; then
+    if grep -q "WaitForCompletion" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/background/interfaces.go 2>/dev/null; then
         log_success "TaskWaiter interface with WaitForCompletion exists"
     else
         log_error "TaskWaiter interface missing WaitForCompletion"
@@ -284,7 +284,7 @@ test_background_task_wait() {
     fi
 
     # Check if implementation exists
-    if grep -q "func.*WaitForCompletion" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/background/worker_pool.go 2>/dev/null; then
+    if grep -q "func.*WaitForCompletion" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/background/worker_pool.go 2>/dev/null; then
         log_success "WaitForCompletion implementation exists"
     else
         log_error "WaitForCompletion implementation missing"

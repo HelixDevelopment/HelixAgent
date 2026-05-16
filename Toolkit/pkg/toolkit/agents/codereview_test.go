@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 // MockProvider is a mock implementation of toolkit.Provider for testing

@@ -94,7 +94,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 
 	// Set default headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "HelixAgent/1.0")
+	req.Header.Set("User-Agent", "helix_agent/1.0")
 
 	// Set API key if provided
 	if c.apiKey != "" {

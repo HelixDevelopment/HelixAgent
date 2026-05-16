@@ -29,7 +29,7 @@ Modules are organized in 8 phases. Each phase depends only on earlier phases, fo
 
 | Module | Path | Purpose |
 |--------|------|---------|
-| Security | `Security/` | Guardrails, PII detection, content filtering |
+| Security | `security/` | Guardrails, PII detection, content filtering |
 | VectorDB | `VectorDB/` | Qdrant, Pinecone, Milvus, pgvector |
 | Embeddings | `Embeddings/` | 6 embedding providers |
 | Database | `Database/` | PostgreSQL, SQLite, connection pooling, migrations |
@@ -91,12 +91,12 @@ Modules are organized in 8 phases. Each phase depends only on earlier phases, fo
 
 | Module | Path | Purpose |
 |--------|------|---------|
-| Containers | `Containers/` | Docker/Podman/K8s orchestration |
-| Challenges | `Challenges/` | Test framework, assertions, userflow testing |
+| Containers | `containers/` | Docker/Podman/K8s orchestration |
+| Challenges | `challenges/` | Test framework, assertions, userflow testing |
 | Toolkit | `Toolkit/` | Go utility library for AI apps |
 | LLMsVerifier | `LLMsVerifier/` | Provider accuracy verification and scoring |
 | DocProcessor | `DocProcessor/` | Documentation processing and feature extraction |
-| HelixQA | `HelixQA/` | QA orchestration framework |
+| HelixQA | `helix_qa/` | QA orchestration framework |
 | LLMOrchestrator | `LLMOrchestrator/` | Headless CLI agent management |
 | VisionEngine | `VisionEngine/` | Computer vision and LLM Vision |
 
@@ -104,9 +104,9 @@ Modules are organized in 8 phases. Each phase depends only on earlier phases, fo
 
 HelixAgent follows a strict initialization order on startup:
 
-1. **Configuration** -- Load `.env`, `configs/*.yaml`, and `Containers/.env`
+1. **Configuration** -- Load `.env`, `configs/*.yaml`, and `containers/.env`
 2. **Container Adapter** -- Initialize `internal/adapters/containers/adapter.go`, detect runtime (Docker/Podman)
-3. **Container Orchestration** -- Start all infrastructure containers (local or remote per `Containers/.env`)
+3. **Container Orchestration** -- Start all infrastructure containers (local or remote per `containers/.env`)
 4. **Health Checks** -- Verify PostgreSQL, Redis, ChromaDB, and required services are reachable
 5. **Database Migrations** -- Apply SQL schemas from `sql/schema/`
 6. **Provider Discovery** -- 3-tier model discovery (Provider API, models.dev, hardcoded fallback)
@@ -124,7 +124,7 @@ Modules are configured through environment variables and the adapter layer:
 |--------|-------------|---------------|
 | Database | `.env` | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` |
 | Cache | `.env` | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
-| Containers | `Containers/.env` | `CONTAINERS_REMOTE_ENABLED`, `CONTAINERS_REMOTE_HOST_*` |
+| Containers | `containers/.env` | `CONTAINERS_REMOTE_ENABLED`, `CONTAINERS_REMOTE_HOST_*` |
 | Observability | `.env` | `OTEL_EXPORTER_*`, `JAEGER_ENDPOINT` |
 | Auth | `.env` | `JWT_SECRET`, `API_KEY_*` |
 | LLM Providers | `.env` | `*_API_KEY`, `*_USE_OAUTH_CREDENTIALS` |
@@ -197,7 +197,7 @@ make build
 ## Troubleshooting
 
 - **"module not found" during build**: Run `git submodule update --init --recursive` and verify `replace` directives in root `go.mod`
-- **Boot hangs at container health check**: Check `Containers/.env` for correct host/port configuration
+- **Boot hangs at container health check**: Check `containers/.env` for correct host/port configuration
 - **Adapter test failures**: Ensure the target module's tests pass independently before testing the adapter
 - **Circular dependency detected**: Modules must only depend on earlier phases; check `go.mod` for violations
 

@@ -544,7 +544,7 @@ Implementation details & tooling
 Risks, limitations, and mitigations
 - Consensus lock / majority bias: mitigate by model diversity and adjudicator weighting.   
 - Hallucinations: require executable tests and static checks before acceptance.   
-- Security/supply‑chain risk: scan dependencies and sign artifacts. 
+- security/supply‑chain risk: scan dependencies and sign artifacts. 
 
 ---
 

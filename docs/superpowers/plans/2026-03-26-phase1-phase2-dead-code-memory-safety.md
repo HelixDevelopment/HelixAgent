@@ -108,7 +108,7 @@ Expected: Only cmd/api/main.go (demo code).
 
 Run:
 ```bash
-head -25 /run/media/milosvasic/DATA4TB/Projects/HelixAgent/cmd/api/main.go
+head -25 /run/media/milosvasic/DATA4TB/Projects/helix_agent/cmd/api/main.go
 ```
 Expected: Contains "DEMO" or "NOT FOR PRODUCTION" comment. This file references deleted services but is demo code.
 
@@ -349,30 +349,30 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 
 Run:
 ```bash
-find /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal -name "*.backup" -o -name "*.bak" | sort
+find /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal -name "*.backup" -o -name "*.bak" | sort
 ```
 
 - [ ] **Step 2: Delete all backup files in internal/**
 
 Run:
 ```bash
-find /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal -name "*.backup" -delete
-find /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal -name "*.bak" -delete
+find /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal -name "*.backup" -delete
+find /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal -name "*.bak" -delete
 ```
 
 - [ ] **Step 3: Also delete root-level backups**
 
 Run:
 ```bash
-rm -f /run/media/milosvasic/DATA4TB/Projects/HelixAgent/CONSTITUTION.json.bak
-rm -f /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Containers/.env.bak
+rm -f /run/media/milosvasic/DATA4TB/Projects/helix_agent/CONSTITUTION.json.bak
+rm -f /run/media/milosvasic/DATA4TB/Projects/helix_agent/containers/.env.bak
 ```
 
 - [ ] **Step 4: Verify no backup files remain in internal/**
 
 Run:
 ```bash
-find /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal -name "*.backup" -o -name "*.bak" | wc -l
+find /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal -name "*.backup" -o -name "*.bak" | wc -l
 ```
 Expected: 0
 
@@ -409,14 +409,14 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 
 Run:
 ```bash
-grep -rn "nolint:unused\|nolint: unused" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/handlers/
+grep -rn "nolint:unused\|nolint: unused" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/handlers/
 ```
 
 - [ ] **Step 2: For each unused function, verify it has zero callers**
 
 For each function found (e.g., `contains`, `containsSubstring`, `generateID`, `getIntParam`, `getFloatParam`), run:
 ```bash
-grep -rn "functionName(" --include="*.go" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/ | grep -v "nolint" | grep -v "func "
+grep -rn "functionName(" --include="*.go" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/ | grep -v "nolint" | grep -v "func "
 ```
 If zero callers outside the definition, proceed to delete.
 
@@ -428,7 +428,7 @@ Remove the function body entirely. Do NOT leave a comment or stub.
 
 Run:
 ```bash
-grep -rn "VerifierErrorResponse" --include="*.go" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/ | grep -v "verifier_types.go"
+grep -rn "VerifierErrorResponse" --include="*.go" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/ | grep -v "verifier_types.go"
 ```
 If zero callers, delete the entire file:
 ```bash
@@ -479,20 +479,20 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 
 Run:
 ```bash
-grep -rn "nolint:unused\|nolint: unused" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/services/ /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/middleware/ /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/modelsdev/ /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/database/ /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/background/
+grep -rn "nolint:unused\|nolint: unused" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/services/ /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/middleware/ /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/modelsdev/ /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/database/ /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/background/
 ```
 
 - [ ] **Step 2: For EACH item, verify zero callers**
 
 IMPORTANT: For struct fields marked unused (like `mu sync.RWMutex`), check if ANY method on the struct uses it:
 ```bash
-grep -n "\.mu\." /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/services/plugin_system.go
+grep -n "\.mu\." /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/services/plugin_system.go
 ```
 Only delete the field if truly unreferenced within the same file.
 
 For methods in `background/stuck_detector.go` (checkHeartbeatTimeout, isProcessFrozen, checkResourceExhaustion, isIOStarved, isNetworkHung, hasMemoryLeak, isEndlessTaskStuck): check if any are called via interface dispatch:
 ```bash
-grep -rn "checkHeartbeatTimeout\|isProcessFrozen\|checkResourceExhaustion\|isIOStarved\|isNetworkHung\|hasMemoryLeak\|isEndlessTaskStuck" --include="*.go" /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/
+grep -rn "checkHeartbeatTimeout\|isProcessFrozen\|checkResourceExhaustion\|isIOStarved\|isNetworkHung\|hasMemoryLeak\|isEndlessTaskStuck" --include="*.go" /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/
 ```
 
 - [ ] **Step 3: Delete confirmed dead items**
@@ -1178,7 +1178,7 @@ Expected: All PASS, no race detected.
 
 Run:
 ```bash
-find /run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal -name "*.backup" -o -name "*.bak" | wc -l
+find /run/media/milosvasic/DATA4TB/Projects/helix_agent/internal -name "*.backup" -o -name "*.bak" | wc -l
 ```
 Expected: 0.
 

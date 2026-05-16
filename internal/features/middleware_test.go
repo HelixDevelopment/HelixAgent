@@ -63,7 +63,7 @@ func TestMiddlewareAgentDetection(t *testing.T) {
 		userAgent     string
 		expectedAgent string
 	}{
-		{"HelixCode/1.0", "helixcode"},
+		{"helix_code/1.0", "helixcode"},
 		{"OpenCode CLI", "opencode"},
 		{"claude-code/1.0", "claudecode"},
 		{"Aider/1.0", "aider"},
@@ -241,7 +241,7 @@ func TestDetectAgent(t *testing.T) {
 		userAgent string
 		expected  string
 	}{
-		{"HelixCode/1.0", "helixcode"},
+		{"helix_code/1.0", "helixcode"},
 		{"helix-code CLI", "helixcode"},
 		{"OpenCode CLI 1.0", "opencode"},
 		{"Crush Terminal AI", "crush"},
@@ -551,7 +551,7 @@ func TestMiddlewareWithCustomLogger(t *testing.T) {
 	})
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	req.Header.Set("User-Agent", "HelixCode/1.0")
+	req.Header.Set("User-Agent", "helix_code/1.0")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

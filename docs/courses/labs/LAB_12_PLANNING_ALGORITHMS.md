@@ -28,7 +28,7 @@ By completing this lab, you will:
 ### Task 1.1: Verify the Planning Module
 
 ```bash
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Planning
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/Planning
 go build ./...
 go test ./... -short -count=1
 ```

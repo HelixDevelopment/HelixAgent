@@ -9,7 +9,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-CONTAINERS_ENV="$PROJECT_ROOT/Containers/.env"
+CONTAINERS_ENV="$PROJECT_ROOT/containers/.env"
 TOTAL=0
 PASSED=0
 FAILED=0
@@ -58,9 +58,9 @@ info "=== Tests ==="
 
 # Test 1: Config file exists
 if [[ -f "$CONTAINERS_ENV" ]]; then
-    pass "Containers/.env exists"
+    pass "containers/.env exists"
 else
-    fail "Containers/.env NOT found"
+    fail "containers/.env NOT found"
 fi
 
 # Test 2: Deployment script exists

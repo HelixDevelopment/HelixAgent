@@ -109,7 +109,7 @@ func (rc *RemoteConfig) HostsSummary() string {
 	return strings.Join(names, ", ")
 }
 
-// parseContainersEnv parses the Containers/.env file
+// parseContainersEnv parses the containers/.env file
 func parseContainersEnv(path string) *RemoteConfig {
 	rc := &RemoteConfig{}
 

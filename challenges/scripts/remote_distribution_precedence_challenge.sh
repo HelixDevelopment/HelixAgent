@@ -46,8 +46,8 @@ else
 fi
 
 # Test 4
-echo "Test 4: Containers/.env has correct setting..."
-if grep -q "CONTAINERS_REMOTE_ENABLED=true" Containers/.env; then
+echo "Test 4: containers/.env has correct setting..."
+if grep -q "CONTAINERS_REMOTE_ENABLED=true" containers/.env; then
     echo "  ✅ PASS"
     PASSED=$((PASSED + 1))
 else

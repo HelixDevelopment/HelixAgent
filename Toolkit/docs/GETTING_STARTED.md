@@ -1,11 +1,11 @@
 # Toolkit - Getting Started
 
-**Module:** `github.com/HelixDevelopment/HelixAgent/Toolkit`
+**Module:** `github.com/HelixDevelopment/helix_agent/Toolkit`
 
 ## Installation
 
 ```bash
-go get github.com/HelixDevelopment/HelixAgent/Toolkit
+go get github.com/HelixDevelopment/helix_agent/Toolkit
 ```
 
 ## Quick Start: Chat Completion
@@ -19,8 +19,8 @@ import (
     "context"
     "fmt"
 
-    _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/SiliconFlow"
-    "github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+    _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/SiliconFlow"
+    "github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 func main() {

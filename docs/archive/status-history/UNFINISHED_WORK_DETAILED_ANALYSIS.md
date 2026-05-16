@@ -59,7 +59,7 @@ echo "Build fixed!"
 
 ### 1.2 HelixQA Submodule Undefined Types
 
-**Location:** `HelixQA/pkg/autonomous/pipeline.go`
+**Location:** `helix_qa/pkg/autonomous/pipeline.go`
 
 **Errors:**
 ```
@@ -71,7 +71,7 @@ Line 575: undefined: visionremote.PlanDistribution
 **Solution:** Create missing types file
 
 ```go
-// HelixQA/pkg/visionremote/types.go
+// helix_qa/pkg/visionremote/types.go
 package visionremote
 
 import "context"

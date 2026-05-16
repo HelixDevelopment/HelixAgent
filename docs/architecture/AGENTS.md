@@ -204,7 +204,7 @@ client := modelsdev.NewClient(&modelsdev.ClientConfig{
     APIKey:    os.Getenv("MODELSDEV_API_KEY"),
     BaseURL:   "https://api.models.dev/v1",
     Timeout:   30 * time.Second,
-    UserAgent: "HelixAgent/1.0",
+    UserAgent: "helix_agent/1.0",
 })
 
 // List models

@@ -36,7 +36,7 @@ This document defines the architecture for integrating 118+ open-source code for
 ## Package Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── formatters/                           # Git submodules root
 │   ├── clang-format/                     # Submodule: llvm/llvm-project
 │   ├── rustfmt/                          # Submodule: rust-lang/rustfmt

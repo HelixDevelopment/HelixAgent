@@ -33,7 +33,7 @@ func TestGeminiAPIProvider_Complete_Success(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		assert.Equal(t, "test-api-key", r.Header.Get("x-goog-api-key"))
-		assert.Equal(t, "HelixAgent/1.0", r.Header.Get("User-Agent"))
+		assert.Equal(t, "helix_agent/1.0", r.Header.Get("User-Agent"))
 
 		var reqBody GeminiAPIRequest
 		body, err := io.ReadAll(r.Body)

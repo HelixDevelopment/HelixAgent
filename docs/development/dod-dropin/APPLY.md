@@ -6,7 +6,7 @@ The five-minute install. Run these commands from the target project's root.
 
 ```bash
 # Assume HelixAgent is cloned as a sibling of your target project.
-SRC=/path/to/HelixAgent/docs/development/dod-dropin
+SRC=/path/to/helix_agent/docs/development/dod-dropin
 
 mkdir -p scripts reports/demos
 cp "$SRC/scripts/no-silent-skips.sh" scripts/

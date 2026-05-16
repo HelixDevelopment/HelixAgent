@@ -45,12 +45,12 @@
 - ✅ Compose Detector Tests: 15/15
 
 ### New Files Created
-- `Containers/pkg/remote/compose_detector.go` - Podman-first compose detection
-- `Containers/pkg/remote/compose_detector_test.go` - Comprehensive test coverage
-- `Containers/docs/REMOTE_DEPLOYMENT.md` - Remote deployment guide
+- `containers/pkg/remote/compose_detector.go` - Podman-first compose detection
+- `containers/pkg/remote/compose_detector_test.go` - Comprehensive test coverage
+- `containers/docs/REMOTE_DEPLOYMENT.md` - Remote deployment guide
 
 ### Files Modified
-- `Containers/pkg/remote/compose.go` - Integrated ComposeDetector
+- `containers/pkg/remote/compose.go` - Integrated ComposeDetector
 - `internal/config/config.go` - Remote flag based on `CONTAINERS_REMOTE_ENABLED`
 - `internal/services/boot_manager.go` - Remote service deployment and health checks
 - `internal/adapters/containers/adapter.go` - RemoteComposeUp with CopyFile
@@ -60,7 +60,7 @@
 
 ## Configuration
 
-### Containers/.env (Remote Host)
+### containers/.env (Remote Host)
 ```
 CONTAINERS_REMOTE_ENABLED=true
 CONTAINERS_REMOTE_SCHEDULER=resource_aware

@@ -1432,7 +1432,7 @@ func run(appCfg *AppConfig) error {
 	configureHelixLLMTLS(logger)
 
 	// Initialize the centralized container adapter (Containers module).
-	// Uses NewAdapterFromConfig to auto-load Containers/.env for
+	// Uses NewAdapterFromConfig to auto-load containers/.env for
 	// remote distribution, bootstrap SSH key auth, and configure
 	// SSH options.
 	adapter, adapterErr := containeradapter.NewAdapterFromConfig(cfg)

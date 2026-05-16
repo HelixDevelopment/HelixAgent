@@ -869,7 +869,7 @@ func (p *ZenProvider) makeAPICallWithAuthRetry(ctx context.Context, req ZenReque
 
 		// Set headers - Zen uses Bearer token auth or device ID for anonymous access
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 		if p.anonymousMode {
 			// Anonymous mode: use device ID for free models
 			httpReq.Header.Set(AnonymousDeviceHeader, p.deviceID)

@@ -22,7 +22,7 @@
 
 HelixAgent supports multi-region deployment for high availability, geographic latency reduction, and regulatory compliance. This manual covers deploying HelixAgent across multiple regions using Kubernetes, configuring database replication, setting up geographic DNS routing, and implementing automatic failover.
 
-The Containers module (`digital.vasic.containers`) handles container orchestration and remote distribution. When `CONTAINERS_REMOTE_ENABLED=true` in `Containers/.env`, HelixAgent distributes all containers to remote hosts automatically.
+The Containers module (`digital.vasic.containers`) handles container orchestration and remote distribution. When `CONTAINERS_REMOTE_ENABLED=true` in `containers/.env`, HelixAgent distributes all containers to remote hosts automatically.
 
 ## Prerequisites
 
@@ -408,7 +408,7 @@ curl -s https://helixagent.io/v1/monitoring/status | jq .
 HelixAgent's Containers module can distribute containers to remote hosts:
 
 ```bash
-# Containers/.env
+# containers/.env
 CONTAINERS_REMOTE_ENABLED=true
 CONTAINERS_REMOTE_HOST_1=us-east-host.example.com
 CONTAINERS_REMOTE_HOST_1_USER=deploy
@@ -416,7 +416,7 @@ CONTAINERS_REMOTE_HOST_2=eu-west-host.example.com
 CONTAINERS_REMOTE_HOST_2_USER=deploy
 ```
 
-When HelixAgent boots, it reads `Containers/.env` and distributes all containers to the configured remote hosts via SSH. No manual container manipulation is needed.
+When HelixAgent boots, it reads `containers/.env` and distributes all containers to the configured remote hosts via SSH. No manual container manipulation is needed.
 
 ## Configuration per Region
 
@@ -576,6 +576,6 @@ Create a Grafana dashboard showing:
 - [User Manual 29: Disaster Recovery](29-disaster-recovery.md) -- Failover and failback procedures
 - [User Manual 30: Enterprise Architecture](30-enterprise-architecture.md) -- Enterprise deployment patterns
 - [User Manual 18: Performance Monitoring](18-performance-monitoring.md) -- Monitoring multi-region metrics
-- Containers module: `Containers/`
+- Containers module: `containers/`
 - Container adapter: `internal/adapters/containers/adapter.go`
 - Kubernetes documentation: https://kubernetes.io/docs/

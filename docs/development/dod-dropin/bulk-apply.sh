@@ -99,7 +99,7 @@ the product.
 
 ```bash
 # TODO — replace with a 10-line real-system demo. See examples in
-# HelixAgent/docs/development/dod-dropin/templates/CLAUDE_md_clause.md
+# helix_agent/docs/development/dod-dropin/templates/CLAUDE_md_clause.md
 ```
 CLAUSE
       did=1
@@ -196,7 +196,7 @@ MAKE
       if ! git diff --cached --quiet; then
         git commit -q -m "chore(dod): install Definition of Done gates (warn-only)
 
-Portable drop-in from HelixAgent/docs/development/dod-dropin/.
+Portable drop-in from helix_agent/docs/development/dod-dropin/.
 
 - scripts/no-silent-skips.sh: detects un-annotated test skip directives.
 - scripts/demo-all.sh: auto-discovers every CLAUDE.md acceptance demo
@@ -208,7 +208,7 @@ Portable drop-in from HelixAgent/docs/development/dod-dropin/.
   proves THIS project works end-to-end against its real dependencies.
 
 Rationale: high test coverage does not prove the product works.
-See HelixAgent/docs/development/definition-of-done.md.
+See helix_agent/docs/development/definition-of-done.md.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 "

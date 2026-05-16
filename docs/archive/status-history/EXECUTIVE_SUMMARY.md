@@ -186,7 +186,7 @@ req.Header.Set("Accept-Encoding", "br, gzip, deflate")
 ## 📁 Project Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── cli_agents/              # 53 submodules (60+ target)
 │   ├── claude-code/
 │   ├── codex/

@@ -26,11 +26,11 @@ This document provides a detailed, phased implementation plan to bring the Helix
    ```bash
    # Create go.mod in Toolkit directory
    cd Toolkit
-   go mod init github.com/HelixDevelopment/HelixAgent/Toolkit
+   go mod init github.com/HelixDevelopment/helix_agent/Toolkit
    ```
 
 2. **Fix Import Paths**
-   - Replace all `github.com/helixagent/toolkit` with `github.com/HelixDevelopment/HelixAgent/Toolkit`
+   - Replace all `github.com/helixagent/toolkit` with `github.com/HelixDevelopment/helix_agent/Toolkit`
    - Update internal package imports
    - Create missing internal packages
 
@@ -362,7 +362,7 @@ This document provides a detailed, phased implementation plan to bring the Helix
    
    ```bash
    git clone https://github.com/HelixDevelopment/HelixAgent.git
-   cd HelixAgent/Toolkit
+   cd helix_agent/Toolkit
    make build
    make test
    ```

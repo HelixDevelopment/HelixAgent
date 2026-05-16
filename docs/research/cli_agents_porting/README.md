@@ -123,7 +123,7 @@ Our approach ensures no feature is missed and optimal integration strategies are
 ### Component Organization
 
 ```
-HelixAgent/
+helix_agent/
 ├── internal/
 │   ├── clis/                    # CLI agent integrations
 │   │   ├── types.go             # Shared types

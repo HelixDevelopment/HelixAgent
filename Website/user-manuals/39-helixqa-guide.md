@@ -434,4 +434,4 @@ Gemini Vision advantages:
 - [User Manual 40: LLMOrchestrator Guide](40-llmorchestrator-guide.md) -- Agent pool management
 - [User Manual 41: VisionEngine Guide](41-visionengine-guide.md) -- Screenshot analysis and navigation graphs
 - [User Manual 44: QA API Guide](44-qa-api-guide.md) -- REST API reference for programmatic QA control
-- Source: `HelixQA/README.md`, `HelixQA/CLAUDE.md`
+- Source: `helix_qa/README.md`, `helix_qa/CLAUDE.md`

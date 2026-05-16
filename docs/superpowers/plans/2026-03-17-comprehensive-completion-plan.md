@@ -583,7 +583,7 @@ git commit -m "docs(selfimprove): expand README with comprehensive API documenta
 **Files:**
 - Modify: `RAG/README.md` (41 lines → 100+)
 - Modify: `Streaming/README.md` (39 lines → 100+)
-- Modify: `Security/README.md` (39 lines → 100+)
+- Modify: `security/README.md` (39 lines → 100+)
 - Modify: `Optimization/README.md` (36 lines → 100+)
 - Modify: `Plugins/README.md` (35 lines → 100+)
 - Modify: `Memory/README.md` (38 lines → 100+)

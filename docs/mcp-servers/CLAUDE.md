@@ -80,7 +80,7 @@ Health status is exposed at `/v1/mcp` and integrated into the monitoring dashboa
 
 When a new server is added upstream:
 
-1. Note the server name and capabilities from `MCP-Servers/src/`
+1. Note the server name and capabilities from `mcp_servers/src/`
 2. Create an adapter in `internal/mcp/adapters/<name>_test.go` and `<name>.go`
 3. Register in `internal/mcp/server_registry.go`
 4. Add container config in `internal/mcp/config/generator_container.go`

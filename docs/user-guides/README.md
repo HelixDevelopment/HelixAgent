@@ -239,8 +239,8 @@ A: Yes, with Redis for distributed caching and PostgreSQL for shared state.
 ## Getting Help
 
 - **Documentation**: Check the [full documentation](../README.md)
-- **GitHub Issues**: Report bugs at [GitHub Issues](https://github.com/HelixDevelopment/HelixAgent/issues)
-- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/HelixDevelopment/HelixAgent/discussions)
+- **GitHub Issues**: Report bugs at [GitHub Issues](https://github.com/HelixDevelopment/helix_agent/issues)
+- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/HelixDevelopment/helix_agent/discussions)
 
 ## Related Documentation
 

@@ -1173,7 +1173,7 @@ Verify each Constitution rule:
   [x] 100% Test Coverage — ALL test types present
   [x] Comprehensive Challenges — ALL modules have challenges
   [x] Full Containerization — All services containerized
-  [x] Container Orchestration Flow — Via Containers/.env
+  [x] Container Orchestration Flow — Via containers/.env
   [x] Container-Based Builds — Release builds in containers
   [x] Complete Documentation — All docs non-stub
   [x] Documentation Sync — CLAUDE.md, AGENTS.md, Constitution aligned

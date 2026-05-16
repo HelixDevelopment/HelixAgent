@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	testingutils "github.com/HelixDevelopment/HelixAgent/Toolkit/Commons/testing"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/ratelimit"
+	testingutils "github.com/HelixDevelopment/helix_agent/Toolkit/Commons/testing"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/ratelimit"
 )
 
 // TestAPIKeySecurity tests that API keys are handled securely

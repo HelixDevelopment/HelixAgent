@@ -299,7 +299,7 @@ Failed                : 0
 ## 📁 File Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── internal/
 │   ├── config/
 │   │   ├── config.go                              ✅ (extended)

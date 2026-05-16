@@ -32,7 +32,7 @@ mkdir -p "$LOG_DIR"
 # cli_agents/*, external/*, mcp-servers/*) are excluded per Rule #10.
 DEFAULT_MODULES=(
   Agentic Auth AutoTemp BackgroundTasks Benchmark BuildCheck Cache
-  Challenges Challenges/Panoptic Claritas Concurrency Containers
+  Challenges challenges/Panoptic Claritas Concurrency Containers
   ConversationContext Database DebateOrchestrator DocProcessor Embeddings
   EventBus Formatters GandalfSolutions HelixLLM HelixMemory HelixQA
   HelixSpecifier HyperTune I-LLM LLMOps LLMOrchestrator LLMProvider

@@ -76,7 +76,7 @@ This document provides the comprehensive testing and validation plan for the CLI
 | Stress Tests | 400+ | Load & concurrency | `tests/stress/...` |
 | Security Tests | 300+ | Vulnerability scanning | `tests/security/...` |
 | Benchmark Tests | 200+ | Performance metrics | `*_test.go` with benchmarks |
-| HelixQA Bank | 150 cases | Comprehensive validation | `HelixQA/banks/` |
+| HelixQA Bank | 150 cases | Comprehensive validation | `helix_qa/banks/` |
 | Challenge Scripts | 3 scripts | Practical scenarios | `tests/challenges/` |
 
 ### Test Execution Commands
@@ -118,13 +118,13 @@ go test ./internal/clis/... -bench=. -benchmem -run=^$
 #### HelixQA Test Bank
 ```bash
 # Run all HelixQA tests
-./HelixQA/bin/run_tests --all
+./helix_qa/bin/run_tests --all
 
 # Run specific bank
-./HelixQA/bin/run_tests --bank=ensemble
+./helix_qa/bin/run_tests --bank=ensemble
 
 # Run with verbose output
-./HelixQA/bin/run_tests --all --verbose
+./helix_qa/bin/run_tests --all --verbose
 ```
 
 #### Challenge Scripts

@@ -32,21 +32,21 @@ make build
 ./bin/helixagent
 ```
 
-**Important:** HelixAgent automatically orchestrates all required containers (PostgreSQL, Redis, ChromaDB, MCP servers, etc.) on startup. Do **not** start containers manually. The binary reads `Containers/.env` and manages the entire container lifecycle.
+**Important:** HelixAgent automatically orchestrates all required containers (PostgreSQL, Redis, ChromaDB, MCP servers, etc.) on startup. Do **not** start containers manually. The binary reads `containers/.env` and manages the entire container lifecycle.
 
 ## Container Orchestration
 
 HelixAgent uses the Containers module (`digital.vasic.containers`) for all container management. The orchestration flow is:
 
 1. HelixAgent boots and initializes the Containers module adapter
-2. Adapter reads `Containers/.env` (not the project root `.env`)
+2. Adapter reads `containers/.env` (not the project root `.env`)
 3. Based on configuration, containers start locally or are distributed to remote hosts
 4. Health checks run against all configured endpoints
 5. Required services failing health check cause boot failure in strict mode
 
 ### Local Deployment (Default)
 
-When `CONTAINERS_REMOTE_ENABLED=false` (or not set) in `Containers/.env`, all containers start on the local machine:
+When `CONTAINERS_REMOTE_ENABLED=false` (or not set) in `containers/.env`, all containers start on the local machine:
 
 ```bash
 make build
@@ -55,7 +55,7 @@ make build
 
 ### Remote Container Distribution
 
-HelixAgent can distribute all containers to remote hosts via SSH. Configure `Containers/.env`:
+HelixAgent can distribute all containers to remote hosts via SSH. Configure `containers/.env`:
 
 ```bash
 CONTAINERS_REMOTE_ENABLED=true
@@ -209,7 +209,7 @@ services:
 3. **Redis connection failed**: Check `REDIS_*` settings; test infra uses port 16379
 4. **Provider unavailable**: Verify API keys, check `/v1/startup/verification`
 5. **Slow startup**: Provider verification takes 1-2 minutes (normal)
-6. **Container distribution failed**: Check SSH connectivity and `Containers/.env`
+6. **Container distribution failed**: Check SSH connectivity and `containers/.env`
 
 ### Logs
 

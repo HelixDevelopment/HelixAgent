@@ -58,8 +58,8 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 2
 fi
 
-# Discover registered hosts from Containers/.env
-ENV_FILE="$PROJECT_ROOT/Containers/.env"
+# Discover registered hosts from containers/.env
+ENV_FILE="$PROJECT_ROOT/containers/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "FAIL: $ENV_FILE missing" >&2
   exit 2

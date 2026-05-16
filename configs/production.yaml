@@ -398,7 +398,7 @@ modelsdev:
   
   # API request settings
   timeout: "${MODELSDEV_TIMEOUT:-30s}"
-  user_agent: "${MODELSDEV_USER_AGENT:-HelixAgent/1.0}"
+  user_agent: "${MODELSDEV_USER_AGENT:-helix_agent/1.0}"
   rate_limit: ${MODELSDEV_RATE_LIMIT:-10}
   
   # Advanced settings

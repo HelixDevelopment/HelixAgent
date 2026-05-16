@@ -469,13 +469,13 @@ curl -s -H "Accept-Encoding: identity" http://localhost:7061/v1/models \
 **CRITICAL: Emphasize the constitution requirement -- NO manual container manipulation**
 
 **Preparation**:
-- Have `Containers/.env` ready with examples
+- Have `containers/.env` ready with examples
 - Understand BootManager flow
 
 **Demo Script**:
 ```bash
-# Show Containers/.env
-cat Containers/.env
+# Show containers/.env
+cat containers/.env
 
 # Start HelixAgent and observe auto-orchestration
 ./bin/helixagent 2>&1 | head -50
@@ -608,7 +608,7 @@ cat challenges/results/*/test_results.csv
 - **Duration**: 30 min
 - **Key Checkpoint**: Boot sequence completes with health checks passing
 - **Common Issues**:
-  - Using project root `.env` instead of `Containers/.env`
+  - Using project root `.env` instead of `containers/.env`
   - Missing SSH key configuration for remote mode
 - **Success Criteria**: All required services healthy
 

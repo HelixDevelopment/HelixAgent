@@ -10,7 +10,7 @@
   "outputs": {
     "exit_code": "-1",
     "stderr": "",
-    "stdout": "\u001b[0;34m[INFO] 2026-02-25 16:52:15 Starting challenge: Validates resource monitoring for background tasks including CPU, memory, and I/O tracking\u001b[0m\n\u001b[0;34m[INFO] 2026-02-25 16:52:15 Output directory: /run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/results/background_resource_monitor/20260225_165215\u001b[0m\n\u001b[0;34m[INFO] 2026-02-25 16:52:15 Starting Validates resource monitoring for background tasks including CPU, memory, and I/O tracking challenge\u001b[0m"
+    "stdout": "\u001b[0;34m[INFO] 2026-02-25 16:52:15 Starting challenge: Validates resource monitoring for background tasks including CPU, memory, and I/O tracking\u001b[0m\n\u001b[0;34m[INFO] 2026-02-25 16:52:15 Output directory: /run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/results/background_resource_monitor/20260225_165215\u001b[0m\n\u001b[0;34m[INFO] 2026-02-25 16:52:15 Starting Validates resource monitoring for background tasks including CPU, memory, and I/O tracking challenge\u001b[0m"
   },
   "logs": {
     "challenge_log": "challenge-results/logs/challenge.log",

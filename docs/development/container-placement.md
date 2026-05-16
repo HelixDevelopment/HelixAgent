@@ -17,9 +17,9 @@ budgets).
   always placed on the same host. (Docker Compose `depends_on` is
   intra-host; cross-host `depends_on` does not work.)
 - Placement is computed at boot via the existing scheduler in
-  `Containers/pkg/scheduler` (default strategy:
+  `containers/pkg/scheduler` (default strategy:
   `StrategyResourceAware`), using live host probes from
-  `Containers/pkg/remote.Prober`.
+  `containers/pkg/remote.Prober`.
 - The plan for each compose file is persisted to
   `<project>/.placement-plan-<compose>.json` for operator audit and
   for the verification Challenge.
@@ -36,9 +36,9 @@ budgets).
        │                 PlanCompose       → PlacementPlan
        │                 EmitPerHostCompose → per-host compose subset
        │
-       │             Containers/pkg/scheduler  (existing, unchanged)
-       │             Containers/pkg/remote     (existing, unchanged)
-       │             Containers/pkg/serviceregistry (existing, unchanged)
+       │             containers/pkg/scheduler  (existing, unchanged)
+       │             containers/pkg/remote     (existing, unchanged)
+       │             containers/pkg/serviceregistry (existing, unchanged)
        ▼
 +----------+   +----------+   +----------+
 | host A   |   | host B   |   | host C   |
@@ -105,7 +105,7 @@ Same as before:
 
 ## Adding a new host
 
-Append a `CONTAINERS_REMOTE_HOST_N_*` block to `Containers/.env`. The
+Append a `CONTAINERS_REMOTE_HOST_N_*` block to `containers/.env`. The
 loader stops at the first absent `_NAME`, so N can scale freely (1..100
 per CONST-031). The scheduler picks up the new host on the next boot.
 
@@ -113,7 +113,7 @@ per CONST-031). The scheduler picks up the new host on the next boot.
 
 Default is `scheduler.StrategyResourceAware` — picks the host with the
 most available memory + CPU after subtracting current placements. Other
-strategies in `Containers/pkg/scheduler` are also available
+strategies in `containers/pkg/scheduler` are also available
 (`StrategyRoundRobin`, `StrategySpread`, `StrategyBinPack`,
 `StrategyAffinity`, `StrategyGPUAffinity`). Switch via the `opts`
 parameter in `PlanCompose`.
@@ -149,7 +149,7 @@ cat .placement-plan-docker-compose.mcp-servers.yml.json | jq
 - **Volume migration when a service moves hosts.** Today, moving postgres
   from host A → host B = data loss. Add an opt-in volume rsync pass so a
   rebalance preserves state.
-- **Live rebalancing.** `Containers/pkg/distribution.Distributor.Rebalance`
+- **Live rebalancing.** `containers/pkg/distribution.Distributor.Rebalance`
   exists but isn't wired in; could trigger on host degraded events.
 - **Operator-overridable per-service pinning** via env var
   `HELIXAGENT_PLACE_<SERVICE>=<host>` for emergencies. Today the
@@ -318,7 +318,7 @@ flowchart TD
 
 ## How to configure host capabilities
 
-For each remote host in `Containers/.env`:
+For each remote host in `containers/.env`:
 
 ```bash
 CONTAINERS_REMOTE_HOST_1_NAME=thinker

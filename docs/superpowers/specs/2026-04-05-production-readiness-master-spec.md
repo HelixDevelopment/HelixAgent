@@ -324,8 +324,8 @@ Output: `docs/TODO_RESOLUTION_LOG.md` tracking each resolved TODO.
 
 ### 4.3 MCP-Servers Module Documentation
 
-- `MCP-Servers/CLAUDE.md` — HelixAgent integration guide
-- `MCP-Servers/AGENTS.md` — Agent coordination, dependency graph
+- `mcp_servers/CLAUDE.md` — HelixAgent integration guide
+- `mcp_servers/AGENTS.md` — Agent coordination, dependency graph
 
 ### 4.4 Expand 4 Stub User Guides (2KB -> 15-20KB each)
 

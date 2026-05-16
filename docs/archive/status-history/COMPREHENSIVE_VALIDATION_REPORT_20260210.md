@@ -192,7 +192,7 @@
 - constitution_watcher (implied) - ✅ PASSED
 - speckit_auto_activation (implied) - ✅ PASSED
 
-**Master Summary**: `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/master_results/master_summary_20260210_115125.md`
+**Master Summary**: `/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/master_results/master_summary_20260210_115125.md`
 
 **Note on opencode_init Challenge**:
 - 25 CLI request tests executed

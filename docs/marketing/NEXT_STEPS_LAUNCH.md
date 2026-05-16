@@ -25,7 +25,7 @@
 ### 1. **Enable GitHub Pages** (Critical - Repository Owner Only)
 **Action**: Go to repository Settings → Pages → Source: "GitHub Actions" → Save
 **Time**: 2 minutes
-**Result**: Website goes live at: `https://vasic-digital.github.io/HelixAgent/`
+**Result**: Website goes live at: `https://vasic-digital.github.io/helix_agent/`
 
 ### 2. **Configure Analytics** (High Priority)
 **Action**: Run `./configure-analytics.sh` and enter real tracking IDs

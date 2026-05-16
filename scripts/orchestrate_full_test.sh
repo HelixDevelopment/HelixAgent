@@ -270,17 +270,17 @@ if [ "$RUN_HELIXQA" = true ]; then
         log_info "Running HelixQA test bank (canonical at meta-repo root ../HelixQA per P1.5-T03.04)..."
 
         # Check if HelixQA has its own test runner
-        if [ -f "../HelixQA/bin/run_tests" ]; then
+        if [ -f "../helix_qa/bin/run_tests" ]; then
             log_info "Using HelixQA runner..."
             cd ../HelixQA
-            ./bin/run_tests --all 2>&1 | tee ../HelixAgent/test_output_helixqa.log | tail -100
+            ./bin/run_tests --all 2>&1 | tee ../helix_agent/test_output_helixqa.log | tail -100
             cd ../HelixAgent
         else
             log_info "Running HelixQA tests directly..."
             # Run Go tests for HelixQA if available
-            if [ -f "../HelixQA/go.mod" ]; then
+            if [ -f "../helix_qa/go.mod" ]; then
                 cd ../HelixQA
-                nice -n 19 ionice -c 3 go test ./... -v 2>&1 | tee ../HelixAgent/test_output_helixqa.log | tail -100
+                nice -n 19 ionice -c 3 go test ./... -v 2>&1 | tee ../helix_agent/test_output_helixqa.log | tail -100
                 cd ../HelixAgent
             else
                 log_warn "HelixQA test runner not found, skipping"

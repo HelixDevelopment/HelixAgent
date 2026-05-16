@@ -169,7 +169,7 @@ This script performs:
 
 ```bash
 # Run HelixQA test bank
-./helixqa run --banks ./HelixQA/banks/helixllm.yaml --platform api
+./helixqa run --banks ./helix_qa/banks/helixllm.yaml --platform api
 ```
 
 ### Challenge Script

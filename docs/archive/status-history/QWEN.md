@@ -133,7 +133,7 @@ make test-infra-logs
 
 ### Project Structure
 ```
-HelixAgent/
+helix_agent/
 ├── cmd/                    # Application entry points
 │   ├── helixagent/         # Main production server
 │   ├── api/                # Demo API server (mock responses)

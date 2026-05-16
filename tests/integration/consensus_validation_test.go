@@ -163,7 +163,7 @@ func TestConsensusNotEmpty_EndToEnd(t *testing.T) {
 
 	// 5. Must have a meaningful set of debate positions. The renderer's role
 	// set has evolved (was: Analyst/Proposer/Critic/Synthesizer/Mediator;
-	// now: Architect/Generator/Critic/Tester/Security/Performance and
+	// now: Architect/Generator/Critic/Tester/security/Performance and
 	// possibly more). Drainage report 2026-04-25 Finding #9: assert structural
 	// presence (at least 3 distinct named roles) rather than prescribing exact
 	// role names — that's a renderer contract decision, not an integration
@@ -391,7 +391,7 @@ func TestAllDebatePositionsHaveRealResponses(t *testing.T) {
 	// At least 3 distinct debate-position markers must be present. The
 	// renderer's role set has evolved from the legacy 5-position flow
 	// (Analyst/Proposer/Critic/Synthesizer/Mediator) to a 6+ -position
-	// software-development flow (Architect/Generator/Critic/Tester/Security/
+	// software-development flow (Architect/Generator/Critic/Tester/security/
 	// Performance, plus possibly more). Drainage report 2026-04-25 Finding #9.
 	knownPositions := []string{
 		"Analyst", "Proposer", "Critic", "Synthesizer", "Mediator", // legacy

@@ -86,7 +86,7 @@ The following gaps have been **closed** during the 2026-04-18 / 2026-04-19 execu
 | G13 | Video-*course scripts* exist (84+) but **no actual video files** (.mp4/.webm absent) | MEDIUM | P6 |
 | G14 | Website uses vanilla HTML/CSS/JS — no static site generator; limited navigation, no search, no CMS | MEDIUM | P6 |
 | G15 | 16 / 39 modules lack a `tests/` directory at the module root (tests may be colocated `*_test.go`, but Constitution implies a dedicated dir per module for stress/e2e/etc.) | MEDIUM | P3 |
-| G16 | One vendor stub: `HelixQA/tools/opensource/chroma/go/pkg/sysdb/metastore/s3/impl.go:363` returns `errors.New("not implemented")` for `DeleteOldVersionFiles` — cleanup never runs | LOW (vendor) | P5 |
+| G16 | One vendor stub: `helix_qa/tools/opensource/chroma/go/pkg/sysdb/metastore/s3/impl.go:363` returns `errors.New("not implemented")` for `DeleteOldVersionFiles` — cleanup never runs | LOW (vendor) | P5 |
 | G17 | `cli_agents/bridle` sub-submodule has orphaned path in `.gitmodules` (`plugins/skill-enhancers/axiom`) causing recursive operations to error | LOW | P0 |
 | G18 | 4 submodules fail to fetch from their secondary `gitflic.ru` mirror (Models, SelfImprove, SkillRegistry, ToolSchema, HelixCode, DebateOrchestrator-secondary) — primary GitHub remote healthy | LOW | P0 |
 | G19 | Monitoring: Phase-3 Grafana dashboard `docker/monitoring/grafana/dashboards/phase3-memory-safety.json` referenced in CLAUDE.md — need SLI live-test `HELIX_MONITOR_URL` CI wiring (but no CI allowed → needs local runnable challenge) | MEDIUM | P4 |
@@ -215,7 +215,7 @@ Each phase lists: **Goal**, **Scope**, **Workstreams**, **Test types to add**, *
 **Goal:** Close the 149 Dependabot CVEs, ship container-accessible Snyk & SonarQube, audit all command-exec paths, add `govulncheck`.
 
 **Scope (ordered by severity):**
-1. **G1 Dependabot triage** — pull the full Dependabot alert list from GitHub (via `gh api`), categorise by severity × module, triage each: upgrade / patch / accept-with-policy / replace dep. Transitive vulns inherited from vendored opensource tools under `HelixQA/tools/opensource/**` are tracked but not fixed here (those are vendor-owned; we pin to safe versions).
+1. **G1 Dependabot triage** — pull the full Dependabot alert list from GitHub (via `gh api`), categorise by severity × module, triage each: upgrade / patch / accept-with-policy / replace dep. Transitive vulns inherited from vendored opensource tools under `helix_qa/tools/opensource/**` are tracked but not fixed here (those are vendor-owned; we pin to safe versions).
 2. **G9 Command-exec hardening**:
    - `internal/clis/agents/claude_code/tool_executor.go` — pin allowed binaries, sanitize args, disallow shell metachars, enforce working-dir whitelist.
    - `internal/tools/sandbox/sandbox.go` — audit escape vectors (namespace, seccomp, rlimits); write threat model.
@@ -480,7 +480,7 @@ Shared infrastructure:
 
 1. **Resource limits (CONST-022)** — every script in every phase uses `GOMAXPROCS=2 nice -n 19 ionice -c 3`; every go-test invocation uses `-p 1`; every container has CPU/RAM caps. Script template: `scripts/runners/limited-run.sh`.
 2. **Non-interactive (CONST-019)** — nothing prompts. SSH via agent (`ssh-add` pre-loaded), secrets via env, no `sudo` without pre-authorised `NOPASSWD` sudoers entries.
-3. **Container orchestration (CONST-026)** — no phase introduces manual `docker/podman` / `docker-compose up`. Everything runs through `./bin/helixagent` after `make build`, reading `Containers/.env`.
+3. **Container orchestration (CONST-026)** — no phase introduces manual `docker/podman` / `docker-compose up`. Everything runs through `./bin/helixagent` after `make build`, reading `containers/.env`.
 4. **SSH-only git (CONST-025)** — every new submodule, every fork, every PR URL uses SSH.
 5. **Conventional Commits** — `<type>(<scope>): <description>`. Scopes aligned with module names.
 6. **BUGFIXES.md (CONST-028)** — every fix in every phase appends an entry with root-cause, affected files, fix description, verification-test reference.
@@ -547,7 +547,7 @@ The final deliverable is `docs/reports/zero-unfinished-work-attestation-2026-QX.
 - `Website/user-manuals/**` (current 01–47)
 - `Website/video-courses/**` (current 84+ scripts)
 - `docs/diagrams/**` (40+ diagrams)
-- GitHub Dependabot alert page: <https://github.com/vasic-digital/HelixAgent/security/dependabot>
+- GitHub Dependabot alert page: <https://github.com/vasic-digital/helix_agent/security/dependabot>
 
 ## Appendix B — Glossary (for non-code readers)
 

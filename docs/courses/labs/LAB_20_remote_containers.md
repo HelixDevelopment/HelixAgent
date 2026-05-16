@@ -12,7 +12,7 @@ Configure and verify the container orchestration flow, including remote distribu
 
 ```bash
 # View the container orchestration config
-cat Containers/.env
+cat containers/.env
 
 # Key variables to look for:
 # CONTAINERS_REMOTE_ENABLED=false (local mode)
@@ -29,7 +29,7 @@ cat Containers/.env
 
 # Look for:
 # - "Initializing container adapter"
-# - "Reading Containers/.env"
+# - "Reading containers/.env"
 # - "Starting containers locally" or "Distributing to remote hosts"
 # - "Health check: PostgreSQL ... OK"
 # - "Health check: Redis ... OK"
@@ -76,7 +76,7 @@ GOMAXPROCS=2 nice -n 19 ionice -c 3 \
 **Expected:** All 13 tests pass.
 
 ## Assessment Questions
-1. Why does HelixAgent read `Containers/.env` instead of the project root `.env`?
+1. Why does HelixAgent read `containers/.env` instead of the project root `.env`?
 2. What happens when `CONTAINERS_REMOTE_ENABLED=true` but no remote hosts are configured?
 3. Why is mixed mode (some local, some remote) forbidden?
 4. What is the difference between required and optional services during boot?

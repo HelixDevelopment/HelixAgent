@@ -318,7 +318,7 @@ HelixAgent supports **6 test types** plus a comprehensive tests bank framework:
 | 1 | Unit Tests | (none) | `make test-unit` | Test individual functions/methods |
 | 2 | Integration Tests | `integration` | `make test-integration` | Test component interactions |
 | 3 | End-to-End Tests | `e2e` | `make test-e2e` | Test complete user flows |
-| 4 | Security Tests | `security` | `make test-security` | Security/penetration testing |
+| 4 | Security Tests | `security` | `make test-security` | security/penetration testing |
 | 5 | Performance Tests | `performance` | `make test-bench` | Benchmarks and load tests |
 | 6 | Chaos Tests | `challenge` | `make test-chaos` | Resilience and failure tests |
 

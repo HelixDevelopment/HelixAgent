@@ -127,7 +127,7 @@ func newContainerHarness() (*ContainerHarness, error) {
 // container-orchestration rule from CLAUDE.md ("the HelixAgent binary
 // orchestrates all containers"):
 //   - HELIX_SKIP_CONTAINER_HARNESS is set (explicit opt-out)
-//   - CONTAINERS_REMOTE_ENABLED=true in Containers/.env
+//   - CONTAINERS_REMOTE_ENABLED=true in containers/.env
 //     (all containers live on remote hosts; a local ComposeUp would
 //     duplicate them and almost certainly fail)
 //   - HelixAgent's own health endpoint is reachable on :8100
@@ -145,7 +145,7 @@ func (h *ContainerHarness) BootAllServices() error {
 
 	if isRemoteContainersEnabled(h.projectRoot) {
 		h.Logger.Info(
-			"Containers/.env has CONTAINERS_REMOTE_ENABLED=true — skipping local ComposeUp " +
+			"containers/.env has CONTAINERS_REMOTE_ENABLED=true — skipping local ComposeUp " +
 				"(containers are orchestrated on remote hosts, per CLAUDE.md)",
 		)
 		return nil
@@ -191,7 +191,7 @@ func (h *ContainerHarness) BootAllServices() error {
 	return nil
 }
 
-// isRemoteContainersEnabled returns true when Containers/.env has
+// isRemoteContainersEnabled returns true when containers/.env has
 // CONTAINERS_REMOTE_ENABLED=true, matching the top-level HelixAgent
 // container-orchestration gate in internal/config.
 func isRemoteContainersEnabled(projectRoot string) bool {

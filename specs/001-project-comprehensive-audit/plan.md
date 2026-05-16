@@ -2286,7 +2286,7 @@ func NewWorkerPool(maxWorkers int) *WorkerPool
 
 ### Approach
 
-1. Audit existing challenges in `challenges/` and `Challenges/`
+1. Audit existing challenges in `challenges/` and `challenges/`
 2. For each challenge, verify:
    - Tests actual system behavior (API responses, database state, file contents)
    - Uses real test data (no placeholders)
@@ -2297,7 +2297,7 @@ func NewWorkerPool(maxWorkers int) *WorkerPool
 ### Key Directories
 
 - `challenges/` — Challenge test files
-- `Challenges/` — Challenge framework
+- `challenges/` — Challenge framework
 - `qa-banks/` — 17 QA bank YAML files
 - `test_banks/` — 3 test bank YAML files
 - `challenge-results/` — Results directory

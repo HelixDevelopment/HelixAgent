@@ -30,7 +30,7 @@ By completing this lab, you will:
 
 ```bash
 # Build the Agentic module
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Agentic
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/Agentic
 go build ./...
 go test ./... -short -count=1
 

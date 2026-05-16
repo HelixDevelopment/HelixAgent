@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a complete audit of unfinished items in the HelixAgent/HelixAgent project and a detailed phased implementation plan to achieve 100% completion across all modules, tests, documentation, and content.
+This document provides a complete audit of unfinished items in the helix_agent/HelixAgent project and a detailed phased implementation plan to achieve 100% completion across all modules, tests, documentation, and content.
 
 ---
 

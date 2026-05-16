@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 func TestNewMockHTTPClient(t *testing.T) {

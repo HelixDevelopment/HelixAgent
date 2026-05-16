@@ -402,7 +402,7 @@ func (p *CodestralProvider) makeAPICall(ctx context.Context, req CodestralReques
 
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 
 		resp, err := p.httpClient.Do(httpReq)
 		if err != nil {
@@ -523,7 +523,7 @@ func (p *CodestralProvider) HealthCheck() error {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	req.Header.Set("User-Agent", "HelixAgent/1.0")
+	req.Header.Set("User-Agent", "helix_agent/1.0")
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {

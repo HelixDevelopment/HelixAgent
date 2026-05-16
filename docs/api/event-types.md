@@ -404,7 +404,7 @@ Published for each API request (compliance logging).
         "path": "/v1/chat/completions",
         "user_id": "usr_123",
         "ip_address": "192.168.1.1",
-        "user_agent": "HelixAgent/1.0",
+        "user_agent": "helix_agent/1.0",
         "status_code": 200,
         "latency_ms": 2500
     }
@@ -423,7 +423,7 @@ Published for authentication events.
         "user_id": "usr_123",
         "method": "api_key",
         "ip_address": "192.168.1.1",
-        "user_agent": "HelixAgent/1.0"
+        "user_agent": "helix_agent/1.0"
     }
 }
 ```

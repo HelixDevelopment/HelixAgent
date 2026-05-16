@@ -5,5 +5,5 @@ MCP
 MCP_Module/submodules
 MCP-Servers
 vendor
-HelixQA/tools/opensource
-HelixQA/tools/test-apps
+helix_qa/tools/opensource
+helix_qa/tools/test-apps

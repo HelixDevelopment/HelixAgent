@@ -493,32 +493,32 @@ make security-scan-all
 ## Appendix A: File Locations
 
 ### Configuration Files
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/configs/development.yaml`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/configs/verifier.yaml`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/.snyk`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/.gosec.yml`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/sonar-project.properties`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/configs/development.yaml`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/configs/verifier.yaml`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/.snyk`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/.gosec.yml`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/sonar-project.properties`
 
 ### Test Directories
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/integration/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/e2e/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/stress/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/security/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/benchmark/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/chaos/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/automation/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/pentest/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/tests/challenge/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/integration/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/e2e/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/stress/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/security/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/benchmark/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/chaos/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/automation/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/pentest/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/tests/challenge/`
 
 ### Documentation Directories
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/docs/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/Website/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/internal/*/README.md`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/docs/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/Website/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/internal/*/README.md`
 
 ### Challenge Directories
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/scripts/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/challenges/bank/`
-- `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/Challenges/` (extracted module)
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/scripts/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/bank/`
+- `/run/media/milosvasic/DATA4TB/Projects/helix_agent/challenges/` (extracted module)
 
 ---
 

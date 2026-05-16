@@ -18,7 +18,7 @@
 
 **By the end of this module, you will:**
 
-- Configure remote container distribution via `Containers/.env`
+- Configure remote container distribution via `containers/.env`
 - Understand the mandatory container orchestration flow
 - Deploy all services to remote hosts automatically
 - Verify health checks against remote endpoints
@@ -38,7 +38,7 @@
 **ONLY acceptable workflow:**
 1. `make build` -- Build the HelixAgent binary
 2. `./bin/helixagent` -- Run it (ALL orchestration happens automatically)
-3. The binary reads `Containers/.env` and orchestrates everything
+3. The binary reads `containers/.env` and orchestrates everything
 
 ---
 
@@ -53,7 +53,7 @@ cmd/helixagent/main.go
 globalContainerAdapter  (internal/adapters/containers/adapter.go)
     |
     v
-digital.vasic.containers  (Containers/ submodule)
+digital.vasic.containers  (containers/ submodule)
     |
     +-- Runtime Detection (Docker / Podman / K8s)
     +-- Compose Orchestrator
@@ -68,16 +68,16 @@ digital.vasic.containers  (Containers/ submodule)
 
 ## Slide 5: Local vs Remote Mode
 
-**Determined by `Containers/.env` (NOT project root `.env`):**
+**Determined by `containers/.env` (NOT project root `.env`):**
 
 ```bash
 # LOCAL MODE (default)
-# Containers/.env:
+# containers/.env:
 CONTAINERS_REMOTE_ENABLED=false
 # Result: All containers start on localhost
 
 # REMOTE MODE
-# Containers/.env:
+# containers/.env:
 CONTAINERS_REMOTE_ENABLED=true
 CONTAINERS_REMOTE_HOST_1=user@server1.example.com
 CONTAINERS_REMOTE_HOST_2=user@server2.example.com
@@ -96,7 +96,7 @@ CONTAINERS_REMOTE_HOST_2=user@server2.example.com
 ```
 Step 1: HelixAgent boots, initializes Container adapter
     |
-Step 2: Adapter reads Containers/.env
+Step 2: Adapter reads containers/.env
     |
 Step 3: Based on CONTAINERS_REMOTE_ENABLED:
     |     true  --> SSH to remote hosts, deploy all containers
@@ -126,7 +126,7 @@ Step 5: Required services failing health check
 # Pre-requisites for remote distribution:
 # 1. SSH key-based auth configured
 # 2. Docker/Podman installed on remote host
-# 3. Containers/.env configured with remote hosts
+# 3. containers/.env configured with remote hosts
 ```
 
 ---
@@ -199,7 +199,7 @@ make container-build
 **Lab Exercise 17.1: Remote Container Deployment**
 
 Tasks:
-1. Examine `Containers/.env` configuration
+1. Examine `containers/.env` configuration
 2. Configure for local mode and observe boot sequence
 3. Configure service overrides for a specific service
 4. Verify health checks pass for all required services
@@ -214,7 +214,7 @@ Time: 30 minutes
 **Key Takeaways:**
 
 - ALL container orchestration is automatic via HelixAgent binary
-- `Containers/.env` controls local vs remote deployment
+- `containers/.env` controls local vs remote deployment
 - No mixed mode: all local OR all remote
 - SSH-based remote distribution with key authentication
 - Health checks verify all services (local or remote)
@@ -232,7 +232,7 @@ This is the most important slide. The constitution FORBIDS manual container mani
 Drill this into students. The HelixAgent binary is the sole authority for container lifecycle.
 
 ### Slide 5 Notes
-Emphasize: Containers/.env (inside the Containers/ submodule directory), NOT the project
+Emphasize: containers/.env (inside the containers/ submodule directory), NOT the project
 root .env file. This is a common mistake.
 
 ### Slide 6 Notes

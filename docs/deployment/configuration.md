@@ -45,7 +45,7 @@ SVC_REDIS_REMOTE=true
 
 ## Container Orchestration
 
-Container behavior is controlled via `Containers/.env`:
+Container behavior is controlled via `containers/.env`:
 
 | Variable | Description |
 |----------|-------------|

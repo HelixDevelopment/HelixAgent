@@ -152,7 +152,7 @@ This report documents all unfinished, broken, disabled, or undocumented componen
 2. **Race Detection:** Limited testing performed; comprehensive race condition analysis needed.
 
 ### 2.6 Remote Container Distribution Disabled
-**File:** `Containers/.env`
+**File:** `containers/.env`
 - Line 1: `CONTAINERS_REMOTE_ENABLED=false`
 - Comment: "Remote distribution temporarily disabled due to build context size (7.6GB+)"
 

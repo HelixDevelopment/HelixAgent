@@ -38,7 +38,7 @@ make build
 ### Project Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── cmd/              # Application entry points
 ├── internal/         # Private application code
 │   ├── llm/          # LLM provider implementations

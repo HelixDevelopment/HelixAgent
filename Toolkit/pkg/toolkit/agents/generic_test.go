@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	testutil "github.com/HelixDevelopment/HelixAgent/Toolkit/Commons/testing"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	testutil "github.com/HelixDevelopment/helix_agent/Toolkit/Commons/testing"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 func TestNewGenericAgent(t *testing.T) {

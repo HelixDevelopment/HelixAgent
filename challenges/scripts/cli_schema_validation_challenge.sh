@@ -29,7 +29,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 RESULTS_DIR="${PROJECT_ROOT}/challenges/results/cli_schema_validation/$(date +%Y/%m/%d)/$(date +%Y%m%d_%H%M%S)"
 HELIXAGENT_BINARY="${PROJECT_ROOT}/bin/helixagent"
-EXAMPLE_PROJECTS_DIR="/run/media/milosvasic/DATA4TB/Projects/HelixCode/Example_Projects"
+EXAMPLE_PROJECTS_DIR="/run/media/milosvasic/DATA4TB/Projects/helix_code/Example_Projects"
 
 # Colors
 RED='\033[0;31m'

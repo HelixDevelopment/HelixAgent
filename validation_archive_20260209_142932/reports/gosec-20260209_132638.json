@@ -6123,42 +6123,42 @@
 			{
 				"line": 7,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/Commons/http/client.go": [
 			{
 				"line": 13,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/ratelimit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/ratelimit (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/Commons/testing/testing.go": [
 			{
 				"line": 13,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/Providers/Chutes/chutes.go": [
 			{
 				"line": 9,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/Providers/Chutes/client.go": [
 			{
 				"line": 8,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/http (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/http (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/Providers/Chutes/discovery.go": [
 			{
 				"line": 9,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/discovery (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/discovery (invalid package name: \"\")"
 			},
 			{
 				"line": 221,
@@ -6170,19 +6170,19 @@
 			{
 				"line": 7,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			},
 			{
 				"line": 8,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/http (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/http (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/Providers/SiliconFlow/discovery.go": [
 			{
 				"line": 9,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/discovery (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/discovery (invalid package name: \"\")"
 			},
 			{
 				"line": 221,
@@ -6194,48 +6194,48 @@
 			{
 				"line": 9,
 				"column": 4,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/Providers/Chutes (invalid package name: \"\")"
 			},
 			{
 				"line": 10,
 				"column": 4,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/SiliconFlow (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/Providers/SiliconFlow (invalid package name: \"\")"
 			},
 			{
 				"line": 12,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			},
 			{
 				"line": 13,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/agents (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/agents (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/pkg/toolkit/agents/codereview.go": [
 			{
 				"line": 7,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/pkg/toolkit/common/discovery/discovery.go": [
 			{
 				"line": 12,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			},
 			{
 				"line": 13,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/http (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/http (invalid package name: \"\")"
 			}
 		],
 		"/app/Toolkit/tests/integration/framework.go": [
 			{
 				"line": 8,
 				"column": 2,
-				"error": "could not import github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit (invalid package name: \"\")"
+				"error": "could not import github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit (invalid package name: \"\")"
 			}
 		],
 		"/app/challenges/codebase/go_files/unified_cli_generator/unified_cli_generator.go": [
@@ -12792,7 +12792,7 @@
 			},
 			"rule_id": "G204",
 			"details": "Subprocess launched with variable",
-			"file": "/app/Challenges/pkg/challenge/shell.go",
+			"file": "/app/challenges/pkg/challenge/shell.go",
 			"code": "107: \targs := append([]string{s.ScriptPath}, s.Args...)\n108: \tcmd := exec.CommandContext(ctx, \"bash\", args...)\n109: \tcmd.WaitDelay = 2 * time.Second\n",
 			"line": "108",
 			"column": "9",
@@ -17820,7 +17820,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Containers/pkg/endpoint/config.go",
+			"file": "/app/containers/pkg/endpoint/config.go",
 			"code": "45: func LoadConfig(path string) (*EndpointConfig, error) {\n46: \tdata, err := os.ReadFile(path)\n47: \tif err != nil {\n",
 			"line": "46",
 			"column": "15",
@@ -17837,7 +17837,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Challenges/pkg/report/history.go",
+			"file": "/app/challenges/pkg/report/history.go",
 			"code": "60: \n61: \tfile, err := os.OpenFile(\n62: \t\thistoryPath,\n63: \t\tos.O_CREATE|os.O_APPEND|os.O_WRONLY,\n64: \t\t0644,\n65: \t)\n66: \tif err != nil {\n",
 			"line": "61-65",
 			"column": "15",
@@ -17854,7 +17854,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Challenges/pkg/registry/loader.go",
+			"file": "/app/challenges/pkg/registry/loader.go",
 			"code": "27: ) error {\n28: \tdata, err := os.ReadFile(path)\n29: \tif err != nil {\n",
 			"line": "28",
 			"column": "15",
@@ -17871,7 +17871,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Challenges/pkg/env/loader.go",
+			"file": "/app/challenges/pkg/env/loader.go",
 			"code": "70: \n71: \tfile, err := os.Open(filepath)\n72: \tif err != nil {\n",
 			"line": "71",
 			"column": "15",
@@ -17888,7 +17888,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Challenges/pkg/challenge/base.go",
+			"file": "/app/challenges/pkg/challenge/base.go",
 			"code": "230: \t}\n231: \tdata, err := os.ReadFile(path)\n232: \tif err != nil {\n",
 			"line": "231",
 			"column": "15",
@@ -17905,7 +17905,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Challenges/pkg/bank/validator.go",
+			"file": "/app/challenges/pkg/bank/validator.go",
 			"code": "26: \n27: \tdata, err := os.ReadFile(path)\n28: \tif err != nil {\n",
 			"line": "27",
 			"column": "15",
@@ -17922,7 +17922,7 @@
 			},
 			"rule_id": "G304",
 			"details": "Potential file inclusion via variable",
-			"file": "/app/Challenges/pkg/bank/bank.go",
+			"file": "/app/challenges/pkg/bank/bank.go",
 			"code": "28: func (b *Bank) LoadFile(path string) error {\n29: \tdata, err := os.ReadFile(path)\n30: \tif err != nil {\n",
 			"line": "29",
 			"column": "15",
@@ -18020,7 +18020,7 @@
 			},
 			"rule_id": "G112",
 			"details": "Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server",
-			"file": "/app/Challenges/pkg/monitor/websocket.go",
+			"file": "/app/challenges/pkg/monitor/websocket.go",
 			"code": "46: \n47: \tsrv := \u0026http.Server{\n48: \t\tAddr:    s.addr,\n49: \t\tHandler: mux,\n50: \t}\n51: \ts.mu.Lock()\n",
 			"line": "47-50",
 			"column": "10",
@@ -18340,7 +18340,7 @@
 			},
 			"rule_id": "G302",
 			"details": "Expect file permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/report/history.go",
+			"file": "/app/challenges/pkg/report/history.go",
 			"code": "60: \n61: \tfile, err := os.OpenFile(\n62: \t\thistoryPath,\n63: \t\tos.O_CREATE|os.O_APPEND|os.O_WRONLY,\n64: \t\t0644,\n65: \t)\n66: \tif err != nil {\n",
 			"line": "61-65",
 			"column": "15",
@@ -18356,7 +18356,7 @@
 			},
 			"rule_id": "G302",
 			"details": "Expect file permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/logging/json_logger.go",
+			"file": "/app/challenges/pkg/logging/json_logger.go",
 			"code": "95: \tif config.APIResponseLog != \"\" {\n96: \t\tfile, err := os.OpenFile(\n97: \t\t\tconfig.APIResponseLog,\n98: \t\t\tos.O_CREATE|os.O_WRONLY|os.O_APPEND,\n99: \t\t\t0644,\n100: \t\t)\n101: \t\tif err != nil {\n",
 			"line": "96-100",
 			"column": "16",
@@ -18372,7 +18372,7 @@
 			},
 			"rule_id": "G302",
 			"details": "Expect file permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/logging/json_logger.go",
+			"file": "/app/challenges/pkg/logging/json_logger.go",
 			"code": "81: \tif config.APIRequestLog != \"\" {\n82: \t\tfile, err := os.OpenFile(\n83: \t\t\tconfig.APIRequestLog,\n84: \t\t\tos.O_CREATE|os.O_WRONLY|os.O_APPEND,\n85: \t\t\t0644,\n86: \t\t)\n87: \t\tif err != nil {\n",
 			"line": "82-86",
 			"column": "16",
@@ -18388,7 +18388,7 @@
 			},
 			"rule_id": "G302",
 			"details": "Expect file permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/logging/json_logger.go",
+			"file": "/app/challenges/pkg/logging/json_logger.go",
 			"code": "65: \t\t}\n66: \t\tfile, err := os.OpenFile(\n67: \t\t\tconfig.OutputPath,\n68: \t\t\tos.O_CREATE|os.O_WRONLY|os.O_APPEND,\n69: \t\t\t0644,\n70: \t\t)\n71: \t\tif err != nil {\n",
 			"line": "66-70",
 			"column": "16",
@@ -20164,7 +20164,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/runner/runner.go",
+			"file": "/app/challenges/pkg/runner/runner.go",
 			"code": "424: \t)\n425: \tif err := os.MkdirAll(configDir, 0755); err != nil {\n426: \t\treturn err\n",
 			"line": "425",
 			"column": "12",
@@ -20180,7 +20180,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/runner/runner.go",
+			"file": "/app/challenges/pkg/runner/runner.go",
 			"code": "417: \t)\n418: \tif err := os.MkdirAll(resultsDir, 0755); err != nil {\n419: \t\treturn err\n",
 			"line": "418",
 			"column": "12",
@@ -20196,7 +20196,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/runner/runner.go",
+			"file": "/app/challenges/pkg/runner/runner.go",
 			"code": "410: \n411: \tif err := os.MkdirAll(config.LogsDir, 0755); err != nil {\n412: \t\treturn err\n",
 			"line": "411",
 			"column": "12",
@@ -20212,7 +20212,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/report/summary.go",
+			"file": "/app/challenges/pkg/report/summary.go",
 			"code": "95: ) error {\n96: \tif err := os.MkdirAll(outputDir, 0755); err != nil {\n97: \t\treturn fmt.Errorf(\n",
 			"line": "96",
 			"column": "12",
@@ -20228,7 +20228,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/logging/json_logger.go",
+			"file": "/app/challenges/pkg/logging/json_logger.go",
 			"code": "60: \t\tdir := filepath.Dir(config.OutputPath)\n61: \t\tif err := os.MkdirAll(dir, 0755); err != nil {\n62: \t\t\treturn nil, fmt.Errorf(\n",
 			"line": "61",
 			"column": "13",
@@ -20244,7 +20244,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/challenge/shell.go",
+			"file": "/app/challenges/pkg/challenge/shell.go",
 			"code": "177: \tlogDir := s.LogsDir()\n178: \tif err := os.MkdirAll(logDir, 0o755); err != nil {\n179: \t\ts.logError(\"create log dir\", \"err\", err)\n",
 			"line": "178",
 			"column": "12",
@@ -20260,7 +20260,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/challenge/base.go",
+			"file": "/app/challenges/pkg/challenge/base.go",
 			"code": "92: \t}\n93: \tif err := os.MkdirAll(b.LogsDir(), 0o755); err != nil {\n94: \t\treturn fmt.Errorf(\n",
 			"line": "93",
 			"column": "12",
@@ -20276,7 +20276,7 @@
 			},
 			"rule_id": "G301",
 			"details": "Expect directory permissions to be 0750 or less",
-			"file": "/app/Challenges/pkg/challenge/base.go",
+			"file": "/app/challenges/pkg/challenge/base.go",
 			"code": "86: \n87: \tif err := os.MkdirAll(b.ResultsDir(), 0o755); err != nil {\n88: \t\treturn fmt.Errorf(\n",
 			"line": "87",
 			"column": "12",
@@ -22564,7 +22564,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/report/summary.go",
+			"file": "/app/challenges/pkg/report/summary.go",
 			"code": "124: \tmdContent := generateSummaryMarkdown(summary)\n125: \tif err := os.WriteFile(\n126: \t\tmdPath, []byte(mdContent), 0644,\n127: \t); err != nil {\n128: \t\treturn fmt.Errorf(\n",
 			"line": "125-127",
 			"column": "12",
@@ -22580,7 +22580,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/report/summary.go",
+			"file": "/app/challenges/pkg/report/summary.go",
 			"code": "113: \t}\n114: \tif err := os.WriteFile(jsonPath, jsonData, 0644); err != nil {\n115: \t\treturn fmt.Errorf(\n",
 			"line": "114",
 			"column": "12",
@@ -22596,7 +22596,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/report/markdown.go",
+			"file": "/app/challenges/pkg/report/markdown.go",
 			"code": "349: \tpath := filepath.Join(r.outputDir, filename)\n350: \treturn os.WriteFile(path, data, 0644)\n351: }\n",
 			"line": "350",
 			"column": "9",
@@ -22612,7 +22612,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/report/markdown.go",
+			"file": "/app/challenges/pkg/report/markdown.go",
 			"code": "339: \tpath := filepath.Join(r.outputDir, filename)\n340: \treturn os.WriteFile(path, data, 0644)\n341: }\n",
 			"line": "340",
 			"column": "9",
@@ -22628,7 +22628,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/challenge/shell.go",
+			"file": "/app/challenges/pkg/challenge/shell.go",
 			"code": "188: \tbuf.WriteString(\"\\n\")\n189: \tif err := os.WriteFile(\n190: \t\tpath, buf.Bytes(), 0o644,\n191: \t); err != nil {\n192: \t\ts.logError(\"write output log\", \"err\", err)\n",
 			"line": "189-191",
 			"column": "12",
@@ -22644,7 +22644,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/challenge/base.go",
+			"file": "/app/challenges/pkg/challenge/base.go",
 			"code": "207: \t)\n208: \tif err := os.WriteFile(\n209: \t\tpath, []byte(md), 0o644,\n210: \t); err != nil {\n211: \t\treturn fmt.Errorf(\"write report %s: %w\", path, err)\n",
 			"line": "208-210",
 			"column": "12",
@@ -22660,7 +22660,7 @@
 			},
 			"rule_id": "G306",
 			"details": "Expect WriteFile permissions to be 0600 or less",
-			"file": "/app/Challenges/pkg/challenge/base.go",
+			"file": "/app/challenges/pkg/challenge/base.go",
 			"code": "169: \t)\n170: \tif err := os.WriteFile(path, data, 0o644); err != nil {\n171: \t\treturn fmt.Errorf(\"write result %s: %w\", path, err)\n",
 			"line": "170",
 			"column": "12",
@@ -31028,7 +31028,7 @@
 			},
 			"rule_id": "G104",
 			"details": "Errors unhandled",
-			"file": "/app/Challenges/pkg/report/markdown.go",
+			"file": "/app/challenges/pkg/report/markdown.go",
 			"code": "33: \tvar buf bytes.Buffer\n34: \tr.WriteReport(\u0026buf, result)\n35: \treturn buf.Bytes(), nil\n",
 			"line": "34",
 			"column": "2",
@@ -31044,7 +31044,7 @@
 			},
 			"rule_id": "G104",
 			"details": "Errors unhandled",
-			"file": "/app/Challenges/pkg/report/html.go",
+			"file": "/app/challenges/pkg/report/html.go",
 			"code": "30: \tvar buf bytes.Buffer\n31: \tr.WriteReport(\u0026buf, result)\n32: \treturn buf.Bytes(), nil\n",
 			"line": "31",
 			"column": "2",
@@ -31060,7 +31060,7 @@
 			},
 			"rule_id": "G104",
 			"details": "Errors unhandled",
-			"file": "/app/Challenges/pkg/monitor/websocket.go",
+			"file": "/app/challenges/pkg/monitor/websocket.go",
 			"code": "131: \tsnap := s.dashboard.Snapshot()\n132: \tjson.NewEncoder(w).Encode(snap)\n133: }\n",
 			"line": "132",
 			"column": "2",
@@ -31076,7 +31076,7 @@
 			},
 			"rule_id": "G104",
 			"details": "Errors unhandled",
-			"file": "/app/Challenges/pkg/monitor/websocket.go",
+			"file": "/app/challenges/pkg/monitor/websocket.go",
 			"code": "66: \t\t\u003c-ctx.Done()\n67: \t\tsrv.Close()\n68: \t}()\n",
 			"line": "67",
 			"column": "3",
@@ -31092,7 +31092,7 @@
 			},
 			"rule_id": "G104",
 			"details": "Errors unhandled",
-			"file": "/app/Challenges/pkg/monitor/websocket.go",
+			"file": "/app/challenges/pkg/monitor/websocket.go",
 			"code": "43: \t\tw.WriteHeader(http.StatusOK)\n44: \t\tw.Write([]byte(\"ok\"))\n45: \t})\n",
 			"line": "44",
 			"column": "3",

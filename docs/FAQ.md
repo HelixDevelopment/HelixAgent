@@ -136,13 +136,13 @@ make monitoring-reset-circuits
 
 See [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md). Key steps:
 1. Build release binary inside container: `make release`
-2. Configure `Containers/.env` for remote or local orchestration
+2. Configure `containers/.env` for remote or local orchestration
 3. Set `GIN_MODE=release` and strong `JWT_SECRET`
 4. Run `./bin/helixagent` — all containers start automatically
 
 ### Can I deploy containers to a remote host?
 
-Yes. Set in `Containers/.env`:
+Yes. Set in `containers/.env`:
 
 ```bash
 CONTAINERS_REMOTE_ENABLED=true
@@ -187,7 +187,7 @@ HelixAgent's functionality is decomposed into 41 independent Go modules (EventBu
 
 ### How does the container orchestration work?
 
-All container management goes through the `Containers` module adapter (`internal/adapters/containers/adapter.go`). The adapter reads `Containers/.env` on startup and either starts containers locally or distributes them to remote hosts. Never manipulate containers directly — always let HelixAgent manage them.
+All container management goes through the `Containers` module adapter (`internal/adapters/containers/adapter.go`). The adapter reads `containers/.env` on startup and either starts containers locally or distributes them to remote hosts. Never manipulate containers directly — always let HelixAgent manage them.
 
 ### What is HelixMemory?
 
@@ -274,11 +274,11 @@ Yes. HelixAgent uses HTTP/3 (QUIC) as its primary transport protocol with HTTP/2
 
 ### Why can't I start containers manually?
 
-HelixAgent's Containers module manages the entire container lifecycle. Manual container manipulation (docker/podman start/stop/compose) can cause state inconsistencies. Always use `./bin/helixagent` to start everything. The binary reads `Containers/.env` and orchestrates all containers automatically.
+HelixAgent's Containers module manages the entire container lifecycle. Manual container manipulation (docker/podman start/stop/compose) can cause state inconsistencies. Always use `./bin/helixagent` to start everything. The binary reads `containers/.env` and orchestrates all containers automatically.
 
 ### How do I distribute containers to a remote host?
 
-Edit `Containers/.env`:
+Edit `containers/.env`:
 
 ```bash
 CONTAINERS_REMOTE_ENABLED=true

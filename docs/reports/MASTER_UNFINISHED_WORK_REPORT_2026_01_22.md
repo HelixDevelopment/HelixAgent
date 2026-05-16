@@ -89,7 +89,7 @@ Located at `internal/testing/framework.go`:
 ```go
 // Supported test suites
 TestSuite{
-    Type: Unit/Integration/E2E/Stress/Security/Standalone,
+    Type: Unit/Integration/E2E/Stress/security/Standalone,
     Parallel: true/false,
     Coverage: true/false,
     Timeout: configurable,

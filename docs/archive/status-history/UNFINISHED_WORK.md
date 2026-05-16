@@ -81,7 +81,7 @@ STRESS_TEST=true go test ./tests/stress/...
 
 **Issue:**
 ```
-HelixQA/pkg/autonomous/pipeline.go: undefined: visionremote.ProbeHosts
+helix_qa/pkg/autonomous/pipeline.go: undefined: visionremote.ProbeHosts
 ```
 
 **Action:** Fix in HelixQA submodule separately

@@ -28,13 +28,13 @@ Common issues and solutions for HelixAgent deployment.
 
 **Symptom:** Services fail health checks after boot.
 
-**Fix:** HelixAgent manages containers automatically. Check `Containers/.env` for correct configuration. Verify Docker or Podman is available with `docker info` or `podman info`.
+**Fix:** HelixAgent manages containers automatically. Check `containers/.env` for correct configuration. Verify Docker or Podman is available with `docker info` or `podman info`.
 
 ### Remote Distribution Fails
 
 **Symptom:** SSH errors when deploying to remote hosts.
 
-**Fix:** Ensure SSH keys are configured and `CONTAINERS_REMOTE_HOST_*` variables in `Containers/.env` are correct. All connections must use key-based authentication.
+**Fix:** Ensure SSH keys are configured and `CONTAINERS_REMOTE_HOST_*` variables in `containers/.env` are correct. All connections must use key-based authentication.
 
 ## Performance Issues
 

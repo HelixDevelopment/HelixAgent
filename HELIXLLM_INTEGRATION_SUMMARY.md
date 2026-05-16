@@ -58,7 +58,7 @@ HelixLLM has been successfully integrated into HelixAgent as a fully-featured su
 - **Features:** LLMsVerifier validation, benchmarks, unit tests, report generation
 
 #### B. HelixQA Test Bank
-- **File:** `HelixQA/banks/helixllm.yaml`
+- **File:** `helix_qa/banks/helixllm.yaml`
 - **Tests:** 24 comprehensive tests across 7 test suites
 
 #### C. Challenge Script
@@ -119,7 +119,7 @@ CHALLENGE PASSED!
 6. `internal/adapters/helixllm/adapter.go` - Adapter implementation
 7. `internal/adapters/helixllm/types.go` - Adapter types
 8. `tests/helixllm/test_helixllm_integration.sh` - Integration tests
-9. `HelixQA/banks/helixllm.yaml` - QA test bank
+9. `helix_qa/banks/helixllm.yaml` - QA test bank
 10. `challenges/scripts/helixllm_integration_challenge.sh` - Challenge script
 11. `docs/HELIXLLM_INTEGRATION.md` - Documentation
 12. `reports/HELIXLLM_INTEGRATION_COMPLETE.md` - Completion report
@@ -151,7 +151,7 @@ docker-compose -f docker-compose.helixllm.yml up -d
 ./tests/helixllm/test_helixllm_integration.sh
 
 # HelixQA test bank
-./helixqa run --banks ./HelixQA/banks/helixllm.yaml
+./helixqa run --banks ./helix_qa/banks/helixllm.yaml
 
 # Challenge
 ./challenges/scripts/helixllm_integration_challenge.sh

@@ -24,7 +24,7 @@ After 4+ hours of intensive work, the HelixAgent project now **BUILDS SUCCESSFUL
    - Fixed import issues
 
 2. **HelixQA Submodule** (30 min)
-   - Created `HelixQA/pkg/visionremote/types.go`
+   - Created `helix_qa/pkg/visionremote/types.go`
    - Added 3 missing functions: ProbeHosts, SelectStrongestModel, PlanDistribution
    - Submodule now compiles without errors
 

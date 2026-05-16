@@ -512,7 +512,7 @@ curl "http://localhost:7061/v1/admin/compliance-report?period=2026-02" \
 - [User Manual 27: API Rate Limiting](27-api-rate-limiting.md) -- Rate limiting for abuse prevention
 - [User Manual 28: Custom Middleware](28-custom-middleware.md) -- Auth and security middleware
 - [User Manual 30: Enterprise Architecture](30-enterprise-architecture.md) -- Enterprise security architecture
-- Security module: `Security/`
+- Security module: `security/`
 - Internal security: `internal/security/`
 - Auth module: `Auth/`
 - Debate provenance: `internal/debate/audit/`

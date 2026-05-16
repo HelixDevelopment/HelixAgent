@@ -3,7 +3,7 @@
 # =================================================
 
 START_TIME=$(date +%s)
-EXECUTION_DIR="/run/media/milosvasic/DATA4TB/Projects/HelixAgent/execution_logs/$(date +%Y%m%d_%H%M%S)"
+EXECUTION_DIR="/run/media/milosvasic/DATA4TB/Projects/helix_agent/execution_logs/$(date +%Y%m%d_%H%M%S)"
 
 ## Phase 1: Pre-execution Checklist
 - [ ] HelixAgent running

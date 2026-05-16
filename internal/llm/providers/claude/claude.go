@@ -667,7 +667,7 @@ func (p *ClaudeProvider) makeAPICallWithAuthRetry(ctx context.Context, req Claud
 		httpReq.Header.Set(authHeaderName, authHeaderValue)
 
 		httpReq.Header.Set("anthropic-version", "2023-06-01")
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 
 		// Add OAuth-specific headers for Claude Code OAuth tokens
 		if p.authType == AuthTypeOAuth {

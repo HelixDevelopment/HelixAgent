@@ -607,7 +607,7 @@ The `internal/testing/framework.go` provides centralized test orchestration:
 ```go
 // Supported test suites
 TestSuite{
-    Type: Unit/Integration/E2E/Stress/Security/Standalone,
+    Type: Unit/Integration/E2E/Stress/security/Standalone,
     Parallel: true/false,
     Coverage: true/false,
     Timeout: configurable,

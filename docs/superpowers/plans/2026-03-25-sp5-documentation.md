@@ -124,7 +124,7 @@ Change line 3 from "33 independent Go modules" to "41 independent Go modules".
 - [ ] **Step 3: Add HelixQA entry**
 
 ```markdown
-| **HelixQA** | `digital.vasic.helixqa` | `HelixQA/` | QA orchestration, crash detection, evidence collection, ticket generation | 11 |
+| **HelixQA** | `digital.vasic.helixqa` | `helix_qa/` | QA orchestration, crash detection, evidence collection, ticket generation | 11 |
 ```
 
 - [ ] **Step 4: Add LLMOrchestrator entry**
@@ -148,7 +148,7 @@ Change line 3 from "33 independent Go modules" to "41 independent Go modules".
 - [ ] **Step 7: Add MCP-Servers entry**
 
 ```markdown
-| **MCP-Servers** | N/A (collection) | `MCP-Servers/` | 60+ containerized MCP server implementations | N/A |
+| **MCP-Servers** | N/A (collection) | `mcp_servers/` | 60+ containerized MCP server implementations | N/A |
 ```
 
 - [ ] **Step 8: Remove backup files**
@@ -171,7 +171,7 @@ git commit -m "docs(modules): add 6 missing modules to MODULES.md (33 -> 41), re
 
 **Files:**
 - Create: `DocProcessor/docs/architecture.md`
-- Create: `HelixQA/docs/architecture.md`
+- Create: `helix_qa/docs/architecture.md`
 - Create: `LLMOrchestrator/docs/architecture.md`
 - Create: `VisionEngine/docs/architecture.md`
 
@@ -179,7 +179,7 @@ git commit -m "docs(modules): add 6 missing modules to MODULES.md (33 -> 41), re
 
 Write `architecture.md` covering: loader pipeline, feature extraction, coverage tracking, docgraph.
 
-- [ ] **Step 2: Create HelixQA/docs/**
+- [ ] **Step 2: Create helix_qa/docs/**
 
 Write `architecture.md` covering: orchestrator flow, detector pipeline, evidence collection, ticket generation.
 
@@ -194,7 +194,7 @@ Write `architecture.md` covering: analyzer interface, NavigationGraph, LLM visio
 - [ ] **Step 5: Commit**
 
 ```bash
-git add DocProcessor/docs/ HelixQA/docs/ LLMOrchestrator/docs/ VisionEngine/docs/
+git add DocProcessor/docs/ helix_qa/docs/ LLMOrchestrator/docs/ VisionEngine/docs/
 git commit -m "docs: create docs/ directories for DocProcessor, HelixQA, LLMOrchestrator, VisionEngine"
 ```
 

@@ -72,7 +72,7 @@ MCP/
 3. **Container names** -- All containers follow the `mcp-<name>` naming convention.
 4. **Port allocation** -- Ports 3001-3099 are reserved for MCP servers. See `README.md` for the full mapping.
 5. **Environment variables** -- Server-specific API keys and configuration go in `.env.mcp` (see `README.md` for the template).
-6. **Core servers from MCP-Servers** -- The 7 core servers (ports 3001-3007) use source code from the `MCP-Servers/` submodule. Their Dockerfiles in `dockerfiles/` reference `../MCP-Servers/src/<server>` as build context.
+6. **Core servers from MCP-Servers** -- The 7 core servers (ports 3001-3007) use source code from the `mcp_servers/` submodule. Their Dockerfiles in `dockerfiles/` reference `../mcp_servers/src/<server>` as build context.
 
 ## Build and Run
 

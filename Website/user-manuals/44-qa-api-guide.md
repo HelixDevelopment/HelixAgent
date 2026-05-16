@@ -427,4 +427,4 @@ Common error codes:
 - [User Manual 39: HelixQA Guide](39-helixqa-guide.md) -- Full HelixQA setup and CLI reference
 - [User Manual 41: VisionEngine Guide](41-visionengine-guide.md) -- Vision backend configuration
 - [Video Course 71: HelixQA Orchestration Framework](../video-courses/course-71-helixqa.md) -- In-depth video lessons
-- Source: `HelixQA/README.md`, `HelixQA/CLAUDE.md`
+- Source: `helix_qa/README.md`, `helix_qa/CLAUDE.md`

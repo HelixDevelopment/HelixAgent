@@ -347,7 +347,7 @@ This plan provides a detailed, step-by-step roadmap to achieve 100% completion o
    - Cache dependencies efficiently
 
 3. **Re-enable Remote Distribution** (Week 5, Day 4)
-   - Update `Containers/.env`: `CONTAINERS_REMOTE_ENABLED=true`
+   - Update `containers/.env`: `CONTAINERS_REMOTE_ENABLED=true`
    - Test distribution to remote host
    - Verify health checks work across network
 

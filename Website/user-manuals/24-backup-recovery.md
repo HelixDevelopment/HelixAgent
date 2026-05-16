@@ -198,7 +198,7 @@ mkdir -p "${BACKUP_DIR}"
 tar -czf "${BACKUP_DIR}/config_${TIMESTAMP}.tar.gz" \
     configs/ \
     .env \
-    Containers/.env \
+    containers/.env \
     docker-compose*.yml \
     sql/schema/
 ```
@@ -209,7 +209,7 @@ The `.env` file contains API keys and secrets. Encrypt configuration backups:
 
 ```bash
 # Encrypt with GPG
-tar -czf - configs/ .env Containers/.env | \
+tar -czf - configs/ .env containers/.env | \
     gpg --symmetric --cipher-algo AES256 \
     -o "/backups/config/config_${TIMESTAMP}.tar.gz.gpg"
 

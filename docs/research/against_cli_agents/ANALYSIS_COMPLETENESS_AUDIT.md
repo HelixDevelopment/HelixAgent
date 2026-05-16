@@ -202,7 +202,7 @@
 | `BackgroundTasks/` | Task execution | ✅ Good |
 | `DebateOrchestrator/` | Debate system | ✅ Good |
 | `HelixMemory/` | Memory system | ⚠️ Partial |
-| `HelixQA/` | QA automation | ✅ Good |
+| `helix_qa/` | QA automation | ✅ Good |
 
 ---
 

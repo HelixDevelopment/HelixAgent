@@ -55,7 +55,7 @@ if [[ -z "${PROJECT_ROOT:-}" ]]; then
   exit 2
 fi
 
-ENV_FILE="$PROJECT_ROOT/Containers/.env"
+ENV_FILE="$PROJECT_ROOT/containers/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "FAIL: $ENV_FILE missing" >&2
   exit 2

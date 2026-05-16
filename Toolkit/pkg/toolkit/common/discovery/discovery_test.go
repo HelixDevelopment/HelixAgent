@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
-	httpclient "github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/http"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
+	httpclient "github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/http"
 )
 
 func TestNewBaseDiscovery(t *testing.T) {

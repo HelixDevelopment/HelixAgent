@@ -5,8 +5,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/discovery"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/discovery"
 )
 
 // ChutesCapabilityInferrer implements capability inference for Chutes models.

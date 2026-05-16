@@ -126,4 +126,4 @@ By contributing, you agree that your contributions will be licensed under the pr
 
 ## Contact
 
-- GitHub Issues: https://github.com/vasic-digital/HelixAgent/issues
+- GitHub Issues: https://github.com/vasic-digital/helix_agent/issues

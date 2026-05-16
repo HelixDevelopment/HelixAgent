@@ -15,7 +15,7 @@ and plan `docs/superpowers/plans/2026-04-21-remaining-work-execution.md`.
 5. **Dependabot: zero critical/high Go CVEs** remaining in root + `pkg/api` go.mod (4 dep batches closed including one **critical** grpc).
 6. **Provider verification root-cause fixed** — 3-tier discovery now generic across all providers; no more silent fall-through to stale Tier-3 lists.
 7. **Defensive red-team harness** — 47/47 adversarial fixtures blocked (100% from 23/47 baseline). Published as `digital.vasic.redteam` submodule.
-8. **Remote distribution path validated end-to-end** — `./bin/helixagent` boots, dynamically loads `CONTAINERS_REMOTE_HOST_N_*` from `Containers/.env`, SSH-distributes to all configured hosts.
+8. **Remote distribution path validated end-to-end** — `./bin/helixagent` boots, dynamically loads `CONTAINERS_REMOTE_HOST_N_*` from `containers/.env`, SSH-distributes to all configured hosts.
 
 ## New public `vasic-digital` repos (22: 11 × GitHub + 11 × GitLab mirrors)
 
@@ -85,7 +85,7 @@ Chutes earlier fix `a7bf125e` was the reconnaissance commit that surfaced the br
 ### Governance (Constitution v1.4.0, 31 rules)
 
 - **CONST-030** — Real Infrastructure for Non-Unit Tests.
-- **CONST-031** — Authorized Remote Distribution Hosts (dynamic via `Containers/.env`, N ≥ 1).
+- **CONST-031** — Authorized Remote Distribution Hosts (dynamic via `containers/.env`, N ≥ 1).
 
 ## Session totals
 

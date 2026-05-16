@@ -1,6 +1,6 @@
 # Toolkit - Architecture
 
-**Module:** `github.com/HelixDevelopment/HelixAgent/Toolkit`
+**Module:** `github.com/HelixDevelopment/helix_agent/Toolkit`
 
 ## Overview
 
@@ -113,7 +113,7 @@ Providers self-register via `init()` using `toolkit.RegisterProviderFactory()`.
 New providers are added by simply importing the package with a blank import:
 
 ```go
-import _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
+import _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/Chutes"
 ```
 
 ### 3. Two-Tier Common Packages

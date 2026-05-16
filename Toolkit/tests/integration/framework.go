@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 // IntegrationTestSuite provides a framework for integration testing

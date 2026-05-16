@@ -158,7 +158,7 @@ To achieve 100% completion of all requirements:
 
 4. **Container Distribution to thinker.local**
    - Requires SSH credentials for remote host
-   - Configure in `Containers/.env`
+   - Configure in `containers/.env`
 
 ---
 
@@ -188,7 +188,7 @@ go test -coverprofile=coverage.out ./...
 # Edit docker/mcp/Dockerfile* to use Go 1.24
 
 # 4. Configure and deploy to thinker.local
-# Update Containers/.env with SSH credentials
+# Update containers/.env with SSH credentials
 ```
 
 ---

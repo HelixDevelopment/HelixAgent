@@ -69,7 +69,7 @@ HelixAgent's functionality is decomposed into **41 independent Go modules**, eac
 | 7 | ToolSchema | `digital.vasic.toolschema` | `ToolSchema/` | 1 | Foundation |
 | 8 | SkillRegistry | `digital.vasic.skillregistry` | `SkillRegistry/` | 1 | Foundation |
 | 9 | Models | `digital.vasic.models` | `Models/` | 1 | Foundation |
-| 10 | Security | `digital.vasic.security` | `Security/` | 5 | Infrastructure |
+| 10 | Security | `digital.vasic.security` | `security/` | 5 | Infrastructure |
 | 11 | VectorDB | `digital.vasic.vectordb` | `VectorDB/` | 5 | Infrastructure |
 | 12 | Embeddings | `digital.vasic.embeddings` | `Embeddings/` | 7 | Infrastructure |
 | 13 | Database | `digital.vasic.database` | `Database/` | 7 | Infrastructure |
@@ -84,8 +84,8 @@ HelixAgent's functionality is decomposed into **41 independent Go modules**, eac
 | 22 | Memory | `digital.vasic.memory` | `Memory/` | 4 | Integration |
 | 23 | Optimization | `digital.vasic.optimization` | `Optimization/` | 6 | Integration |
 | 24 | Plugins | `digital.vasic.plugins` | `Plugins/` | 5 | Integration |
-| 25 | Containers | `digital.vasic.containers` | `Containers/` | 12 | Pre-existing |
-| 26 | Challenges | `digital.vasic.challenges` | `Challenges/` | 16 | Pre-existing |
+| 25 | Containers | `digital.vasic.containers` | `containers/` | 12 | Pre-existing |
+| 26 | Challenges | `digital.vasic.challenges` | `challenges/` | 16 | Pre-existing |
 | 27 | Agentic | `digital.vasic.agentic` | `Agentic/` | 1 | AI/ML |
 | 28 | LLMOps | `digital.vasic.llmops` | `LLMOps/` | 1 | AI/ML |
 | 29 | SelfImprove | `digital.vasic.selfimprove` | `SelfImprove/` | 1 | AI/ML |
@@ -96,11 +96,11 @@ HelixAgent's functionality is decomposed into **41 independent Go modules**, eac
 | 34 | HelixSpecifier | `digital.vasic.helixspecifier` | `HelixSpecifier/` | 27 | Specification |
 | 35 | BuildCheck | `digital.vasic.buildcheck` | `BuildCheck/` | 1 | Pre-existing |
 | 36 | DocProcessor | `digital.vasic.docprocessor` | `DocProcessor/` | 6 | Pre-existing |
-| 37 | HelixQA | `digital.vasic.helixqa` | `HelixQA/` | 22 | Pre-existing |
+| 37 | HelixQA | `digital.vasic.helixqa` | `helix_qa/` | 22 | Pre-existing |
 | 38 | LLMOrchestrator | `digital.vasic.llmorchestrator` | `LLMOrchestrator/` | 6 | Pre-existing |
 | 39 | VisionEngine | `digital.vasic.visionengine` | `VisionEngine/` | 5 | Pre-existing |
 | 40 | LLMsVerifier | `digital.vasic.llmsverifier` | `LLMsVerifier/` | 10+ | Pre-existing |
-| 41 | MCP-Servers | N/A (collection) | `MCP-Servers/` | N/A | Pre-existing |
+| 41 | MCP-Servers | N/A (collection) | `mcp_servers/` | N/A | Pre-existing |
 
 **Total: 41 modules, 179+ packages**
 
@@ -625,7 +625,7 @@ Provider accuracy verification, scoring pipeline, and CLI agent config generatio
 
 60+ containerized MCP server implementations covering filesystem, memory, sequential-thinking, database, vision, embeddings, RAG, formatters, monitoring, and more. Each server is a standalone container exposing the Model Context Protocol over HTTP.
 
-**Key directories**: `MCP-Servers/` — individual server implementations, Dockerfiles, and compose configurations for each of the 60+ MCP servers.
+**Key directories**: `mcp_servers/` — individual server implementations, Dockerfiles, and compose configurations for each of the 60+ MCP servers.
 
 ---
 

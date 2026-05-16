@@ -24,7 +24,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/zen"
 	"digital.vasic.concurrency/pkg/safe"
 	"digital.vasic.llmsverifier/api_keys"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/Providers/Chutes"
 	"github.com/sirupsen/logrus"
 )
 

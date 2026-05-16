@@ -651,7 +651,7 @@ Move scattered benchmark functions into `tests/benchmarks/` with structured orga
 ### Task 3.3: Fix Module Compilation Issues
 
 **Files:**
-- Modify: `Containers/pkg/lazyservice/orchestrator.go:32,59`
+- Modify: `containers/pkg/lazyservice/orchestrator.go:32,59`
 - Modify: `HelixMemory/pkg/consolidation/consolidation.go:22`
 - Modify: `HelixMemory/pkg/provider/unified.go:26`
 
@@ -818,9 +818,9 @@ git commit -m "perf(router): add request-level semaphore to prevent thundering h
 ### Task 5.1: Create MCP-Servers Documentation
 
 **Files:**
-- Create: `MCP-Servers/CLAUDE.md`
-- Create: `MCP-Servers/AGENTS.md`
-- Create: `MCP-Servers/docs/README.md`
+- Create: `mcp_servers/CLAUDE.md`
+- Create: `mcp_servers/AGENTS.md`
+- Create: `mcp_servers/docs/README.md`
 
 - [ ] **Step 1: Create CLAUDE.md with module overview, architecture, and development guide**
 - [ ] **Step 2: Create AGENTS.md with agent development patterns**

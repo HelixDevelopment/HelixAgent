@@ -1,7 +1,7 @@
 // Package placement translates docker-compose service definitions into
 // scheduler.ContainerRequirements so HelixAgent can distribute services
 // across hosts using the existing scheduler/distributor infrastructure
-// in Containers/pkg/{scheduler,distribution,serviceregistry}.
+// in containers/pkg/{scheduler,distribution,serviceregistry}.
 //
 // All deploy actions remain inside the bin/helixagent boot flow per
 // CONST-031 — this package is a pure translation layer. It does NOT

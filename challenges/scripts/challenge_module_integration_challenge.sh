@@ -33,68 +33,68 @@ echo ""
 # ------------------------------------------------------------------
 echo "--- Part 1: pkg/stuckdetect package ---"
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/stuckdetect/detector.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/stuckdetect/detector.go" ]; then
     pass "stuckdetect/detector.go exists"
 else
     fail "stuckdetect/detector.go missing"
 fi
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/stuckdetect/writer.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/stuckdetect/writer.go" ]; then
     pass "stuckdetect/writer.go exists"
 else
     fail "stuckdetect/writer.go missing"
 fi
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/stuckdetect/options.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/stuckdetect/options.go" ]; then
     pass "stuckdetect/options.go exists"
 else
     fail "stuckdetect/options.go missing"
 fi
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/stuckdetect/detector_test.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/stuckdetect/detector_test.go" ]; then
     pass "stuckdetect/detector_test.go exists"
 else
     fail "stuckdetect/detector_test.go missing"
 fi
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/stuckdetect/writer_test.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/stuckdetect/writer_test.go" ]; then
     pass "stuckdetect/writer_test.go exists"
 else
     fail "stuckdetect/writer_test.go missing"
 fi
 
 # Verify key types exist
-if grep -q "type StuckDetector struct" "$PROJECT_ROOT/Challenges/pkg/stuckdetect/detector.go"; then
+if grep -q "type StuckDetector struct" "$PROJECT_ROOT/challenges/pkg/stuckdetect/detector.go"; then
     pass "StuckDetector type defined"
 else
     fail "StuckDetector type not found"
 fi
 
-if grep -q "type ActivityWriter struct" "$PROJECT_ROOT/Challenges/pkg/stuckdetect/writer.go"; then
+if grep -q "type ActivityWriter struct" "$PROJECT_ROOT/challenges/pkg/stuckdetect/writer.go"; then
     pass "ActivityWriter type defined"
 else
     fail "ActivityWriter type not found"
 fi
 
-if grep -q "type Config struct" "$PROJECT_ROOT/Challenges/pkg/stuckdetect/options.go"; then
+if grep -q "type Config struct" "$PROJECT_ROOT/challenges/pkg/stuckdetect/options.go"; then
     pass "Config type defined in options.go"
 else
     fail "Config type not found in options.go"
 fi
 
-if grep -q "ReasonOutputStalled" "$PROJECT_ROOT/Challenges/pkg/stuckdetect/detector.go"; then
+if grep -q "ReasonOutputStalled" "$PROJECT_ROOT/challenges/pkg/stuckdetect/detector.go"; then
     pass "ReasonOutputStalled constant defined"
 else
     fail "ReasonOutputStalled not found"
 fi
 
-if grep -q "ReasonHeartbeatMissed" "$PROJECT_ROOT/Challenges/pkg/stuckdetect/detector.go"; then
+if grep -q "ReasonHeartbeatMissed" "$PROJECT_ROOT/challenges/pkg/stuckdetect/detector.go"; then
     pass "ReasonHeartbeatMissed constant defined"
 else
     fail "ReasonHeartbeatMissed not found"
 fi
 
-if grep -q "ReasonMaxDuration" "$PROJECT_ROOT/Challenges/pkg/stuckdetect/detector.go"; then
+if grep -q "ReasonMaxDuration" "$PROJECT_ROOT/challenges/pkg/stuckdetect/detector.go"; then
     pass "ReasonMaxDuration constant defined"
 else
     fail "ReasonMaxDuration not found"
@@ -107,67 +107,67 @@ echo ""
 # ------------------------------------------------------------------
 echo "--- Part 2: Stuck detection integration ---"
 
-if grep -q "StatusStuck" "$PROJECT_ROOT/Challenges/pkg/challenge/result.go"; then
+if grep -q "StatusStuck" "$PROJECT_ROOT/challenges/pkg/challenge/result.go"; then
     pass "StatusStuck added to result.go"
 else
     fail "StatusStuck not in result.go"
 fi
 
-if grep -q "StuckDetectable" "$PROJECT_ROOT/Challenges/pkg/challenge/challenge.go"; then
+if grep -q "StuckDetectable" "$PROJECT_ROOT/challenges/pkg/challenge/challenge.go"; then
     pass "StuckDetectable interface in challenge.go"
 else
     fail "StuckDetectable not in challenge.go"
 fi
 
-if grep -q "StuckDetectorHandle" "$PROJECT_ROOT/Challenges/pkg/challenge/challenge.go"; then
+if grep -q "StuckDetectorHandle" "$PROJECT_ROOT/challenges/pkg/challenge/challenge.go"; then
     pass "StuckDetectorHandle interface in challenge.go"
 else
     fail "StuckDetectorHandle not in challenge.go"
 fi
 
-if grep -q "stuckDetector" "$PROJECT_ROOT/Challenges/pkg/challenge/shell.go"; then
+if grep -q "stuckDetector" "$PROJECT_ROOT/challenges/pkg/challenge/shell.go"; then
     pass "stuckDetector field in shell.go"
 else
     fail "stuckDetector not in shell.go"
 fi
 
-if grep -q "SetStuckDetector" "$PROJECT_ROOT/Challenges/pkg/challenge/shell.go"; then
+if grep -q "SetStuckDetector" "$PROJECT_ROOT/challenges/pkg/challenge/shell.go"; then
     pass "SetStuckDetector method in shell.go"
 else
     fail "SetStuckDetector not in shell.go"
 fi
 
-if grep -q "activityWriter" "$PROJECT_ROOT/Challenges/pkg/challenge/shell.go"; then
+if grep -q "activityWriter" "$PROJECT_ROOT/challenges/pkg/challenge/shell.go"; then
     pass "activityWriter in shell.go"
 else
     fail "activityWriter not in shell.go"
 fi
 
-if grep -q "StallThreshold" "$PROJECT_ROOT/Challenges/pkg/challenge/config.go"; then
+if grep -q "StallThreshold" "$PROJECT_ROOT/challenges/pkg/challenge/config.go"; then
     pass "StallThreshold field in config.go"
 else
     fail "StallThreshold not in config.go"
 fi
 
-if grep -q "defaultStallThreshold" "$PROJECT_ROOT/Challenges/pkg/runner/runner.go"; then
+if grep -q "defaultStallThreshold" "$PROJECT_ROOT/challenges/pkg/runner/runner.go"; then
     pass "defaultStallThreshold in runner.go"
 else
     fail "defaultStallThreshold not in runner.go"
 fi
 
-if grep -q "WithDefaultStallThreshold" "$PROJECT_ROOT/Challenges/pkg/runner/options.go"; then
+if grep -q "WithDefaultStallThreshold" "$PROJECT_ROOT/challenges/pkg/runner/options.go"; then
     pass "WithDefaultStallThreshold option in runner"
 else
     fail "WithDefaultStallThreshold not in runner"
 fi
 
-if grep -q "EventStuck" "$PROJECT_ROOT/Challenges/pkg/monitor/events.go"; then
+if grep -q "EventStuck" "$PROJECT_ROOT/challenges/pkg/monitor/events.go"; then
     pass "EventStuck in monitor/events.go"
 else
     fail "EventStuck not in monitor/events.go"
 fi
 
-if grep -q "Stuck.*int" "$PROJECT_ROOT/Challenges/pkg/monitor/collector.go"; then
+if grep -q "Stuck.*int" "$PROJECT_ROOT/challenges/pkg/monitor/collector.go"; then
     pass "Stuck counter in collector.go"
 else
     fail "Stuck counter not in collector.go"
@@ -180,31 +180,31 @@ echo ""
 # ------------------------------------------------------------------
 echo "--- Part 3: pkg/httptest package ---"
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/httptest/client.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/httptest/client.go" ]; then
     pass "httptest/client.go exists"
 else
     fail "httptest/client.go missing"
 fi
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/httptest/options.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/httptest/options.go" ]; then
     pass "httptest/options.go exists"
 else
     fail "httptest/options.go missing"
 fi
 
-if [ -f "$PROJECT_ROOT/Challenges/pkg/httptest/client_test.go" ]; then
+if [ -f "$PROJECT_ROOT/challenges/pkg/httptest/client_test.go" ]; then
     pass "httptest/client_test.go exists"
 else
     fail "httptest/client_test.go missing"
 fi
 
-if grep -q "type Client struct" "$PROJECT_ROOT/Challenges/pkg/httptest/client.go"; then
+if grep -q "type Client struct" "$PROJECT_ROOT/challenges/pkg/httptest/client.go"; then
     pass "Client type defined"
 else
     fail "Client type not found"
 fi
 
-if grep -q "type RequestResult struct" "$PROJECT_ROOT/Challenges/pkg/httptest/client.go"; then
+if grep -q "type RequestResult struct" "$PROJECT_ROOT/challenges/pkg/httptest/client.go"; then
     pass "RequestResult type defined"
 else
     fail "RequestResult type not found"

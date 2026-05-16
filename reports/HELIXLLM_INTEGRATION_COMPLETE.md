@@ -28,7 +28,7 @@ HelixLLM has been successfully integrated into the HelixAgent ecosystem as a ful
 
 ### 1. Submodule Addition ✅
 
-**Location:** `/run/media/milosvasic/DATA4TB/Projects/HelixAgent/HelixLLM`
+**Location:** `/run/media/milosvasic/DATA4TB/Projects/helix_agent/HelixLLM`
 
 ```bash
 # Submodule URL
@@ -140,7 +140,7 @@ HELIX_LLM_USE_HELIXAGENT_MEMORY=true
 - Comprehensive HTML/JSON report generation
 
 #### B. HelixQA Test Bank
-**File:** `HelixQA/banks/helixllm.yaml`
+**File:** `helix_qa/banks/helixllm.yaml`
 
 **Test Suites:**
 - Infrastructure tests (5 tests)
@@ -197,7 +197,7 @@ HELIX_LLM_USE_HELIXAGENT_MEMORY=true
 ## File Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── HelixLLM/                          # Submodule (added)
 │   ├── internal/
 │   ├── cmd/
@@ -217,7 +217,7 @@ HelixAgent/
 ├── tests/
 │   └── helixllm/
 │       └── test_helixllm_integration.sh  # NEW
-├── HelixQA/
+├── helix_qa/
 │   └── banks/
 │       └── helixllm.yaml              # NEW
 ├── challenges/
@@ -254,7 +254,7 @@ docker-compose -f docker-compose.helixllm.yml up -d
 ./tests/helixllm/test_helixllm_integration.sh
 
 # Run HelixQA test bank
-./helixqa run --banks ./HelixQA/banks/helixllm.yaml
+./helixqa run --banks ./helix_qa/banks/helixllm.yaml
 
 # Run challenge
 ./challenges/scripts/helixllm_integration_challenge.sh

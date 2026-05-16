@@ -4,7 +4,7 @@ package discovery
 import (
 	"strings"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 // CapabilityInferrer defines the interface for inferring model capabilities.

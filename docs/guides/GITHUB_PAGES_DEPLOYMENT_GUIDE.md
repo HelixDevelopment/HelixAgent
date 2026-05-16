@@ -40,7 +40,7 @@
 1. After enabling GitHub Pages, wait 1-2 minutes
 2. Visit your GitHub Pages URL (automatically generated):
    ```
-   https://vasic-digital.github.io/HelixAgent/
+   https://vasic-digital.github.io/helix_agent/
    ```
 3. Verify website loads correctly
 4. Check browser console for analytics events
@@ -49,7 +49,7 @@
 
 ### If GitHub Pages Doesn't Deploy:
 1. **Check GitHub Actions tab:**
-   - Go to https://github.com/vasic-digital/HelixAgent/actions
+   - Go to https://github.com/vasic-digital/helix_agent/actions
    - Look for "Deploy Documentation and Website" workflow
    - Check if it's running/completed/failed
 
@@ -66,7 +66,7 @@
 ### If Website Doesn't Load:
 1. **Check URL format:**
    - Correct: `https://<username>.github.io/<repository>`
-   - Example: `https://vasic-digital.github.io/HelixAgent/`
+   - Example: `https://vasic-digital.github.io/helix_agent/`
 
 2. **Wait for propagation:**
    - GitHub Pages can take 1-10 minutes to deploy
@@ -149,7 +149,7 @@ If automatic deployment doesn't work:
 ## MONITORING
 
 ### GitHub Actions Status
-- **URL**: https://github.com/vasic-digital/HelixAgent/actions
+- **URL**: https://github.com/vasic-digital/helix_agent/actions
 - **Workflow**: "Deploy Documentation and Website"
 - **Frequency**: On push to main/master branches
 
@@ -210,7 +210,7 @@ If automatic deployment doesn't work:
 **🚀 READY TO LAUNCH?**
 
 Once GitHub Pages is enabled and analytics configured, HelixAgent will be live at:
-`https://vasic-digital.github.io/HelixAgent/`
+`https://vasic-digital.github.io/helix_agent/`
 
 **Next Steps:**
 1. Enable GitHub Pages (Settings → Pages)

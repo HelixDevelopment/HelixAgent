@@ -1020,13 +1020,13 @@ Focus on runtime detection, connection management, and health check packages.
 **Step 3: Run**
 
 ```bash
-GOMAXPROCS=2 nice -n 19 go test -count=1 -p 1 ./Containers/...
+GOMAXPROCS=2 nice -n 19 go test -count=1 -p 1 ./containers/...
 ```
 
 **Step 4: Commit**
 
 ```bash
-git add Containers/
+git add containers/
 git commit -m "test(containers): improve coverage from 78% to 100% across all packages"
 ```
 
@@ -1796,7 +1796,7 @@ Ensure all say `api.z.ai/api/paas/v4`.
 
 **Step 3: Update remote container distribution flow docs**
 
-In `docs/guides/deployment-guide.md` and `docs/ARCHITECTURE.md`, reflect the final `Containers/.env`-driven orchestration flow.
+In `docs/guides/deployment-guide.md` and `docs/ARCHITECTURE.md`, reflect the final `containers/.env`-driven orchestration flow.
 
 **Step 4: Commit**
 

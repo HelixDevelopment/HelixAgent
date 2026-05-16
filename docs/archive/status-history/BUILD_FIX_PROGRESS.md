@@ -56,7 +56,7 @@
 - `visionremote.SelectStrongestModel`
 - `visionremote.PlanDistribution`
 
-**Fix:** Create `HelixQA/pkg/visionremote/types.go` with these types.
+**Fix:** Create `helix_qa/pkg/visionremote/types.go` with these types.
 
 ---
 

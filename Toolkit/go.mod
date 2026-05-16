@@ -1,4 +1,4 @@
-module github.com/HelixDevelopment/HelixAgent/Toolkit
+module github.com/HelixDevelopment/helix_agent/Toolkit
 
 go 1.24.11
 

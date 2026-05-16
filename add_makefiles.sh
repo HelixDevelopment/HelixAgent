@@ -23,7 +23,7 @@ MODULES=(
     "Auth"
     "Storage"
     "Streaming"
-    # Security removed — canonical at meta-repo root Security/ (P1.5-T03.03)
+    # Security removed — canonical at meta-repo root security/ (P1.5-T03.03)
     "VectorDB"
     "Embeddings"
     "Database"
@@ -35,7 +35,7 @@ MODULES=(
     "Memory"
     "Optimization"
     "Plugins"
-    # Containers removed — canonical at meta-repo root Containers/ (P1.5-T03.02)
+    # Containers removed — canonical at meta-repo root containers/ (P1.5-T03.02)
     "Challenges"
     "Agentic"
     "LLMOps"

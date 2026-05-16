@@ -20,7 +20,7 @@ TOTAL=0
 PROJECT_ROOT="${SCRIPT_DIR}/../.."
 
 # Detect remote container deployment
-CONTAINERS_ENV="$PROJECT_ROOT/Containers/.env"
+CONTAINERS_ENV="$PROJECT_ROOT/containers/.env"
 REMOTE_ENABLED=false
 REMOTE_HOST=""      # first-discovered host — kept for legacy callers below
 REMOTE_USER=""      # first-discovered user

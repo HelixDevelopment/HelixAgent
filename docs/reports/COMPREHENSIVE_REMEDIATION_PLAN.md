@@ -1,4 +1,4 @@
-# Comprehensive Remediation Plan - HelixAgent/HelixAgent
+# Comprehensive Remediation Plan - helix_agent/HelixAgent
 
 **Generated:** 2026-01-05
 **Version:** 1.0
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document presents a comprehensive remediation plan based on thorough analysis of the HelixAgent/HelixAgent codebase. The analysis compared all documentation (194 markdown files, 4 SQL migrations, 4 diagrams) against the actual implementation (155 Go source files, ~140K lines of code).
+This document presents a comprehensive remediation plan based on thorough analysis of the helix_agent/HelixAgent codebase. The analysis compared all documentation (194 markdown files, 4 SQL migrations, 4 diagrams) against the actual implementation (155 Go source files, ~140K lines of code).
 
 ### Overall Assessment
 

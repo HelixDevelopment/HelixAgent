@@ -757,5 +757,5 @@ To fix:
 - [User Manual 18: Performance Monitoring](18-performance-monitoring.md) -- Benchmark result analysis
 - [Video Course 61: Goroutine Safety](../video-courses/video-course-61-goroutine-safety.md) -- Lifecycle management deep dive
 - Test infrastructure: `docker/test/docker-compose.test.yml`
-- Challenges framework: `Challenges/`
+- Challenges framework: `challenges/`
 - Go testing documentation: https://pkg.go.dev/testing

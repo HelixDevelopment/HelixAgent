@@ -168,7 +168,7 @@ HELIX_LLM_API_KEY=your-key
 HELIX_LLM_MODEL=helixllm-default
 ```
 
-### Container Orchestration (in Containers/.env)
+### Container Orchestration (in containers/.env)
 ```bash
 CONTAINERS_REMOTE_ENABLED=false
 CONTAINERS_REMOTE_HOST_1=user@remote-host
@@ -324,7 +324,7 @@ SVC_REDIS_REMOTE=true
 | File | Purpose |
 |------|---------|
 | `.env` | API keys and server config |
-| `Containers/.env` | Container orchestration (local/remote) |
+| `containers/.env` | Container orchestration (local/remote) |
 | `configs/development.yaml` | Dev settings |
 | `configs/production.yaml` | Prod settings |
 | `.speckit/cache/` | HelixSpecifier phase cache |

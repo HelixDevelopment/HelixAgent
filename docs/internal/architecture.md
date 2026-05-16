@@ -417,7 +417,7 @@ configs/
 ## File Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── cmd/
 │   ├── helixagent/     # Main application entry
 │   ├── api/            # API server

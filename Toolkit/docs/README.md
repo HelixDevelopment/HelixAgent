@@ -324,8 +324,8 @@ import (
     "context"
     "fmt"
 
-    _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/SiliconFlow"
-    "github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+    _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/SiliconFlow"
+    "github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 func main() {
@@ -360,9 +360,9 @@ import (
     "context"
     "fmt"
 
-    _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/SiliconFlow"
-    "github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
-    "github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/agents"
+    _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/SiliconFlow"
+    "github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
+    "github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/agents"
 )
 
 func main() {
@@ -409,7 +409,7 @@ Create a new package under `Providers/` implementing the `Provider` interface:
 ```go
 package myprovider
 
-import "github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+import "github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 
 func init() {
     toolkit.RegisterProviderFactory("myprovider", NewProvider)
@@ -423,7 +423,7 @@ func NewProvider(config map[string]interface{}) (toolkit.Provider, error) {
 Then import it with a blank import:
 
 ```go
-import _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/MyProvider"
+import _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/MyProvider"
 ```
 
 ## Testing Utilities
@@ -431,7 +431,7 @@ import _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/MyProvider"
 The `Commons/testing` package provides mock implementations for unit testing:
 
 ```go
-import ttesting "github.com/HelixDevelopment/HelixAgent/Toolkit/Commons/testing"
+import ttesting "github.com/HelixDevelopment/helix_agent/Toolkit/Commons/testing"
 
 func TestMyFeature(t *testing.T) {
     // Create mock provider

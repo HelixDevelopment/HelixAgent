@@ -443,7 +443,7 @@ func BenchmarkSubmoduleSyncHelixQAOpensourceTools(b *testing.B) {
 	os.Chdir(wd)
 
 	for i := 0; i < b.N; i++ {
-		cmd := exec.Command("git", "submodule", "status", "../HelixQA/tools/opensource")
+		cmd := exec.Command("git", "submodule", "status", "../helix_qa/tools/opensource")
 		_, _ = cmd.CombinedOutput()
 	}
 }

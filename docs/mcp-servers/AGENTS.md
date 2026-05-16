@@ -35,12 +35,12 @@ Containerized MCP servers from this submodule, plus free remote services:
 
 | Server               | Type         | Source                     |
 |----------------------|--------------|----------------------------|
-| filesystem           | Container    | MCP-Servers/src/filesystem |
-| memory               | Container    | MCP-Servers/src/memory     |
-| sequential-thinking  | Container    | MCP-Servers/src/sequentialthinking |
-| everything           | Container    | MCP-Servers/src/everything |
-| puppeteer            | Container    | MCP-Servers/src/puppeteer  |
-| sqlite               | Container    | MCP-Servers/src/sqlite     |
+| filesystem           | Container    | mcp_servers/src/filesystem |
+| memory               | Container    | mcp_servers/src/memory     |
+| sequential-thinking  | Container    | mcp_servers/src/sequentialthinking |
+| everything           | Container    | mcp_servers/src/everything |
+| puppeteer            | Container    | mcp_servers/src/puppeteer  |
+| sqlite               | Container    | mcp_servers/src/sqlite     |
 | context7             | Free remote  | context7.com               |
 | deepwiki             | Free remote  | deepwiki.com               |
 | cloudflare-docs      | Free remote  | Cloudflare                 |

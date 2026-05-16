@@ -300,7 +300,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 			APIKey:    cfg.ModelsDev.APIKey,
 			BaseURL:   cfg.ModelsDev.BaseURL,
 			Timeout:   30 * time.Second,
-			UserAgent: "HelixAgent/1.0",
+			UserAgent: "helix_agent/1.0",
 		})
 
 		modelMetadataCache := cacheFactory.CreateDefaultCache(cfg.ModelsDev.CacheTTL)

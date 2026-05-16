@@ -1545,7 +1545,7 @@ Expected: Container images rebuild with updated code. If `make docker-build` is 
 
 The HelixAgent binary handles all container orchestration on boot (per CONST-015a). Running the binary starts all containers with the rebuilt images. Verify by checking build timestamps in container logs after next boot cycle.
 
-Note: Do NOT use manual `docker start/stop/restart` commands. All container lifecycle is managed by the HelixAgent binary reading `Containers/.env`.
+Note: Do NOT use manual `docker start/stop/restart` commands. All container lifecycle is managed by the HelixAgent binary reading `containers/.env`.
 
 ---
 

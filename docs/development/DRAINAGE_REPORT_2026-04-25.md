@@ -9,7 +9,7 @@ Run as Option B: full validation as drainage exercise. Phases 0 → 6, expecting
 | Phase | Status | Detail |
 |---|---|---|
 | 0 — build + sanity | ✅ PASS | Binary rebuilt clean (vendor synced after submodule pointer bumps from `43a784cf`). |
-| 1 — boot binary + containers | ✅ PASS | Up in ~7 min; `/v1/health` reports 15/26 providers healthy. Containers deployed to `thinker.local` + `amber.local` per `Containers/.env`. |
+| 1 — boot binary + containers | ✅ PASS | Up in ~7 min; `/v1/health` reports 15/26 providers healthy. Containers deployed to `thinker.local` + `amber.local` per `containers/.env`. |
 | 2 — `make ci-validate-all` | ⚠️ PARTIAL | repo-health, fallback, monitoring, no-silent-skips, no-mocks-above-unit ✅. sync-constitution ❌ (Finding #4), ci-validate-concurrency ❌ (Finding #5). |
 | 3 — `make test-unit` | ⚠️ 97.8% | 265 packages PASS, 1 FAIL (`internal/testutil`), 14 skipped. (Finding #6) |
 | 4 — `make test-integration` (live binary) | ❌ 33% pkg pass | 1 pkg PASS, 2 pkgs FAIL, 6 sub-tests FAIL. (Findings #7–#12) |

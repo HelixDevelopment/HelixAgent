@@ -33,7 +33,7 @@ Stage 4 of the CLI agent integration cycle: monitor `./bin/helixagent` (PID
 | 26 | Crush registry path `~/.config/crush/config.json` (CLI didn't read it) → must be `crush.json` | **FIXED** in `internal/agents/registry.go` | `18d7af2e` |
 | 28 | Intent classifier hammers Cerebras after 429/quota; 166× warnings + 42× spec-auto-activation cousin | **FIXED** with per-provider 5-min cooldown in `llm_intent_classifier.go` + 2 new unit tests | `bb64dcd3` |
 | 32 | Orchestrator logs "SUCCEEDED" before empty-content check, then logs "returned empty content" 24× | **FIXED** by reordering log statements; SUCCEEDED only fires when content non-empty + carries `content_len` field | `6af55414` |
-| 38 | `Containers/.env` declares amber.local as `podman` runtime but amber has `/usr/bin/docker` | **FIXED** in `Containers/.env` (gitignored, no commit needed) | local |
+| 38 | `containers/.env` declares amber.local as `podman` runtime but amber has `/usr/bin/docker` | **FIXED** in `containers/.env` (gitignored, no commit needed) | local |
 
 ### Operator / credential action
 
@@ -82,7 +82,7 @@ Post-restart success criterion (1h sample):
 
 ## Container fleet snapshot
 
-- **localhost**: 0 containers running (Containers/.env distribution → remote
+- **localhost**: 0 containers running (containers/.env distribution → remote
   hosts)
 - **thinker.local**: postgres + redis + chromadb (3 containers, all healthy,
   17h uptime)

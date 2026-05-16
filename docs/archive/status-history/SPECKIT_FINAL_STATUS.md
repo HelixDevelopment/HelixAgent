@@ -73,7 +73,7 @@ Created 3 comprehensive test files:
 ## 📂 Current Structure
 
 ```
-HelixAgent/
+helix_agent/
 ├── cli_agents/
 │   └── spec-kit/                    ✅ GitHub's SpecKit (Git submodule)
 │       ├── README.md

@@ -37,14 +37,14 @@ The push-time banner surfaces counts GitHub tracks for the `vasic-digital/HelixA
 
 **Action item — UI triage (cannot be done via the API with the current token):**
 
-1. Open <https://github.com/vasic-digital/HelixAgent/security/dependabot>.
+1. Open <https://github.com/vasic-digital/helix_agent/security/dependabot>.
 2. Filter by ecosystem:
    - Go (expected ≤ 2 after this round, matches govulncheck)
    - JavaScript/TypeScript (bulk of the 149 — driven by `Website/package.json` and CLI-agent submodules, many of which are third-party and pinned per CLAUDE.md Rule 10)
    - Python (LLMsVerifier tooling)
 3. For each **critical + high** finding:
    - If in an own-module (vasic-digital/* / HelixDevelopment/* / milos85vasic/*) and fix is available → bump.
-   - If in a third-party submodule (`cli_agents/**`, `MCP/**`, `external/**`, `HelixQA/tools/opensource/**`) → **do not modify** (Rule 10). Record disposition as "Upstream responsibility; pin advances to fixed upstream release when published".
+   - If in a third-party submodule (`cli_agents/**`, `MCP/**`, `external/**`, `helix_qa/tools/opensource/**`) → **do not modify** (Rule 10). Record disposition as "Upstream responsibility; pin advances to fixed upstream release when published".
    - If no fix is available → document mitigation.
 4. Record the triage result in this document, one section per month-end snapshot.
 

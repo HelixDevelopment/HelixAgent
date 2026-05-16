@@ -444,7 +444,7 @@ type CronetClient struct {
 func NewCronetClient() *CronetClient {
     // Initialize Cronet engine
     params := C.Cronet_EngineParams_Create()
-    C.Cronet_EngineParams_user_agent_set(params, C.CString("HelixAgent/1.0"))
+    C.Cronet_EngineParams_user_agent_set(params, C.CString("helix_agent/1.0"))
     C.Cronet_EngineParams_enable_http2_set(params, C.true)
     C.Cronet_EngineParams_enable_quic_set(params, C.true)
     

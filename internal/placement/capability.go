@@ -1,5 +1,5 @@
 // Package placement / capability.go — capability matching layer that sits
-// on top of the existing Containers/pkg/scheduler primitives.
+// on top of the existing containers/pkg/scheduler primitives.
 //
 // Why a layer above the scheduler instead of editing scheduler.go?
 //
@@ -29,7 +29,7 @@ import (
 
 // HostCapabilities describes what a registered remote host can run,
 // distilled from a live probe (prober.go) plus operator-set labels in
-// Containers/.env. Boolean fields default to "unknown" (false) when
+// containers/.env. Boolean fields default to "unknown" (false) when
 // the prober couldn't determine them — see eligibility rules below.
 type HostCapabilities struct {
 	Name string
@@ -91,7 +91,7 @@ type HostCapabilities struct {
 	GPUVendor string // "nvidia" | "amd" | "intel" | ""
 	GPUCount  int
 
-	// Operator labels (from Containers/.env CONTAINERS_REMOTE_HOST_N_LABELS).
+	// Operator labels (from containers/.env CONTAINERS_REMOTE_HOST_N_LABELS).
 	Labels map[string]string
 
 	// Already-placed services on this host this boot. The planner

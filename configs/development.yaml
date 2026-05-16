@@ -539,7 +539,7 @@ modelsdev:
   
   # API request settings
   timeout: "30s"
-  user_agent: "HelixAgent/1.0 (Development)"
+  user_agent: "helix_agent/1.0 (Development)"
   rate_limit: 10
   
   # Advanced settings

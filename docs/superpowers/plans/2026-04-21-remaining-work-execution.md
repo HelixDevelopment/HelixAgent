@@ -1496,8 +1496,8 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 **Files:**
 - Create: `docs/development/REMAINING_WORK_2026-04-21_CLOSED.md`
-- Modify: `/home/milosvasic/.claude-milos85vasic2nd/projects/-run-media-milosvasic-DATA4TB-Projects-HelixAgent/memory/project_const029_campaign.md`
-- Modify: `/home/milosvasic/.claude-milos85vasic2nd/projects/-run-media-milosvasic-DATA4TB-Projects-HelixAgent/memory/MEMORY.md` (update pointer line)
+- Modify: `/home/milosvasic/.claude-milos85vasic2nd/projects/-run-media-milosvasic-DATA4TB-Projects-helix_agent/memory/project_const029_campaign.md`
+- Modify: `/home/milosvasic/.claude-milos85vasic2nd/projects/-run-media-milosvasic-DATA4TB-Projects-helix_agent/memory/MEMORY.md` (update pointer line)
 
 - [ ] **Step 1: Write _CLOSED snapshot**
 

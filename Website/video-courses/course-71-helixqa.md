@@ -419,11 +419,11 @@ curl -sf "$HELIX_URL/v1/qa/sessions/$SESSION_ID/findings?severity=critical" \
 
 ## Resources
 
-- [HelixQA CLAUDE.md](../../HelixQA/CLAUDE.md)
-- [SessionCoordinator Source](../../HelixQA/pkg/autonomous/coordinator.go)
-- [Config Package Source](../../HelixQA/pkg/config/config.go)
-- [Detector Package](../../HelixQA/pkg/detector/)
-- [Test Bank Package](../../HelixQA/pkg/testbank/)
+- [HelixQA CLAUDE.md](../../helix_qa/CLAUDE.md)
+- [SessionCoordinator Source](../../helix_qa/pkg/autonomous/coordinator.go)
+- [Config Package Source](../../helix_qa/pkg/config/config.go)
+- [Detector Package](../../helix_qa/pkg/detector/)
+- [Test Bank Package](../../helix_qa/pkg/testbank/)
 - [User Manual 39: HelixQA Guide](../user-manuals/39-helixqa-guide.md)
 - [User Manual 44: QA REST API Guide](../user-manuals/44-qa-api-guide.md)
 - [Course 70: DocProcessor Deep Dive](course-70-docprocessor.md)

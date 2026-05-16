@@ -361,7 +361,7 @@ func (p *ModalProvider) makeAPICall(ctx context.Context, req ModalRequest) (*htt
 		if p.apiKeyID != "" {
 			httpReq.Header.Set("Modal-Key-ID", p.apiKeyID)
 		}
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 
 		resp, err := p.httpClient.Do(httpReq)
 		if err != nil {

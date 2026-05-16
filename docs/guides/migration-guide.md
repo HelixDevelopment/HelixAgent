@@ -360,5 +360,5 @@ go test ./tests/performance/... -bench=. -benchtime=60s
 
 For migration assistance:
 - Check logs: `logs/migration.log`
-- Open issue: https://github.com/HelixDevelopment/HelixAgent/issues
+- Open issue: https://github.com/HelixDevelopment/helix_agent/issues
 - Documentation: [Messaging Architecture](../architecture/messaging-architecture.md)

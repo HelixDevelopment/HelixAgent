@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/ratelimit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/ratelimit"
 )
 
 func TestNewClient(t *testing.T) {

@@ -29,7 +29,7 @@ By completing this lab, you will:
 ### Task 1.1: Build and Test the Module
 
 ```bash
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/Benchmark
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/Benchmark
 go build ./...
 
 # Run tests with MANDATORY resource limits

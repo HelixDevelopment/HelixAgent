@@ -211,7 +211,7 @@ Cache → Database → Response
 
 - **Container Runtime**: Docker / Podman / Kubernetes (auto-detected)
 - **Centralized management**: All container operations through the Containers module (`digital.vasic.containers`) via `internal/adapters/containers/adapter.go`
-- **Remote distribution**: `CONTAINERS_REMOTE_ENABLED=true` in `Containers/.env` distributes all containers to remote hosts via SSH; `false` runs everything locally
+- **Remote distribution**: `CONTAINERS_REMOTE_ENABLED=true` in `containers/.env` distributes all containers to remote hosts via SSH; `false` runs everything locally
 - **Health monitoring**: TCP/HTTP checks with circuit breakers; required services fail boot on health failure in strict mode
 
 ## Deployment

@@ -25,9 +25,9 @@ else
 fi
 
 # Test 2: Module name is correct
-echo "Test: Module name contains HelixAgent/Toolkit"
-if grep -q "HelixAgent/Toolkit" "${MODULE_DIR}/go.mod"; then
-    pass "Module name contains HelixAgent/Toolkit"
+echo "Test: Module name contains helix_agent/Toolkit"
+if grep -q "helix_agent/Toolkit" "${MODULE_DIR}/go.mod"; then
+    pass "Module name contains helix_agent/Toolkit"
 else
     fail "Module name mismatch"
 fi

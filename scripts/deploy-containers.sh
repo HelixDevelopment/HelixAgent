@@ -1,6 +1,6 @@
 #!/bin/bash
 # Unified Container Deployment Script
-# Respects Containers/.env configuration for local vs remote deployment
+# Respects containers/.env configuration for local vs remote deployment
 #
 # This script is the SINGLE source of truth for container deployment.
 # It MUST be used by all test infrastructure, CI/CD, and manual operations.
@@ -23,17 +23,17 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-CONTAINERS_ENV="$PROJECT_ROOT/Containers/.env"
+CONTAINERS_ENV="$PROJECT_ROOT/containers/.env"
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
-# Parse Containers/.env file
+# Parse containers/.env file
 parse_containers_env() {
     if [[ ! -f "$CONTAINERS_ENV" ]]; then
-        log_warn "Containers/.env not found, defaulting to local deployment"
+        log_warn "containers/.env not found, defaulting to local deployment"
         REMOTE_ENABLED=false
         return
     fi
@@ -149,7 +149,7 @@ deploy_remote() {
     done
 
     if [[ -z "$host_address" ]]; then
-        log_error "No remote host configured in Containers/.env"
+        log_error "No remote host configured in containers/.env"
         exit 1
     fi
 

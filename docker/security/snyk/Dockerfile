@@ -42,7 +42,7 @@ set -e
 echo "=== HelixAgent Snyk IaC Scan ==="
 mkdir -p /reports
 cd /app
-snyk iac test --json docker/ Containers/ > /reports/snyk-iac.json 2>&1 || true
+snyk iac test --json docker/ containers/ > /reports/snyk-iac.json 2>&1 || true
 echo "IaC scan complete. Report: /reports/snyk-iac.json"
 SCRIPT_EOF
 

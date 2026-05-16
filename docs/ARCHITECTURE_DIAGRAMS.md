@@ -323,7 +323,7 @@
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                     BootManager (Unified)                            │   │
 │  ├─────────────────────────────────────────────────────────────────────┤   │
-│  │  1. Read Containers/.env configuration                               │   │
+│  │  1. Read containers/.env configuration                               │   │
 │  │  2. Detect container runtime (Docker/Podman)                         │   │
 │  │  3. Initialize Container Adapter                                     │   │
 │  │  4. Check REMOTE_ENABLED flag                                        │   │

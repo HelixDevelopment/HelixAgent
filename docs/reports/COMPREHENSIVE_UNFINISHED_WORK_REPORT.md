@@ -722,23 +722,23 @@ For each course module:
 
 ```
 # gRPC Implementation
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/cmd/grpc-server/main.go
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/pkg/api/llm-facade_grpc.pb.go
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/cmd/grpc-server/main.go
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/pkg/api/llm-facade_grpc.pb.go
 
 # Python SDK
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/sdk/python/helixagent/client.py
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/sdk/python/helixagent/__init__.py
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/sdk/python/helixagent/client.py
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/sdk/python/helixagent/__init__.py
 
 # Mobile SDKs
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/sdk/ios/HelixAgent.swift
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/sdk/android/HelixAgent.kt
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/sdk/ios/HelixAgent.swift
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/sdk/android/HelixAgent.kt
 
 # LLMsVerifier
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/LLMsVerifier/llm-verifier/database/crud.go
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/LLMsVerifier/llm-verifier/notifications/notifications.go
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/LLMsVerifier/llm-verifier/database/crud.go
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/LLMsVerifier/llm-verifier/notifications/notifications.go
 
 # Angular Dashboard
-/run/media/milosvasic/DATA4TB/Projects/HelixAgent/LLMsVerifier/llm-verifier/web/src/app/app-routing.module.ts
+/run/media/milosvasic/DATA4TB/Projects/helix_agent/LLMsVerifier/llm-verifier/web/src/app/app-routing.module.ts
 ```
 
 ### Appendix B: Test Commands Reference

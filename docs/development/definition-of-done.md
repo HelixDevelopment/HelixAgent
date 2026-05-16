@@ -52,7 +52,7 @@ Demos must run against real artifacts:
 
 | Surface | Real-run target |
 |---|---|
-| Go REST / gRPC | `./bin/<binary>` running with real Postgres, real Redis, real dependencies booted per `Containers/.env`. No `httptest.NewServer`, no `sqlmock`, no in-memory fakes. |
+| Go REST / gRPC | `./bin/<binary>` running with real Postgres, real Redis, real dependencies booted per `containers/.env`. No `httptest.NewServer`, no `sqlmock`, no in-memory fakes. |
 | Android (phone) | Instrumented test on a real emulator or device driving the real installed APK (Espresso / UiAutomator). Robolectric is unit-only. |
 | Android TV | Instrumented test on an **Android TV** emulator or real TV device (behavior and input model differ from phone — do not substitute a phone emulator). |
 | Website | Playwright against the built `docker run` image or the production deploy. Not Vitest + JSDOM. Visual regression (`toHaveScreenshot()`) on every PR. |

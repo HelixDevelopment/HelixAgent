@@ -26,7 +26,7 @@
 ```
 internal/services/mcp_client_test.go:129: invalid composite literal type Tool
 internal/services/mcp_client_test.go:275: unknown field ProtocolVersion
-HelixQA/pkg/autonomous/pipeline.go:546: undefined: visionremote.ProbeHosts
+helix_qa/pkg/autonomous/pipeline.go:546: undefined: visionremote.ProbeHosts
 ```
 
 ---

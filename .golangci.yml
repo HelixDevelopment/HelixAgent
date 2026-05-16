@@ -54,7 +54,7 @@ issues:
         - gosimple
         - typecheck
         - ineffassign
-    - path: MCP-Servers/
+    - path: mcp_servers/
       linters:
         - errcheck
         - staticcheck

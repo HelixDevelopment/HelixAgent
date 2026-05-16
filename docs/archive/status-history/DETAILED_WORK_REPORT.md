@@ -63,7 +63,7 @@ This report documents all work completed in the HelixAgent repository to address
 - `challenges/scripts/container_centralization_challenge.sh` - Validation script (17/17 passed)
 
 **Configuration:**
-- `Containers/.env`: `CONTAINERS_REMOTE_ENABLED=false` (7.6GB+ build context issue)
+- `containers/.env`: `CONTAINERS_REMOTE_ENABLED=false` (7.6GB+ build context issue)
 - Remote distribution disabled due to large build context; needs optimization
 
 **Commit:** `518167ce` - "feat(constitution): fix HTTP/3 & Brotli defaults, centralize container orchestration"
@@ -215,7 +215,7 @@ This report documents all work completed in the HelixAgent repository to address
 
 2. **Enable Remote Container Distribution** (Phase 2.1)
    - Fix 7.6GB+ build context issue
-   - Set `CONTAINERS_REMOTE_ENABLED=true` in `Containers/.env`
+   - Set `CONTAINERS_REMOTE_ENABLED=true` in `containers/.env`
    - Optimize container images for remote deployment
 
 3. **Improve Test Coverage to 100%**

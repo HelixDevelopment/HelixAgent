@@ -1,4 +1,4 @@
-# HelixAgent/HelixAgent Complete Implementation Plan
+# helix_agent/HelixAgent Complete Implementation Plan
 
 ## Executive Summary
 
@@ -964,5 +964,5 @@ tbf.RegisterSuite(&testing.TestSuite{
 ---
 
 *Report Generated: 2024-12-31*
-*Project: HelixAgent/HelixAgent*
+*Project: helix_agent/HelixAgent*
 *Version: 1.0*

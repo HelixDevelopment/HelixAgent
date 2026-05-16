@@ -1255,7 +1255,7 @@ Upon completion of this section, participants will be able to:
 
 Upon completion of this section, participants will be able to:
 
-1. Configure remote container distribution via `Containers/.env`
+1. Configure remote container distribution via `containers/.env`
 2. Understand the mandatory container orchestration flow
 3. Deploy all services to remote hosts automatically
 4. Verify health checks against remote endpoints
@@ -1270,7 +1270,7 @@ Upon completion of this section, participants will be able to:
 - Centralized container management via `digital.vasic.containers` module
 - Container adapter: `internal/adapters/containers/adapter.go`
 - BootManager service lifecycle: compose up, health check, strict mode
-- `Containers/.env` configuration (NOT project root `.env`)
+- `containers/.env` configuration (NOT project root `.env`)
 - `CONTAINERS_REMOTE_ENABLED=true` for remote distribution
 - `CONTAINERS_REMOTE_HOST_*` variables for multi-host deployment
 - Runtime auto-detection: Docker vs Podman
@@ -1288,7 +1288,7 @@ Upon completion of this section, participants will be able to:
 - Mandatory container rebuild after code changes
 - Monitoring distributed containers
 
-**Key Files**: `Containers/.env`, `internal/config/config.go:isContainersRemoteEnabled()`, `internal/services/boot_manager.go`
+**Key Files**: `containers/.env`, `internal/config/config.go:isContainersRemoteEnabled()`, `internal/services/boot_manager.go`
 
 **Challenge**: `./challenges/scripts/container_lazy_loading_challenge.sh`
 
@@ -1297,7 +1297,7 @@ Upon completion of this section, participants will be able to:
 **Duration**: 30 minutes | **Difficulty**: Advanced
 
 **Objective**:
-1. Configure `Containers/.env` for remote distribution
+1. Configure `containers/.env` for remote distribution
 2. Boot HelixAgent and observe automatic container deployment
 3. Verify health checks against remote endpoints
 4. Test failover behavior when a remote service is unavailable

@@ -290,8 +290,8 @@ content." (plan §2.11, line 470)
   prompt-corpus fixtures with pass/fail accounting.
 - **Gandalf-Solutions corpus** is committed under
   `docs/research/Gandalf-Solutions/` as research material.
-- **Challenges module** exists at `Challenges/` with
-  `Challenges/challenges/`, `Challenges/cmd/`, etc.
+- **Challenges module** exists at `challenges/` with
+  `challenges/challenges/`, `challenges/cmd/`, etc.
 - HelixAgent ships a standing challenge at
   `./challenges/scripts/memory_safety_challenge.sh` (21 tests) and
   dozens of others (CLAUDE.md "Challenges" table).

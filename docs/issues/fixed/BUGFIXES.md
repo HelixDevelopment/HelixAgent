@@ -550,7 +550,7 @@ go func() {
 `go build ./cmd/helixagent/` at the monorepo root failed with:
 
 ```
-HelixQA/pkg/llm/vision_ranking.go:10:2: module digital.vasic.llmsverifier@latest
+helix_qa/pkg/llm/vision_ranking.go:10:2: module digital.vasic.llmsverifier@latest
 found (v0.0.0-00010101000000-000000000000, replaced by ./LLMsVerifier/llm-verifier),
 but does not contain package digital.vasic.llmsverifier/pkg/helixqa
 ```
@@ -558,7 +558,7 @@ but does not contain package digital.vasic.llmsverifier/pkg/helixqa
 The break existed before the 2026-04-18 submodule-sync commit — it was introduced when HelixQA upstream landed the OpenClawing2 / vision-ranking work that references a package `LLMsVerifier` was never given.
 
 ### Root Cause
-`HelixQA/pkg/llm/vision_ranking.go` imports `digital.vasic.llmsverifier/pkg/helixqa` and calls `helixqa.VisionModelRegistry()`. HelixQA's own `CLAUDE.md` explicitly says:
+`helix_qa/pkg/llm/vision_ranking.go` imports `digital.vasic.llmsverifier/pkg/helixqa` and calls `helixqa.VisionModelRegistry()`. HelixQA's own `CLAUDE.md` explicitly says:
 
 > "Both registries MUST stay in sync — see `LLMsVerifier/pkg/helixqa/models.go`"
 
@@ -567,7 +567,7 @@ But no such file had ever been committed in any LLMsVerifier branch (verified vi
 ### Fix Applied
 - `LLMsVerifier/llm-verifier/pkg/helixqa/models.go` (new file, commit `b49a08b8` in LLMsVerifier)
   - Declares `type VisionModel` with the fields HelixQA's `vision_ranking.go` reads: `Provider`, `Model`, `QualityScore`, `ReliabilityScore`, `InputCostPer1k`, `OutputCostPer1k`, `AvgLatencyMs`.
-  - Declares `func VisionModelRegistry() []VisionModel` returning a 10-provider initial registry mirroring the cost/quality rates documented in `HelixQA/CLAUDE.md` § "Cost Rates".
+  - Declares `func VisionModelRegistry() []VisionModel` returning a 10-provider initial registry mirroring the cost/quality rates documented in `helix_qa/CLAUDE.md` § "Cost Rates".
   - Conservative starting scores (quality/reliability). LLMsVerifier benchmarks can override these per-provider later.
 - Root `go.mod`: pseudo-version pin for `digital.vasic.llmsverifier` collapsed by `go mod tidy`.
 - Root `LLMsVerifier` submodule pointer advanced to `b49a08b8`.
@@ -777,7 +777,7 @@ Changed to return aggregated errors.
 ### Fix Applied
 Increased CommandTimeout from 60s to 300s.
 
-**File Modified:** `Containers/pkg/remote/options.go`
+**File Modified:** `containers/pkg/remote/options.go`
 
 ---
 
@@ -794,9 +794,9 @@ HelixAgent crashed silently after deploying remote services. No error was logged
 ### Root Cause
 **Multiple copies of `orchestrator.go` existed across the codebase:**
 1. `vendor/digital.vasic.containers/pkg/compose/orchestrator.go` - **USED BY BUILDS**
-2. `Containers/pkg/compose/orchestrator.go` - Submodule copy
-3. `Challenges/Containers/pkg/compose/orchestrator.go` - Challenge copy
-4. `HelixLLM/submodules/Containers/pkg/compose/orchestrator.go` - HelixLLM copy
+2. `containers/pkg/compose/orchestrator.go` - Submodule copy
+3. `challenges/containers/pkg/compose/orchestrator.go` - Challenge copy
+4. `HelixLLM/submodules/containers/pkg/compose/orchestrator.go` - HelixLLM copy
 
 The vendor version was out of sync with the Containers submodule. The vendor version lacked error logging in the `run()` function, which meant compose failures were silently swallowed.
 
@@ -830,9 +830,9 @@ o.logger.Debug("compose command completed successfully")
 
 **Files Modified:**
 - `vendor/digital.vasic.containers/pkg/compose/orchestrator.go`
-- `Containers/pkg/compose/orchestrator.go`
-- `Challenges/Containers/pkg/compose/orchestrator.go`
-- `HelixLLM/submodules/Containers/pkg/compose/orchestrator.go`
+- `containers/pkg/compose/orchestrator.go`
+- `challenges/containers/pkg/compose/orchestrator.go`
+- `HelixLLM/submodules/containers/pkg/compose/orchestrator.go`
 
 ### Lessons Learned
 1. **The `vendor/` directory is the truth for builds** - even with `replace` directives in `go.mod`, Go uses vendor when present
@@ -846,7 +846,7 @@ Before merging submodule updates, run:
 go mod vendor
 
 # Compare vendor with submodule
-diff -r vendor/digital.vasic.containers Containers/pkg
+diff -r vendor/digital.vasic.containers containers/pkg
 
 # Or use this helper
 go list -f '{{.Dir}}' digital.vasic.containers/pkg/compose
@@ -859,9 +859,9 @@ go list -f '{{.Dir}}' digital.vasic.containers/pkg/compose
 ### Problem
 The project has 4+ copies of the `digital.vasic.containers` module:
 - `vendor/digital.vasic.containers/` - Used by main project builds
-- `Containers/` - Primary submodule
-- `Challenges/Containers/` - Challenge-specific copy
-- `HelixLLM/submodules/Containers/` - HelixLLM copy
+- `containers/` - Primary submodule
+- `challenges/containers/` - Challenge-specific copy
+- `HelixLLM/submodules/containers/` - HelixLLM copy
 
 ### Recommendation
 Standardize on one canonical location and use Go module `replace` directives consistently. Consider:
@@ -1134,7 +1134,7 @@ ChromaDB is `Enabled: true, Required: true`. Strict-mode skipped its local compo
 
 and the companion comment on `LoadServicesFromEnv` at line 736 reinforces it:
 
-> "MANDATORY: When CONTAINERS_REMOTE_ENABLED=true in Containers/.env, ALL services (except HelixAgent itself) are automatically marked as Remote=true"
+> "MANDATORY: When CONTAINERS_REMOTE_ENABLED=true in containers/.env, ALL services (except HelixAgent itself) are automatically marked as Remote=true"
 
 But the implementation only honored that on PostgreSQL and Redis — `Remote: remoteEnabled` there, but `Remote: false` hardcoded for all 16 other service endpoints (Cognee, ChromaDB, Prometheus, Grafana, Neo4j, Kafka, RabbitMQ, Qdrant, Weaviate, LangChain, LlamaIndex, Zookeeper, ClickHouse, MinIO, SparkMaster, SparkWorker). Pathology hidden because most of the others default to `Enabled: false`; ChromaDB was the only Enabled+Required mismatch that surfaced the bug.
 
@@ -1720,7 +1720,7 @@ CONST-032):
 
 1. **`docker/mcp/docker-compose.mcp-servers.yml`** — every service's
    `build:` block was rewritten to a focused per-service sub-context:
-   - `MCP-Servers/<name>` services →
+   - `mcp_servers/<name>` services →
      `context: ../../MCP-Servers`,
      `dockerfile: ../docker/mcp/Dockerfile.mcp-server`
    - `MCP/submodules/<name>` services →
@@ -1827,10 +1827,10 @@ diverged from the moment they started receiving writes.
 
 ### Root cause
 
-`Containers/pkg/scheduler` (placement strategies + scorer + GPU
-support), `Containers/pkg/distribution.Distributor` (Distribute() /
-Rebalance() / Status()), `Containers/pkg/serviceregistry`, and
-`Containers/pkg/remote.Prober` were all already implemented. They
+`containers/pkg/scheduler` (placement strategies + scorer + GPU
+support), `containers/pkg/distribution.Distributor` (Distribute() /
+Rebalance() / Status()), `containers/pkg/serviceregistry`, and
+`containers/pkg/remote.Prober` were all already implemented. They
 just weren't wired into the deploy flow. `RemoteComposeUp` predated
 the scheduler and remained in use.
 
@@ -2094,7 +2094,7 @@ mcp-notion:
   ...
 ```
 
-Default `docker compose up -d` → 19 working MCP services + 7 MCP-Servers/* services = 26 healthy MCP servers. Operators investigating individual broken submodules opt in via `docker compose --profile submodule-experimental up -d`.
+Default `docker compose up -d` → 19 working MCP services + 7 mcp_servers/* services = 26 healthy MCP servers. Operators investigating individual broken submodules opt in via `docker compose --profile submodule-experimental up -d`.
 
 The strict partitioned-distribution Challenge now reports `26 stably running, N restart-looping` honestly — the gate prevents the restart-looping count from being inflated by services that can't possibly start under the current Dockerfile.
 

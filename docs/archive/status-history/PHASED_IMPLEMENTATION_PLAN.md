@@ -34,7 +34,7 @@ make build
 3. Update submodule reference
 
 **Files to Create:**
-- HelixQA/pkg/visionremote/types.go
+- helix_qa/pkg/visionremote/types.go
 
 **Success Criteria:**
 - [ ] HelixQA builds without undefined errors

@@ -31,7 +31,7 @@ services:
       - ./workspace:/workspace
       - ./projects:/projects
       - ./shared:/shared
-      - ./HelixCode/config:/app/config
+      - ./helix_code/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
@@ -59,7 +59,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./HelixCode/test/init.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./helix_code/test/init.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - helixcode-network
     restart: unless-stopped
@@ -98,7 +98,7 @@ services:
       - WORKER_MAX_TASKS=5
       - HELIX_SERVER=helixcode:2222
     volumes:
-      - ./HelixCode/test/ssh-keys:/root/.ssh:ro
+      - ./helix_code/test/ssh-keys:/root/.ssh:ro
       - ./workspace:/workspace:ro
       - ./projects:/projects:ro
     depends_on:
@@ -127,7 +127,7 @@ services:
       - WORKER_MAX_TASKS=3
       - HELIX_SERVER=helixcode:2222
     volumes:
-      - ./HelixCode/test/ssh-keys:/root/.ssh:ro
+      - ./helix_code/test/ssh-keys:/root/.ssh:ro
       - ./workspace:/workspace:ro
       - ./projects:/projects:ro
     depends_on:

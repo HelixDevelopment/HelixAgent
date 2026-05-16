@@ -22,7 +22,7 @@ func TestAllAgentNamesPresent(t *testing.T) {
 	expectedAgents := []string{
 		// Original 4 agents
 		"OpenCode", "Crush", "HelixCode", "Kiro",
-		// 14 agents from HelixCode/Example_Projects
+		// 14 agents from helix_code/Example_Projects
 		"Aider", "ClaudeCode", "Cline", "CodenameGoose", "DeepSeekCLI",
 		"Forge", "GeminiCLI", "GPTEngineer", "KiloCode", "MistralCode",
 		"OllamaCode", "Plandex", "QwenCode", "AmazonQ",

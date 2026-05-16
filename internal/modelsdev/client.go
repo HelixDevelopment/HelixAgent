@@ -13,7 +13,7 @@ import (
 const (
 	DefaultBaseURL   = "https://api.models.dev/v1"
 	DefaultTimeout   = 30 * time.Second
-	DefaultUserAgent = "HelixAgent/1.0"
+	DefaultUserAgent = "helix_agent/1.0"
 	RateLimitRetries = 3
 	RateLimitBackoff = 1 * time.Second
 )

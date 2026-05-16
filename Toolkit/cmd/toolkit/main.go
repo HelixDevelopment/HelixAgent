@@ -6,11 +6,11 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
-	_ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/SiliconFlow"
+	_ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/Chutes"
+	_ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/SiliconFlow"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/agents"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/agents"
 	"github.com/spf13/cobra"
 )
 

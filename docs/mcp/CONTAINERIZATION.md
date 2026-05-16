@@ -272,7 +272,7 @@ MCP_CONTAINER_HOST=mcp.example.com
 
 | Source | Location | Services |
 |--------|----------|----------|
-| MCP-Servers monorepo | `MCP-Servers/` | fetch, git, time, filesystem, memory, everything, sequentialthinking, sqlite, puppeteer, postgres |
+| MCP-Servers monorepo | `mcp_servers/` | fetch, git, time, filesystem, memory, everything, sequentialthinking, sqlite, puppeteer, postgres |
 | Git submodules | `MCP/submodules/` | All other 55+ services |
 
 ## Config Generator

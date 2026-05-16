@@ -177,7 +177,7 @@ services:
       - MCP_SERVER_NAME=fetch
       - FETCH_TIMEOUT=${MCP_FETCH_TIMEOUT:-30000}
       - MAX_CONTENT_LENGTH=${MCP_FETCH_MAX_LENGTH:-10485760}
-      - USER_AGENT=HelixAgent/1.0
+      - USER_AGENT=helix_agent/1.0
     networks:
       - helixagent-network
     restart: unless-stopped

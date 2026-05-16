@@ -18,11 +18,11 @@ Achieve 100% test coverage across all 20 extracted modules as required by the Ma
 
 ### 1.1 Containers Module - Internal Packages (0%)
 
-**Target**: `Containers/internal/exec/command.go` and `Containers/internal/platform/detect.go`
+**Target**: `containers/internal/exec/command.go` and `containers/internal/platform/detect.go`
 
 **Files to Create**:
-- `Containers/internal/exec/command_test.go`
-- `Containers/internal/platform/detect_test.go`
+- `containers/internal/exec/command_test.go`
+- `containers/internal/platform/detect_test.go`
 
 **Functions Requiring Tests**:
 ```
@@ -104,7 +104,7 @@ internal/platform/detect.go:
 
 ### 1.4 Containers Module - Compose (49.4%)
 
-**Target**: `Containers/pkg/compose/orchestrator.go`
+**Target**: `containers/pkg/compose/orchestrator.go`
 
 **Missing Coverage**:
 - `NewDefaultOrchestrator` - 0%
@@ -132,7 +132,7 @@ internal/platform/detect.go:
 
 ### 1.5 Containers Module - Discovery (42.9%)
 
-**Target**: `Containers/pkg/discovery/dns.go`
+**Target**: `containers/pkg/discovery/dns.go`
 
 **Missing Coverage**:
 - `NewDNSDiscoverer` - 0%
@@ -156,7 +156,7 @@ internal/platform/detect.go:
 
 ### 1.6 Challenges Module - Monitor (53.1%)
 
-**Target**: `Challenges/pkg/monitor/websocket.go`
+**Target**: `challenges/pkg/monitor/websocket.go`
 
 **Missing Coverage**:
 - `NewWebSocketServer` - 0%
@@ -216,7 +216,7 @@ internal/platform/detect.go:
 
 ### 2.1 Containers Module - Logging (58.3%)
 
-**Target**: `Containers/pkg/logging/logger.go`, `noop.go`
+**Target**: `containers/pkg/logging/logger.go`, `noop.go`
 
 **Missing Coverage**:
 - `NewStdLogger` - 0%
@@ -235,7 +235,7 @@ internal/platform/detect.go:
 
 ### 2.2 Challenges Module - Logging (78.8%)
 
-**Target**: `Challenges/pkg/logging/multi_logger.go`, `null_logger.go`
+**Target**: `challenges/pkg/logging/multi_logger.go`, `null_logger.go`
 
 **Missing Coverage**:
 - `NewMultiLogger` - 0%
@@ -254,7 +254,7 @@ internal/platform/detect.go:
 
 ### 2.3 Containers Module - Monitor (77.6%)
 
-**Target**: `Containers/pkg/monitor/container.go`, `system.go`
+**Target**: `containers/pkg/monitor/container.go`, `system.go`
 
 **Missing Coverage**:
 - `NewContainerCollector` - 0%
@@ -426,7 +426,7 @@ These packages need only a few additional tests to reach 100%:
 | Package | Current | Tests Needed |
 |---------|---------|--------------|
 | Memory/pkg/store | 98.9% | 2-3 |
-| Challenges/pkg/assertion | 99.2% | 1-2 |
+| challenges/pkg/assertion | 99.2% | 1-2 |
 | Formatters/pkg/registry | 97.0% | 3-4 |
 | Formatters/pkg/executor | 96.9% | 3-4 |
 | Memory/pkg/mem0 | 93.3% | 5-6 |

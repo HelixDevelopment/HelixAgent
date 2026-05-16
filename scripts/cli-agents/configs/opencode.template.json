@@ -31,19 +31,19 @@
     },
     "everything": {
       "type": "local",
-      "command": ["${HELIXAGENT_HOME}/MCP-Servers/node_modules/.bin/mcp-server-everything"]
+      "command": ["${HELIXAGENT_HOME}/mcp_servers/node_modules/.bin/mcp-server-everything"]
     },
     "filesystem": {
       "type": "local",
-      "command": ["${HELIXAGENT_HOME}/MCP-Servers/node_modules/.bin/mcp-server-filesystem", "${HOME}", "/tmp"]
+      "command": ["${HELIXAGENT_HOME}/mcp_servers/node_modules/.bin/mcp-server-filesystem", "${HOME}", "/tmp"]
     },
     "memory": {
       "type": "local",
-      "command": ["${HELIXAGENT_HOME}/MCP-Servers/node_modules/.bin/mcp-server-memory"]
+      "command": ["${HELIXAGENT_HOME}/mcp_servers/node_modules/.bin/mcp-server-memory"]
     },
     "sequential-thinking": {
       "type": "local",
-      "command": ["${HELIXAGENT_HOME}/MCP-Servers/node_modules/.bin/mcp-server-sequential-thinking"]
+      "command": ["${HELIXAGENT_HOME}/mcp_servers/node_modules/.bin/mcp-server-sequential-thinking"]
     },
     "fetch": {
       "type": "local",

@@ -41,7 +41,7 @@ This directory contains comprehensive documentation for completing the HelixAgen
 ### 2. HelixQA Submodule Errors
 **Impact:** Main binary cannot link  
 **Fix Time:** 4 hours  
-**Action:** Add missing types to `HelixQA/pkg/visionremote/types.go`
+**Action:** Add missing types to `helix_qa/pkg/visionremote/types.go`
 
 ### 3. Test Coverage Below 100%
 **Impact:** Quality constitutional violation  

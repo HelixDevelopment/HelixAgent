@@ -488,13 +488,13 @@ make build
 
 # Run HelixAgent - ALL container orchestration is automatic
 ./bin/helixagent
-# Step 1: Reads Containers/.env for configuration
+# Step 1: Reads containers/.env for configuration
 # Step 2: Auto-detects Docker/Podman runtime
 # Step 3: Starts all required containers (local or remote)
 # Step 4: Health checks all services
 # Step 5: Fails boot if required services are unhealthy
 
-# Remote distribution (configured in Containers/.env)
+# Remote distribution (configured in containers/.env)
 # CONTAINERS_REMOTE_ENABLED=true
 # CONTAINERS_REMOTE_HOST_1=user@remote-host
 # All containers deployed to remote hosts via SSH

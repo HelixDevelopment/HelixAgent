@@ -335,7 +335,7 @@ These packages have substantial, valuable code that should be wired into the sys
 - **Fix:** Add actual HTTP request + response validation for each
 - **Validation:** Run with infrastructure up
 
-**Fix 4: Challenges/Panoptic/internal/ai/testgen_test.go:154**
+**Fix 4: challenges/panoptic/internal/ai/testgen_test.go:154**
 - **Problem:** `TestGenerateRandomTests_EmptyElements` fully commented out
 - **Fix:** Uncomment and fix, or remove if no longer applicable
 

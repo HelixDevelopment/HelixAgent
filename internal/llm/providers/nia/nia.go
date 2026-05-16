@@ -357,7 +357,7 @@ func (p *NiaProvider) makeAPICall(ctx context.Context, req NiaRequest) (*http.Re
 
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 
 		resp, err := p.httpClient.Do(httpReq)
 		if err != nil {

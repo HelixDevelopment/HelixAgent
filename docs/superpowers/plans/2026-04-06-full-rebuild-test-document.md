@@ -4,7 +4,7 @@
 
 **Goal:** Rebuild all 7 apps, boot with remote container distribution, run all tests/challenges at 100% coverage, update all documentation.
 
-**Architecture:** Build all binaries via `go build -mod=mod`, enable `CONTAINERS_REMOTE_ENABLED=true` in `Containers/.env`, boot via `./bin/helixagent` (auto-distributes to `thinker.local`), run complete test suite and all 525 challenges, regenerate all diagrams/docs.
+**Architecture:** Build all binaries via `go build -mod=mod`, enable `CONTAINERS_REMOTE_ENABLED=true` in `containers/.env`, boot via `./bin/helixagent` (auto-distributes to `thinker.local`), run complete test suite and all 525 challenges, regenerate all diagrams/docs.
 
 **Tech Stack:** Go 1.25.3, Docker/Podman, PostgreSQL 15, Redis 7, PlantUML, Mermaid
 
@@ -13,7 +13,7 @@
 ### Task 1: Build All 7 Apps
 
 **Files:**
-- Modify: `Containers/.env` (enable remote)
+- Modify: `containers/.env` (enable remote)
 - Build targets: `cmd/helixagent`, `cmd/api`, `cmd/grpc-server`, `cmd/cognee-mock`, `cmd/sanity-check`, `cmd/mcp-bridge`, `cmd/generate-constitution`
 
 - [x] **Step 1:** `go mod vendor` to sync vendor directory
@@ -23,7 +23,7 @@
 
 ### Task 2: Enable Remote Distribution and Boot
 
-- [x] **Step 1:** Set `CONTAINERS_REMOTE_ENABLED=true` in `Containers/.env`
+- [x] **Step 1:** Set `CONTAINERS_REMOTE_ENABLED=true` in `containers/.env`
 - [x] **Step 2:** Run `./bin/helixagent` to boot and auto-distribute containers
 - [x] **Step 3:** Wait for health checks on all services
 

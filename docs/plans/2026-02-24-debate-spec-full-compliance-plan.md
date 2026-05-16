@@ -540,7 +540,7 @@ func (t *TreeTopology) GetCommunicationTargets(agentID string) []string // paren
 func (t *TreeTopology) Rebalance(failedAgentID string) error
 ```
 
-Tree construction: Architect at root (level 0). Security/Performance leads at level 1. Remaining specialists at level 2, distributed evenly across leads. Message routing: messages go to parent (escalation) or children (delegation). Siblings communicate through shared parent.
+Tree construction: Architect at root (level 0). security/Performance leads at level 1. Remaining specialists at level 2, distributed evenly across leads. Message routing: messages go to parent (escalation) or children (delegation). Siblings communicate through shared parent.
 
 **Step 4: Update factory**
 

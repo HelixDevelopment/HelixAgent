@@ -199,7 +199,7 @@ CompletionHandler replaced by UnifiedHandler but reference kept.
 | 8 | Goroutine leak in background contexts | Cache expiration/invalidation handlers | Resource exhaustion |
 | 9 | Cache key collision via string concat | `debate_performance_optimizer.go:323` | Hash collision |
 | 10 | Semaphore ignores context cancellation | `debate_performance_optimizer.go:146-147` | Cannot cancel in-flight |
-| 11 | Missing resource cleanup in test fixtures | `Challenges/pkg/monitor/websocket_test.go:171,173` | Test instability |
+| 11 | Missing resource cleanup in test fixtures | `challenges/pkg/monitor/websocket_test.go:171,173` | Test instability |
 
 ### 4.3 Medium Severity Issues (12)
 

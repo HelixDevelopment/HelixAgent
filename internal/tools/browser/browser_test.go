@@ -302,7 +302,7 @@ func TestDefaultConfig(t *testing.T) {
 
 	assert.True(t, config.Headless)
 	assert.Equal(t, 30*time.Second, config.Timeout)
-	assert.Equal(t, "HelixAgent/1.0", config.UserAgent)
+	assert.Equal(t, "helix_agent/1.0", config.UserAgent)
 	assert.Equal(t, DefaultViewport(), config.Viewport)
 }
 

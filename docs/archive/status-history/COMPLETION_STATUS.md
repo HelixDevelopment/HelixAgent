@@ -67,9 +67,9 @@
 **HelixQA Submodule Build Failure**
 
 ```
-HelixQA/pkg/autonomous/pipeline.go:546: undefined: visionremote.ProbeHosts
-HelixQA/pkg/autonomous/pipeline.go:551: undefined: visionremote.SelectStrongestModel
-HelixQA/pkg/autonomous/pipeline.go:575: undefined: visionremote.PlanDistribution
+helix_qa/pkg/autonomous/pipeline.go:546: undefined: visionremote.ProbeHosts
+helix_qa/pkg/autonomous/pipeline.go:551: undefined: visionremote.SelectStrongestModel
+helix_qa/pkg/autonomous/pipeline.go:575: undefined: visionremote.PlanDistribution
 ```
 
 **Impact:** Main binary cannot build because it depends on HelixQA.

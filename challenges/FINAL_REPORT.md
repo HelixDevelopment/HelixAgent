@@ -228,7 +228,7 @@ All responses contain:
 
 ```bash
 # Ensure .env file exists in project root with API keys
-# The scripts will automatically load from HelixAgent/.env
+# The scripts will automatically load from helix_agent/.env
 
 # Start HelixAgent in standalone mode
 JWT_SECRET="your-secret" ./bin/helixagent --auto-start-docker=false &
@@ -239,7 +239,7 @@ cd challenges && ./scripts/run_all_challenges.sh
 
 ### Environment File (Project Root `.env`)
 
-The scripts automatically load API keys from `HelixAgent/.env`:
+The scripts automatically load API keys from `helix_agent/.env`:
 
 ```bash
 # Required API keys (add to .env file)

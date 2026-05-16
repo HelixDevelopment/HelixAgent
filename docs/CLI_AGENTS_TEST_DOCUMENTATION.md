@@ -2,15 +2,15 @@
 
 ## Overview
 
-This document provides comprehensive documentation for the CLI Agents testing infrastructure in HelixAgent/HelixAgent. The test suite validates streaming response integrity, content quality, and compatibility across multiple CLI AI agents.
+This document provides comprehensive documentation for the CLI Agents testing infrastructure in helix_agent/HelixAgent. The test suite validates streaming response integrity, content quality, and compatibility across multiple CLI AI agents.
 
 ## Supported CLI Agents
 
 | Agent | Location | Build Status | Test Coverage |
 |-------|----------|--------------|---------------|
-| **HelixCode** | `/Projects/HelixCode/HelixCode/` | Pre-built binary available | Full |
-| **OpenCode** | `/Projects/HelixCode/cli_agents/opencode/` | Built via `go build` | Full |
-| **Cline** | `/Projects/HelixCode/cli_agents/cline/` | Requires gRPC generation | HelixAgent proxy |
+| **HelixCode** | `/Projects/helix_code/helix_code/` | Pre-built binary available | Full |
+| **OpenCode** | `/Projects/helix_code/cli_agents/opencode/` | Built via `go build` | Full |
+| **Cline** | `/Projects/helix_code/cli_agents/cline/` | Requires gRPC generation | HelixAgent proxy |
 | **Bear-Mail** (test target) | `/Projects/Bear-Mail/` | N/A (test project) | Full |
 
 ## Test Files
@@ -207,9 +207,9 @@ selectedStream := streamChans[0]
 
 | Agent | Binary Path | Build Command |
 |-------|-------------|---------------|
-| HelixCode | `/Projects/HelixCode/HelixCode/bin/helixcode` | `make build` |
-| OpenCode | `/Projects/HelixCode/cli_agents/opencode/opencode` | `go build -o opencode .` |
-| Cline | `/Projects/HelixCode/cli_agents/cline/cli/cline` | Requires gRPC setup |
+| HelixCode | `/Projects/helix_code/helix_code/bin/helixcode` | `make build` |
+| OpenCode | `/Projects/helix_code/cli_agents/opencode/opencode` | `go build -o opencode .` |
+| Cline | `/Projects/helix_code/cli_agents/cline/cli/cline` | Requires gRPC setup |
 
 ## Environment Variables
 

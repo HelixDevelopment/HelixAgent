@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
 )
 
 // CodeReviewAgent provides code review and analysis capabilities

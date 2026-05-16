@@ -63,7 +63,7 @@ npm run serve  # Start local server
 ### Monitor Deployment
 ```bash
 # Check GitHub Actions
-open https://github.com/vasic-digital/HelixAgent/actions
+open https://github.com/vasic-digital/helix_agent/actions
 
 # View analytics
 open https://analytics.google.com/

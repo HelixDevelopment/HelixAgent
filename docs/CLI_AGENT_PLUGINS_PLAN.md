@@ -677,21 +677,21 @@ require (
 
 All agent source code available at:
 ```
-/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/
+/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/
 ```
 
 ### B. Existing Plugin Examples
 
 Reference plugins at:
 ```
-/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/Claude-Code-Plugins-And-Skills/plugins/
+/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/Claude-Code-Plugins-And-Skills/plugins/
 ```
 
 ### C. Skills Reference
 
 Reference skills at:
 ```
-/run/media/milosvasic/DATA4TB/Projects/HelixCode/cli_agents/Claude-Code-Plugins-And-Skills/skills/
+/run/media/milosvasic/DATA4TB/Projects/helix_code/cli_agents/Claude-Code-Plugins-And-Skills/skills/
 ```
 
 ---

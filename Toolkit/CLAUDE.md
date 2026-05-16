@@ -121,13 +121,13 @@ Expect: PASS; a sample Chat call completes against whichever Provider's API key 
 
 ## Overview
 
-`github.com/HelixDevelopment/HelixAgent/Toolkit` is a Go library for building AI-powered applications
+`github.com/HelixDevelopment/helix_agent/Toolkit` is a Go library for building AI-powered applications
 with multi-provider support, specialized agents, and common infrastructure utilities. It provides
 unified interfaces for chat completion, embeddings, reranking, and model discovery across multiple
 AI providers, plus reusable packages for authentication, configuration, HTTP clients, rate limiting,
 error handling, response parsing, and testing.
 
-**Module**: `github.com/HelixDevelopment/HelixAgent/Toolkit` (Go 1.24+)
+**Module**: `github.com/HelixDevelopment/helix_agent/Toolkit` (Go 1.24+)
 
 ## Build & Test
 
@@ -253,8 +253,8 @@ package with a blank import to auto-register:
 
 ```go
 import (
-    _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/Chutes"
-    _ "github.com/HelixDevelopment/HelixAgent/Toolkit/Providers/SiliconFlow"
+    _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/Chutes"
+    _ "github.com/HelixDevelopment/helix_agent/Toolkit/Providers/SiliconFlow"
 )
 ```
 

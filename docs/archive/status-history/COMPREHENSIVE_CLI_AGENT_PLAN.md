@@ -307,7 +307,7 @@ For each integrated agent:
 ### 4.3 HelixQA Test Bank Expansion
 **Duration:** 3 days
 
-Expand `HelixQA/` test banks:
+Expand `helix_qa/` test banks:
 - Add test cases for each new CLI agent
 - Validate exported configurations
 - Test provider/model combinations

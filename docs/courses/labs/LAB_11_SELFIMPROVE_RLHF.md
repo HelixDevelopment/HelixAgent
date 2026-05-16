@@ -271,7 +271,7 @@ If yes, at what iteration and score? ___
 ### Task 4.1: Run Module Tests
 
 ```bash
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/SelfImprove
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/SelfImprove
 GOMAXPROCS=2 nice -n 19 go test ./... -v -short -count=1 2>&1 | tail -30
 ```
 

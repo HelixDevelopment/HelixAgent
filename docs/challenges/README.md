@@ -111,7 +111,7 @@ make build
 ./bin/helixagent
 ```
 
-The binary reads `Containers/.env` and orchestrates all containers (PostgreSQL, Redis, Mock LLM, etc.) either locally or on remote hosts based on configuration.
+The binary reads `containers/.env` and orchestrates all containers (PostgreSQL, Redis, Mock LLM, etc.) either locally or on remote hosts based on configuration.
 
 ### Running All Challenges
 

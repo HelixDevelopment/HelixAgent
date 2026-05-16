@@ -7,7 +7,7 @@ per-service sub-contexts that the orchestrator can ship to remote workers.
 The orchestrator's main adapter (internal/adapters/containers/adapter.go)
 intentionally SKIPS project-root build contexts to avoid scp'ing the 27 GB
 project root to every remote host. That breaks MCP servers on remote
-distribution. Per-service sub-contexts (the specific MCP-Servers/ folder or
+distribution. Per-service sub-contexts (the specific mcp_servers/ folder or
 MCP/submodules/<name>/) are small and ship correctly.
 
 This script makes the rewrite text-surgically (preserves comments / blank

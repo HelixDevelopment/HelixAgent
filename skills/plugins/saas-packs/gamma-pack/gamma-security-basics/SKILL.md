@@ -157,7 +157,7 @@ function createAuditedClient(userId: string) {
 ## Resources
 - [Gamma Security Guide](https://gamma.app/docs/security)
 - [API Key Management](https://gamma.app/docs/api-keys)
-- [OWASP API Security](https://owasp.org/API-Security/)
+- [OWASP API Security](https://owasp.org/API-security/)
 
 ## Next Steps
 Proceed to `gamma-prod-checklist` for production readiness.

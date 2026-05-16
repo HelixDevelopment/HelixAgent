@@ -176,4 +176,4 @@ Implement AI-powered operational capabilities.
 **Or suggest something completely different!** 
 
 What direction interests you most? 🚀</content>
-<parameter name="filePath">/media/milosvasic/DATA4TB/Projects/HelixAgent/NEXT_PHASE_OPTIONS.md
+<parameter name="filePath">/media/milosvasic/DATA4TB/Projects/helix_agent/NEXT_PHASE_OPTIONS.md

@@ -69,7 +69,7 @@ var codeGenGoldenDataset = &llmops.Dataset{
 
 ```bash
 # Build LLMOps module
-cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent/LLMOps
+cd /run/media/milosvasic/DATA4TB/Projects/helix_agent/LLMOps
 go build ./...
 go test ./... -short -count=1
 ```

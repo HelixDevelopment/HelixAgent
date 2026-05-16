@@ -85,7 +85,7 @@ echo "=== Section 8: Module Verification ==="
 run_test "Auth module complete" "test -f Auth/README.md && test -f Auth/CLAUDE.md && test -f Auth/AGENTS.md"
 run_test "Cache module complete" "test -f Cache/README.md && test -f Cache/CLAUDE.md && test -f Cache/AGENTS.md"
 run_test "Concurrency module complete" "test -f Concurrency/README.md && test -f Concurrency/CLAUDE.md && test -f Concurrency/AGENTS.md"
-run_test "Containers module complete" "test -f Containers/README.md && test -f Containers/CLAUDE.md && test -f Containers/AGENTS.md"
+run_test "Containers module complete" "test -f containers/README.md && test -f containers/CLAUDE.md && test -f containers/AGENTS.md"
 
 echo ""
 echo "=== Section 9: Configuration ==="

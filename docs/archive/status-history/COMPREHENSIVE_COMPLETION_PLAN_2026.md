@@ -20,7 +20,7 @@ This document presents a comprehensive analysis of the HelixAgent project, ident
 
 **Main Components:**
 ```
-HelixAgent/
+helix_agent/
 ├── cmd/                    # 7 entry points (helixagent, api, grpc-server, etc.)
 ├── internal/               # Core implementation (~8000 Go files)
 │   ├── llm/providers/      # 22 LLM providers
@@ -30,11 +30,11 @@ HelixAgent/
 │   ├── cache/              # Redis + in-memory
 │   └── ...
 ├── 27 Extracted Modules/   # Independent Go modules
-│   ├── Containers/         # Container orchestration
+│   ├── containers/         # Container orchestration
 │   ├── EventBus/           # Pub/sub system
 │   ├── Concurrency/        # Worker pools, rate limiters
 │   ├── Observability/      # Tracing, metrics
-│   ├── Security/           # Guardrails, PII detection
+│   ├── security/           # Guardrails, PII detection
 │   └── ... (see full list)
 ├── challenges/             # 431 challenge scripts
 ├── tests/                  # Test suites

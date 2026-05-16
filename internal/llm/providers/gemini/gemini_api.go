@@ -668,7 +668,7 @@ func (p *GeminiAPIProvider) makeAPICallWithAuthRetry(
 
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("x-goog-api-key", p.apiKey)
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 
 		resp, err := p.httpClient.Do(httpReq)
 		if err != nil {
@@ -742,7 +742,7 @@ func (p *GeminiAPIProvider) makeStreamAPICall(
 
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Accept", "text/event-stream")
-		httpReq.Header.Set("User-Agent", "HelixAgent/1.0")
+		httpReq.Header.Set("User-Agent", "helix_agent/1.0")
 
 		resp, err := p.httpClient.Do(httpReq)
 		if err != nil {

@@ -1724,13 +1724,13 @@ test-challenges-go:
 .PHONY: test-challenges-provider
 test-challenges-provider:
 	@echo "Running challenges for provider: $(PROVIDER)"
-	@GOMAXPROCS=2 go test -v ./tests/challenges/... -run "TestChallenges/$(PROVIDER)" -timeout 2h
+	@GOMAXPROCS=2 go test -v ./tests/challenges/... -run "Testchallenges/$(PROVIDER)" -timeout 2h
 
 ## Run challenges for specific category
 .PHONY: test-challenges-category
 test-challenges-category:
 	@echo "Running challenges for category: $(CATEGORY)"
-	@GOMAXPROCS=2 go test -v ./tests/challenges/... -run "TestChallenges/.*/$(CATEGORY)" -timeout 2h
+	@GOMAXPROCS=2 go test -v ./tests/challenges/... -run "Testchallenges/.*/$(CATEGORY)" -timeout 2h
 
 ## Run challenges for specific difficulty
 .PHONY: test-challenges-difficulty

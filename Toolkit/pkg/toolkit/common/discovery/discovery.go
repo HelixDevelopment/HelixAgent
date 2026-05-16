@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit"
-	"github.com/HelixDevelopment/HelixAgent/Toolkit/pkg/toolkit/common/http"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit"
+	"github.com/HelixDevelopment/helix_agent/Toolkit/pkg/toolkit/common/http"
 )
 
 // CapabilityInferrer infers model capabilities

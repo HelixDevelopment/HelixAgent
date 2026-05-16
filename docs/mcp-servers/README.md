@@ -1,6 +1,6 @@
 # MCP-Servers Documentation
 
-> **Location note**: relocated 2026-04-11 from `MCP-Servers/docs/README.md`
+> **Location note**: relocated 2026-04-11 from `mcp_servers/docs/README.md`
 > (inside the third-party submodule) to `docs/mcp-servers/README.md` in
 > the parent HelixAgent repo. The submodule is a read-only clone of
 > `modelcontextprotocol/servers` at commit `f4244583` and must stay free
@@ -202,7 +202,7 @@ To use these servers with MCP-compatible clients, configure them in the client's
 
 ### Building All Server Images
 
-From the `MCP-Servers/` directory:
+From the `mcp_servers/` directory:
 
 ```bash
 # Build TypeScript servers
@@ -266,7 +266,7 @@ echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-1
 
 In production, MCP-Servers containers are managed by HelixAgent's boot manager:
 
-1. HelixAgent binary starts and reads `Containers/.env`
+1. HelixAgent binary starts and reads `containers/.env`
 2. Boot manager brings up MCP server containers via Docker Compose
 3. Health checks verify all MCP servers are responsive
 4. CLI agent configurations reference the running containers

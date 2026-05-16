@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	testingutils "github.com/HelixDevelopment/HelixAgent/Toolkit/Commons/testing"
+	testingutils "github.com/HelixDevelopment/helix_agent/Toolkit/Commons/testing"
 )
 
 func TestProviderIntegration(t *testing.T) {

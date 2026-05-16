@@ -6,8 +6,8 @@ set -e
 cd /run/media/milosvasic/DATA4TB/Projects/HelixAgent
 
 # Ensure we're in the right directory
-if [ ! -f "Containers/.env" ]; then
-    echo "ERROR: Not in HelixAgent root directory or Containers/.env missing"
+if [ ! -f "containers/.env" ]; then
+    echo "ERROR: Not in HelixAgent root directory or containers/.env missing"
     exit 1
 fi
 
@@ -23,7 +23,7 @@ echo "=========================================="
 echo "Starting HelixAgent with Remote Distribution"
 echo "=========================================="
 echo "Working directory: $(pwd)"
-echo "Containers/.env exists: $(test -f Containers/.env && echo 'YES' || echo 'NO')"
+echo "containers/.env exists: $(test -f containers/.env && echo 'YES' || echo 'NO')"
 echo ""
 echo "Environment:"
 echo "  CONTAINERS_REMOTE_ENABLED=$CONTAINERS_REMOTE_ENABLED"

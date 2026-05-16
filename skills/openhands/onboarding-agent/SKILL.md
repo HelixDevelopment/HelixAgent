@@ -70,7 +70,7 @@ Produce a **PR-ready plan** customized to the user’s answers, in this structur
 
 ### 5. Quality Gates & Tooling
 - Lint/format/type-check commands.
-- Security/performance checks if relevant.
+- security/performance checks if relevant.
 - Accessibility checks for UI work.
 
 ### 6. Risks & Mitigations

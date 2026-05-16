@@ -219,82 +219,82 @@ replace digital.vasic.containers => ../containers
 
 replace digital.vasic.challenges => ../challenges
 
-replace digital.vasic.agentic => ../Dependencies/vasic-digital/Agentic
+replace digital.vasic.agentic => ../dependencies/vasic-digital/Agentic
 
-replace digital.vasic.llmops => ../Dependencies/vasic-digital/LLMOps
+replace digital.vasic.llmops => ../dependencies/vasic-digital/LLMOps
 
-replace digital.vasic.selfimprove => ../Dependencies/vasic-digital/SelfImprove
+replace digital.vasic.selfimprove => ../dependencies/vasic-digital/SelfImprove
 
-replace digital.vasic.planning => ../Dependencies/vasic-digital/Planning
+replace digital.vasic.planning => ../dependencies/vasic-digital/Planning
 
-replace digital.vasic.benchmark => ../Dependencies/vasic-digital/Benchmark
+replace digital.vasic.benchmark => ../dependencies/vasic-digital/Benchmark
 
-replace digital.vasic.llmsverifier => ../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier
+replace digital.vasic.llmsverifier => ../dependencies/HelixDevelopment/LLMsVerifier/llm-verifier
 
-replace digital.vasic.auth => ../Dependencies/vasic-digital/Auth
+replace digital.vasic.auth => ../dependencies/vasic-digital/Auth
 
-replace digital.vasic.cache => ../Dependencies/vasic-digital/Cache
+replace digital.vasic.cache => ../dependencies/vasic-digital/Cache
 
-replace digital.vasic.concurrency => ../Dependencies/vasic-digital/Concurrency
+replace digital.vasic.concurrency => ../dependencies/vasic-digital/Concurrency
 
-replace digital.vasic.database => ../Dependencies/vasic-digital/Database
+replace digital.vasic.database => ../dependencies/vasic-digital/Database
 
-replace digital.vasic.embeddings => ../Dependencies/vasic-digital/Embeddings
+replace digital.vasic.embeddings => ../dependencies/vasic-digital/Embeddings
 
-replace digital.vasic.eventbus => ../Dependencies/vasic-digital/EventBus
+replace digital.vasic.eventbus => ../dependencies/vasic-digital/EventBus
 
-replace digital.vasic.helixmemory => ../Dependencies/HelixDevelopment/HelixMemory
+replace digital.vasic.helixmemory => ../dependencies/HelixDevelopment/HelixMemory
 
-replace digital.vasic.helixspecifier => ../Dependencies/HelixDevelopment/HelixSpecifier
+replace digital.vasic.helixspecifier => ../dependencies/HelixDevelopment/HelixSpecifier
 
-replace digital.vasic.formatters => ../Dependencies/vasic-digital/Formatters
+replace digital.vasic.formatters => ../dependencies/vasic-digital/Formatters
 
-replace digital.vasic.mcp => ../Dependencies/vasic-digital/MCP_Module
+replace digital.vasic.mcp => ../dependencies/vasic-digital/MCP_Module
 
-replace digital.vasic.memory => ../Dependencies/vasic-digital/Memory
+replace digital.vasic.memory => ../dependencies/vasic-digital/Memory
 
-replace digital.vasic.messaging => ../Dependencies/vasic-digital/Messaging
+replace digital.vasic.messaging => ../dependencies/vasic-digital/Messaging
 
-replace digital.vasic.observability => ../Dependencies/vasic-digital/Observability
+replace digital.vasic.observability => ../dependencies/vasic-digital/Observability
 
-replace digital.vasic.optimization => ../Dependencies/vasic-digital/Optimization
+replace digital.vasic.optimization => ../dependencies/vasic-digital/Optimization
 
-replace digital.vasic.plugins => ../Dependencies/vasic-digital/Plugins
+replace digital.vasic.plugins => ../dependencies/vasic-digital/Plugins
 
-replace digital.vasic.rag => ../Dependencies/vasic-digital/RAG
+replace digital.vasic.rag => ../dependencies/vasic-digital/RAG
 
 replace digital.vasic.security => ../security
 
-replace digital.vasic.storage => ../Dependencies/vasic-digital/Storage
+replace digital.vasic.storage => ../dependencies/vasic-digital/Storage
 
-replace digital.vasic.streaming => ../Dependencies/vasic-digital/Streaming
+replace digital.vasic.streaming => ../dependencies/vasic-digital/Streaming
 
-replace digital.vasic.vectordb => ../Dependencies/vasic-digital/VectorDB
+replace digital.vasic.vectordb => ../dependencies/vasic-digital/VectorDB
 
-replace digital.vasic.toolschema => ../Dependencies/vasic-digital/ToolSchema
+replace digital.vasic.toolschema => ../dependencies/vasic-digital/ToolSchema
 
-replace digital.vasic.skillregistry => ../Dependencies/vasic-digital/SkillRegistry
+replace digital.vasic.skillregistry => ../dependencies/vasic-digital/SkillRegistry
 
-replace digital.vasic.conversation => ../Dependencies/vasic-digital/conversation
+replace digital.vasic.conversation => ../dependencies/vasic-digital/conversation
 
-replace digital.vasic.models => ../Dependencies/vasic-digital/Models
+replace digital.vasic.models => ../dependencies/vasic-digital/Models
 
-replace digital.vasic.background => ../Dependencies/vasic-digital/BackgroundTasks
+replace digital.vasic.background => ../dependencies/vasic-digital/BackgroundTasks
 
-replace digital.vasic.llmprovider => ../Dependencies/HelixDevelopment/LLMProvider
+replace digital.vasic.llmprovider => ../dependencies/HelixDevelopment/LLMProvider
 
-replace digital.vasic.debate => ../Dependencies/HelixDevelopment/DebateOrchestrator
+replace digital.vasic.debate => ../dependencies/HelixDevelopment/DebateOrchestrator
 
 replace digital.vasic.helixqa => ../helix_qa
 
-replace digital.vasic.docprocessor => ../Dependencies/HelixDevelopment/DocProcessor
+replace digital.vasic.docprocessor => ../dependencies/HelixDevelopment/DocProcessor
 
-replace digital.vasic.llmorchestrator => ../Dependencies/HelixDevelopment/LLMOrchestrator
+replace digital.vasic.llmorchestrator => ../dependencies/HelixDevelopment/LLMOrchestrator
 
-replace digital.vasic.visionengine => ../Dependencies/HelixDevelopment/VisionEngine
+replace digital.vasic.visionengine => ../dependencies/HelixDevelopment/VisionEngine
 
-replace digital.vasic.normalize => ../Dependencies/vasic-digital/Normalize
+replace digital.vasic.normalize => ../dependencies/vasic-digital/Normalize
 
-replace digital.vasic.redteam => ../Dependencies/vasic-digital/RedTeam
+replace digital.vasic.redteam => ../dependencies/vasic-digital/RedTeam
 
 replace github.com/HelixDevelopment/helix_agent/Toolkit => ./Toolkit

@@ -226,7 +226,7 @@ func NewDebateServiceWithDeps(
 		}
 		return resp.Content, nil
 	})
-	testGen := testing.NewLLMTestCaseGenerator(llmAdapter, basicValidator)
+	testGen := testing.NewLLMTestCaseGenerator(&llmAdapter, basicValidator)
 	testExec := testing.NewSandboxedTestExecutor(
 		testing.WithTimeout(30*time.Second),
 		testing.WithMemoryLimit(512*1024*1024),

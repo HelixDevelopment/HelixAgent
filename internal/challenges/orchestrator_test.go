@@ -126,9 +126,17 @@ func TestOrchestrator_Run_WithScripts(t *testing.T) {
 
 	result, err := o.Run(context.Background())
 	require.NoError(t, err)
+	// CONST-035 anti-bluff (close-out⁷⁵): a ShellChallenge that exits 0
+	// without populating Assertions is downgraded to Status=Failed by the
+	// runner per challenges/pkg/runner anti-bluff guard. Both fixtures
+	// here lack assertions, so both end up as Failed (the exit-0 one
+	// because of anti-bluff downgrade; the exit-1 one because of the
+	// non-zero exit code).
 	assert.Equal(t, 2, result.Total)
-	assert.Equal(t, 1, result.Passed)
-	assert.Equal(t, 1, result.Failed)
+	assert.Equal(t, 0, result.Passed,
+		"both fixtures lack assertions — anti-bluff downgrade applies to both")
+	assert.Equal(t, 2, result.Failed,
+		"exit-0 → anti-bluff downgrade; exit-1 → normal fail")
 }
 
 func TestOrchestrator_RunSingle(t *testing.T) {
@@ -154,7 +162,14 @@ func TestOrchestrator_RunSingle(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.Total)
-	assert.Equal(t, 1, result.Passed)
+	// CONST-035 anti-bluff (close-out⁷⁵): fixture exits 0 but has no
+	// Assertions, so the runner downgrades it to Failed. This test
+	// documents the CORRECT product behavior: silent-success shell
+	// challenges are bluffs per the anti-bluff guard.
+	assert.Equal(t, 0, result.Passed,
+		"fixture has no assertions — anti-bluff downgrades to Failed")
+	assert.Equal(t, 1, result.Failed,
+		"anti-bluff downgrade fires for assertion-less shell challenges")
 }
 
 func TestOrchestrator_RunSingle_NotFound(t *testing.T) {
@@ -332,7 +347,12 @@ func TestOrchestrator_Run_Parallel(t *testing.T) {
 	result, err := o.Run(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, 2, result.Total)
-	assert.Equal(t, 2, result.Passed)
+	// CONST-035 anti-bluff (close-out⁷⁵): both fixtures exit 0 without
+	// Assertions → anti-bluff downgrade applies to both.
+	assert.Equal(t, 0, result.Passed,
+		"both fixtures lack assertions — anti-bluff downgrade")
+	assert.Equal(t, 2, result.Failed,
+		"anti-bluff downgrade fires for both assertion-less challenges")
 }
 
 func TestChallengeInfo_Fields(t *testing.T) {

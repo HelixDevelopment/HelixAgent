@@ -22,8 +22,8 @@ services:
 
   mcp-fetch:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: fetch
     container_name: helixagent-mcp-fetch
@@ -42,8 +42,8 @@ services:
 
   mcp-git:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: git
     container_name: helixagent-mcp-git
@@ -64,8 +64,8 @@ services:
 
   mcp-time:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: time
     container_name: helixagent-mcp-time
@@ -84,8 +84,8 @@ services:
 
   mcp-filesystem:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: filesystem
     container_name: helixagent-mcp-filesystem
@@ -106,8 +106,8 @@ services:
 
   mcp-memory:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: memory
     container_name: helixagent-mcp-memory
@@ -126,8 +126,8 @@ services:
 
   mcp-everything:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: everything
     container_name: helixagent-mcp-everything
@@ -146,8 +146,8 @@ services:
 
   mcp-sequentialthinking:
     build:
-      context: ../../MCP-Servers
-      dockerfile: ../docker/mcp/Dockerfile.mcp-server
+      context: ../../../mcp_servers
+      dockerfile: ../helix_agent/docker/mcp/Dockerfile.mcp-server
       args:
         SERVER_NAME: sequentialthinking
     container_name: helixagent-mcp-sequentialthinking

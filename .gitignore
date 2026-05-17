@@ -156,3 +156,4 @@ docs/reports/LLM_SCORING_REPORT_*.md
 # sqlite memory store created by `bin/helixagent` at runtime
 /data/
 /internal/router/data/
+Website/node_modules/

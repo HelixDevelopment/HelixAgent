@@ -72,8 +72,17 @@ func (m *mockInvoker) Invoke(
 }
 
 // createTestTopology builds a graph-mesh topology with a standard set
-// of agents for integration testing.
+// of agents for integration testing. Returns both topology AND the
+// agent slice so callers can register them with the protocol —
+// topology.Initialize alone is NOT sufficient (close-out⁷⁴: discovered
+// when reflexion compile-fix surfaced the masked "no agents configured"
+// failures in TestDebateFullProtocol_*).
 func createTestTopology(t *testing.T) topology.Topology {
+	topo, _ := createTestTopologyWithAgents(t)
+	return topo
+}
+
+func createTestTopologyWithAgents(t *testing.T) (topology.Topology, []*topology.Agent) {
 	t.Helper()
 
 	cfg := topology.DefaultTopologyConfig(topology.TopologyGraphMesh)
@@ -106,7 +115,18 @@ func createTestTopology(t *testing.T) topology.Topology {
 	err = topo.Initialize(context.Background(), agents)
 	require.NoError(t, err, "Failed to initialize topology with agents")
 
-	return topo
+	return topo, agents
+}
+
+// registerAgentsForProtocol mirrors topology agents into protocol
+// agent-invoker registry. Protocol.NewProtocol does NOT auto-register
+// from the topology even when both are passed; callers must explicitly
+// RegisterAgent per agent or Execute fails with ErrNoAgentsConfigured.
+func registerAgentsForProtocol(t *testing.T, proto *protocol.Protocol, agents []*topology.Agent, invoker protocol.AgentInvoker) {
+	t.Helper()
+	for _, ag := range agents {
+		require.NoError(t, proto.RegisterAgent(ag.ID, invoker))
+	}
 }
 
 // TestDebateFullProtocol_8Phases verifies that all 8 debate phases execute
@@ -114,7 +134,7 @@ func createTestTopology(t *testing.T) topology.Topology {
 // Critique -> Review -> Optimization -> Adversarial -> Convergence.
 func TestDebateFullProtocol_8Phases(t *testing.T) {
 
-	topo := createTestTopology(t)
+	topo, agents := createTestTopologyWithAgents(t)
 	defer topo.Close()
 
 	invoker := &mockInvoker{}
@@ -126,6 +146,7 @@ func TestDebateFullProtocol_8Phases(t *testing.T) {
 	cfg.EnableEarlyExit = false
 
 	proto := protocol.NewProtocol(cfg, topo, invoker)
+	registerAgentsForProtocol(t, proto, agents, invoker)
 	ctx := context.Background()
 
 	result, err := proto.Execute(ctx)
@@ -184,7 +205,7 @@ func TestDebateFullProtocol_8Phases(t *testing.T) {
 // early when consensus is reached during the convergence phase.
 func TestDebateFullProtocol_EarlyConsensus(t *testing.T) {
 
-	topo := createTestTopology(t)
+	topo, agents := createTestTopologyWithAgents(t)
 	defer topo.Close()
 
 	invoker := &mockInvoker{earlyConsens: true}
@@ -197,6 +218,7 @@ func TestDebateFullProtocol_EarlyConsensus(t *testing.T) {
 	cfg.MinConsensusScore = 0.6
 
 	proto := protocol.NewProtocol(cfg, topo, invoker)
+	registerAgentsForProtocol(t, proto, agents, invoker)
 	ctx := context.Background()
 
 	result, err := proto.Execute(ctx)
@@ -344,6 +366,13 @@ func TestDebateFullProtocol_MultipleTopologies(t *testing.T) {
 			protoCfg.TopologyType = tt
 
 			proto := protocol.NewProtocol(protoCfg, topo, invoker)
+			// close-out⁷⁴ fix: passing `invoker` to NewProtocol's opts arg
+			// does not auto-register agents. Protocol.Execute requires
+			// explicit RegisterAgent per agent. Fixed by mirroring the
+			// 5 topology agents into protocol agents.
+			for _, ag := range agents {
+				require.NoError(t, proto.RegisterAgent(ag.ID, invoker))
+			}
 			result, execErr := proto.Execute(context.Background())
 			require.NoError(t, execErr)
 			require.NotNil(t, result)

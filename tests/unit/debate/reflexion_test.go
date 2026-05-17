@@ -185,9 +185,11 @@ func TestReflexion_AccumulatedWisdom(t *testing.T) {
 	// Verify memory contains all episodes
 	assert.Equal(t, 6, memory.Size(), "Memory should contain 6 episodes")
 
-	// Extract wisdom from episodes
+	// Extract wisdom from episodes (signature drift fix close-out⁷⁴:
+	// production added ctx as first arg per the reconstruction roadmap;
+	// test signature lagged and the package stopped compiling).
 	allEpisodes := memory.GetAll()
-	extracted, err := wisdom.ExtractFromEpisodes(allEpisodes)
+	extracted, err := wisdom.ExtractFromEpisodes(context.Background(), allEpisodes)
 	require.NoError(t, err, "Wisdom extraction should not fail")
 
 	// Should have extracted patterns (groups with >= 2 episodes)
@@ -198,8 +200,9 @@ func TestReflexion_AccumulatedWisdom(t *testing.T) {
 	assert.Greater(t, wisdom.Size(), 0,
 		"Wisdom store should have entries")
 
-	// Query relevant wisdom
-	relevant := wisdom.GetRelevant("nil pointer dereference", 5)
+	// Query relevant wisdom (signature drift fix close-out⁷⁴:
+	// production added ctx as first arg).
+	relevant := wisdom.GetRelevant(context.Background(), "nil pointer dereference", 5)
 	assert.Greater(t, len(relevant), 0,
 		"Should find relevant wisdom for nil pointer query")
 

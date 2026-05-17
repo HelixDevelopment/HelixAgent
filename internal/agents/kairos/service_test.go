@@ -2,6 +2,7 @@ package kairos
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -320,10 +321,17 @@ func TestService_Tick_WithinBudget(t *testing.T) {
 
 	service := NewService(config, logger)
 
+	// Anti-bluff (close-out⁷⁴): the original "We mainly verify no panic"
+	// comment is the canonical PASS-bluff symptom — a mutation that
+	// returns immediately from tick() leaves nothing to assert. Wire
+	// callback counters so we can prove tick → onDecision → onAction
+	// actually fired.
+	var observeCount, actionCount, decisionCount int32
 	service.SetCallbacks(
-		func(o Observation) {},
-		func(a Action) {},
+		func(o Observation) { atomic.AddInt32(&observeCount, 1) },
+		func(a Action) { atomic.AddInt32(&actionCount, 1) },
 		func(t TickPrompt) (Action, error) {
+			atomic.AddInt32(&decisionCount, 1)
 			return Action{
 				Type:        "test",
 				Description: "Test action",
@@ -339,11 +347,16 @@ func TestService_Tick_WithinBudget(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for at least one tick
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 
 	service.Stop()
 
-	// We mainly verify no panic occurred
+	// Anti-bluff: at least one tick MUST have fired the decision callback
+	// (proves the tick loop ran the full Observe → Decide → Act path).
+	assert.GreaterOrEqual(t, atomic.LoadInt32(&decisionCount), int32(1),
+		"decision callback must fire at least once — 0 means tick() returned immediately (close-out⁷⁴ no-op bluff pattern)")
+	assert.GreaterOrEqual(t, atomic.LoadInt32(&actionCount), int32(1),
+		"action callback must fire at least once — 0 means tick skipped the action dispatch")
 }
 
 func TestService_Tick_ExceedsBudget(t *testing.T) {
@@ -356,10 +369,15 @@ func TestService_Tick_ExceedsBudget(t *testing.T) {
 
 	service := NewService(config, logger)
 
+	// Anti-bluff (close-out⁷⁴): the original `if len(actions) > 0`
+	// guard silently passed when actions was empty (e.g. tick skipped
+	// entirely). Wire counters + change the guard to require.NotEmpty.
+	var decisionCount int32
 	service.SetCallbacks(
 		func(o Observation) {},
 		func(a Action) {},
 		func(t TickPrompt) (Action, error) {
+			atomic.AddInt32(&decisionCount, 1)
 			return Action{
 				Type:        "test",
 				Description: "Test action",
@@ -375,15 +393,23 @@ func TestService_Tick_ExceedsBudget(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for at least one tick
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 
 	actions := service.GetActions()
 	service.Stop()
 
-	// Action should be deferred (status = deferred)
-	if len(actions) > 0 {
-		assert.Equal(t, "deferred", actions[0].Status)
-	}
+	// Anti-bluff (close-out⁷⁴): decision callback must have fired —
+	// 0 invocations means tick() returned immediately.
+	assert.GreaterOrEqual(t, atomic.LoadInt32(&decisionCount), int32(1),
+		"decision callback must fire at least once before the budget check")
+	// Anti-bluff: original `if len(actions) > 0` silently passed when
+	// actions empty. require.NotEmpty turns the silent skip into a FAIL.
+	require.NotEmpty(t, actions,
+		"tick must have recorded at least one over-budget action — empty = tick skipped entirely (close-out⁷⁴ bluff pattern)")
+	assert.Equal(t, "deferred", actions[0].Status,
+		"over-budget action must have status=deferred")
+	assert.Equal(t, "test", actions[0].Type,
+		"action.Type must equal mocked value 'test'")
 }
 
 func BenchmarkService_Observe(b *testing.B) {

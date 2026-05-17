@@ -3,6 +3,7 @@ package dream
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -408,6 +409,65 @@ func TestDreamer_Dream_Locked(t *testing.T) {
 	_, err := dreamer.Dream(ctx)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already in progress")
+}
+
+// TestDreamer_Dream_HappyPath fills the gap that close-out⁷⁴ found:
+// the existing TestDreamer_Dream_Locked only exercises the lock-rejection
+// branch (before any phase work). NO test exercised the happy-path Dream()
+// execution. A mutation that replaced all 4 d.executePhase(...) calls with
+// `_ = ctx` left ALL 22 dream tests passing. This test catches that bluff.
+func TestDreamer_Dream_HappyPath(t *testing.T) {
+	t.Parallel()
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+	config := DefaultConfig()
+	dreamer := NewDreamer(config, logger)
+
+	// Wire phase-callback counters via SetCallbacks so we can prove
+	// the 4 dispatches actually fired.
+	var startCount, endCount int32
+	dreamer.SetCallbacks(
+		func(p DreamPhase) {
+			atomic.AddInt32(&startCount, 1)
+		},
+		func(p DreamPhase, _ bool, _ string) {
+			atomic.AddInt32(&endCount, 1)
+		},
+		func(MemoryEntry) {}, // onMemoryAdded — not under test here
+		func(MemoryEntry) {}, // onMemoryUpdated — not under test here
+	)
+
+	session, err := dreamer.Dream(context.Background())
+
+	// Anti-bluff (close-out⁷⁴): every assertion below catches a different
+	// dimension of the 4-phase-skip mutation pattern.
+	require.NoError(t, err)
+	require.NotNil(t, session)
+	assert.Equal(t, DreamStateCompleted, session.State,
+		"state must reach Completed after all 4 phases — proves end-of-Dream code ran")
+	assert.NotNil(t, session.CompletedAt,
+		"CompletedAt must be set — proves completion path executed")
+	// Concrete-count: exactly 4 phases executed (Orientation, Gather,
+	// Consolidate, Cleanup) — catches mutation that skips any of them.
+	assert.Len(t, session.Phases, 4,
+		"session must record exactly 4 phase results (Orientation/Gather/Consolidate/Cleanup) — fewer = phase-dispatch skipped")
+	// Concrete-order: each phase must appear in the right slot.
+	if len(session.Phases) == 4 {
+		assert.Equal(t, PhaseOrientation, session.Phases[0].Phase, "phase[0]")
+		assert.Equal(t, PhaseGather, session.Phases[1].Phase, "phase[1]")
+		assert.Equal(t, PhaseConsolidate, session.Phases[2].Phase, "phase[2]")
+		assert.Equal(t, PhaseCleanup, session.Phases[3].Phase, "phase[3]")
+	}
+	// Callback invocation count: each phase fires onPhaseStart + onPhaseEnd
+	// exactly once. With the phase-skip mutation, both stay at 0.
+	assert.Equal(t, int32(4), atomic.LoadInt32(&startCount),
+		"onPhaseStart must fire exactly 4 times — skipping phases drops this to 0")
+	assert.Equal(t, int32(4), atomic.LoadInt32(&endCount),
+		"onPhaseEnd must fire exactly 4 times — skipping phases drops this to 0")
+	// Trigger-unlock must happen at end of Dream — catches a mutation
+	// that returns early after lock acquisition.
+	assert.False(t, dreamer.trigger.Locked,
+		"trigger.Locked must be released after Dream completes")
 }
 
 func BenchmarkDreamer_AddMemory(b *testing.B) {

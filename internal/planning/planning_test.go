@@ -297,7 +297,14 @@ func TestMCTS_Search(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Greater(t, result.TotalIterations, 0)
-	assert.Greater(t, result.TreeSize, 0)
+	// Anti-bluff (close-out⁷² hardening, same pattern as ToT close-out⁶⁹):
+	// TreeSize > 0 is a bluff because countNodes(root) = 1 even when MCTS
+	// performs NO selection/expansion/simulation/backprop work. A real MCTS
+	// run must grow the tree past just the root + visit it at least once.
+	assert.Greater(t, result.TreeSize, 1,
+		"TreeSize must exceed 1 (root + at least 1 expanded child): proves expansion ran")
+	assert.Greater(t, result.RootVisits, 0,
+		"RootVisits must be > 0: proves backpropagation reached the root")
 }
 
 func TestMCTS_Search_WithRollout(t *testing.T) {
@@ -316,6 +323,14 @@ func TestMCTS_Search_WithRollout(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+	// Anti-bluff (close-out⁷² hardening, companion to TestMCTS_Search):
+	// without these checks the test passes when MCTS performs no work.
+	assert.Greater(t, result.TotalIterations, 0,
+		"TotalIterations must be > 0: proves the search loop ran")
+	assert.Greater(t, result.TreeSize, 1,
+		"TreeSize must exceed 1: proves expansion ran (root + at least 1 child)")
+	assert.Greater(t, result.RootVisits, 0,
+		"RootVisits must be > 0: proves backpropagation reached the root")
 }
 
 func TestMCTSNode_AverageReward(t *testing.T) {

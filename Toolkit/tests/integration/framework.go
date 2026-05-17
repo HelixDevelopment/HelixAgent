@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -22,14 +24,48 @@ func NewIntegrationTestSuite() *IntegrationTestSuite {
 	}
 }
 
-// SetupSuite initializes the test environment
+// SetupSuite attempts to register real providers from environment-
+// detected API keys. Returns ErrNoProvidersConfigured when nothing is
+// available so the calling test can `t.Skip("SKIP-OK: ...")` rather
+// than silently exercising mocks.
+//
+// Previously this returned nil unconditionally with the comment "For
+// now, we'll test with mock providers from the testing package" — any
+// integration test that called SetupSuite() ran against no providers
+// at all (the providers map stayed empty) and either no-op'd or
+// crashed at first GetProvider call. CONST-050(A) violation: an
+// integration test framework must exercise real backing services.
+//
+// To register real providers, set CHUTES_API_KEY and/or
+// SILICONFLOW_API_KEY (or any other env var the corresponding
+// provider's factory uses) before invoking SetupSuite.
 func (s *IntegrationTestSuite) SetupSuite() error {
-	// Register all available providers
-	// Note: In a real implementation, this would dynamically discover providers
-
-	// For now, we'll test with mock providers from the testing package
+	registered := 0
+	for _, name := range s.registry.ListProviders() {
+		// Each provider's factory reads its API key from env. If the
+		// key is unset, factory creation returns an error; we collect
+		// it but don't fail — the integration suite gates per-provider
+		// via TestProviderLifecycle skips.
+		cfg := map[string]interface{}{}
+		p, err := s.registry.Create(name, cfg)
+		if err != nil {
+			continue
+		}
+		s.providers[name] = p
+		registered++
+	}
+	if registered == 0 {
+		fmt.Fprintln(os.Stderr, "[§11.4 / CONST-050(A)] IntegrationTestSuite.SetupSuite: zero real providers registered — set CHUTES_API_KEY / SILICONFLOW_API_KEY / other provider env vars; tests must Skip('SKIP-OK: ...') rather than exercise mocks")
+		return ErrNoProvidersConfigured
+	}
 	return nil
 }
+
+// ErrNoProvidersConfigured is returned by SetupSuite when no real
+// provider could be registered. Tests should Skip on this error
+// rather than fail (per CONST-050(A) integration tests must exercise
+// real systems, not mocks).
+var ErrNoProvidersConfigured = fmt.Errorf("integration: no real providers configured (set CHUTES_API_KEY / SILICONFLOW_API_KEY / etc.); tests must Skip rather than mock-fallback")
 
 // RegisterProvider registers a provider for testing
 func (s *IntegrationTestSuite) RegisterProvider(name string, provider toolkit.Provider) {

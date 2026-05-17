@@ -275,17 +275,25 @@ func getBlueTestImage() []byte {
 	return data
 }
 
-// createTextImage creates a simple image with text (stub - would use image library in real implementation)
+// createTextImage returns a 1×1 red pixel — this is an example/demo
+// scaffold, not a real text renderer. Production text-to-image
+// rendering would use image/draw + golang.org/x/image/font.
+//
+// The function intentionally discards `text` so any caller asserting
+// "image contains 'Hello\nWorld\n123'" will FAIL — exposing the
+// stub at the assertion boundary instead of certifying the §11.4
+// PASS-bluff (the previous version's silent fall-through to a
+// 1×1 placeholder while pretending to encode text).
 func createTextImage(text string) []byte {
-	// In real implementation, use image/draw to create text image
-	// For now, return red pixel as placeholder
-	_ = text
+	fmt.Fprintf(os.Stderr, "[example-stub / §11.4] createTextImage: ignoring text %q, returning 1x1 placeholder PNG; real text rendering requires image/draw + font library\n", text)
 	return getTestImage()
 }
 
-// createChartImage creates a simple chart image (stub)
+// createChartImage returns a 1×1 blue pixel — example/demo scaffold.
+// Real chart rendering would use a charting library
+// (e.g. go-echarts, gonum/plot). Marked as stub so any caller's
+// assertion on chart structure FAILs explicitly.
 func createChartImage() []byte {
-	// In real implementation, use charting library
-	// For now, return blue pixel as placeholder
+	fmt.Fprintln(os.Stderr, "[example-stub / §11.4] createChartImage: returning 1x1 placeholder PNG; real chart rendering requires a charting library")
 	return getBlueTestImage()
 }

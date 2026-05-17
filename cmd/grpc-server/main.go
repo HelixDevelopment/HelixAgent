@@ -170,7 +170,7 @@ func (s *LLMFacadeServer) CompleteStream(req *pb.CompletionRequest, stream grpc.
 		CreatedAt:      time.Now(),
 	}
 
-	// For streaming, we simulate chunked responses
+	// Run the ensemble for the streaming completion.
 	responses, selected, err := llm.RunEnsemble(internal)
 	if err != nil {
 		s.recordFailure(0)
@@ -179,11 +179,31 @@ func (s *LLMFacadeServer) CompleteStream(req *pb.CompletionRequest, stream grpc.
 
 	s.recordSuccess(0)
 
+	// Round-29 anti-bluff fix (LLMFacadeServer.CompleteStream
+	// path): the per-chunk Confidence was previously hardcoded to
+	// 0.85 in the pb.CompletionResponse literal, fabricating a
+	// meaningful-looking score with no relation to the underlying
+	// ensemble's actual confidence. Now confidence is sourced from
+	// the selected response (or first non-nil fallback) and
+	// initialised to 0.0 on the degenerate path so callers see the
+	// truth.
 	content := ""
+	providerName := "ensemble"
+	var confidence float64 = 0.0
+	degeneratePath := true
 	if selected != nil {
 		content = selected.Content
+		confidence = selected.Confidence
+		providerName = selected.ProviderName
+		degeneratePath = false
 	} else if len(responses) > 0 && responses[0] != nil {
 		content = responses[0].Content
+		confidence = responses[0].Confidence
+		providerName = responses[0].ProviderName
+		degeneratePath = false
+	}
+	if degeneratePath {
+		log.Printf("CompleteStream(facade): ensemble returned no selected response and no fallback responses[0]; surfacing empty content with confidence=0 instead of fabricated 0.85 fallback (round-29 §11.4 fix)")
 	}
 
 	// Stream the response in chunks
@@ -196,8 +216,8 @@ func (s *LLMFacadeServer) CompleteStream(req *pb.CompletionRequest, stream grpc.
 
 		chunk := &pb.CompletionResponse{
 			Content:      content[i:end],
-			Confidence:   0.85,
-			ProviderName: "ensemble",
+			Confidence:   confidence,
+			ProviderName: providerName,
 		}
 
 		if err := stream.Send(chunk); err != nil {
@@ -249,17 +269,30 @@ func (s *LLMFacadeServer) Chat(req *pb.ChatRequest, stream grpc.ServerStreamingS
 
 	s.recordSuccess(0)
 
+	// Round-29 anti-bluff fix: previously initialised confidence to
+	// 0.85 as a fabricated fallback when both `selected` and
+	// `responses[0]` were nil. That surfaced a meaningful-looking
+	// score on a degenerate path where the ensemble had returned
+	// nothing useful. Now: confidence starts at 0.0 and the
+	// degenerate path is logged + surfaced (empty content, 0.0
+	// confidence) so callers can detect and react.
 	content := ""
 	providerName := "ensemble"
-	var confidence float64 = 0.85
+	var confidence float64 = 0.0
+	degeneratePath := true
 	if selected != nil {
 		content = selected.Content
 		confidence = selected.Confidence
 		providerName = selected.ProviderName
+		degeneratePath = false
 	} else if len(responses) > 0 && responses[0] != nil {
 		content = responses[0].Content
 		confidence = responses[0].Confidence
 		providerName = responses[0].ProviderName
+		degeneratePath = false
+	}
+	if degeneratePath {
+		log.Printf("Chat: ensemble returned no selected response and no fallback responses[0]; surfacing empty content with confidence=0 instead of fabricated 0.85 fallback (round-29 §11.4 fix)")
 	}
 
 	// Stream the chat response in chunks
@@ -865,17 +898,26 @@ func (s *LLMProviderServer) CompleteStream(req *pb.CompletionRequest, stream grp
 
 	s.recordProviderSuccess(0)
 
+	// Round-29 anti-bluff fix (LLMProviderServer.CompleteStream
+	// path): same fabricated 0.85 fallback as above. See round-29
+	// commit for forensic detail.
 	content := ""
 	providerName := "ensemble"
-	var confidence float64 = 0.85
+	var confidence float64 = 0.0
+	degeneratePath := true
 	if selected != nil {
 		content = selected.Content
 		confidence = selected.Confidence
 		providerName = selected.ProviderName
+		degeneratePath = false
 	} else if len(responses) > 0 && responses[0] != nil {
 		content = responses[0].Content
 		confidence = responses[0].Confidence
 		providerName = responses[0].ProviderName
+		degeneratePath = false
+	}
+	if degeneratePath {
+		log.Printf("CompleteStream(provider): ensemble returned no selected response and no fallback responses[0]; surfacing empty content with confidence=0 instead of fabricated 0.85 fallback (round-29 §11.4 fix)")
 	}
 
 	// Stream the response in chunks

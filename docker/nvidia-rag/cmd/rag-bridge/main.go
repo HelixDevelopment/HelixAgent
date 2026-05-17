@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,35 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+)
+
+// Round-29 §11.4 anti-bluff sentinels (forensic anchors).
+//
+// Both errors replace silent contract-bluffs that previously made the
+// rag-bridge appear functional while skipping the work the caller had
+// asked for. See close-out commit message for the full forensic
+// anchor (Article XI §11.9 / CONST-035 / CONST-050(A)).
+var (
+	// ErrMilvusRetrievalNotWired is returned by retrieveDocuments when
+	// the Milvus vector-DB client has not been wired in. Previously
+	// the function returned []Source{} unconditionally with the
+	// comment "Simplified retrieval - in production this would query
+	// Milvus" — the LLM downstream produced answers grounded in NO
+	// context whatsoever, and the caller could not tell "no documents
+	// matched the query" from "we never asked Milvus in the first
+	// place". CRITICAL §11.4 contract-bluff. Wire pkg/milvus client
+	// before re-enabling RAG retrieval.
+	ErrMilvusRetrievalNotWired = errors.New("rag-bridge: Milvus retrieval has not been wired — retrieveDocuments previously returned an empty []Source{} regardless of query, producing LLM answers grounded in NO context (§11.4 CRITICAL contract-bluff: caller cannot tell 'no documents matched' from 'we never asked Milvus'). Wire pkg/milvus client before re-enabling RAG retrieval")
+
+	// ErrRerankerNotWired is returned by rerankSources when the
+	// reranker client has not been wired in but the caller asked for
+	// reranking. Previously the function returned the input sources
+	// unchanged while pretending rerank had occurred — the response
+	// scoring was identical to the pre-rerank input but presented as
+	// reranked output. CRITICAL §11.4 contract-bluff. Wire
+	// pkg/reranker client before invoking rerankSources, or call
+	// with reranker explicitly disabled in the request.
+	ErrRerankerNotWired = errors.New("rag-bridge: reranker has not been wired — rerankSources previously returned input sources unchanged while pretending rerank had occurred (§11.4 CONTRACT-bluff). Wire pkg/reranker client before invoking rerankSources, or call with reranker explicitly disabled in the request")
 )
 
 // Config holds service configuration
@@ -171,13 +201,21 @@ type RAGQueryRequest struct {
 	Filters          map[string]interface{} `json:"filters,omitempty"`
 }
 
-// RAGQueryResult represents RAG query result
+// RAGQueryResult represents RAG query result.
+//
+// Warnings surfaces every degraded-path the bridge took during this
+// query (e.g. "retrieval unavailable: ErrMilvusRetrievalNotWired",
+// "reranking unavailable: ErrRerankerNotWired") so the caller can
+// disclose to the end user that the answer is partially or fully
+// uncontextualised instead of trusting the Confidence field blindly.
+// Added round-29 §11.4 anti-bluff fix.
 type RAGQueryResult struct {
 	Answer     string     `json:"answer"`
 	Citations  []Citation `json:"citations,omitempty"`
 	Sources    []Source   `json:"sources"`
 	Confidence float64    `json:"confidence"`
 	QueryTime  int64      `json:"query_time_ms"`
+	Warnings   []string   `json:"warnings,omitempty"`
 }
 
 // Citation represents a source citation
@@ -541,20 +579,48 @@ func (s *Server) handleRAGQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// warnings collects degraded-path messages so the caller (and end
+	// user) can disclose that the answer is partially or fully
+	// uncontextualised — round-29 §11.4 anti-bluff fix.
+	var warnings []string
+
 	// Step 2: Retrieve similar documents
 	sources, err := s.retrieveDocuments(ctx, queryEmbedding, req.Collection, req.TopK*2)
 	if err != nil {
 		log.Printf("Document retrieval failed: %v", err)
-		// Continue with empty sources
+		// Continue with empty sources but record the degraded-path
+		// warning so the caller is NOT misled into trusting an
+		// uncontextualised answer (round-29 anti-bluff fix —
+		// retrieveDocuments now surfaces ErrMilvusRetrievalNotWired
+		// when the Milvus client is missing).
+		if errors.Is(err, ErrMilvusRetrievalNotWired) {
+			warnings = append(warnings, "retrieval unavailable (Milvus client not wired) — answer is uncontextualised")
+		} else {
+			warnings = append(warnings, fmt.Sprintf("retrieval failed: %v — answer is uncontextualised", err))
+		}
 		sources = []Source{}
 	}
 
 	// Step 3: Rerank if reranker is available
 	if s.config.RerankerURL != "" && s.config.RerankerType != "none" {
-		sources, err = s.rerankSources(ctx, req.Query, sources, req.TopK)
+		reranked, err := s.rerankSources(ctx, req.Query, sources, req.TopK)
 		if err != nil {
 			log.Printf("Reranking failed: %v", err)
-			// Continue with original ranking
+			// Record degraded-path warning rather than silently
+			// pretending reranking succeeded (round-29 anti-bluff
+			// fix — rerankSources now surfaces ErrRerankerNotWired
+			// when the reranker client is missing).
+			if errors.Is(err, ErrRerankerNotWired) {
+				warnings = append(warnings, "reranking unavailable (reranker client not wired) — source ranking is pre-rerank")
+			} else {
+				warnings = append(warnings, fmt.Sprintf("reranking failed: %v — source ranking is pre-rerank", err))
+			}
+			// Trim to top-K manually since rerank produced no output.
+			if len(sources) > req.TopK {
+				sources = sources[:req.TopK]
+			}
+		} else {
+			sources = reranked
 		}
 	} else {
 		// Take top K without reranking
@@ -586,6 +652,7 @@ func (s *Server) handleRAGQuery(w http.ResponseWriter, r *http.Request) {
 		Sources:    sources,
 		Confidence: confidence,
 		QueryTime:  time.Since(start).Milliseconds(),
+		Warnings:   warnings,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -673,19 +740,36 @@ func (s *Server) generateEmbedding(ctx context.Context, text string) ([]float32,
 	return nil, fmt.Errorf("empty embedding response")
 }
 
+// retrieveDocuments queries the Milvus vector DB for documents whose
+// embeddings are nearest to `embedding`. Round-29 §11.4 fix: the
+// Milvus client wiring is not yet in place; rather than silently
+// returning []Source{} (the previous CRITICAL contract-bluff —
+// callers received an empty source list indistinguishable from "the
+// query genuinely had no matches"), the function now surfaces
+// ErrMilvusRetrievalNotWired so the caller can either degrade
+// gracefully (continue with empty sources + emit "RAG unavailable")
+// or fail loudly. Wire pkg/milvus client and the real similarity
+// search before removing this sentinel.
 func (s *Server) retrieveDocuments(ctx context.Context, embedding []float32, collection string, topK int) ([]Source, error) {
-	// Simplified retrieval - in production this would query Milvus
-	// For now, return empty slice
-	return []Source{}, nil
+	return nil, fmt.Errorf("retrieveDocuments(collection=%q, topK=%d): %w", collection, topK, ErrMilvusRetrievalNotWired)
 }
 
+// rerankSources runs the configured reranker over the candidate
+// sources and returns the top-K. Round-29 §11.4 fix: when the
+// reranker URL/type indicates "none", the previous behaviour of
+// returning input sources untouched IS the contract (rerank
+// disabled). When the reranker IS configured (URL set, type != none)
+// but the reranker client wiring is missing, the function now
+// surfaces ErrRerankerNotWired instead of silently passing input
+// through as if it had been reranked (CRITICAL §11.4 contract-bluff
+// the previous "return sources, nil" introduced). Wire the real
+// reranker client before removing this sentinel.
 func (s *Server) rerankSources(ctx context.Context, query string, sources []Source, topK int) ([]Source, error) {
 	if s.config.RerankerURL == "" || s.config.RerankerType == "none" {
+		// Reranker explicitly disabled — pass-through is the contract.
 		return sources, nil
 	}
-
-	// Simplified reranking - in production this would call the reranker service
-	return sources, nil
+	return nil, fmt.Errorf("rerankSources(query=%q, topK=%d, rerankerType=%q): %w", query, topK, s.config.RerankerType, ErrRerankerNotWired)
 }
 
 func (s *Server) generateAnswer(ctx context.Context, query string, sources []Source, requireCitations bool) (string, []Citation, error) {

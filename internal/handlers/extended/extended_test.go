@@ -2,7 +2,10 @@ package extended
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +19,39 @@ import (
 	"dev.helix.agent/internal/ensemble/multi_instance"
 )
 
+// stubPlanLLM is a CONST-050(A)-compliant unit-test stub for the
+// PlanLLM interface. It produces N deterministic plan steps whose
+// descriptions reference the supplied objective, so tests can
+// assert that the LLM dispatch path ran AND that the objective was
+// forwarded. Production wires a real LLM via SetPlanLLM.
+type stubPlanLLM struct {
+	n   int
+	err error
+}
+
+func (s *stubPlanLLM) GeneratePlanSteps(_ context.Context, objective string, _ []string, maxSteps int) ([]PlanStep, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	count := s.n
+	if count == 0 {
+		count = 3
+	}
+	if maxSteps > 0 && count > maxSteps {
+		count = maxSteps
+	}
+	out := make([]PlanStep, 0, count)
+	for i := 0; i < count; i++ {
+		out = append(out, PlanStep{
+			Number:      i + 1,
+			Description: fmt.Sprintf("step %d for objective %q", i+1, objective),
+			Type:        "task",
+			Status:      PlanStepStatusPending,
+		})
+	}
+	return out, nil
+}
+
 func setupTestRouter() (*gin.Engine, *EnsembleHandlerExtensions, *PlanningHandlerExtensions) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -27,6 +63,12 @@ func setupTestRouter() (*gin.Engine, *EnsembleHandlerExtensions, *PlanningHandle
 
 	ensembleHandler := NewEnsembleHandlerExtensions(coordinator, logger)
 	planningHandler := NewPlanningHandlerExtensions(logger)
+	// Round-29 anti-bluff: explicitly inject a deterministic
+	// PlanLLM stub so the test router exercises the real dispatch
+	// path. setupTestRouter callers that want to test the
+	// unwired-sentinel path build the handler directly without
+	// SetPlanLLM (see TestEnterPlanMode_NoLLMReturns500).
+	planningHandler.SetPlanLLM(&stubPlanLLM{n: 5})
 
 	api := router.Group("/api/v1")
 	ensemble := api.Group("/ensemble")
@@ -831,6 +873,97 @@ func TestEnterPlanMode(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestEnterPlanMode_NoLLMReturns500 asserts the round-29 §11.4
+// anti-bluff contract: when no PlanLLM is injected,
+// /plan-mode/enter MUST surface a 500 wrapping
+// ErrPlanGenerationLLMNotWired instead of serving the pre-round-29
+// hardcoded 5-step template. Forensic anchor: prior to round-29,
+// the same handler returned HTTP 200 with the same five
+// objective-agnostic steps regardless of input.
+func TestEnterPlanMode_NoLLMReturns500(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	planningHandler := NewPlanningHandlerExtensions(logger)
+	// DELIBERATELY do not call SetPlanLLM — this is the round-29
+	// sentinel-path proof.
+	planning := router.Group("/api/v1/planning")
+	planningHandler.RegisterRoutes(planning)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"objective": "Fix a real bug",
+		"context":   []string{"file.go"},
+		"max_steps": 5,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/plan-mode/enter", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusInternalServerError, w.Code, "round-29 sentinel path must surface 500; HTTP 200 means the pre-round-29 hardcoded-template bluff has been reintroduced")
+	var resp VerifierErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Contains(t, resp.Error, "planning: LLM has not been wired", "error response must reference the round-29 sentinel verbatim message; missing means the handler swallowed it or the sentinel was renamed without regression-test sync")
+	assert.Contains(t, resp.Error, "PASS-bluff", "error response must carry the §11.4 forensic anchor so the bluff origin is discoverable from the wire")
+}
+
+// TestEnterPlanMode_WithStubLLMDispatches asserts that when a
+// PlanLLM IS wired in, generatePlanSteps delegates to it and the
+// returned steps reference the caller's objective — proving the
+// round-29 fix did not regress the dispatch path. Composes with
+// the (existing) TestEnterPlanMode which uses setupTestRouter's
+// pre-wired stub.
+func TestEnterPlanMode_WithStubLLMDispatches(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	planningHandler := NewPlanningHandlerExtensions(logger)
+	planningHandler.SetPlanLLM(&stubPlanLLM{n: 4})
+	planning := router.Group("/api/v1/planning")
+	planningHandler.RegisterRoutes(planning)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"objective": "unique-objective-marker-xyz",
+		"max_steps": 4,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/planning/plan-mode/enter", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp EnterPlanModeResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Steps, 4)
+	for i, step := range resp.Steps {
+		assert.Contains(t, step.Description, "unique-objective-marker-xyz", "step %d description must reference the caller's objective — proving the stub LLM was invoked with the real objective", i)
+		assert.NotEmpty(t, step.ID, "step %d ID must be normalised by generatePlanSteps", i)
+		assert.Equal(t, PlanStepStatusPending, step.Status, "step %d status must be normalised to Pending", i)
+	}
+}
+
+// TestGeneratePlanSteps_PlanLLMErrorPropagates asserts that LLM
+// errors are wrapped and surfaced — no silent fallback to a
+// fabricated template.
+func TestGeneratePlanSteps_PlanLLMErrorPropagates(t *testing.T) {
+	t.Parallel()
+	h := NewPlanningHandlerExtensions(nil)
+	sentinel := errors.New("upstream LLM 503")
+	h.SetPlanLLM(&stubPlanLLM{err: sentinel})
+	steps, err := h.generatePlanSteps(context.Background(), "objective", nil, 3)
+	require.Nil(t, steps)
+	require.ErrorIs(t, err, sentinel, "PlanLLM errors must propagate; a silent fallback would be a §11.4 contract-bluff regression")
 }
 
 func TestGetPlanStatus(t *testing.T) {

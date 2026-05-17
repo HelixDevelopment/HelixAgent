@@ -9,6 +9,7 @@ package extended
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -20,6 +21,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+// ErrPlanGenerationLLMNotWired is returned by generatePlanSteps when
+// no PlanLLM has been injected into the handler. Forensic anchor
+// (round-29 §11.4 audit): prior to the fix, generatePlanSteps
+// returned a fixed 5-step template ("Analyze requirements", "Design
+// solution approach", "Implement the solution", "Test and verify",
+// "Review and finalize") with the comment "For now, returning a
+// placeholder implementation". Every user of the plan-mode API
+// received the same five steps regardless of the objective they
+// supplied — meaningful-looking output, zero AI behind it. §11.4
+// PASS-bluff at the planning-handler layer. Wire a real PlanLLM via
+// (*PlanningHandlerExtensions).SetPlanLLM before invoking the
+// /plan-mode/enter endpoint in production.
+var ErrPlanGenerationLLMNotWired = errors.New("planning: LLM has not been wired into PlanningHandlerExtensions — generatePlanSteps previously returned a hardcoded 5-step template ('Analyze requirements' / 'Design solution approach' / 'Implement the solution' / 'Test and verify' / 'Review and finalize') regardless of the objective the caller supplied (§11.4 PASS-bluff at the planning-handler layer). Wire a real PlanLLM via (*PlanningHandlerExtensions).SetPlanLLM before invoking /plan-mode/enter")
 
 // sessionState is the JSON-wire-format snapshot of an
 // ExtendedPlanModeSession. State-pointer pattern same as teamState
@@ -168,6 +183,22 @@ type PlanExecutionResult struct {
 	Summary        string        `json:"summary"`
 }
 
+// PlanLLM is the wiring contract for generatePlanSteps. Production
+// installs a real LLM-backed implementation that turns the
+// objective + context into a list of PlanStep entries. Unit tests
+// under CONST-050(A) MAY supply a deterministic stub.
+//
+// Round-29 anti-bluff anchor: without an injected PlanLLM,
+// generatePlanSteps returns ErrPlanGenerationLLMNotWired instead of
+// the prior hardcoded 5-step template.
+type PlanLLM interface {
+	// GeneratePlanSteps turns an objective + free-text context into a
+	// list of PlanStep entries (numbered 1..N, N <= maxSteps). The
+	// implementation MUST NOT fabricate steps unrelated to the
+	// objective and MUST return a non-nil error on LLM failure.
+	GeneratePlanSteps(ctx context.Context, objective string, context []string, maxSteps int) ([]PlanStep, error)
+}
+
 // PlanningHandlerExtensions provides extended planning functionality
 // This EXTENDS the existing PlanningHandler with claude-code-source features.
 //
@@ -178,6 +209,10 @@ type PlanExecutionResult struct {
 type PlanningHandlerExtensions struct {
 	sessions *safe.Store[string, *PlanModeSession]
 	logger   *logrus.Logger
+	// planLLM is the round-29 anti-bluff injection point for
+	// generatePlanSteps. nil = generatePlanSteps returns
+	// ErrPlanGenerationLLMNotWired.
+	planLLM PlanLLM
 }
 
 // NewPlanningHandlerExtensions creates new planning handler extensions
@@ -189,6 +224,15 @@ func NewPlanningHandlerExtensions(logger *logrus.Logger) *PlanningHandlerExtensi
 		sessions: safe.NewStore[string, *PlanModeSession](),
 		logger:   logger,
 	}
+}
+
+// SetPlanLLM installs the LLM used by generatePlanSteps. Round-29
+// anti-bluff fix: production MUST call this with a real LLM before
+// invoking /plan-mode/enter; otherwise the endpoint surfaces a 500
+// wrapping ErrPlanGenerationLLMNotWired instead of returning the
+// pre-round-29 hardcoded 5-step template.
+func (h *PlanningHandlerExtensions) SetPlanLLM(llm PlanLLM) {
+	h.planLLM = llm
 }
 
 // ============================================
@@ -527,56 +571,40 @@ func (h *PlanningHandlerExtensions) CreateTodo(c *gin.Context) {
 // INTERNAL METHODS
 // ============================================
 
-// generatePlanSteps generates plan steps using AI
+// generatePlanSteps generates plan steps via the injected PlanLLM.
+//
+// Round-29 anti-bluff fix: when no PlanLLM is wired in, this
+// function returns ErrPlanGenerationLLMNotWired (instead of the
+// prior hardcoded 5-step "Analyze / Design / Implement / Test /
+// Review" template that ignored the objective). Wire a real
+// PlanLLM via (*PlanningHandlerExtensions).SetPlanLLM before
+// invoking /plan-mode/enter in production.
 func (h *PlanningHandlerExtensions) generatePlanSteps(ctx context.Context, objective string, context []string, maxSteps int) ([]PlanStep, error) {
 	if maxSteps == 0 {
 		maxSteps = 10
 	}
 
-	// This would integrate with the LLM service to generate steps
-	// For now, returning a placeholder implementation
-	steps := []PlanStep{
-		{
-			ID:          uuid.New().String(),
-			Number:      1,
-			Description: fmt.Sprintf("Analyze requirements for: %s", objective),
-			Type:        "research",
-			Status:      PlanStepStatusPending,
-			EstDuration: 5 * time.Minute,
-		},
-		{
-			ID:           uuid.New().String(),
-			Number:       2,
-			Description:  "Design solution approach",
-			Type:         "decision",
-			Status:       PlanStepStatusPending,
-			Dependencies: []string{}, // Would reference step 1 ID
-			EstDuration:  10 * time.Minute,
-		},
-		{
-			ID:          uuid.New().String(),
-			Number:      3,
-			Description: "Implement the solution",
-			Type:        "implement",
-			Status:      PlanStepStatusPending,
-			EstDuration: 30 * time.Minute,
-		},
-		{
-			ID:          uuid.New().String(),
-			Number:      4,
-			Description: "Test and verify",
-			Type:        "test",
-			Status:      PlanStepStatusPending,
-			EstDuration: 15 * time.Minute,
-		},
-		{
-			ID:          uuid.New().String(),
-			Number:      5,
-			Description: "Review and finalize",
-			Type:        "review",
-			Status:      PlanStepStatusPending,
-			EstDuration: 10 * time.Minute,
-		},
+	if h.planLLM == nil {
+		return nil, fmt.Errorf("generatePlanSteps(objective=%q, maxSteps=%d): %w", objective, maxSteps, ErrPlanGenerationLLMNotWired)
+	}
+
+	steps, err := h.planLLM.GeneratePlanSteps(ctx, objective, context, maxSteps)
+	if err != nil {
+		return nil, fmt.Errorf("generatePlanSteps: PlanLLM failed: %w", err)
+	}
+
+	// Normalise IDs so callers can rely on uniqueness regardless of
+	// the LLM implementation's habit.
+	for i := range steps {
+		if steps[i].ID == "" {
+			steps[i].ID = uuid.New().String()
+		}
+		if steps[i].Number == 0 {
+			steps[i].Number = i + 1
+		}
+		if steps[i].Status == "" {
+			steps[i].Status = PlanStepStatusPending
+		}
 	}
 
 	return steps, nil

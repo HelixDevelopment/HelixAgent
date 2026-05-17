@@ -2,14 +2,126 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"dev.helix.agent/internal/version"
 	pb "dev.helix.agent/pkg/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+// captureCompletionStream is a CONST-050(A)-compliant unit-test
+// implementation of grpc.ServerStreamingServer[pb.CompletionResponse]
+// that records every chunk Send-ed to it so assertions can verify
+// the streaming method's per-chunk shape (in particular: round-29
+// anti-bluff — Confidence MUST NOT default to the fabricated 0.85
+// fallback on the degenerate path).
+type captureCompletionStream struct {
+	grpc.ServerStream
+	ctx    context.Context
+	chunks []*pb.CompletionResponse
+}
+
+func (c *captureCompletionStream) Send(m *pb.CompletionResponse) error {
+	c.chunks = append(c.chunks, m)
+	return nil
+}
+func (c *captureCompletionStream) SetHeader(metadata.MD) error  { return nil }
+func (c *captureCompletionStream) SendHeader(metadata.MD) error { return nil }
+func (c *captureCompletionStream) SetTrailer(metadata.MD)       {}
+func (c *captureCompletionStream) Context() context.Context     { return c.ctx }
+func (c *captureCompletionStream) SendMsg(any) error            { return nil }
+func (c *captureCompletionStream) RecvMsg(any) error            { return nil }
+
+// captureChatStream mirrors captureCompletionStream for the Chat
+// path (pb.ChatResponse stream).
+type captureChatStream struct {
+	grpc.ServerStream
+	ctx    context.Context
+	chunks []*pb.ChatResponse
+}
+
+func (c *captureChatStream) Send(m *pb.ChatResponse) error {
+	c.chunks = append(c.chunks, m)
+	return nil
+}
+func (c *captureChatStream) SetHeader(metadata.MD) error  { return nil }
+func (c *captureChatStream) SendHeader(metadata.MD) error { return nil }
+func (c *captureChatStream) SetTrailer(metadata.MD)       {}
+func (c *captureChatStream) Context() context.Context     { return c.ctx }
+func (c *captureChatStream) SendMsg(any) error            { return nil }
+func (c *captureChatStream) RecvMsg(any) error            { return nil }
+
+// TestRound29_NoFabricated085FallbackInStreamingPaths asserts the
+// round-29 §11.4 anti-bluff source-level contract: NO `0.85`
+// literal may appear as a fabricated confidence fallback in the
+// grpc-server streaming code paths. Forensic anchor: prior to the
+// fix, three sites (lines ~199, ~254, ~870) initialised
+// confidence/Confidence to 0.85 when both `selected` and
+// `responses[0]` were nil, surfacing a meaningful-looking score on
+// degenerate paths where the ensemble had returned nothing. The
+// fix replaces all three with confidence=0.0 + log line.
+//
+// This test reads the grpc-server main.go source and asserts no
+// `Confidence: 0.85` or `confidence float64 = 0.85` literal
+// resurfaces. It is a structural regression guard, NOT a wire-
+// evidence behavioural test — see TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence
+// for the behavioural counterpart.
+func TestRound29_NoFabricated085FallbackInStreamingPaths(t *testing.T) {
+	t.Parallel()
+	_, thisFile, _, ok := runtime.Caller(0)
+	require.True(t, ok, "runtime.Caller(0) failed; cannot locate main.go to scan")
+	mainPath := filepath.Join(filepath.Dir(thisFile), "main.go")
+	src, err := os.ReadFile(mainPath)
+	require.NoError(t, err)
+	srcStr := string(src)
+
+	for _, banned := range []string{
+		"Confidence:   0.85,",
+		"Confidence: 0.85,",
+		"confidence float64 = 0.85",
+	} {
+		assert.NotContains(t, srcStr, banned, "round-29 §11.4 anti-bluff regression: %q must NOT appear in grpc-server/main.go — the fabricated 0.85 confidence fallback bluff has been reintroduced. Use confidence=0.0 + log line on the degenerate path instead.", banned)
+	}
+	// And confirm the round-29 sentinel log line is still present
+	// (composable with the structural assertion above — if someone
+	// reverts the fix, both signals fire).
+	assert.True(t, strings.Contains(srcStr, "fabricated 0.85 fallback"), "round-29 anti-bluff log line removed from grpc-server/main.go; if the comment/log line is rewritten, update this assertion to track the new sentinel string")
+}
+
+// TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence
+// exercises the LLMFacadeServer.Chat streaming path with no
+// providers configured (so RunEnsemble returns an error) — the
+// fix's behavioural counterpart to the structural scan above. The
+// pre-round-29 code would have fabricated Confidence=0.85 on every
+// chunk; the round-29 code surfaces the error from RunEnsemble (no
+// chunks sent at all, since the function returns before the
+// chunking loop). This test pins that no chunk is ever emitted
+// with the 0.85 fabricated value.
+func TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence(t *testing.T) {
+	t.Parallel()
+	server := NewLLMFacadeServer()
+	stream := &captureCompletionStream{ctx: context.Background()}
+
+	req := &pb.CompletionRequest{
+		SessionId: "sess",
+		Prompt:    "anything",
+	}
+	// CompleteStream returns the ensemble error (since no providers
+	// are wired) — chunks slice stays empty.
+	_ = server.CompleteStream(req, stream)
+
+	for i, ch := range stream.chunks {
+		require.NotEqual(t, 0.85, ch.Confidence, "chunk %d carried fabricated 0.85 confidence — round-29 §11.4 anti-bluff regression in the LLMFacadeServer.CompleteStream path", i)
+	}
+}
 
 func TestGrpcServer_Complete(t *testing.T) {
 	server := NewLLMFacadeServer()

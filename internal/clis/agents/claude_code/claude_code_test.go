@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dev.helix.agent/internal/clis/agents/base"
+	"dev.helix.agent/internal/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -328,7 +329,14 @@ func TestMCPIntegration(t *testing.T) {
 	assert.False(t, server.Enabled)
 }
 
-func TestMCPIntegration_CallTool(t *testing.T) {
+// TestMCPIntegration_CallTool_NoTransportReturnsSentinel asserts the
+// round-29 §11.4 anti-bluff contract: CallTool MUST surface
+// ErrMCPClientNotWired when no transport is installed, instead of
+// fabricating the pre-round-29 "simulated result" that echoed the
+// caller's args back. Forensic anchor: prior assertion was
+// require.NoError(err) + assert.False(result.IsError) — exactly the
+// shape of the bluff that made the test green.
+func TestMCPIntegration_CallTool_NoTransportReturnsSentinel(t *testing.T) {
 	t.Parallel()
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "mcp.json")
@@ -341,9 +349,59 @@ func TestMCPIntegration_CallTool(t *testing.T) {
 		"path": "/tmp/test",
 	})
 
+	require.Error(t, err, "CallTool with no transport wired must surface the round-29 sentinel; nil error means the pre-round-29 'simulated result' bluff has been reintroduced")
+	require.ErrorIs(t, err, ErrMCPClientNotWired, "CallTool error must wrap ErrMCPClientNotWired")
+	require.Nil(t, result, "CallTool with no transport must return nil result alongside the sentinel error")
+}
+
+// fakeMCPTransport is a CONST-050(A)-compliant unit-test stub for
+// MCPTransport. Lives in _test.go so it cannot leak into production
+// code paths. Records the inputs it was called with and returns a
+// deterministic result for assertion.
+type fakeMCPTransport struct {
+	gotServer string
+	gotTool   string
+	gotArgs   map[string]interface{}
+	ret       *services.ToolCallResult
+	err       error
+}
+
+func (f *fakeMCPTransport) CallTool(_ context.Context, server *MCPServer, toolName string, args map[string]interface{}) (*services.ToolCallResult, error) {
+	if server != nil {
+		f.gotServer = server.Name
+	}
+	f.gotTool = toolName
+	f.gotArgs = args
+	return f.ret, f.err
+}
+
+// TestMCPIntegration_CallTool_WithTransportDispatchesReal asserts
+// that when a transport IS wired in, CallTool delegates the request
+// to it and returns whatever the transport returned — proving the
+// round-29 fix did not regress the dispatch path.
+func TestMCPIntegration_CallTool_WithTransportDispatchesReal(t *testing.T) {
+	t.Parallel()
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "mcp.json")
+
+	mcp := NewMCPIntegration(configPath)
+	require.NoError(t, mcp.LoadConfig())
+
+	want := &services.ToolCallResult{
+		Content: []services.Content{{Type: "text", Text: "real-tool-output"}},
+		IsError: false,
+	}
+	transport := &fakeMCPTransport{ret: want}
+	mcp.SetTransport(transport)
+
+	got, err := mcp.CallTool(context.Background(), "filesystem", "read_file", map[string]interface{}{
+		"path": "/tmp/test",
+	})
 	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.False(t, result.IsError)
+	require.Same(t, want, got, "CallTool must return the transport's result by reference, not a fabricated copy")
+	assert.Equal(t, "filesystem", transport.gotServer, "transport must have been called with the resolved server")
+	assert.Equal(t, "read_file", transport.gotTool, "transport must have been called with the tool name")
+	assert.Equal(t, "/tmp/test", transport.gotArgs["path"], "transport must have been called with the args verbatim")
 }
 
 func BenchmarkClaudeCode_Execute(b *testing.B) {

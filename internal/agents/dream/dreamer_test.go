@@ -2,6 +2,7 @@ package dream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// stubGatherer is a CONST-050(A)-compliant unit-test stub for the
+// SignalGatherer interface. Records that Gather() was called and
+// returns the configured error (default nil).
+type stubGatherer struct {
+	called atomic.Int32
+	err    error
+}
+
+func (s *stubGatherer) Gather(_ context.Context, session *DreamSession) error {
+	s.called.Add(1)
+	if session != nil && session.Metadata != nil {
+		session.Metadata["stub_gathered"] = true
+	}
+	return s.err
+}
 
 func TestDefaultConfig(t *testing.T) {
 	t.Parallel()
@@ -468,6 +485,87 @@ func TestDreamer_Dream_HappyPath(t *testing.T) {
 	// that returns early after lock acquisition.
 	assert.False(t, dreamer.trigger.Locked,
 		"trigger.Locked must be released after Dream completes")
+}
+
+// TestDreamer_GatherPhase_NoGatherersReturnsSentinel asserts the
+// round-29 §11.4 anti-bluff contract: gatherPhase MUST surface
+// ErrGatherersNotWired when no SignalGatherer has been registered,
+// instead of the pre-round-29 silent "Gathering fresh signals"
+// debug log + nil return that reported phase 2 as successful while
+// nothing was gathered.
+func TestDreamer_GatherPhase_NoGatherersReturnsSentinel(t *testing.T) {
+	t.Parallel()
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+	dreamer := NewDreamer(DefaultConfig(), logger)
+
+	session := &DreamSession{
+		ID:       "test",
+		Metadata: map[string]interface{}{},
+	}
+	err := dreamer.gatherPhase(context.Background(), session)
+	require.Error(t, err, "gatherPhase with no gatherers must surface the round-29 sentinel; nil error means the pre-round-29 silent-success bluff has been reintroduced")
+	require.ErrorIs(t, err, ErrGatherersNotWired, "gatherPhase error must wrap ErrGatherersNotWired")
+}
+
+// TestDreamer_GatherPhase_WithGathererDispatches asserts that when
+// a SignalGatherer IS registered via AddGatherer, gatherPhase
+// invokes it.
+func TestDreamer_GatherPhase_WithGathererDispatches(t *testing.T) {
+	t.Parallel()
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+	dreamer := NewDreamer(DefaultConfig(), logger)
+
+	g := &stubGatherer{}
+	dreamer.AddGatherer(g)
+
+	session := &DreamSession{
+		ID:       "test",
+		Metadata: map[string]interface{}{},
+	}
+	err := dreamer.gatherPhase(context.Background(), session)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), g.called.Load(), "gatherPhase must invoke the registered gatherer exactly once per dream cycle")
+	require.Equal(t, true, session.Metadata["stub_gathered"], "the gatherer's side-effect on session.Metadata must be visible — proving the gatherer ran with the real session")
+}
+
+// TestDreamer_GatherPhase_GathererErrorWraps asserts gatherer
+// errors short-circuit the phase and are wrapped.
+func TestDreamer_GatherPhase_GathererErrorWraps(t *testing.T) {
+	t.Parallel()
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+	dreamer := NewDreamer(DefaultConfig(), logger)
+
+	upstream := errors.New("upstream signal source 503")
+	dreamer.AddGatherer(&stubGatherer{err: upstream})
+
+	err := dreamer.gatherPhase(context.Background(), &DreamSession{Metadata: map[string]interface{}{}})
+	require.ErrorIs(t, err, upstream, "gatherer errors must propagate; a silent swallow would be a §11.4 contract-bluff regression")
+}
+
+// TestDreamer_Dream_RecordsGatherPhaseUnsuccessfulWhenUnwired
+// strengthens TestDreamer_Dream_HappyPath: it asserts the phase
+// outcome shape (Success=false on the gather slot specifically)
+// when no gatherers are wired — proving the round-29 sentinel
+// reaches the per-phase PhaseResult instead of being silently
+// papered over.
+func TestDreamer_Dream_RecordsGatherPhaseUnsuccessfulWhenUnwired(t *testing.T) {
+	t.Parallel()
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+	dreamer := NewDreamer(DefaultConfig(), logger)
+
+	session, err := dreamer.Dream(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, session)
+	require.Len(t, session.Phases, 4)
+	gatherSlot := session.Phases[1]
+	require.Equal(t, PhaseGather, gatherSlot.Phase)
+	assert.False(t, gatherSlot.Success, "gather phase MUST be recorded as unsuccessful when no gatherers wired — Success=true would mean the round-29 sentinel never reached the PhaseResult")
+	assert.Contains(t, gatherSlot.Details, "no SignalGatherer", "PhaseResult.Details must carry the round-29 sentinel message so post-mortem analysis can identify the unwired-gatherer cause")
+	assert.Contains(t, gatherSlot.Details, "PASS-bluff", "PhaseResult.Details must carry the §11.4 forensic anchor")
 }
 
 func BenchmarkDreamer_AddMemory(b *testing.B) {

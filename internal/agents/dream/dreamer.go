@@ -5,6 +5,7 @@ package dream
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,20 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
+
+// ErrGatherersNotWired is returned by gatherPhase (phase 2 of the
+// dream cycle) when no SignalGatherer implementations have been
+// injected into the Dreamer. Forensic anchor (round-29 §11.4
+// audit): prior to the fix, gatherPhase emitted a single
+// "Gathering fresh signals" debug log and returned nil with the
+// comment "For now, this is a placeholder that would integrate
+// with other systems". Every dream session reported phase 2 as
+// successful while no signals were ever gathered — downstream
+// consolidation operated on stale data and the dreamer pretended
+// the cycle was complete. §11.4 PASS-bluff at the dream-phase
+// layer. Wire one or more SignalGatherers via
+// (*Dreamer).AddGatherer before calling Dream() in production.
+var ErrGatherersNotWired = errors.New("dream: no SignalGatherer implementations have been wired into the Dreamer — gatherPhase (phase 2 of the dream cycle) previously emitted a 'Gathering fresh signals' debug log and returned nil with the comment 'For now, this is a placeholder that would integrate with other systems', causing every dream session to report phase 2 as successful while no signals were actually gathered (§11.4 PASS-bluff at the dream-phase layer). Wire one or more SignalGatherers via (*Dreamer).AddGatherer before calling Dream()")
 
 // DreamerConfig configures the Dream system
 type DreamerConfig struct {
@@ -128,6 +143,25 @@ type MemorySummary struct {
 	Tags     []string `json:"tags"`
 }
 
+// SignalGatherer is the wiring contract for phase 2 of the dream
+// cycle (gatherPhase). Implementations pull fresh signals from
+// upstream subsystems — KAIROS daily logs, drifting memory stores,
+// transcript indexes, telemetry buses — and stage them on the
+// supplied DreamSession's Metadata so the consolidation phase can
+// process them. Production wires real gatherers; unit tests under
+// CONST-050(A) MAY supply deterministic stubs.
+//
+// Round-29 anti-bluff anchor: when no SignalGatherer is registered,
+// gatherPhase returns ErrGatherersNotWired instead of the prior
+// silent "Gathering fresh signals" debug log + nil return.
+type SignalGatherer interface {
+	// Gather pulls fresh signals from upstream subsystems and
+	// records them on the session's Metadata. MUST return a non-nil
+	// error on failure; MUST NOT silently no-op while reporting
+	// success.
+	Gather(ctx context.Context, session *DreamSession) error
+}
+
 // Dreamer is the memory consolidation engine.
 //
 // Concurrency model (CONST-029):
@@ -147,11 +181,32 @@ type Dreamer struct {
 	running  atomic.Bool
 	stopCh   chan struct{}
 
+	// gatherers is the round-29 anti-bluff injection point for
+	// phase 2. Empty / nil = gatherPhase returns
+	// ErrGatherersNotWired. Guarded by mu when mutated alongside
+	// dream-cycle state.
+	gatherers []SignalGatherer
+
 	// Callbacks
 	onPhaseStart    func(DreamPhase)
 	onPhaseEnd      func(DreamPhase, bool, string)
 	onMemoryAdded   func(MemoryEntry)
 	onMemoryUpdated func(MemoryEntry)
+}
+
+// AddGatherer registers a SignalGatherer for phase 2 of the dream
+// cycle. Round-29 anti-bluff fix: production MUST register at least
+// one gatherer before calling Dream(); otherwise gatherPhase
+// surfaces ErrGatherersNotWired and the phase is marked
+// unsuccessful (instead of the pre-round-29 silent no-op that
+// reported phase 2 as successful).
+func (d *Dreamer) AddGatherer(g SignalGatherer) {
+	if g == nil {
+		return
+	}
+	d.mu.Lock()
+	d.gatherers = append(d.gatherers, g)
+	d.mu.Unlock()
 }
 
 // NewDreamer creates a new Dream system
@@ -405,16 +460,32 @@ func (d *Dreamer) orientationPhase(ctx context.Context, session *DreamSession) e
 	return nil
 }
 
-// gatherPhase: Phase 2 - Search for new information
+// gatherPhase: Phase 2 - Search for new information.
+//
+// Round-29 anti-bluff fix: previously emitted a single "Gathering
+// fresh signals" debug log and returned nil regardless of state —
+// every dream session reported phase 2 as successful while no
+// signals were ever gathered. Now: if no SignalGatherer has been
+// registered (via AddGatherer), the phase surfaces
+// ErrGatherersNotWired and is marked unsuccessful in the
+// PhaseResult; if gatherers ARE registered, each is invoked in
+// turn and the first error short-circuits the phase. Wire one or
+// more gatherers before calling Dream() in production.
 func (d *Dreamer) gatherPhase(ctx context.Context, session *DreamSession) error {
-	// This would search for:
-	// - Daily logs from KAIROS
-	// - Drifting memories (unsaved observations)
-	// - Transcript search
+	d.mu.RLock()
+	gatherers := append([]SignalGatherer(nil), d.gatherers...)
+	d.mu.RUnlock()
 
-	// For now, this is a placeholder that would integrate with other systems
-	d.logger.Debug("Gathering fresh signals")
+	if len(gatherers) == 0 {
+		return fmt.Errorf("gatherPhase: %w", ErrGatherersNotWired)
+	}
 
+	d.logger.Debugf("Gathering fresh signals from %d gatherers", len(gatherers))
+	for i, g := range gatherers {
+		if err := g.Gather(ctx, session); err != nil {
+			return fmt.Errorf("gatherPhase: gatherer #%d (%T) failed: %w", i, g, err)
+		}
+	}
 	return nil
 }
 

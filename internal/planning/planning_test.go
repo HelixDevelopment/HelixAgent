@@ -526,6 +526,17 @@ func TestHiPlan_ExecutePlan_Parallel(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.True(t, result.Success)
+	// Anti-bluff (close-out⁷⁴): without these, the test passes when
+	// ExecutePlan skips the entire milestone-execution dispatch — empty
+	// MilestoneResults → 0 failures → Success=true. The bluff hits because
+	// `result.Success = failedCount == 0` is vacuously true with no
+	// executed milestones. Sister TestHiPlan_ExecutePlan has the same
+	// inputs + already checks CompletedMilestones==3, FailedMilestones==0;
+	// mirror those concrete-count assertions here.
+	assert.Equal(t, 3, result.CompletedMilestones,
+		"CompletedMilestones must equal MockMilestoneGenerator's 3 milestones — non-3 means parallel-dispatch skipped milestones")
+	assert.Equal(t, 0, result.FailedMilestones,
+		"FailedMilestones must be 0 against a happy-path mock")
 }
 
 func TestHiPlan_Library(t *testing.T) {

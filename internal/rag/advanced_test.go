@@ -279,6 +279,16 @@ func TestAdvancedRAG_CompressContext(t *testing.T) {
 		assert.Greater(t, compressed.OriginalLength, 0)
 		assert.LessOrEqual(t, compressed.CompressedLength, compressed.OriginalLength)
 		assert.LessOrEqual(t, compressed.CompressionRatio, 1.0)
+		// Anti-bluff (close-out⁷³): without this, the test passes even when
+		// CompressContext returns the input unchanged (no compression done).
+		// With the default config (EnableSentenceExtraction=true + relevant
+		// content present), real compression MUST be strictly less than the
+		// original — only the sentences relevant to "function variable"
+		// stay.
+		assert.Less(t, compressed.CompressedLength, compressed.OriginalLength,
+			"compressed length must be strictly < original when compression is enabled and relevant-sentence extraction has filtering work to do (close-out⁷³ pin-only-LessOrEqual bluff fix)")
+		assert.Less(t, compressed.CompressionRatio, 1.0,
+			"compression ratio must be strictly < 1.0 — equality means no compression happened")
 	})
 
 	t.Run("KeyPhrasesExtraction", func(t *testing.T) {

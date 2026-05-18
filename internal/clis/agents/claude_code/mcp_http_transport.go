@@ -3,6 +3,32 @@
 // transport implementing the same MCPTransport interface defined
 // in mcp_integration.go.
 //
+// ROUND-44 ADDENDUM — SSE AUTO-RECONNECT + Last-Event-ID RETRY
+// ------------------------------------------------------------
+// Round-41 deferred two SSE-spec optional behaviours:
+//   1. Automatic reconnect after the server disconnects.
+//   2. Replay-on-reconnect via the Last-Event-ID HTTP request
+//      header (the W3C / HTML5 EventSource recipe).
+// Round-44 (this file's current revision) wires both, with the
+// hard caps required by CONST-035:
+//   - Exponential backoff with ±25% jitter: 1s → 2s → 4s → 8s,
+//     capped at min(retryInterval×8, 60s).
+//   - retryInterval defaults to 3 seconds, overridden by the
+//     SSE server's `retry: <ms>` field per spec, capped at 60s.
+//   - After MaxConsecutiveFailures consecutive reconnect
+//     failures (default 10) the goroutine emits
+//     ErrMCPSSEStreamPermanentlyDisconnected on the notifications
+//     channel and exits — the consumer must call EnableSSE again
+//     to restart. Silent looping forever is forbidden.
+//   - Every wait point honours ctx.Done (ticker + select), so
+//     ctx cancellation aborts within the next backoff tick at
+//     the latest; goroutine-leak guards in the *_test.go file
+//     assert NumGoroutine returns to baseline.
+//   - The Last-Event-ID HTTP header is set on every reconnect
+//     GET when an `id:` field has been observed at any point in
+//     the lifetime of the SSE listener; servers may use it to
+//     replay missed events (lossless resume).
+//
 // PROTOCOL REFERENCES
 // -------------------
 //   * Model Context Protocol specification — protocol version
@@ -135,6 +161,26 @@ var ErrMCPEndpointNotConfigured = errors.New("claude_code/mcp: MCPHTTPConfig.End
 // loopback servers, in-process httptest fixtures, etc.).
 var ErrMCPInsecureEndpointRejected = errors.New("claude_code/mcp: MCPHTTPConfig.Endpoint uses plaintext http:// — round-41 refuses this by default because a bearer token sent over plaintext is a §11.4 security-layer PASS-bluff. Set MCPHTTPConfig.AllowInsecure=true to opt in (dev / loopback / httptest only)")
 
+// ErrMCPSSEStreamPermanentlyDisconnected is emitted on the
+// notifications channel as the FINAL value (channel is closed
+// immediately afterwards) when the round-44 auto-reconnect loop
+// has exhausted MaxConsecutiveFailures (default 10) consecutive
+// failed reconnect attempts without ever re-establishing the
+// stream. The consumer's contract is: receiving this sentinel
+// means the SSE listener has given up; the consumer should call
+// EnableSSE again (possibly after a longer delay, possibly with
+// a re-validated config) to restart. Round-44 explicitly does
+// NOT loop forever silently — that would be a §11.4 security/
+// observability bluff (operator never learns the stream died).
+//
+// This sentinel is distinct from the other four MCP sentinels:
+//   - ErrMCPClientNotWired              → no transport at all
+//   - ErrMCPCommandNotConfigured        → stdio command empty
+//   - ErrMCPEndpointNotConfigured       → http endpoint empty
+//   - ErrMCPInsecureEndpointRejected    → plaintext http rejected
+//   - ErrMCPSSEStreamPermanentlyDisconnected → SSE gave up after N retries
+var ErrMCPSSEStreamPermanentlyDisconnected = errors.New("claude_code/mcp: SSE stream gave up after the configured number of consecutive reconnect failures — verify SSEEndpoint URL, server health, and network path; the consumer should re-call EnableSSE to restart (round-44 anti-bluff: silent infinite reconnect would hide the failure from operators)")
+
 // MCPHTTPConfig configures the HTTP transport.
 //
 // Endpoint is the URL of the MCP server's JSON-RPC endpoint
@@ -169,14 +215,34 @@ var ErrMCPInsecureEndpointRejected = errors.New("claude_code/mcp: MCPHTTPConfig.
 //
 // UserAgent is the User-Agent header sent on every request.
 // Empty = "helix_agent/claude_code (round-41 mcp-http)".
+//
+// SSEInitialRetryInterval is the initial reconnect interval used
+// by the round-44 SSE auto-reconnect loop BEFORE the server has
+// advertised a `retry:` field. Zero = 3-second default per the
+// HTML5 EventSource spec recommendation.
+//
+// SSEMaxRetryInterval caps the server-advertised `retry:` field
+// AND the exponential-backoff growth so a malicious or buggy
+// server can't force a 24-hour reconnect interval. Zero = 60s.
+//
+// SSEMaxConsecutiveFailures bounds the auto-reconnect loop. After
+// this many consecutive failed reconnect attempts (no successful
+// 200/text-event-stream response between them) the goroutine
+// emits ErrMCPSSEStreamPermanentlyDisconnected on the channel and
+// exits. Zero = 10. Set to a negative value to retry forever
+// (NOT recommended; the operator loses visibility into stream
+// death — explicit opt-in to a §11.4 observability anti-pattern).
 type MCPHTTPConfig struct {
-	Endpoint      string
-	SSEEndpoint   string
-	BearerToken   string
-	TLSConfig     *tls.Config
-	Timeout       time.Duration
-	AllowInsecure bool
-	UserAgent     string
+	Endpoint                  string
+	SSEEndpoint               string
+	BearerToken               string
+	TLSConfig                 *tls.Config
+	Timeout                   time.Duration
+	AllowInsecure             bool
+	UserAgent                 string
+	SSEInitialRetryInterval   time.Duration
+	SSEMaxRetryInterval       time.Duration
+	SSEMaxConsecutiveFailures int
 }
 
 // MCPHTTPTransport is the round-41 real implementation of the
@@ -516,22 +582,130 @@ func (t *MCPHTTPTransport) doPost(ctx context.Context, body []byte) ([]byte, err
 	return respBody, nil
 }
 
-// runSSE is the SSE-listener goroutine. Opens a GET against
-// cfg.SSEEndpoint with Accept: text/event-stream, then parses
-// the wire format (`event: <type>\ndata: <json>\n\n`,
-// double-newline-terminated frames per the HTML5 EventSource
-// spec) and emits each frame as an MCPHTTPNotification on ch.
+// runSSE is the round-44 SSE-listener goroutine: opens the SSE
+// stream against cfg.SSEEndpoint with Accept: text/event-stream,
+// parses the HTML5 EventSource wire format, and emits parsed
+// notifications on ch. On disconnect it reconnects with the
+// Last-Event-ID HTTP request header set to the latest `id:`
+// field observed in the stream, using exponential backoff with
+// ±25% jitter and the cap rules documented on MCPHTTPConfig.
 //
-// Exits cleanly on ctx cancellation, on EOF from the server, or
-// on transport error. Closes ch on exit so consumers see the
-// channel closed (idiomatic Go signal that no more values will
-// arrive).
+// Exit conditions:
+//   - ctx.Done()                           → clean exit, ch closed
+//   - MaxConsecutiveFailures exhausted     → emit
+//     ErrMCPSSEStreamPermanentlyDisconnected via a final
+//     synthetic notification, then close ch (consumer's signal
+//     to call EnableSSE again to restart)
+//
+// close(ch) is deferred so every exit path leaves the channel
+// closed (idiomatic Go signal "no more values will arrive").
 func (t *MCPHTTPTransport) runSSE(ctx context.Context, ch chan<- MCPHTTPNotification) {
 	defer close(ch)
 
+	// Resolve config defaults (constants here so tests can dial
+	// them via cfg overrides).
+	initialRetry := t.cfg.SSEInitialRetryInterval
+	if initialRetry <= 0 {
+		initialRetry = 3 * time.Second
+	}
+	maxRetry := t.cfg.SSEMaxRetryInterval
+	if maxRetry <= 0 {
+		maxRetry = 60 * time.Second
+	}
+	maxFailures := t.cfg.SSEMaxConsecutiveFailures
+	if maxFailures == 0 {
+		maxFailures = 10
+	}
+
+	// retryInterval is the spec's "reconnection time" — updated
+	// by the server's `retry:` field over the stream's lifetime.
+	retryInterval := initialRetry
+	if retryInterval > maxRetry {
+		retryInterval = maxRetry
+	}
+
+	// lastEventID is the latest `id:` field observed across the
+	// ENTIRE lifetime of this goroutine (not just within one
+	// connection). Per SSE spec it's sent as Last-Event-ID on
+	// every reconnect so the server can replay missed events.
+	var lastEventID string
+
+	// attemptCount counts CONSECUTIVE failed reconnect attempts.
+	// Resets to 0 on every successful 200/text-event-stream
+	// response. Used both for backoff growth and for the
+	// MaxConsecutiveFailures hard cap.
+	attemptCount := 0
+
+	// Separate client for SSE that does NOT honour cfg.Timeout
+	// (SSE is a long-lived stream). ctx cancellation tears it
+	// down via http.NewRequestWithContext.
+	sseClient := &http.Client{
+		Transport: t.client.Transport,
+	}
+
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+
+		// One pass through the readSSEStream helper attempts
+		// ONE GET, returns when the stream closes (EOF /
+		// transport error / non-200) or when ctx cancels.
+		// The helper updates retryInterval + lastEventID via
+		// pointers so the auto-reconnect loop sees fresh
+		// values on next iteration.
+		connected, ctxDone := t.readSSEStream(ctx, sseClient, ch, &lastEventID, &retryInterval, maxRetry)
+		if ctxDone {
+			return
+		}
+
+		// On a SUCCESSFUL connection (200 OK + text/event-stream)
+		// reset the failure counter. The disconnect was natural
+		// (server closed the stream after delivering events) and
+		// the next reconnect attempt starts from a clean slate.
+		if connected {
+			attemptCount = 0
+		} else {
+			attemptCount++
+		}
+
+		// Hard-cap check BEFORE waiting: an exhausted budget
+		// emits the sentinel notification + exits without
+		// another sleep.
+		if maxFailures > 0 && attemptCount >= maxFailures {
+			t.emitSSEPermanentDisconnect(ctx, ch)
+			return
+		}
+
+		// Compute the backoff for the NEXT attempt.
+		wait := computeSSEBackoff(attemptCount, retryInterval, maxRetry)
+
+		// Wait, honouring ctx.Done at every tick.
+		t.sleepOrAbort(ctx, wait)
+	}
+}
+
+// readSSEStream performs one connect-and-read pass on the SSE
+// endpoint. Returns:
+//   - connected: true if we got a 200 OK with content-type
+//     text/event-stream (regardless of whether any frames
+//     followed); false otherwise (transport error, non-200).
+//   - ctxDone: true if ctx cancellation aborted the pass; caller
+//     must return immediately without further reconnect.
+//
+// Updates *lastEventID on every `id:` field and *retryInterval
+// on every spec-compliant `retry:` field. Capped at maxRetry.
+func (t *MCPHTTPTransport) readSSEStream(
+	ctx context.Context,
+	sseClient *http.Client,
+	ch chan<- MCPHTTPNotification,
+	lastEventID *string,
+	retryInterval *time.Duration,
+	maxRetry time.Duration,
+) (connected bool, ctxDone bool) {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, t.cfg.SSEEndpoint, nil)
 	if err != nil {
-		return
+		return false, ctx.Err() != nil
 	}
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("Cache-Control", "no-cache")
@@ -539,25 +713,23 @@ func (t *MCPHTTPTransport) runSSE(ctx context.Context, ch chan<- MCPHTTPNotifica
 	if t.cfg.BearerToken != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+t.cfg.BearerToken)
 	}
-
-	// Use a separate client for SSE that does NOT honour
-	// cfg.Timeout (SSE is a long-lived stream; a 30-second
-	// request timeout would tear it down immediately).
-	sseClient := &http.Client{
-		Transport: t.client.Transport,
-		// Timeout intentionally 0 (no overall request timeout).
-		// ctx cancellation closes the connection.
+	if *lastEventID != "" {
+		// Per W3C/HTML5 EventSource spec — server uses this
+		// to replay events delivered after the given id.
+		httpReq.Header.Set("Last-Event-ID", *lastEventID)
 	}
 
 	httpResp, err := sseClient.Do(httpReq)
 	if err != nil {
-		return
+		return false, ctx.Err() != nil
 	}
 	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
-		return
+		return false, ctx.Err() != nil
 	}
+
+	connected = true
 
 	reader := bufio.NewReader(httpResp.Body)
 	var (
@@ -574,10 +746,6 @@ func (t *MCPHTTPTransport) runSSE(ctx context.Context, ch chan<- MCPHTTPNotifica
 			EventType: curEvent,
 			Raw:       raw,
 		}
-		// Try to decode the data as a JSON-RPC notification
-		// frame so we can populate Method + Params. Tolerate
-		// non-JSON-RPC SSE payloads — set Method="" and let
-		// the caller deal via Raw.
 		var jr struct {
 			Method string          `json:"method"`
 			Params json.RawMessage `json:"params"`
@@ -596,30 +764,25 @@ func (t *MCPHTTPTransport) runSSE(ctx context.Context, ch chan<- MCPHTTPNotifica
 
 	for {
 		if ctx.Err() != nil {
-			return
+			return connected, true
 		}
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			// EOF or transport error; emit any partial
-			// frame then exit. The deferred close(ch)
-			// signals the caller.
+			// frame then return so the outer loop decides
+			// whether to reconnect.
 			flush()
-			return
+			return connected, ctx.Err() != nil
 		}
-		// Strip the trailing \n (and optional \r per the
-		// SSE spec).
 		line = strings.TrimRight(line, "\r\n")
 
-		// Empty line = end-of-event marker.
 		if line == "" {
 			flush()
 			continue
 		}
-		// Comment lines start with ':'.
 		if strings.HasPrefix(line, ":") {
 			continue
 		}
-		// `field: value` framing per HTML5 SSE spec.
 		colon := strings.IndexByte(line, ':')
 		var field, value string
 		if colon < 0 {
@@ -628,8 +791,6 @@ func (t *MCPHTTPTransport) runSSE(ctx context.Context, ch chan<- MCPHTTPNotifica
 		} else {
 			field = line[:colon]
 			value = line[colon+1:]
-			// Leading single space after the colon is
-			// stripped per spec.
 			value = strings.TrimPrefix(value, " ")
 		}
 
@@ -642,16 +803,146 @@ func (t *MCPHTTPTransport) runSSE(ctx context.Context, ch chan<- MCPHTTPNotifica
 			}
 			curData.WriteString(value)
 		case "id":
-			// Spec says we should record this for the
-			// Last-Event-ID retry header. Round-41 keeps
-			// it simple (no automatic reconnect); silently
-			// drop.
+			// Per spec: record for Last-Event-ID retry
+			// header. The value MAY be empty (which per
+			// spec resets the last-id to empty); honour
+			// that.
+			*lastEventID = value
 		case "retry":
-			// Spec says set reconnect-time-in-ms. Round-41
-			// has no auto-reconnect; silently drop.
+			// Per spec: integer milliseconds. Reject
+			// non-integer values silently. Cap at
+			// maxRetry to defend against malicious /
+			// buggy servers.
+			ms, parseErr := parseSSERetryMs(value)
+			if parseErr == nil && ms > 0 {
+				ri := time.Duration(ms) * time.Millisecond
+				if ri > maxRetry {
+					ri = maxRetry
+				}
+				*retryInterval = ri
+			}
 		default:
 			// Unknown field per spec → ignore.
 		}
+	}
+}
+
+// emitSSEPermanentDisconnect synthesises a notification that
+// carries the ErrMCPSSEStreamPermanentlyDisconnected sentinel
+// in Raw and a structured method/params payload describing the
+// give-up condition. Consumers can errors.Is on the sentinel via
+// the EventType field (set to a stable marker string) without
+// having to inspect Raw bytes.
+//
+// The send respects ctx.Done so a cancelled consumer doesn't
+// keep this goroutine pinned forever.
+func (t *MCPHTTPTransport) emitSSEPermanentDisconnect(ctx context.Context, ch chan<- MCPHTTPNotification) {
+	payload := map[string]interface{}{
+		"sentinel": "ErrMCPSSEStreamPermanentlyDisconnected",
+		"message":  ErrMCPSSEStreamPermanentlyDisconnected.Error(),
+	}
+	params, _ := json.Marshal(payload)
+	notif := MCPHTTPNotification{
+		EventType: sseEventPermanentDisconnect,
+		Method:    "$helix/sse_permanent_disconnect",
+		Params:    params,
+		Raw:       []byte(ErrMCPSSEStreamPermanentlyDisconnected.Error()),
+	}
+	select {
+	case ch <- notif:
+	case <-ctx.Done():
+	}
+}
+
+// sseEventPermanentDisconnect is the EventType stamped on the
+// synthetic notification emitted when the SSE goroutine gives up
+// after MaxConsecutiveFailures. Consumers can branch on this
+// stable string without parsing Raw.
+const sseEventPermanentDisconnect = "$helix/sse_permanent_disconnect"
+
+// computeSSEBackoff returns the wait duration before the next
+// reconnect attempt. Doubling growth (1×, 2×, 4×, ...) starting
+// from retryInterval, capped at min(retryInterval*8, maxRetry),
+// with ±25% jitter applied to defend against thundering-herd.
+//
+// attemptCount is the number of CONSECUTIVE failures so far
+// (1-indexed for backoff math: attemptCount=1 → 1×retryInterval).
+func computeSSEBackoff(attemptCount int, retryInterval, maxRetry time.Duration) time.Duration {
+	if attemptCount < 1 {
+		attemptCount = 1
+	}
+	// shift = attemptCount-1 clamped to avoid Int overflow on
+	// the doubling step (>30 attempts is well past maxRetry).
+	shift := attemptCount - 1
+	if shift > 30 {
+		shift = 30
+	}
+	mult := int64(1) << uint(shift)
+	wait := time.Duration(int64(retryInterval) * mult)
+	cap1 := retryInterval * 8
+	if cap1 <= 0 || cap1 > maxRetry {
+		cap1 = maxRetry
+	}
+	if wait > cap1 {
+		wait = cap1
+	}
+	if wait > maxRetry {
+		wait = maxRetry
+	}
+	if wait <= 0 {
+		wait = retryInterval
+	}
+	// ±25% jitter via a cheap deterministic-enough source
+	// (nanosecond clock LSBs). Cryptographic randomness is
+	// overkill for backoff jitter and would add a dependency.
+	jitterRange := int64(wait / 4) // 25%
+	if jitterRange > 0 {
+		now := time.Now().UnixNano()
+		// Map LSBs into [-jitterRange, +jitterRange).
+		jitter := (now % (2*jitterRange + 1)) - jitterRange
+		wait += time.Duration(jitter)
+	}
+	if wait < 0 {
+		wait = retryInterval
+	}
+	return wait
+}
+
+// parseSSERetryMs parses the SSE `retry:` field value as
+// non-negative integer milliseconds. Returns an error for any
+// non-digit content per spec.
+func parseSSERetryMs(s string) (int64, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, fmt.Errorf("empty")
+	}
+	var n int64
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return 0, fmt.Errorf("non-digit %q", r)
+		}
+		n = n*10 + int64(r-'0')
+		// Overflow defence (10 billion ms ~ 115 days; cap)
+		if n > 1_000_000_000_000 {
+			return 0, fmt.Errorf("overflow")
+		}
+	}
+	return n, nil
+}
+
+// sleepOrAbort blocks for d, but returns immediately on
+// ctx.Done. Used by the SSE reconnect loop so a cancelled ctx
+// never has to wait out a 60-second backoff. NEVER use
+// time.Sleep on a ctx-cancellable path.
+func (t *MCPHTTPTransport) sleepOrAbort(ctx context.Context, d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
 	}
 }
 

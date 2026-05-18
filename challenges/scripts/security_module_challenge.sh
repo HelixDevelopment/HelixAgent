@@ -38,7 +38,7 @@ run_test() {
 log_info "Section 1: Module Structure"
 
 run_test "Security directory exists" \
-    "test -d '$PROJECT_ROOT/../Security'"
+    "test -d '$PROJECT_ROOT/../security'"
 
 run_test "Security go.mod exists" \
     "test -f '$PROJECT_ROOT/../security/go.mod'"
@@ -50,7 +50,7 @@ run_test "Main go.mod has security require" \
     "grep -q 'digital.vasic.security' '$PROJECT_ROOT/go.mod'"
 
 run_test "Main go.mod has security replace directive" \
-    "grep -q 'replace digital.vasic.security => ../Security' '$PROJECT_ROOT/go.mod'"
+    "grep -q 'replace digital.vasic.security => ../security' '$PROJECT_ROOT/go.mod'"
 
 # ============================================================================
 # Section 2: Documentation
@@ -95,10 +95,10 @@ run_test "pkg/scanner package exists" \
 log_info "Section 4: Compilation"
 
 run_test "Security compiles" \
-    "cd '$PROJECT_ROOT/../Security' && go build ./..."
+    "cd '$PROJECT_ROOT/../security' && go build ./..."
 
 run_test "Security passes go vet" \
-    "cd '$PROJECT_ROOT/../Security' && go vet ./..."
+    "cd '$PROJECT_ROOT/../security' && go vet ./..."
 
 # ============================================================================
 # Section 5: Unit Tests
@@ -106,7 +106,7 @@ run_test "Security passes go vet" \
 log_info "Section 5: Unit Tests"
 
 run_test "Security unit tests pass" \
-    "cd '$PROJECT_ROOT/../Security' && GOMAXPROCS=2 nice -n 19 ionice -c 3 go test -short -count=1 -p 1 ./..."
+    "cd '$PROJECT_ROOT/../security' && GOMAXPROCS=2 nice -n 19 ionice -c 3 go test -short -count=1 -p 1 ./..."
 
 # ============================================================================
 # Section 6: Test Type Spectrum

@@ -88,12 +88,12 @@ fi
 # Step 4: Run HelixQA tests if banks exist
 echo ""
 echo "=== Running HelixQA Tests ==="
-if [ -d "../HelixQA" ] && [ -f "../helix_qa/banks/all-formats.yaml" ]; then
+if [ -d "../helix_qa" ] && [ -f "../helix_qa/banks/all-formats.yaml" ]; then
     echo "HelixQA module found. Running QA tests..."
     # Build helixqa binary if needed
     if [ ! -f "../helix_qa/bin/helixqa" ]; then
         echo "Building HelixQA binary..."
-        (cd "../HelixQA" && go build -o ./bin/helixqa ./cmd/helixqa)
+        (cd "../helix_qa" && go build -o ./bin/helixqa ./cmd/helixqa)
     fi
     # Create output directory
     mkdir -p "${PROJECT_ROOT}/reports/helixqa"

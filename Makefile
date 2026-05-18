@@ -1487,18 +1487,18 @@ monitoring-force-health-check:
 # =============================================================================
 
 verifier-init:
-	@echo "🔍 Initializing LLMsVerifier submodule (canonical at ../Dependencies/HelixDevelopment/LLMsVerifier)..."
-	cd .. && git submodule update --init --recursive Dependencies/HelixDevelopment/LLMsVerifier
+	@echo "🔍 Initializing LLMsVerifier submodule (canonical at ../dependencies/HelixDevelopment/LLMsVerifier)..."
+	cd .. && git submodule update --init --recursive dependencies/HelixDevelopment/LLMsVerifier
 	@echo "✅ LLMsVerifier submodule initialized"
 
 verifier-update:
-	@echo "🔄 Updating LLMsVerifier submodule (canonical at ../Dependencies/HelixDevelopment/LLMsVerifier)..."
-	cd .. && git submodule update --remote Dependencies/HelixDevelopment/LLMsVerifier
+	@echo "🔄 Updating LLMsVerifier submodule (canonical at ../dependencies/HelixDevelopment/LLMsVerifier)..."
+	cd .. && git submodule update --remote dependencies/HelixDevelopment/LLMsVerifier
 	@echo "✅ LLMsVerifier submodule updated"
 
 verifier-build:
 	@echo "🔨 Building verifier components..."
-	go build -o bin/verifier-cli ../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier/cmd/...
+	go build -o bin/verifier-cli ../dependencies/HelixDevelopment/LLMsVerifier/llm-verifier/cmd/...
 	@echo "✅ Verifier CLI built to bin/verifier-cli"
 
 verifier-test:

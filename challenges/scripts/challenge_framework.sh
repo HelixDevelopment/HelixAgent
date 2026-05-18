@@ -167,14 +167,14 @@ get_helixagent_binary() {
     echo "$binary"
 }
 
-# Get LLMsVerifier binary path (canonical at meta-repo root Dependencies/HelixDevelopment/LLMsVerifier per P1.5-T03.01)
+# Get LLMsVerifier binary path (canonical at meta-repo root dependencies/HelixDevelopment/LLMsVerifier per P1.5-T03.01)
 get_verifier_binary() {
-    local binary="$PROJECT_ROOT/../Dependencies/HelixDevelopment/LLMsVerifier/llm-verifier/llm-verifier"
+    local binary="$PROJECT_ROOT/../dependencies/HelixDevelopment/LLMsVerifier/llm-verifier/llm-verifier"
     if [[ ! -x "$binary" ]]; then
-        binary="$PROJECT_ROOT/../Dependencies/HelixDevelopment/LLMsVerifier/bin/llm-verifier"
+        binary="$PROJECT_ROOT/../dependencies/HelixDevelopment/LLMsVerifier/bin/llm-verifier"
     fi
     if [[ ! -x "$binary" ]]; then
-        log_error "LLMsVerifier binary not found. Run: cd ../Dependencies/HelixDevelopment/LLMsVerifier && make build"
+        log_error "LLMsVerifier binary not found. Run: cd ../dependencies/HelixDevelopment/LLMsVerifier && make build"
         return 1
     fi
     echo "$binary"

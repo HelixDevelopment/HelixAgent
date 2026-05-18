@@ -141,7 +141,7 @@ else
 fi
 
 # Test 15: HelixQA module compiles
-if (cd "$PROJECT_ROOT/../HelixQA" && go build ./... 2>/dev/null); then
+if (cd "$PROJECT_ROOT/../helix_qa" && go build ./... 2>/dev/null); then
     record_result "HelixQA module compiles" "PASS"
 else
     record_result "HelixQA module compiles" "FAIL"

@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,28 +26,113 @@ import (
 // rag-bridge appear functional while skipping the work the caller had
 // asked for. See close-out commit message for the full forensic
 // anchor (Article XI §11.9 / CONST-035 / CONST-050(A)).
+//
+// Round-77 §11.4 anti-bluff extension (2026-05-19): the sentinels
+// survive AS the default no-backend behaviour. retrieveDocuments and
+// rerankSources now consult VectorBackend / RerankerBackend
+// injection points (see SetVectorBackend, SetRerankerBackend); when
+// no backend is injected, the round-29 sentinels still fire — so
+// the round-29 anti-regression tests continue to pin contract. When
+// a backend IS injected, the function delegates to it and surfaces
+// real retrieval / real reranking. Semantics narrowed from "function
+// is a stub" to "no backend has been injected on this build". Round
+// 78+ ships the concrete MilvusBackend (pkg/milvus, pkg/pgvector,
+// pkg/qdrant, etc.) + RerankerBackend (pkg/cohere, pkg/nemotron,
+// pkg/jina, etc.); the interfaces here let those backends be wired
+// without touching the round-29 sentinel-returning bodies. Matches
+// the round-67 Harmony OS Outcome-B template (architectural
+// extension via injection point, sentinel retained as default).
 var (
 	// ErrMilvusRetrievalNotWired is returned by retrieveDocuments when
-	// the Milvus vector-DB client has not been wired in. Previously
-	// the function returned []Source{} unconditionally with the
-	// comment "Simplified retrieval - in production this would query
-	// Milvus" — the LLM downstream produced answers grounded in NO
-	// context whatsoever, and the caller could not tell "no documents
-	// matched the query" from "we never asked Milvus in the first
-	// place". CRITICAL §11.4 contract-bluff. Wire pkg/milvus client
-	// before re-enabling RAG retrieval.
-	ErrMilvusRetrievalNotWired = errors.New("rag-bridge: Milvus retrieval has not been wired — retrieveDocuments previously returned an empty []Source{} regardless of query, producing LLM answers grounded in NO context (§11.4 CRITICAL contract-bluff: caller cannot tell 'no documents matched' from 'we never asked Milvus'). Wire pkg/milvus client before re-enabling RAG retrieval")
+	// no VectorBackend has been injected via SetVectorBackend.
+	// Previously (round-29 round-state) the function returned
+	// []Source{} unconditionally with the comment "Simplified
+	// retrieval - in production this would query Milvus" — the LLM
+	// downstream produced answers grounded in NO context whatsoever,
+	// and the caller could not tell "no documents matched the query"
+	// from "we never asked Milvus in the first place". CRITICAL §11.4
+	// contract-bluff. Round-77: inject a VectorBackend via
+	// (*Server).SetVectorBackend(impl) at boot to clear this
+	// sentinel; there is NO no-op success path.
+	ErrMilvusRetrievalNotWired = errors.New("rag-bridge: Milvus retrieval has not been wired — retrieveDocuments previously returned an empty []Source{} regardless of query, producing LLM answers grounded in NO context (§11.4 CRITICAL contract-bluff: caller cannot tell 'no documents matched' from 'we never asked Milvus'). Round-77: inject a VectorBackend via (*Server).SetVectorBackend(impl) before re-enabling RAG retrieval")
 
 	// ErrRerankerNotWired is returned by rerankSources when the
-	// reranker client has not been wired in but the caller asked for
-	// reranking. Previously the function returned the input sources
-	// unchanged while pretending rerank had occurred — the response
-	// scoring was identical to the pre-rerank input but presented as
-	// reranked output. CRITICAL §11.4 contract-bluff. Wire
-	// pkg/reranker client before invoking rerankSources, or call
-	// with reranker explicitly disabled in the request.
-	ErrRerankerNotWired = errors.New("rag-bridge: reranker has not been wired — rerankSources previously returned input sources unchanged while pretending rerank had occurred (§11.4 CONTRACT-bluff). Wire pkg/reranker client before invoking rerankSources, or call with reranker explicitly disabled in the request")
+	// reranker IS configured (RerankerURL set, RerankerType != "none")
+	// AND no RerankerBackend has been injected via SetRerankerBackend.
+	// Previously (round-29 round-state) the function returned the
+	// input sources unchanged while pretending rerank had occurred —
+	// the response scoring was identical to the pre-rerank input but
+	// presented as reranked output. CRITICAL §11.4 contract-bluff.
+	// Round-77: inject a RerankerBackend via
+	// (*Server).SetRerankerBackend(impl) at boot to clear this
+	// sentinel, OR call with reranker explicitly disabled in config.
+	ErrRerankerNotWired = errors.New("rag-bridge: reranker has not been wired — rerankSources previously returned input sources unchanged while pretending rerank had occurred (§11.4 CONTRACT-bluff). Round-77: inject a RerankerBackend via (*Server).SetRerankerBackend(impl) before invoking rerankSources, or call with reranker explicitly disabled in the request")
 )
+
+// VectorBackend is the round-77 §11.4 anti-bluff injection interface
+// that consumers implement to wire (*Server).retrieveDocuments to a
+// real vector-database session (Milvus, pgvector, Qdrant, Weaviate,
+// Pinecone, Chroma, etc.).
+//
+// Why an interface (not a build tag, not a direct dependency on a
+// specific vector DB SDK): the realistic integrations are
+// vendor-specific (pkg/milvus over the official Milvus Go SDK,
+// pkg/pgvector over pgx + the pgvector extension, pkg/qdrant over
+// the Qdrant Go client, etc.) — none of which belong inside
+// rag-bridge's source tree per CONST-051(B) (decoupling / standalone-
+// reusability). The injection point keeps rag-bridge fully decoupled
+// from any specific vector DB while providing a clean handshake for
+// consumers that DO have a binding.
+//
+// Implementations MUST:
+//
+//   - Retrieve: perform a real top-k nearest-neighbour query against
+//     the configured vector store using the supplied query string
+//     (implementations are free to embed the query themselves OR
+//     delegate to the rag-bridge's embedding stage — the SDK boundary
+//     accepts the post-embedding stage as caller's responsibility but
+//     accepts a raw query for flexibility). Return the top-k Sources
+//     (each with ID, Document, Content, Score, Page populated from
+//     the store's metadata) or a non-nil error on transport / index /
+//     SDK failure. Returning (nil, nil) is FORBIDDEN — empty result
+//     for a successful query MUST be (empty-but-non-nil slice, nil
+//     error) so callers can distinguish "no matches" from "no call".
+//   - Honour ctx cancellation + deadlines from the caller (HTTP
+//     request timeout, RAG pipeline budget).
+type VectorBackend interface {
+	// Retrieve performs a real top-k nearest-neighbour query against
+	// the configured vector store for `query`, returning the top-k
+	// Sources or a non-nil error on failure.
+	Retrieve(ctx context.Context, query string, k int) ([]Source, error)
+}
+
+// RerankerBackend is the round-77 §11.4 anti-bluff injection interface
+// that consumers implement to wire (*Server).rerankSources to a real
+// reranker session (Cohere Rerank, NVIDIA Nemotron Reranker, Jina
+// Reranker, BGE Reranker, etc.).
+//
+// Why an interface (not a build tag, not a direct dependency on a
+// specific reranker SDK): same CONST-051(B) decoupling rationale as
+// VectorBackend. The injection point keeps rag-bridge agnostic to
+// the reranker provider while providing a clean handshake.
+//
+// Implementations MUST:
+//
+//   - Rerank: perform a real cross-encoder / listwise rerank of
+//     `candidates` against `query`, returning a slice ordered by the
+//     reranker's score (highest first) and trimmed to caller's k if
+//     k > 0. Each returned Source's Score field SHOULD reflect the
+//     reranker's score (NOT the original retrieval score), so the
+//     caller's confidence calculation reflects post-rerank ranking.
+//     Returning input unchanged is FORBIDDEN — that IS the round-29
+//     bluff this interface exists to prevent.
+//   - Honour ctx cancellation + deadlines from the caller.
+type RerankerBackend interface {
+	// Rerank performs a real cross-encoder rerank of candidates
+	// against query, returning the rerank-ordered slice or a non-nil
+	// error on failure.
+	Rerank(ctx context.Context, query string, candidates []Source) ([]Source, error)
+}
 
 // Config holds service configuration
 type Config struct {
@@ -132,10 +218,23 @@ func getEnvBool(key string, defaultValue bool) bool {
 	return defaultValue
 }
 
-// Server handles HTTP requests
+// Server handles HTTP requests.
+//
+// Round-77 §11.4 anti-bluff extension (2026-05-19): Server now carries
+// two optional backend injection points — vectorBackend and
+// rerankerBackend. When nil (the default), retrieveDocuments and
+// rerankSources fall back to the round-29 sentinels
+// (ErrMilvusRetrievalNotWired, ErrRerankerNotWired). When non-nil,
+// they delegate to the injected backend. Set via SetVectorBackend /
+// SetRerankerBackend. Read under backendMu; writes serialised through
+// backendMu so concurrent HTTP handlers see consistent state.
 type Server struct {
 	config *Config
 	client *http.Client
+
+	backendMu       sync.RWMutex
+	vectorBackend   VectorBackend
+	rerankerBackend RerankerBackend
 }
 
 // NewServer creates a new server
@@ -144,6 +243,41 @@ func NewServer(config *Config) *Server {
 		config: config,
 		client: &http.Client{Timeout: 120 * time.Second},
 	}
+}
+
+// SetVectorBackend installs a VectorBackend implementation on the
+// server. When non-nil, retrieveDocuments delegates to impl.Retrieve
+// for real top-k nearest-neighbour search. When nil, retrieveDocuments
+// falls back to the round-29 ErrMilvusRetrievalNotWired sentinel —
+// passing nil deliberately UN-installs a previously-injected backend
+// (useful for test isolation + graceful degradation when the
+// underlying binding reports a permanent failure).
+//
+// Round-77 §11.4 design rationale: see VectorBackend interface
+// documentation + commit message.
+func (s *Server) SetVectorBackend(impl VectorBackend) {
+	s.backendMu.Lock()
+	defer s.backendMu.Unlock()
+	s.vectorBackend = impl
+}
+
+// SetRerankerBackend installs a RerankerBackend implementation on the
+// server. When non-nil AND the reranker is configured (RerankerURL
+// set, RerankerType != "none"), rerankSources delegates to
+// impl.Rerank for real cross-encoder reranking. When nil with reranker
+// configured, rerankSources falls back to the round-29
+// ErrRerankerNotWired sentinel. The "reranker disabled by config"
+// path (RerankerURL == "" or RerankerType == "none") continues to
+// pass through unchanged regardless of injection — that is the
+// legitimate "rerank disabled" contract, not a bluff. Passing nil
+// deliberately UN-installs a previously-injected backend.
+//
+// Round-77 §11.4 design rationale: see RerankerBackend interface
+// documentation + commit message.
+func (s *Server) SetRerankerBackend(impl RerankerBackend) {
+	s.backendMu.Lock()
+	defer s.backendMu.Unlock()
+	s.rerankerBackend = impl
 }
 
 // DocumentRequest represents a document processing request
@@ -584,8 +718,14 @@ func (s *Server) handleRAGQuery(w http.ResponseWriter, r *http.Request) {
 	// uncontextualised — round-29 §11.4 anti-bluff fix.
 	var warnings []string
 
-	// Step 2: Retrieve similar documents
-	sources, err := s.retrieveDocuments(ctx, queryEmbedding, req.Collection, req.TopK*2)
+	// Step 2: Retrieve similar documents. Pass both the raw query
+	// (round-77 VectorBackend interface uses it directly — many
+	// backends embed internally) and the pre-computed embedding (for
+	// backends that prefer to skip the embedding stage and consume
+	// vectors directly). Round-77 §11.4 extension: when a
+	// VectorBackend is injected via SetVectorBackend, it gets called;
+	// when not, ErrMilvusRetrievalNotWired fires per round-29.
+	sources, err := s.retrieveDocuments(ctx, req.Query, queryEmbedding, req.Collection, req.TopK*2)
 	if err != nil {
 		log.Printf("Document retrieval failed: %v", err)
 		// Continue with empty sources but record the degraded-path
@@ -740,35 +880,119 @@ func (s *Server) generateEmbedding(ctx context.Context, text string) ([]float32,
 	return nil, fmt.Errorf("empty embedding response")
 }
 
-// retrieveDocuments queries the Milvus vector DB for documents whose
-// embeddings are nearest to `embedding`. Round-29 §11.4 fix: the
-// Milvus client wiring is not yet in place; rather than silently
-// returning []Source{} (the previous CRITICAL contract-bluff —
-// callers received an empty source list indistinguishable from "the
-// query genuinely had no matches"), the function now surfaces
-// ErrMilvusRetrievalNotWired so the caller can either degrade
-// gracefully (continue with empty sources + emit "RAG unavailable")
-// or fail loudly. Wire pkg/milvus client and the real similarity
-// search before removing this sentinel.
-func (s *Server) retrieveDocuments(ctx context.Context, embedding []float32, collection string, topK int) ([]Source, error) {
+// retrieveDocuments queries the configured vector store for documents
+// nearest to `query` / `embedding`. Decision tree:
+//
+//  1. If a VectorBackend has been injected via SetVectorBackend,
+//     delegate to its Retrieve method using the supplied query +
+//     topK. The backend is responsible for embedding the query
+//     itself (if it didn't accept the caller's embedding) and for
+//     returning real top-k Sources. A non-nil error from the backend
+//     is wrapped + returned verbatim (transport / index / SDK failure
+//     must NOT silently degrade to empty results).
+//  2. If no VectorBackend is injected, return
+//     ErrMilvusRetrievalNotWired — preserving the round-29 sentinel
+//     contract so callers can distinguish "real retrieval genuinely
+//     found nothing" (honest empty-slice + nil-error from branch 1)
+//     from "retrieval never ran" (branch 2 sentinel).
+//
+// Round-77 §11.4 extension (2026-05-19): branch 1 is new. The
+// pre-round-77 contract (branch 2 sentinel) is preserved exactly
+// when no backend is injected, so the existing round-29 sentinel
+// tests continue to pass without modification. Round 78+ ships
+// concrete VectorBackend implementations (pkg/milvus, pkg/pgvector,
+// pkg/qdrant, etc.) that wire branch 1 to real vector DBs.
+//
+// The `embedding` parameter is preserved for backends that prefer to
+// skip the embedding stage; the current VectorBackend interface
+// takes only the raw query (most production backends embed
+// internally to control batch size + caching). Future interface
+// extension (round 78+) MAY add an "AcceptsPrecomputedEmbedding"
+// optional subinterface so backends that consume vectors directly
+// can opt in.
+func (s *Server) retrieveDocuments(ctx context.Context, query string, embedding []float32, collection string, topK int) ([]Source, error) {
+	s.backendMu.RLock()
+	backend := s.vectorBackend
+	s.backendMu.RUnlock()
+
+	if backend != nil {
+		// Branch 1: delegate to injected backend. Use the request
+		// context so cancellation propagates to the backend.
+		sources, err := backend.Retrieve(ctx, query, topK)
+		if err != nil {
+			return nil, fmt.Errorf("rag-bridge: injected VectorBackend Retrieve(collection=%q, topK=%d): %w", collection, topK, err)
+		}
+		// Defensive: nil slice with nil error is FORBIDDEN per the
+		// VectorBackend contract — coerce to a non-nil empty slice
+		// so callers reliably distinguish "no matches" from "backend
+		// returned nothing".
+		if sources == nil {
+			sources = []Source{}
+		}
+		return sources, nil
+	}
+
+	// Branch 2: no backend injected — round-29 sentinel contract.
+	// The `embedding` parameter is referenced here so future
+	// implementations of the sentinel-path can use it (and the
+	// linter does not complain about an unused parameter).
+	_ = embedding
 	return nil, fmt.Errorf("retrieveDocuments(collection=%q, topK=%d): %w", collection, topK, ErrMilvusRetrievalNotWired)
 }
 
 // rerankSources runs the configured reranker over the candidate
-// sources and returns the top-K. Round-29 §11.4 fix: when the
-// reranker URL/type indicates "none", the previous behaviour of
-// returning input sources untouched IS the contract (rerank
-// disabled). When the reranker IS configured (URL set, type != none)
-// but the reranker client wiring is missing, the function now
-// surfaces ErrRerankerNotWired instead of silently passing input
-// through as if it had been reranked (CRITICAL §11.4 contract-bluff
-// the previous "return sources, nil" introduced). Wire the real
-// reranker client before removing this sentinel.
+// sources and returns the top-K. Decision tree:
+//
+//  1. If the reranker is explicitly disabled by config (RerankerURL
+//     == "" OR RerankerType == "none"), pass `sources` through
+//     unchanged with nil error. This is the legitimate "rerank
+//     disabled" contract, NOT a bluff — predates round-29 and
+//     survives unchanged.
+//  2. If the reranker IS configured AND a RerankerBackend has been
+//     injected via SetRerankerBackend, delegate to its Rerank method
+//     with the full candidate set. The backend is expected to return
+//     a slice ordered by its score; we then trim to caller's topK if
+//     the backend returned more. A non-nil error from the backend
+//     wraps + returns verbatim.
+//  3. If the reranker IS configured AND no RerankerBackend has been
+//     injected, return ErrRerankerNotWired — preserving the
+//     round-29 sentinel contract.
+//
+// Round-77 §11.4 extension (2026-05-19): branch 2 is new. The
+// pre-round-77 contract (branches 1 + 3) is preserved exactly when
+// no backend is injected, so the existing round-29 sentinel tests
+// continue to pass without modification. Round 78+ ships concrete
+// RerankerBackend implementations (pkg/cohere, pkg/nemotron,
+// pkg/jina, pkg/bge, etc.) that wire branch 2 to real rerankers.
 func (s *Server) rerankSources(ctx context.Context, query string, sources []Source, topK int) ([]Source, error) {
 	if s.config.RerankerURL == "" || s.config.RerankerType == "none" {
-		// Reranker explicitly disabled — pass-through is the contract.
+		// Branch 1: reranker explicitly disabled — pass-through is the contract.
 		return sources, nil
 	}
+
+	s.backendMu.RLock()
+	backend := s.rerankerBackend
+	s.backendMu.RUnlock()
+
+	if backend != nil {
+		// Branch 2: delegate to injected backend.
+		reranked, err := backend.Rerank(ctx, query, sources)
+		if err != nil {
+			return nil, fmt.Errorf("rag-bridge: injected RerankerBackend Rerank(query=%q, candidates=%d): %w", query, len(sources), err)
+		}
+		// Defensive nil-to-empty coercion (same rationale as
+		// VectorBackend branch).
+		if reranked == nil {
+			reranked = []Source{}
+		}
+		// Trim to caller's top-K if the backend returned more.
+		if topK > 0 && len(reranked) > topK {
+			reranked = reranked[:topK]
+		}
+		return reranked, nil
+	}
+
+	// Branch 3: no backend injected — round-29 sentinel contract.
 	return nil, fmt.Errorf("rerankSources(query=%q, topK=%d, rerankerType=%q): %w", query, topK, s.config.RerankerType, ErrRerankerNotWired)
 }
 

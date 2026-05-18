@@ -303,7 +303,11 @@ func TestEmbeddingHandler_WithRealManager(t *testing.T) {
 
 	t.Run("GenerateEmbeddings success", func(t *testing.T) {
 		t.Parallel()
-		body := `{"texts": ["Hello world"], "model": "text-embedding-3-small"}`
+		// Round-116 ISSUE-009: handler (embeddings.go:51-80) accepts
+		// {"text":"..."} (native) or {"input":"..."} (OpenAI compat) per
+		// CONST-035 §c; "texts" array form is not part of the supported
+		// payload shape — use the canonical single-string field.
+		body := `{"text": "Hello world", "model": "text-embedding-3-small"}`
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("POST", "/v1/embeddings/generate", bytes.NewBufferString(body))

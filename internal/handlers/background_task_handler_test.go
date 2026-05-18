@@ -622,6 +622,11 @@ func TestGetTaskLogs(t *testing.T) {
 		handler, repo, _ := setupTestHandler()
 
 		taskID := "test-task-id"
+		// Round-116 ISSUE-009: handler (background_task_handler.go:368-376)
+		// validates task existence via GetByID BEFORE returning logs per
+		// CONST-035 §c anti-bluff fix. Seed the task in the mock repo so
+		// GetByID succeeds and the success path is exercised.
+		repo.tasks[taskID] = &models.BackgroundTask{ID: taskID, Status: models.TaskStatusRunning}
 		eventData1, _ := json.Marshal(map[string]interface{}{"worker": "worker-1"})
 		eventData2, _ := json.Marshal(map[string]interface{}{"percent": 50})
 		repo.history[taskID] = []*models.TaskExecutionHistory{
@@ -685,6 +690,10 @@ func TestGetTaskResources(t *testing.T) {
 		handler, repo, _ := setupTestHandler()
 
 		taskID := "test-task-id"
+		// Round-116 ISSUE-009: handler (background_task_handler.go:421-429)
+		// validates task existence via GetByID BEFORE returning resources
+		// per CONST-035 §c. Seed the task in the mock repo.
+		repo.tasks[taskID] = &models.BackgroundTask{ID: taskID, Status: models.TaskStatusRunning}
 		repo.resourceSnapshots[taskID] = []*models.ResourceSnapshot{
 			{
 				TaskID:         taskID,

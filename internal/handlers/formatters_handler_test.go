@@ -562,8 +562,10 @@ func TestFormattersHandler_FormatCode_UnsupportedLanguage(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	// Should return 500 because no formatter is available
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	// Round-116 ISSUE-009: handler classifies "no formatters available for
+	// language: X" as caller-side bad-input (400) per CONST-035 §c (see
+	// formatters_handler.go:90-101) — returning 500 caused SDK retry storms.
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 // ============================================================================

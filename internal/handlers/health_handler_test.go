@@ -511,14 +511,18 @@ func TestIsProviderAvailable_NotAvailable(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/verifier/health/available/nonexistent", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	// Round 109 §11.9 fix: production now distinguishes "provider not
+	// registered" (404) from "provider registered but unavailable"
+	// (200 + available:false) per the CONST-035 §c comment in
+	// IsProviderAvailable. Test previously asserted 200 + available:false
+	// for ANY id, which was the structural bluff the handler fix removed.
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	var resp map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
-	assert.Equal(t, "nonexistent", resp["provider_id"])
-	assert.False(t, resp["available"].(bool))
+	assert.Contains(t, resp["error"], "provider not found")
 }
 
 func TestGetProviderLatency_Success(t *testing.T) {

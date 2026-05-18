@@ -431,10 +431,17 @@ func TestSetupRouter_TasksEndpoints(t *testing.T) {
 		req := httptest.NewRequest("GET", "/v1/tasks/task-123/status", nil)
 		router.ServeHTTP(w, req)
 
-		// Route exists (not 404). Without infrastructure the handler may return
-		// 500 due to nil repository, or 200/404 if fully initialized.
-		assert.NotEqual(t, http.StatusNotFound, w.Code,
-			"GET /v1/tasks/:id/status route should be registered")
+		// Round 109 §11.9 fix: the comment already noted "200/404 if fully
+		// initialized" but the assertion forbade 404 — direct contradiction.
+		// With the real InMemoryTaskRepository wired (router.go:1275), GET
+		// for a non-existent task ID correctly returns 404 from the handler
+		// itself (not from gin route-not-found). Distinguish "route not
+		// registered" (gin 404 with no body) from "handler 404 because task
+		// missing" (404 with JSON error body).
+		if w.Code == http.StatusNotFound {
+			assert.NotEmpty(t, w.Body.Bytes(),
+				"GET /v1/tasks/:id/status: 404 with empty body means route not registered")
+		}
 	})
 
 	t.Run("GET /v1/tasks/queue/stats route is registered", func(t *testing.T) {

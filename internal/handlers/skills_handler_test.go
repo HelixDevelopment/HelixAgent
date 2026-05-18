@@ -403,14 +403,19 @@ func TestSkillsHandler_GetSkillsByCategory_NonExistent(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/v1/skills/nonexistent", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	// Round 109 §11.9 fix: production handler intentionally returns 404
+	// for unknown categories (see GetSkillsByCategory body — explicit
+	// CONST-035 §c anti-bluff comment). Test previously asserted 200 +
+	// empty list which is the structural-bluff behaviour the production
+	// fix removed. Align the test with the corrected handler contract.
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	var resp ListSkillsResponse
+	var resp map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
-	assert.Equal(t, 0, resp.Count)
-	assert.Empty(t, resp.Skills)
+	assert.Equal(t, "nonexistent", resp["category"])
+	assert.Contains(t, resp["error"], "category not found")
 }
 
 // ============================================================================

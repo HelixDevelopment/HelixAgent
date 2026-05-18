@@ -4,6 +4,7 @@ package aider
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -92,11 +93,24 @@ func TestAiderExecute(t *testing.T) {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
+	// Round 109 §11.9 fix: previously asserted wantErr=true for chat/commit
+	// solely because they shell out to `aider` which "should be" absent.
+	// When `aider` IS in PATH (operator's dev machine), Execute returns nil
+	// → test failed despite production behaving correctly. The chat/commit
+	// happy paths require real LLM credentials and are exercised in the
+	// integration suite; here we only assert the dispatch shape (known vs
+	// unknown command) which is what this unit test can actually certify.
+	aiderAbsent := false
+	if _, lookErr := exec.LookPath("aider"); lookErr != nil {
+		aiderAbsent = true
+	}
+
 	tests := []struct {
-		name    string
-		command string
-		params  map[string]interface{}
-		wantErr bool
+		name             string
+		command          string
+		params           map[string]interface{}
+		wantErr          bool
+		requiresNoBinary bool // true → only assert when aider is NOT in PATH
 	}{
 		{
 			name:    "chat command",
@@ -104,7 +118,8 @@ func TestAiderExecute(t *testing.T) {
 			params: map[string]interface{}{
 				"message": "Hello",
 			},
-			wantErr: true, // Requires aider executable in PATH
+			wantErr:          true,
+			requiresNoBinary: true,
 		},
 		{
 			name:    "architect command",
@@ -112,25 +127,30 @@ func TestAiderExecute(t *testing.T) {
 			params: map[string]interface{}{
 				"prompt": "Design a system",
 			},
-			wantErr: true, // Requires aider executable in PATH
+			// Aider has no "architect" subcommand in Execute switch →
+			// hits default → returns "unknown command" error
+			// regardless of binary presence.
+			wantErr: true,
 		},
 		{
-			name:    "commit command",
-			command: "commit",
-			params:  map[string]interface{}{},
-			wantErr: true, // Requires aider executable in PATH
+			name:             "commit command",
+			command:          "commit",
+			params:           map[string]interface{}{},
+			wantErr:          true,
+			requiresNoBinary: true,
 		},
 		{
 			name:    "lint command",
 			command: "lint",
 			params:  map[string]interface{}{},
-			wantErr: true, // Requires aider executable in PATH
+			// Not in Execute switch → "unknown command" → deterministic err
+			wantErr: true,
 		},
 		{
 			name:    "test command",
 			command: "test",
 			params:  map[string]interface{}{},
-			wantErr: true, // Requires aider executable in PATH
+			wantErr: true,
 		},
 		{
 			name:    "unknown command",
@@ -143,6 +163,12 @@ func TestAiderExecute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			if tt.requiresNoBinary && !aiderAbsent {
+				// SKIP-OK: round-109 §11.9 — happy path requires real
+				// LLM creds; covered in integration suite. Unit asserting
+				// "process exec failed" is a bluff when binary is present.
+				t.Skipf("aider binary present in PATH; skipping wantErr=true assertion (SKIP-OK: round-109 §11.9)")
+			}
 			result, err := a.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)

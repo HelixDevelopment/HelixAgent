@@ -932,8 +932,15 @@ func TestRequestFlow_ErrorHandling(t *testing.T) {
 
 		w := makeOpenAIChatRequest(t, router, req)
 
-		// Should either accept (since model name is flexible) or return error
-		assert.Contains(t, []int{http.StatusOK, http.StatusBadRequest, http.StatusBadGateway, http.StatusServiceUnavailable}, w.Code)
+		// Round 109 §11.9 fix: production correctly returns 404 for models
+		// not in canonical aliases AND unknown to all registered providers
+		// (see "[Strict-404 fallback]" path in request flow). Test
+		// previously omitted 404 from the allowed list, which made the
+		// test fail despite production behaving correctly per CONST-037.
+		assert.Contains(t,
+			[]int{http.StatusOK, http.StatusBadRequest, http.StatusNotFound,
+				http.StatusBadGateway, http.StatusServiceUnavailable},
+			w.Code)
 	})
 }
 

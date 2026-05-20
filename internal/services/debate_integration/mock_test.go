@@ -7,7 +7,7 @@ import (
 
 	"dev.helix.agent/internal/models"
 	"digital.vasic.llmprovider"
-	digitalvasicmodels "digital.vasic.models"
+	digitalvasicmodels "digital.vasic.llmprovider/pkg/models"
 )
 
 // Helper conversion functions for tests (similar to provider_bridge.go)

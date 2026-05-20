@@ -283,7 +283,7 @@ replace digital.vasic.background => ../dependencies/vasic-digital/BackgroundTask
 
 replace digital.vasic.llmprovider => ../dependencies/HelixDevelopment/LLMProvider
 
-replace digital.vasic.debate => ../dependencies/HelixDevelopment/DebateOrchestrator
+replace digital.vasic.debate => ../dependencies/HelixDevelopment/debate_orchestrator
 
 replace digital.vasic.helixqa => ../helix_qa
 

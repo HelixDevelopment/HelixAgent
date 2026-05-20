@@ -14,7 +14,6 @@ import (
 	"dev.helix.agent/internal/testutil"
 	"digital.vasic.debate/orchestrator"
 	"digital.vasic.debate/topology"
-	"digital.vasic.debate/voting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,33 +80,30 @@ func createDebatePayload(
 
 // TestDebateFullFlow_OrchestratorInit verifies that the default orchestrator
 // configuration can be created with valid defaults.
+//
+// NOTE (round-342, HXA-002): the DebateOrchestrator submodule was rebuilt
+// from scratch (DebateOrchestrator commit 196d0ea) with a slim
+// OrchestratorConfig. The pre-reconstruction fields asserted by the
+// original version of this test — DefaultMinConsensus, MaxAgentsPerDebate,
+// EnableAgentDiversity, MinConsensusForLesson, VotingMethod,
+// EnableConfidenceWeighting — were genuinely DELETED (a tree-wide search
+// of dependencies/ found no surviving copy). This test now asserts only
+// the fields the reconstructed OrchestratorConfig actually exposes.
 func TestDebateFullFlow_OrchestratorInit(t *testing.T) {
 	cfg := orchestrator.DefaultOrchestratorConfig()
 
 	assert.Equal(t, 3, cfg.DefaultMaxRounds,
 		"Default max rounds should be 3")
-	assert.Equal(t, 5*time.Minute, cfg.DefaultTimeout,
-		"Default timeout should be 5 minutes")
+	assert.Equal(t, 30*time.Second, cfg.DefaultTimeout,
+		"Default timeout should be 30 seconds")
 	assert.Equal(t, topology.TopologyGraphMesh, cfg.DefaultTopology,
 		"Default topology should be GraphMesh")
-	assert.InDelta(t, 0.75, cfg.DefaultMinConsensus, 0.001,
-		"Default min consensus should be 0.75")
-	assert.Equal(t, 15, cfg.MinAgentsPerDebate,
-		"Min agents per debate should be 15 (3 positions × 5 models)")
-	assert.Equal(t, 25, cfg.MaxAgentsPerDebate,
-		"Max agents per debate should be 25 (5 positions × 5 models)")
-	assert.True(t, cfg.EnableAgentDiversity,
-		"Agent diversity should be enabled by default")
+	assert.Equal(t, 2, cfg.MinAgentsPerDebate,
+		"Min agents per debate should be 2")
 	assert.True(t, cfg.EnableLearning,
 		"Learning should be enabled by default")
 	assert.True(t, cfg.EnableCrossDebateLearning,
 		"Cross-debate learning should be enabled by default")
-	assert.InDelta(t, 0.7, cfg.MinConsensusForLesson, 0.001,
-		"Min consensus for lesson should be 0.7")
-	assert.Equal(t, voting.VotingMethodWeighted, cfg.VotingMethod,
-		"Voting method should be Weighted")
-	assert.True(t, cfg.EnableConfidenceWeighting,
-		"Confidence weighting should be enabled by default")
 }
 
 // TestDebateFullFlow_HealthEndpoint verifies that the HelixAgent /health

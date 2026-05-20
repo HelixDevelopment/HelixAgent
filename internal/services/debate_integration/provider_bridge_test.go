@@ -97,10 +97,10 @@ func TestOrchestratorFactoryWithMock(t *testing.T) {
 	require.NotNil(t, orch)
 
 	// Register providers
-	err := orch.RegisterProvider("claude", "claude-3", 9.0)
+	err := orch.RegisterProvider("claude", "claude-3", 0.9)
 	require.NoError(t, err)
 
-	err = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
+	err = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
 	require.NoError(t, err)
 
 	// Verify providers were registered
@@ -116,7 +116,10 @@ func TestProviderInvoker_WithBridge(t *testing.T) {
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 
-	invoker := orchestrator.NewProviderInvoker(mockRegistry)
+	// NOTE (round-342, HXA-002): the reconstructed DebateOrchestrator
+	// NewProviderInvoker takes (ProviderRegistry, providerName) — the
+	// pre-reconstruction single-argument form was deleted.
+	invoker := orchestrator.NewProviderInvoker(mockRegistry, "claude")
 	assert.NotNil(t, invoker)
 
 	// Test that invoker can get provider
@@ -146,13 +149,15 @@ func TestEndToEndMockIntegration(t *testing.T) {
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
 	// Register all mock providers
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	_ = orch.RegisterProvider("claude", "claude-3", 0.9)
+	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
+	_ = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 
-	// Verify setup
+	// Verify setup. NOTE (round-342, HXA-002): the reconstructed
+	// orchestrator exposes the lesson bank via Bank() — the
+	// pre-reconstruction GetKnowledgeRepository accessor was deleted.
 	assert.Equal(t, 3, orch.GetAgentPool().Size())
-	assert.NotNil(t, orch.GetKnowledgeRepository())
+	assert.NotNil(t, orch.Bank())
 
 	// Get statistics
 	ctx := t.Context()

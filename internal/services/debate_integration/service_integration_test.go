@@ -229,7 +229,10 @@ func TestServiceIntegration_ConvertToDebateResult(t *testing.T) {
 			Dissents:   []string{"Dissent 1"},
 		},
 		Metrics: &orchestrator.DebateMetrics{
-			TotalResponses: 5,
+			// NOTE (round-342, HXA-002): the reconstructed DebateMetrics
+			// counts provider invocations via ProviderCalls — the
+			// pre-reconstruction TotalResponses field was deleted.
+			ProviderCalls:  5,
 			AvgConfidence:  0.85,
 			ConsensusScore: 0.88,
 		},
@@ -413,9 +416,9 @@ func TestServiceIntegration_WithMockRegistry(t *testing.T) {
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, orchConfig)
 
 	// Register providers
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	_ = orch.RegisterProvider("claude", "claude-3", 0.9)
+	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
+	_ = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 
 	// Create integration with the orchestrator
 	si := &ServiceIntegration{

@@ -14,7 +14,7 @@ import (
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
-	digitalvasicmodels "digital.vasic.models"
+	digitalvasicmodels "digital.vasic.llmprovider/pkg/models"
 )
 
 // leakInnerProvider is a minimal llm.LLMProvider whose CompleteStream returns

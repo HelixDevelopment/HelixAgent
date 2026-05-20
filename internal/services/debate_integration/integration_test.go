@@ -17,14 +17,33 @@ import (
 
 // =============================================================================
 // Full Integration Tests - End-to-End Debate Flow
+//
+// NOTE (round-342, HXA-002): the DebateOrchestrator submodule was rebuilt
+// from scratch (DebateOrchestrator commit 196d0ea — "initial reconstruction
+// (Phase 1)") with a deliberately slim public API. The pre-reconstruction
+// capability tier — APIAdapter.ConvertAPIRequest / GetDebateStatus /
+// CancelDebate, Orchestrator.GetKnowledgeRepository / GetRecommendations,
+// and the OrchestratorConfig fields DefaultMinConsensus / MaxAgentsPerDebate /
+// EnableAgentDiversity — was genuinely DELETED (not moved: a tree-wide
+// search of dependencies/ found no surviving copy in any digital.vasic.*
+// package or HelixSpecifier). These tests were rewritten down to the slim
+// CreateDebate / GetStatistics / ConductDebate surface that the
+// reconstructed orchestrator actually exposes.
+//
+// Lost coverage honestly documented in docs/Fixed.md (HXA-002):
+//   - request-conversion assertions (ConvertAPIRequest) — the slim API
+//     converts internally inside CreateDebate; covered indirectly here.
+//   - learning/knowledge-repository assertions — the reconstructed
+//     orchestrator exposes lesson/pattern counters via
+//     Orchestrator.GetStatistics (OrchestratorStats.TotalLessons etc.)
+//     but no KnowledgeRepository / GetRecommendations handle.
+//   - debate status/cancel-by-id via APIAdapter — cancellation is now
+//     reachable only via Orchestrator.CancelSession.
 // =============================================================================
 
-// TestFullDebateFlow tests a complete debate from API request to result
+// TestFullDebateFlow tests orchestrator + APIAdapter wiring on the slim API.
 func TestFullDebateFlow(t *testing.T) {
-	// This test verifies the orchestrator initialization and API adapter work correctly
-	// Full debate execution requires all roles to be filled, which is tested via unit tests
-
-	// Setup: Create orchestrator with mock providers
+	// Setup: Create orchestrator with mock providers.
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
@@ -37,22 +56,22 @@ func TestFullDebateFlow(t *testing.T) {
 	lessonBank := createLessonBank(defaultLessonBankConfig())
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-	// Register providers - creates agents in the pool
-	err := orch.RegisterProvider("claude", "claude-3", 9.0)
+	// Register providers - creates agents in the pool.
+	err := orch.RegisterProvider("claude", "claude-3", 0.9)
 	require.NoError(t, err)
-	err = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
+	err = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
 	require.NoError(t, err)
-	err = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	err = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 	require.NoError(t, err)
 
-	// Verify setup
+	// Verify setup.
 	assert.Equal(t, 3, orch.GetAgentPool().Size())
 
-	// Create API adapter and verify it works
+	// Create API adapter and verify it works.
 	adapter := orchestrator.NewAPIAdapter(orch)
 	require.NotNil(t, adapter)
 
-	// Verify API request conversion works
+	// Slim API: CreateDebate registers participants and runs the debate.
 	apiReq := &orchestrator.APICreateDebateRequest{
 		DebateID: "integration-test-1",
 		Topic:    "Best practices for error handling in Go",
@@ -62,23 +81,21 @@ func TestFullDebateFlow(t *testing.T) {
 			{Name: "Reviewer", Role: "reviewer", LLMProvider: "gemini", LLMModel: "gemini-pro"},
 		},
 		MaxRounds: 3,
-		Timeout:   60,
+		Timeout:   60 * time.Second,
 		Strategy:  "mesh",
 	}
 
-	debateReq := adapter.ConvertAPIRequest(apiReq)
-	require.NotNil(t, debateReq)
-	assert.Equal(t, "integration-test-1", debateReq.ID)
-	assert.Equal(t, "Best practices for error handling in Go", debateReq.Topic)
-	assert.Equal(t, topology.TopologyGraphMesh, debateReq.TopologyType)
+	ctx := context.Background()
+	resp, err := adapter.CreateDebate(ctx, apiReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "integration-test-1", resp.ID)
+	assert.Equal(t, "Best practices for error handling in Go", resp.Topic)
 }
 
-// TestServiceIntegrationFlow tests the ServiceIntegration with services types
+// TestServiceIntegrationFlow tests the ServiceIntegration with services types.
 func TestServiceIntegrationFlow(t *testing.T) {
-	// This test verifies the ServiceIntegration type conversion and setup
-	// Full debate execution requires all roles to be filled
-
-	// Setup: Create service integration with mock providers
+	// Setup: Create service integration with mock providers.
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
@@ -91,12 +108,12 @@ func TestServiceIntegrationFlow(t *testing.T) {
 	lessonBank := createLessonBank(defaultLessonBankConfig())
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-	// Register providers
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	// Register providers.
+	_ = orch.RegisterProvider("claude", "claude-3", 0.9)
+	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
+	_ = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 
-	// Create service integration
+	// Create service integration.
 	siConfig := DefaultServiceIntegrationConfig()
 	siConfig.MinAgentsForNewFramework = 3
 
@@ -106,7 +123,7 @@ func TestServiceIntegrationFlow(t *testing.T) {
 		config:       siConfig,
 	}
 
-	// Create services.DebateConfig
+	// Create services.DebateConfig.
 	debateConfig := &services.DebateConfig{
 		DebateID: "service-integration-test-1",
 		Topic:    "Microservices vs Monolith architecture",
@@ -120,10 +137,10 @@ func TestServiceIntegrationFlow(t *testing.T) {
 		Strategy:  "consensus",
 	}
 
-	// Verify ShouldUseNewFramework
+	// Verify ShouldUseNewFramework.
 	assert.True(t, si.ShouldUseNewFramework(debateConfig))
 
-	// Verify type conversion works
+	// Verify type conversion works.
 	request := si.convertDebateConfig(debateConfig)
 	require.NotNil(t, request)
 	assert.Equal(t, "service-integration-test-1", request.ID)
@@ -132,7 +149,7 @@ func TestServiceIntegrationFlow(t *testing.T) {
 	assert.Len(t, request.PreferredProviders, 3)
 	assert.Equal(t, 0.75, request.MinConsensus) // Default for consensus strategy
 
-	// Verify statistics are available
+	// Verify statistics are available.
 	ctx := context.Background()
 	stats, err := si.GetStatistics(ctx)
 	require.NoError(t, err)
@@ -141,9 +158,9 @@ func TestServiceIntegrationFlow(t *testing.T) {
 	assert.Equal(t, 3, stats.RegisteredAgents)
 }
 
-// TestOrchestratorWithAllComponents tests the orchestrator with all components
+// TestOrchestratorWithAllComponents tests the orchestrator with all components.
 func TestOrchestratorWithAllComponents(t *testing.T) {
-	// Setup
+	// Setup.
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
@@ -158,17 +175,18 @@ func TestOrchestratorWithAllComponents(t *testing.T) {
 	lessonBank := createLessonBank(defaultLessonBankConfig())
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-	// Register providers
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	// Register providers.
+	_ = orch.RegisterProvider("claude", "claude-3", 0.9)
+	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
+	_ = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 
-	// Verify all components are initialized
+	// Verify all components are initialized.
 	assert.NotNil(t, orch.GetAgentPool())
-	assert.NotNil(t, orch.GetKnowledgeRepository())
+	assert.NotNil(t, orch.Bank())
 	assert.Equal(t, 3, orch.GetAgentPool().Size())
 
-	// Get statistics
+	// Get statistics — Orchestrator.GetStatistics still exposes the
+	// lesson/pattern learning counters on OrchestratorStats.
 	ctx := context.Background()
 	stats, err := orch.GetStatistics(ctx)
 	require.NoError(t, err)
@@ -176,7 +194,7 @@ func TestOrchestratorWithAllComponents(t *testing.T) {
 	assert.Equal(t, 0, stats.ActiveDebates)
 }
 
-// TestDebateWithDifferentTopologies tests topology selection from strategies
+// TestDebateWithDifferentTopologies tests topology selection from strategies.
 func TestDebateWithDifferentTopologies(t *testing.T) {
 	topologies := []struct {
 		name     string
@@ -194,10 +212,10 @@ func TestDebateWithDifferentTopologies(t *testing.T) {
 
 	for _, tc := range topologies {
 		t.Run(tc.name, func(t *testing.T) {
-			// Verify the test case data is well-formed
+			// Verify the test case data is well-formed.
 			assert.NotEmpty(t, tc.name, "topology name must not be empty")
 			assert.NotEmpty(t, string(tc.expected), "expected topology type must be set")
-			// Verify known topology types are valid enum values
+			// Verify known topology types are valid enum values.
 			validTopologies := map[topology.TopologyType]bool{
 				topology.TopologyGraphMesh: true,
 				topology.TopologyChain:     true,
@@ -209,9 +227,9 @@ func TestDebateWithDifferentTopologies(t *testing.T) {
 	}
 }
 
-// TestDebateWithLearningEnabled tests learning configuration
+// TestDebateWithLearningEnabled tests learning configuration.
 func TestDebateWithLearningEnabled(t *testing.T) {
-	// Setup with learning enabled
+	// Setup with learning enabled.
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
@@ -225,24 +243,22 @@ func TestDebateWithLearningEnabled(t *testing.T) {
 	lessonBank := createLessonBank(defaultLessonBankConfig())
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	_ = orch.RegisterProvider("claude", "claude-3", 0.9)
+	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
+	_ = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 
-	adapter := orchestrator.NewAPIAdapter(orch)
+	// Verify the lesson bank is wired into the orchestrator.
+	assert.NotNil(t, orch.Bank())
 
-	// Verify learning components are initialized
-	assert.NotNil(t, orch.GetKnowledgeRepository())
-
-	// Verify statistics include learning fields
+	// Verify orchestrator statistics include the learning counters.
 	ctx := context.Background()
-	stats, err := adapter.GetStatistics(ctx)
+	stats, err := orch.GetStatistics(ctx)
 	require.NoError(t, err)
 	assert.GreaterOrEqual(t, stats.TotalLessons, 0)
 	assert.GreaterOrEqual(t, stats.TotalPatterns, 0)
 	assert.GreaterOrEqual(t, stats.TotalDebatesLearned, 0)
 
-	// Verify request conversion preserves learning flag
+	// Verify request conversion preserves learning flag.
 	enableLearning := true
 	req := &orchestrator.DebateRequest{
 		ID:             "learning-test-1",
@@ -253,9 +269,9 @@ func TestDebateWithLearningEnabled(t *testing.T) {
 	assert.True(t, *req.EnableLearning)
 }
 
-// TestMultipleDebatesConcurrently tests concurrent orchestrator operations
+// TestMultipleDebatesConcurrently tests concurrent orchestrator operations.
 func TestMultipleDebatesConcurrently(t *testing.T) {
-	// Setup
+	// Setup.
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
@@ -267,54 +283,42 @@ func TestMultipleDebatesConcurrently(t *testing.T) {
 	lessonBank := createLessonBank(defaultLessonBankConfig())
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
+	_ = orch.RegisterProvider("claude", "claude-3", 0.9)
+	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
+	_ = orch.RegisterProvider("gemini", "gemini-pro", 0.8)
 
 	adapter := orchestrator.NewAPIAdapter(orch)
 	ctx := context.Background()
 
-	// Run multiple concurrent operations (statistics, request conversion)
+	// Run multiple concurrent statistics reads — GetStatistics on the
+	// slim API must be safe under concurrent access.
 	numOps := 5
 	done := make(chan bool, numOps)
 
 	for i := 0; i < numOps; i++ {
 		go func(idx int) {
-			// Get statistics concurrently
 			stats, err := adapter.GetStatistics(ctx)
 			assert.NoError(t, err)
 			assert.NotNil(t, stats)
-
-			// Convert requests concurrently
-			req := &orchestrator.APICreateDebateRequest{
-				DebateID: "concurrent-test-" + string(rune('A'+idx)),
-				Topic:    "Concurrent topic " + string(rune('A'+idx)),
-				Participants: []orchestrator.APIParticipantConfig{
-					{Name: "Agent1", LLMProvider: "claude"},
-					{Name: "Agent2", LLMProvider: "deepseek"},
-				},
-			}
-			debateReq := adapter.ConvertAPIRequest(req)
-			assert.NotNil(t, debateReq)
-
+			assert.GreaterOrEqual(t, stats.ActiveDebates, 0)
 			done <- true
 		}(i)
 	}
 
-	// Wait for all operations
+	// Wait for all operations.
 	for i := 0; i < numOps; i++ {
 		select {
 		case <-done:
-			// Success
+			// Success.
 		case <-time.After(5 * time.Second):
 			t.Error("Timeout waiting for concurrent operation")
 		}
 	}
 }
 
-// TestAgentPoolManagement tests agent pool operations
+// TestAgentPoolManagement tests agent pool operations.
 func TestAgentPoolManagement(t *testing.T) {
-	// Setup
+	// Setup.
 	mockRegistry := newMockProviderRegistry()
 	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
 	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
@@ -325,62 +329,35 @@ func TestAgentPoolManagement(t *testing.T) {
 	lessonBank := createLessonBank(defaultLessonBankConfig())
 	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-	// Initial state
+	// Initial state.
 	pool := orch.GetAgentPool()
 	assert.Equal(t, 0, pool.Size())
 
-	// Register providers
-	err := orch.RegisterProvider("claude", "claude-3", 9.0)
+	// Register providers.
+	err := orch.RegisterProvider("claude", "claude-3", 0.9)
 	require.NoError(t, err)
 	assert.Equal(t, 1, pool.Size())
 
-	err = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
+	err = orch.RegisterProvider("deepseek", "deepseek-coder", 0.85)
 	require.NoError(t, err)
 	assert.Equal(t, 2, pool.Size())
 
-	// Try to register same provider again
-	err = orch.RegisterProvider("claude", "claude-3-sonnet", 8.8)
+	// Try to register same provider with a different model.
+	err = orch.RegisterProvider("claude", "claude-3-sonnet", 0.88)
 	require.NoError(t, err)
-	// Should add a new agent (different model)
+	// Should add a new agent (different model).
 	assert.Equal(t, 3, pool.Size())
 
-	// Get agents by domain
+	// Get agents by domain.
 	generalAgents := pool.GetByDomain(agents.DomainGeneral)
 	assert.GreaterOrEqual(t, len(generalAgents), 0)
 }
 
-// TestRecommendationsFromLearning tests getting recommendations
-func TestRecommendationsFromLearning(t *testing.T) {
-	// Setup
-	mockRegistry := newMockProviderRegistry()
-	mockRegistry.AddProvider("claude", newMockLLMProvider("claude"))
-	mockRegistry.AddProvider("deepseek", newMockLLMProvider("deepseek"))
-	mockRegistry.AddProvider("gemini", newMockLLMProvider("gemini"))
-
-	config := orchestrator.DefaultOrchestratorConfig()
-	config.MinAgentsPerDebate = 3
-	config.EnableLearning = true
-
-	lessonBank := createLessonBank(defaultLessonBankConfig())
-	orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
-
-	_ = orch.RegisterProvider("claude", "claude-3", 9.0)
-	_ = orch.RegisterProvider("deepseek", "deepseek-coder", 8.5)
-	_ = orch.RegisterProvider("gemini", "gemini-pro", 8.0)
-
-	// Get recommendations for a topic
-	ctx := context.Background()
-	recs, err := orch.GetRecommendations(ctx, "error handling", agents.DomainCode)
-
-	require.NoError(t, err)
-	assert.NotNil(t, recs)
-}
-
-// TestTypeConversionRoundTrip tests converting types back and forth
+// TestTypeConversionRoundTrip tests converting types back and forth.
 func TestTypeConversionRoundTrip(t *testing.T) {
 	si := NewServiceIntegration(nil, nil, DefaultServiceIntegrationConfig())
 
-	// Original services.DebateConfig
+	// Original services.DebateConfig.
 	original := &services.DebateConfig{
 		DebateID: "roundtrip-test",
 		Topic:    "Test roundtrip conversion",
@@ -394,10 +371,10 @@ func TestTypeConversionRoundTrip(t *testing.T) {
 		Metadata:  map[string]interface{}{"key": "value"},
 	}
 
-	// Convert to DebateRequest
+	// Convert to DebateRequest.
 	request := si.convertDebateConfig(original)
 
-	// Verify conversion
+	// Verify conversion.
 	assert.Equal(t, original.DebateID, request.ID)
 	assert.Equal(t, original.Topic, request.Topic)
 	assert.Equal(t, original.MaxRounds, request.MaxRounds)
@@ -406,9 +383,9 @@ func TestTypeConversionRoundTrip(t *testing.T) {
 	assert.Contains(t, request.PreferredProviders, "deepseek")
 }
 
-// TestErrorHandling tests error scenarios
+// TestErrorHandling tests error scenarios on the slim API.
 func TestErrorHandling(t *testing.T) {
-	// Test with disabled framework
+	// Test with disabled framework.
 	t.Run("DisabledFramework", func(t *testing.T) {
 		config := DefaultServiceIntegrationConfig()
 		config.EnableNewFramework = false
@@ -423,8 +400,9 @@ func TestErrorHandling(t *testing.T) {
 		assert.Contains(t, err.Error(), "disabled")
 	})
 
-	// Test GetDebateStatus for non-existent debate
-	t.Run("NonExistentDebate", func(t *testing.T) {
+	// Test CreateDebate with a nil request — the slim APIAdapter must
+	// reject it with an explicit error rather than panicking.
+	t.Run("NilCreateRequest", func(t *testing.T) {
 		mockRegistry := newMockProviderRegistry()
 		config := orchestrator.DefaultOrchestratorConfig()
 		lessonBank := createLessonBank(defaultLessonBankConfig())
@@ -432,21 +410,21 @@ func TestErrorHandling(t *testing.T) {
 
 		adapter := orchestrator.NewAPIAdapter(orch)
 
-		status, found := adapter.GetDebateStatus("non-existent")
-		assert.False(t, found)
-		assert.Empty(t, status)
+		ctx := context.Background()
+		resp, err := adapter.CreateDebate(ctx, nil)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
 	})
 
-	// Test CancelDebate for non-existent debate
-	t.Run("CancelNonExistent", func(t *testing.T) {
+	// Test CancelSession for a non-existent session — the orchestrator
+	// must return an explicit error.
+	t.Run("CancelNonExistentSession", func(t *testing.T) {
 		mockRegistry := newMockProviderRegistry()
 		config := orchestrator.DefaultOrchestratorConfig()
 		lessonBank := createLessonBank(defaultLessonBankConfig())
 		orch := orchestrator.NewOrchestrator(mockRegistry, lessonBank, config)
 
-		adapter := orchestrator.NewAPIAdapter(orch)
-
-		err := adapter.CancelDebate("non-existent")
+		err := orch.CancelSession("non-existent")
 		assert.Error(t, err)
 	})
 }

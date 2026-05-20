@@ -14,7 +14,7 @@ import (
 	"digital.vasic.debate"
 	"digital.vasic.debate/orchestrator"
 	"digital.vasic.llmprovider"
-	digitalvasicmodels "digital.vasic.models"
+	digitalvasicmodels "digital.vasic.llmprovider/pkg/models"
 )
 
 // =============================================================================

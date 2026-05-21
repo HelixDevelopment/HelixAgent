@@ -239,21 +239,21 @@ replace digital.vasic.concurrency => ../dependencies/vasic-digital/concurrency
 
 replace digital.vasic.database => ../dependencies/vasic-digital/database
 
-replace digital.vasic.embeddings => ../dependencies/vasic-digital/Embeddings
+replace digital.vasic.embeddings => ../dependencies/vasic-digital/embeddings
 
-replace digital.vasic.eventbus => ../dependencies/vasic-digital/EventBus
+replace digital.vasic.eventbus => ../dependencies/vasic-digital/event_bus
 
 replace digital.vasic.helixmemory => ../dependencies/HelixDevelopment/HelixMemory
 
 replace digital.vasic.helixspecifier => ../dependencies/HelixDevelopment/HelixSpecifier
 
-replace digital.vasic.formatters => ../dependencies/vasic-digital/Formatters
+replace digital.vasic.formatters => ../dependencies/vasic-digital/formatters
 
 replace digital.vasic.mcp => ../dependencies/vasic-digital/MCP_Module
 
 replace digital.vasic.memory => ../dependencies/vasic-digital/Memory
 
-replace digital.vasic.messaging => ../dependencies/vasic-digital/Messaging
+replace digital.vasic.messaging => ../dependencies/vasic-digital/messaging
 
 replace digital.vasic.observability => ../dependencies/vasic-digital/Observability
 
@@ -279,7 +279,7 @@ replace digital.vasic.conversation => ../dependencies/vasic-digital/conversation
 
 replace digital.vasic.models => ../dependencies/vasic-digital/Models
 
-replace digital.vasic.background => ../dependencies/vasic-digital/BackgroundTasks
+replace digital.vasic.background => ../dependencies/vasic-digital/background_tasks
 
 replace digital.vasic.llmprovider => ../dependencies/HelixDevelopment/LLMProvider
 
@@ -293,7 +293,7 @@ replace digital.vasic.llmorchestrator => ../dependencies/HelixDevelopment/LLMOrc
 
 replace digital.vasic.visionengine => ../dependencies/HelixDevelopment/VisionEngine
 
-replace digital.vasic.normalize => ../dependencies/vasic-digital/Normalize
+replace digital.vasic.normalize => ../dependencies/vasic-digital/normalize
 
 replace digital.vasic.redteam => ../dependencies/vasic-digital/RedTeam
 

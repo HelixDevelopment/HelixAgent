@@ -219,7 +219,7 @@ replace digital.vasic.containers => ../containers
 
 replace digital.vasic.challenges => ../challenges
 
-replace digital.vasic.agentic => ../dependencies/vasic-digital/Agentic
+replace digital.vasic.agentic => ../dependencies/vasic-digital/agentic
 
 replace digital.vasic.llmops => ../dependencies/vasic-digital/LLMOps
 
@@ -227,17 +227,17 @@ replace digital.vasic.selfimprove => ../dependencies/vasic-digital/SelfImprove
 
 replace digital.vasic.planning => ../dependencies/vasic-digital/Planning
 
-replace digital.vasic.benchmark => ../dependencies/vasic-digital/Benchmark
+replace digital.vasic.benchmark => ../dependencies/vasic-digital/benchmark
 
 replace digital.vasic.llmsverifier => ../dependencies/HelixDevelopment/LLMsVerifier/llm-verifier
 
-replace digital.vasic.auth => ../dependencies/vasic-digital/Auth
+replace digital.vasic.auth => ../dependencies/vasic-digital/auth
 
-replace digital.vasic.cache => ../dependencies/vasic-digital/Cache
+replace digital.vasic.cache => ../dependencies/vasic-digital/cache
 
-replace digital.vasic.concurrency => ../dependencies/vasic-digital/Concurrency
+replace digital.vasic.concurrency => ../dependencies/vasic-digital/concurrency
 
-replace digital.vasic.database => ../dependencies/vasic-digital/Database
+replace digital.vasic.database => ../dependencies/vasic-digital/database
 
 replace digital.vasic.embeddings => ../dependencies/vasic-digital/Embeddings
 

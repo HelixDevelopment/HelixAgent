@@ -223,9 +223,9 @@ replace digital.vasic.agentic => ../dependencies/vasic-digital/agentic
 
 replace digital.vasic.llmops => ../dependencies/vasic-digital/LLMOps
 
-replace digital.vasic.selfimprove => ../dependencies/vasic-digital/SelfImprove
+replace digital.vasic.selfimprove => ../dependencies/vasic-digital/self_improve
 
-replace digital.vasic.planning => ../dependencies/vasic-digital/Planning
+replace digital.vasic.planning => ../dependencies/vasic-digital/planning
 
 replace digital.vasic.benchmark => ../dependencies/vasic-digital/benchmark
 
@@ -255,11 +255,11 @@ replace digital.vasic.memory => ../dependencies/vasic-digital/Memory
 
 replace digital.vasic.messaging => ../dependencies/vasic-digital/messaging
 
-replace digital.vasic.observability => ../dependencies/vasic-digital/Observability
+replace digital.vasic.observability => ../dependencies/vasic-digital/observability
 
-replace digital.vasic.optimization => ../dependencies/vasic-digital/Optimization
+replace digital.vasic.optimization => ../dependencies/vasic-digital/optimization
 
-replace digital.vasic.plugins => ../dependencies/vasic-digital/Plugins
+replace digital.vasic.plugins => ../dependencies/vasic-digital/plugins
 
 replace digital.vasic.rag => ../dependencies/vasic-digital/RAG
 
@@ -277,7 +277,7 @@ replace digital.vasic.skillregistry => ../dependencies/vasic-digital/SkillRegist
 
 replace digital.vasic.conversation => ../dependencies/vasic-digital/conversation
 
-replace digital.vasic.models => ../dependencies/vasic-digital/Models
+replace digital.vasic.models => ../dependencies/vasic-digital/models
 
 replace digital.vasic.background => ../dependencies/vasic-digital/background_tasks
 
@@ -295,6 +295,6 @@ replace digital.vasic.visionengine => ../dependencies/HelixDevelopment/VisionEng
 
 replace digital.vasic.normalize => ../dependencies/vasic-digital/normalize
 
-replace digital.vasic.redteam => ../dependencies/vasic-digital/RedTeam
+replace digital.vasic.redteam => ../dependencies/vasic-digital/red_team
 
 replace github.com/HelixDevelopment/helix_agent/Toolkit => ./Toolkit

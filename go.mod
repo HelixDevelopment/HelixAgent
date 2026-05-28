@@ -243,7 +243,7 @@ replace digital.vasic.embeddings => ../dependencies/vasic-digital/embeddings
 
 replace digital.vasic.eventbus => ../dependencies/vasic-digital/event_bus
 
-replace digital.vasic.helixmemory => ../dependencies/HelixDevelopment/HelixMemory
+replace digital.vasic.helixmemory => ../dependencies/HelixDevelopment/helix_memory
 
 replace digital.vasic.helixspecifier => ../dependencies/HelixDevelopment/HelixSpecifier
 
@@ -265,15 +265,15 @@ replace digital.vasic.rag => ../dependencies/vasic-digital/RAG
 
 replace digital.vasic.security => ../security
 
-replace digital.vasic.storage => ../dependencies/vasic-digital/Storage
+replace digital.vasic.storage => ../dependencies/vasic-digital/storage
 
-replace digital.vasic.streaming => ../dependencies/vasic-digital/Streaming
+replace digital.vasic.streaming => ../dependencies/vasic-digital/streaming
 
-replace digital.vasic.vectordb => ../dependencies/vasic-digital/VectorDB
+replace digital.vasic.vectordb => ../dependencies/vasic-digital/vector_db
 
-replace digital.vasic.toolschema => ../dependencies/vasic-digital/ToolSchema
+replace digital.vasic.toolschema => ../dependencies/vasic-digital/tool_schema
 
-replace digital.vasic.skillregistry => ../dependencies/vasic-digital/SkillRegistry
+replace digital.vasic.skillregistry => ../dependencies/vasic-digital/skill_registry
 
 replace digital.vasic.conversation => ../dependencies/vasic-digital/conversation
 
@@ -281,7 +281,7 @@ replace digital.vasic.models => ../dependencies/vasic-digital/models
 
 replace digital.vasic.background => ../dependencies/vasic-digital/background_tasks
 
-replace digital.vasic.llmprovider => ../dependencies/HelixDevelopment/LLMProvider
+replace digital.vasic.llmprovider => ../dependencies/HelixDevelopment/llm_provider
 
 replace digital.vasic.debate => ../dependencies/HelixDevelopment/debate_orchestrator
 

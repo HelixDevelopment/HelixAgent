@@ -1267,3 +1267,149 @@ Cascade reference — see constitution submodule `Constitution.md` §11.4.120 fo
 Cascade reference — see constitution submodule `Constitution.md` §11.4.121 for the full mandate. A commit MUST NOT run while a build/packaging/generation step is actively writing artifacts into tracked (version-controlled) directories. The commit MUST be deferred until the writing step completes so the tree is quiescent and committed artifacts are the fresh, whole outputs. Propagation gate `CM-COVENANT-114-121-PROPAGATION` (literal `11.4.121`). Non-compliance is a release blocker.
 
 **Canonical authority:** constitution submodule `Constitution.md` §11.4.121.
+
+
+<!-- ============================================================
+     CASCADED GOVERNANCE ANCHORS (backfill_anchor_cascade.sh)
+     Additive cascade from golden reference (helix_qa) per
+     CONST-047/049 — universal anchors only, additive (§11.4.122).
+     ============================================================ -->
+
+## §11.4.68 — Positive Sink-Side / Downstream Evidence Mandate (cascaded from constitution submodule §11.4.68)
+
+> Verbatim user mandate (2026-05-20): *"We still do not hear any audio played from D3 device! Arvus Web Dashboard when we play music from D3 shows nothing for Codec In Use! This MUST BE investigated and fixed! How come we passed the tests with Arvus validation? What were values for the Codec In Use field? Empty means nothing! This is not working! It MUST BE FIXED, TESTED AND VERIFIED WITH FULL AUTOMATION TESTING ASAP!!!"*
+
+A test that asserts audio or video routing PASS MUST capture and verify **positive sink-side or downstream evidence** — never config-only, never metadata-only, never PCM-open-state-only. At least one of the closed enumeration MUST be captured for every audio/video routing PASS: (1) sink-side codec-state with non-empty Codec-In-Use matching the expected codec regex; (2) strictly-positive PCM frames-written delta from `/proc/asound/.../status hw_ptr`; (3) ALSA ELD/EDID-Like-Data showing negotiated channel count + format; (4) ffprobe-on-captured-mp4 with non-zero frame count + expected codec/resolution/fps; (5) recording-analyzer event match per §11.4.2/§11.4.5; (6) tinycap RMS amplitude above the line-level floor. Empty / `<unreachable>` / `<N.E.>` / `<None>` placeholders are NOT positive evidence; a missing-but-required sink is `OPERATOR-BLOCKED` (release-blocker), never SKIP, never PASS. No escape hatch — no `--skip-sink-evidence`, `--allow-empty-codec`, `--sink-unreachable-is-pass`, `--metadata-only-suffices` flag exists.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.68` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Severity-equivalent to a §11.4 PASS-bluff at the sink-side-evidence layer.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.68 for the full mandate.
+
+## §11.4.70 — Subagent-Driven Execution Is The Default (cascaded from constitution submodule §11.4.70)
+
+> Verbatim user mandate (2026-05-20): *"Always do if possible Subagent-driven! Add this into our root (constitution Submodule) Constitution.md, CLAUDE.md and AGENTS.md. This should be the default choice ALWAYS!"*
+
+When executing implementation plans (or any task-decomposed execution flow), the **default execution model is subagent-driven** per `superpowers:subagent-driven-development`. Inline execution is permitted ONLY when (a) the task is trivial AND fits a single sub-300-line edit, OR (b) the operator explicitly requests inline at brainstorm-handoff time. Subagent-driven is the default because it gives isolated context per task, naturally enforces two-stage review, is parallel-PWU compatible (§11.4.58), creates an anti-bluff seam (§11.4), and survives operator absence. No escape hatch — `--inline-execution-required`, `--no-subagents`, `--monolithic-execution` are NOT permitted flags. Skipping subagent-driven for non-trivial work without recorded operator authorisation is itself a §11.4 PASS-bluff.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.70` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Severity-equivalent to a §11.4 PASS-bluff at the execution-model layer.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.70 for the full mandate.
+
+## §11.4.71 — Pre-Push Fetch + Investigate + Integrate Mandate (cascaded from constitution submodule §11.4.71)
+
+> Verbatim user mandate (2026-05-20): *"before pushing changes to any upstream for any repository - main repo or Submodule, we MUST fetch and pull all changes. Once these are obtained WE MUST investigate what is different compared to head position we were on last time before fetching and pulling new changes! We MUST understand what is done and for what purpose, easpecially how that does affect our project and our System in general! Any mandatory changes or improvements required by fresh changes we just have brough in MUST BE incorporated, covered with all supported types of the tests which will produce as a result of its success execution REAL PROOFS of working for all componetns and functionalities covered and work fully in anti-bluff manner!"*
+
+The everyday-push variant of §11.4.41. EVERY push (every repository — main + every submodule) MUST follow the 5-step cycle: (1) fetch all remotes (`git fetch --all --prune --tags`, capture stdout); (2) pull all upstream branches whose tip differs, resolving conflicts per consumer judgment (never auto-`--ours`/`--theirs`); (3) investigate the diff vs OUR previous HEAD — read EVERY foreign commit's body, understand what/why/how-it-affects-our-system; (4) integrate mandatory changes with §11.4.4(b) four-layer coverage + §11.4.43 TDD-fix discipline, every PASS carrying §11.4.5 captured-evidence (REAL PROOFS, not metadata-only); (5) only then push, verifying with `git ls-remote` post-push. No escape hatch — no `--skip-fetch`, `--no-investigate`, `--fast-push`, `--trust-upstream` flag.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.71` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Severity-equivalent to a §11.4 PASS-bluff at the push-discipline layer.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.71 for the full mandate.
+
+## §11.4.72 — Audio Top-Priority Mandate (cascaded from constitution submodule §11.4.72)
+
+> Verbatim user mandate (2026-05-20): *"Make sure all fixes for audio are always top priority in main working stream!"*
+
+The conductor (main working stream — Claude Code session, AI agent, or human operator) MUST treat audio fixes as the highest-priority class on the serial dispatch queue. Any time the conductor faces a choice between dispatching an audio task vs a non-audio task on the SAME serial resource, the audio task wins. Parallel BACKGROUND subagents (research, refactors, infrastructure documentation) MAY run concurrently with audio work but do NOT preempt audio on the main-stream serial dispatch queue. No escape hatch — there is no "but this non-audio task is faster" or "but this research is more interesting" override; audio-stack regressions are user-perceptible and high-impact while research and refactors can wait.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.72` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Severity-equivalent to a process violation at the dispatch-priority layer.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.72 for the full mandate.
+
+## §11.4.73 — Main-Specification Document Versioning + Revision Discipline (cascaded from constitution submodule §11.4.73)
+
+> Verbatim user mandate (2026-05-20): *"Make sure everything we add now in previous and upcoming requests IS ALWAYS applied to the main specification — if we have one. Since all these are not major changes we could increase Specification version per change for secondary version instead of the primary. Primary version MUST BE increased for much bigger levels of changes! Add this into root (constitution Submodule) Constitution.md, CLAUDE.md and AGENTS.md as mandatory rule / constraint applicable ONLY IF we have something like the main specification document or we do recognize something like the main specification document. Document MUST BE updated ALWAYS to follow the versioning rules we are appling here + revision and other properties we have!"*
+
+Applies **only when a project recognises a main specification document**. When it does: (1) every additive operator requirement, refinement, or accepted recommendation MUST be applied to the spec before or as part of the implementing work; (2) spec versioning has two axes — *primary* (V1/V2/V3, bumped for major rewrites by explicit operator decision, old versions archived) and *secondary* (the §11.4.61 metadata-table `Revision` integer, bumped for every other change); (3) the metadata table MUST stay current (`Revision`, `Last modified`, `Status summary`, `Fixed`); (4) propagated copies of the rule MUST reference the active `specification.V<primary>.md`, not a stale archive; (5) on primary bump the old file moves to `<spec-dir>/archive/` with `Status: superseded`. Classification: universal, applicable conditionally per the scope condition.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.73` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Severity-equivalent to a release blocker when a project has a main spec and lets it drift.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.73 for the full mandate.
+
+## §11.4.74 — Submodule-Catalogue-First Discovery + Extend-Don't-Reimplement (cascaded from constitution submodule §11.4.74)
+
+> Verbatim user mandate (2026-05-20): *"We MUST ALWAYS check which already developed features / functionalities do exist as a part of our comprehensive Submodules catalogue located in vasic-digital and HelixDevelopment organizations on GitHub and GitLab both! Project MUST BE aware of all its existence so we do not implement same things multiple times if they are already done as some of existing universal, reusable general development purpose Submodules! For any missing features that some Submodules we incorporate may be missing we MUST IMPLEMENT the properly and extend those Submodules furter! We do control all of the and we CAN and MUST maintain and extend the regularly! All development cycle rules we have MUST BE applied to them and fully respected!"*
+
+Before scaffolding ANY new module, package, helper, or utility, the contributor (human or AI agent) MUST: (1) survey the canonical Submodule catalogue — `vasic-digital` and `HelixDevelopment` on both GitHub AND GitLab; (2) inventory existing Submodules; (3) reuse before reimplement — if a Submodule provides the functionality (or 80%+ of it), add it as a Git submodule rather than write fresh; (4) extend in-place when 80%+ matches but features are missing — add the missing features TO THAT SUBMODULE (PR upstream + bump pointer), never as a duplicating consuming-project helper; (5) apply all development-cycle rules to those Submodules; (6) document the survey result in the feature's tracker entry with a `Catalogue-Check:` field (`reuse <org/repo>@<sha>` / `extend <org/repo>@<sha>` / `no-match <date>`). Classification: universal.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.74` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Severity-equivalent to a process violation; duplicate implementations landed without catalogue check are release blockers.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.74 for the full mandate.
+
+## §11.4.103 — Continuous parallel-stream working routine (User mandate, 2026-05-29)
+
+Cascaded from constitution submodule §11.4.103. Promotes the multi-stream operating pattern into the project's standing default working routine. The main work stream MUST always stay FREE; ALL commit AND push operations run detached. At least three parallel background subagent streams MUST run at all times alongside the main stream whenever three-plus non-contending actionable items exist; the moment any stream finishes a new stream MUST immediately start. Most-critical + most-visible first; audio always top per §11.4.72. Safe-during-build scope only (§11.4.96 SAFE catalogue). Heavy anti-bluff on every closure. Idle ONLY when genuinely externally blocked OR operator STOP OR §12 host-safety.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.103` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-103-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.103 for the full mandate.
+
+## §11.4.105 — Natural-language intent recognition & clarification (User mandate, 2026-05-31)
+
+Cascaded from constitution submodule §11.4.105. Users MUST NOT be required to know command syntax. Three-tier resolution: TIER 1 — recognize existing commands from natural language; TIER 2 — infer exact intent via LLM dispatch; TIER 3 — reply, tag sender (`@username`), and ask a precise clarifying question. Never guess, never drop a message silently; only genuine ambiguity reaches Tier 3, which always replies-tags-and-asks.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.105` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-105-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.105 for the full mandate.
+
+## §11.4.107 — Anti-bluff AV/test-validation techniques mandate (User-driven research, 2026-06-02)
+
+Cascaded from constitution submodule §11.4.107. Every test asserting audio/video output is genuinely playing MUST satisfy: single captured frame NOT proof — prove LIVE ADVANCING frames via freeze-detection oracle; independent frame-advance counter from compositor/decoder telemetry; loading/buffering is a distinct state; not-stale-from-previous cross-check; measured FPS / no-lost-frames; no-flash-on-wrong-output; drive through realistic feed/UI path; metamorphic relations; full-reference quality metrics vs golden source; mutation-test every analyzer with golden-good + golden-bad fixture pair; per-channel audio RMS/loudness + XRUN census; OCR confidence floor + ROI; thresholds calibrated on project's own fixtures.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.107` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-107-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.107 for the full mandate.
+
+## §11.4.108 — Four-layer fix-verification + runtime-signature-as-definition-of-done mandate (systematic-debugging Phase 4.5, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.108. A fix crosses FOUR distinct layers: (1) SOURCE, (2) ARTIFACT, (3) RUNTIME-ON-CLEAN-TARGET, (4) USER-VISIBLE. Green at layer 1 says nothing about layers 2–4. Every fix declares ONE machine-checkable runtime signature verified on a CLEAN/fresh deployment. Gates span all four layers. Deployment MUST yield a CLEAN state OR a pre-validation assertion proves running-artifact == built-artifact. On ≥3 "fixed-but-not-working" discoveries in one cycle: STOP patching symptoms, fix the VERIFICATION pipeline.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.108` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-108-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.108 for the full mandate.
+
+## §11.4.110 — Pre-build build-readiness verdict + change-impact clash detection mandate (operator mandate, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.110. A single deterministic READY-FOR-BUILD verdict gates every rebuild. A diff-driven change-impact + clash detector cross-checks every newly-introduced second-artifact dependency (new property read ⇄ property-context type + read-grant; new service ⇄ service-context entry; etc.). Coverage-completeness is a gate — every changed file maps to ≥1 gate + ≥1 deployed-target test + ≥1 paired §1.1 mutation. Two-speed honesty: grep-speed always-on gates vs REQUIRES_BUILD heavy gates as diff-gated opt-in stages.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.110` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-110-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.110 for the full mandate.
+
+## §11.4.112 — Structural-impossibility won't-fix classification mandate (research-derived, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.112. When deep research per §11.4.8 PROVES a goal is structurally impossible on the target platform (forbidden by platform design / hardware-protocol constraint / documented kernel-or-API limitation), the goal MUST be: classified `Won't-fix` + closed per §11.4.90 with closure reason `structurally-impossible`; documented with impossibility evidence; NOT re-attempted without NEW evidence the platform constraint changed. `structurally-impossible` is reserved for PROVEN platform/hardware/protocol impossibility — "could not find a way" is Operator-blocked, not won't-fix.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.112` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-112-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.112 for the full mandate.
+
+## §11.4.113 — Absolute no-force-push + merge-onto-latest-main mandate (User mandate, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.113. Force-push is STRICTLY FORBIDDEN with NO exception — `git push --force`, `--force-with-lease`, `+<ref>`, or any history-rewriting overwrite of a remote ref, against EVERY repository. The mandated 6-step integration procedure: (1) `git fetch --all --prune --tags`; (2) set base to LATEST commit on canonical `main`/`master`; (3) carefully MERGE every change on top; (4) resolve every conflict carefully; (5) commit the merge (stage only intended files); (6) push to ALL upstreams as fast-forward. REMOVES the force-push escape hatch from §11.4.41/§11.4.71/§9.2/CONST-043.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.113` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-113-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.113 for the full mandate.
+
+## §11.4.114 — Last-known-good-tag regression isolation mandate (1.1.8-dev remediation, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.114. When a previously-working feature is observed broken, the FIRST diagnostic action MUST be to identify the last release tag at which it was KNOWN-GOOD and diff/bisect the broken state against it — BEFORE any open-ended root-cause hunt or speculative fix. The known-good revision is the regression oracle. Default to a SURGICAL forward-fix (keep post-good-tag features, revert ONLY the broken sub-part) over a wholesale revert. "It worked before" is a HYPOTHESIS until the known-good tag is identified and confirmed.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.114` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-114-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.114 for the full mandate.
+
+## §11.4.115 — RED-baseline-on-the-broken-artifact + polarity-switch mandate (1.1.8-dev remediation, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.115. Every RED test MUST be authored to REPRODUCE the defect on the CURRENT pre-fix artifact, capturing positive evidence that the defect is genuinely present. The SAME test source carries a single polarity switch (env flag `RED_MODE`, default `1` = reproduce-and-assert-defect-present; flipped to `0` post-fix = standing GREEN regression-guard). One source, two roles: the bug-catcher IS the regression-guard. A RED test that passes on the known-broken artifact is a blind test — a finding, not evidence.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.115` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-115-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.115 for the full mandate.
+
+## §11.4.117 — Computer-vision / OCR pixel-oracle fallback for non-introspectable UIs mandate (1.1.8-dev remediation, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.117. Any test needing to drive a UI control OR assert on-screen content MUST NOT assume the accessibility/semantic/DOM hierarchy is the source of truth. When the hierarchy is blank/partial/known-unreliable, the test MUST fall back to a PIXEL ORACLE: drive input by computer-vision template-match; assert content by ROI OCR with per-word confidence floor + region-of-interest. The CV/OCR analyzer is self-validated — golden-good fixture PASSes, golden-bad fixture FAILs, wired into meta-test.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.117` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-117-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.117 for the full mandate.
+
+## §11.4.118 — Discovery-pressure to confirm known-issue-set completeness mandate (1.1.8-dev remediation, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.118. A remediation/release cycle MUST NOT treat "every reported defect is fixed" as "the build is good." After/alongside fixing the reported set, the cycle MUST run a discovery + stress pass across ALL target devices/environments that deliberately exercises subsystems, journeys, and edge cases BEYOND the reported defects. The pass MUST produce an enumerated list of subsystems/user-journeys/stress scenarios actually exercised, each with its outcome. "We found no other issues" is a bluff unless accompanied by "here is the enumerated set we exercised."
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.118` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-118-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.118 for the full mandate.
+
+## §11.4.119 — Single-resource-owner partitioning for parallel hardware testing mandate (1.1.8-dev remediation, 2026-06-03)
+
+Cascaded from constitution submodule §11.4.119. When multiple parallel streams exercise SHARED hardware or any exclusive-access resource, exactly ONE stream MUST own each such resource at a time. The exclusive owner drives it; every other concurrent stream targeting the same resource MUST be READ-ONLY (passive probes only). Parallelism is partitioned by resource: distinct devices/sinks run fully concurrent, but the same device's exclusive resource is single-owner. Ownership enforced by advisory lock/token. Concurrent drivers of one exclusive resource produce cross-contaminated evidence — a PASS under contention is a §11.4 evidence-integrity bluff.
+
+**Cascade requirement:** This anchor (verbatim or by `§11.4.119` reference) MUST appear in every owned submodule's `CONSTITUTION.md`, `CLAUDE.md`, and `AGENTS.md`. Propagation gate `CM-COVENANT-114-119-PROPAGATION`; paired mutation strips the literal → gate FAILs. Release blocker.
+**Canonical authority:** constitution submodule `Constitution.md` §11.4.119 for the full mandate.
+

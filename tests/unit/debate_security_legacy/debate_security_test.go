@@ -332,7 +332,7 @@ func TestDebate_EpisodicMemory_InjectionResistance(t *testing.T) {
 		"Content should be stored as-is without interpretation")
 
 	// Relevance search should handle malicious queries
-	relevant := memory.GetRelevant("DROP TABLE", 5)
+	relevant := memory.GetRelevant(context.Background(), "DROP TABLE", 5)
 	// Should not crash and may or may not return results
 	t.Logf("Relevance search returned %d results for injection query",
 		len(relevant))

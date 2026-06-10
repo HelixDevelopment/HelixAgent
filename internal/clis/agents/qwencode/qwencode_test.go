@@ -3,11 +3,23 @@ package qwencode
 
 import (
 	"context"
+	"os"
+	"runtime"
+	"strings"
 	"testing"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// osWriteFakeQwen writes a deterministic fake qwen shell script (no *testing.T;
+// usable from benchmarks). Returns an error on non-POSIX hosts or write failure.
+func osWriteFakeQwen(path string) error {
+	if runtime.GOOS == "windows" {
+		return os.ErrInvalid
+	}
+	return os.WriteFile(path, []byte("#!/bin/sh\nprintf '{\"response\":\"BENCH_OK\"}'\n"), 0o755)
+}
 
 func TestNewQwenCode(t *testing.T) {
 	t.Parallel()
@@ -89,7 +101,12 @@ func TestQwenCodeStartStop(t *testing.T) {
 }
 
 func TestQwenCodeExecute(t *testing.T) {
-	t.Parallel()
+	// Reconciled (§11.4.120): generate/complete/chat now exec the real qwen CLI,
+	// so the happy-path commands are driven through an injected fake qwen binary
+	// (deterministic, no credentials). Not t.Parallel() — uses t.Setenv.
+	bin := writeFakeQwen(t, "EXEC_OK")
+	t.Setenv("QWEN_BIN", bin)
+
 	q := New()
 	ctx := context.Background()
 
@@ -156,7 +173,6 @@ func TestQwenCodeExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			result, err := q.Execute(ctx, tt.command, tt.params)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
@@ -170,7 +186,10 @@ func TestQwenCodeExecute(t *testing.T) {
 }
 
 func TestQwenCodeGenerate(t *testing.T) {
-	t.Parallel()
+	// Reconciled (§11.4.120): drives the real-exec path via an injected fake qwen.
+	bin := writeFakeQwen(t, "GEN_OK")
+	t.Setenv("QWEN_BIN", bin)
+
 	q := New()
 	ctx := context.Background()
 
@@ -198,10 +217,18 @@ func TestQwenCodeGenerate(t *testing.T) {
 	if resultMap["model"] != "qwen-coder-plus" {
 		t.Errorf("model = %v, want %v", resultMap["model"], "qwen-coder-plus")
 	}
+
+	// The "code" field MUST be the fake binary's real stdout, not a template.
+	code, _ := resultMap["code"].(string)
+	if !strings.Contains(code, "GEN_OK") {
+		t.Errorf("code = %q, expected real qwen process output containing the fake marker", code)
+	}
 }
 
 func TestQwenCodeChat(t *testing.T) {
-	t.Parallel()
+	bin := writeFakeQwen(t, "CHAT_OK")
+	t.Setenv("QWEN_BIN", bin)
+
 	q := New()
 	ctx := context.Background()
 
@@ -225,10 +252,17 @@ func TestQwenCodeChat(t *testing.T) {
 	if resultMap["message"] != "Explain Go interfaces" {
 		t.Errorf("message = %v, want %v", resultMap["message"], "Explain Go interfaces")
 	}
+
+	response, _ := resultMap["response"].(string)
+	if !strings.Contains(response, "CHAT_OK") {
+		t.Errorf("response = %q, expected real qwen process output containing the fake marker", response)
+	}
 }
 
 func TestQwenCodeComplete(t *testing.T) {
-	t.Parallel()
+	bin := writeFakeQwen(t, "COMPLETE_OK")
+	t.Setenv("QWEN_BIN", bin)
+
 	q := New()
 	ctx := context.Background()
 
@@ -251,6 +285,11 @@ func TestQwenCodeComplete(t *testing.T) {
 
 	if resultMap["prefix"] != "func fibonacci(n int) int {" {
 		t.Errorf("prefix = %v, want %v", resultMap["prefix"], "func fibonacci(n int) int {")
+	}
+
+	completion, _ := resultMap["completion"].(string)
+	if !strings.Contains(completion, "COMPLETE_OK") {
+		t.Errorf("completion = %q, expected real qwen process output containing the fake marker", completion)
 	}
 }
 
@@ -392,6 +431,14 @@ func TestQwenCodeConfigValidation(t *testing.T) {
 }
 
 func BenchmarkQwenCodeExecute(b *testing.B) {
+	// Drive the real-exec path through a deterministic fake qwen binary.
+	dir := b.TempDir()
+	bin := dir + "/fake-qwen"
+	if err := osWriteFakeQwen(bin); err != nil {
+		b.Skipf("SKIP-OK: ATM-SP2-D6 — cannot stage fake qwen binary on this host: %v", err)
+	}
+	b.Setenv("QWEN_BIN", bin)
+
 	q := New()
 	ctx := context.Background()
 	_ = q.Initialize(ctx, nil)

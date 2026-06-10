@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -903,49 +906,128 @@ func (m *InstanceManager) healthCheckLoop() {
 }
 
 // Type-specific execution methods
-func (m *InstanceManager) executeAider(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
+//
+// Each method below resolves the agent's real CLI binary and exec's it with the
+// agent's documented non-interactive flags (§11.4.99), returning the binary's
+// actual stdout/stderr. When the binary is absent the method returns an honest
+// error — NEVER a fabricated "<Agent> execution completed" template
+// (BLUFF-003 / CONST-035).
+
+// extractPrompt pulls the user prompt out of an execute payload.
+func extractPrompt(payload interface{}) string {
+	if m, ok := payload.(map[string]interface{}); ok {
+		if p, ok := m["prompt"].(string); ok {
+			return p
+		}
+		if p, ok := m["message"].(string); ok {
+			return p
+		}
+	}
+	if s, ok := payload.(string); ok {
+		return s
+	}
+	return ""
+}
+
+// resolveAgentBinary locates an agent's CLI executable. Tests may inject a fake
+// binary via the per-agent environment variable `HELIX_AGENT_BIN_<TYPE>`
+// (uppercased CLIAgentType, non-alphanumeric → '_'); otherwise the named command
+// is resolved on PATH. Returns an honest error when no binary is available.
+func resolveAgentBinary(typ CLIAgentType, command string) (string, error) {
+	envKey := "HELIX_AGENT_BIN_" + strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			return r - 32
+		case r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			return r
+		default:
+			return '_'
+		}
+	}, string(typ))
+	if override := os.Getenv(envKey); override != "" {
+		if _, err := exec.LookPath(override); err != nil {
+			return "", fmt.Errorf("%s binary override %q not executable: %w", typ, override, err)
+		}
+		return override, nil
+	}
+	path, err := exec.LookPath(command)
+	if err != nil {
+		return "", fmt.Errorf("%s CLI %q not found on PATH: %w", typ, command, err)
+	}
+	return path, nil
+}
+
+// runCLIAgent exec's a CLI agent binary non-interactively and returns a result
+// map carrying the binary's REAL combined output plus its exit code. The agent
+// binary is resolved via resolveAgentBinary; when absent an honest error is
+// returned. The work directory and timeout come from the instance config.
+func (m *InstanceManager) runCLIAgent(inst *AgentInstance, typ CLIAgentType, command string, args []string, payload interface{}) (interface{}, error) {
+	bin, err := resolveAgentBinary(typ, command)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	var cancel context.CancelFunc
+	if inst != nil && inst.Config.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, inst.Config.Timeout)
+		defer cancel()
+	}
+
+	cmd := exec.CommandContext(ctx, bin, args...)
+	if inst != nil && inst.Config.WorkingDir != "" {
+		cmd.Dir = inst.Config.WorkingDir
+	}
+
+	out, runErr := cmd.CombinedOutput()
+	exitCode := 0
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	result := map[string]string{
 		"status":    "executed",
-		"type":      "aider",
-		"message":   "Aider execution completed",
+		"type":      string(typ),
+		"message":   strings.TrimSpace(string(out)),
+		"exit_code": fmt.Sprintf("%d", exitCode),
 		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	}
+	if runErr != nil {
+		// A non-zero exit / spawn failure is surfaced as a real error with the
+		// binary's actual output — never masked as success.
+		return result, fmt.Errorf("%s execution failed (exit %d): %w (output: %s)", typ, exitCode, runErr, strings.TrimSpace(string(out)))
+	}
+	return result, nil
+}
+
+func (m *InstanceManager) executeAider(inst *AgentInstance, payload interface{}) (interface{}, error) {
+	prompt := extractPrompt(payload)
+	// aider non-interactive: --message "<prompt>" --no-auto-commits --yes
+	return m.runCLIAgent(inst, TypeAider, "aider", []string{"--message", prompt, "--no-auto-commits", "--yes"}, payload)
 }
 
 func (m *InstanceManager) executeClaudeCode(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "claude_code",
-		"message":   "Claude Code execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// claude non-interactive (§11.4.99): claude -p "<prompt>" --output-format json
+	return m.runCLIAgent(inst, TypeClaudeCode, "claude", []string{"-p", prompt, "--output-format", "json"}, payload)
 }
 
 func (m *InstanceManager) executeCodex(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "codex",
-		"message":   "Codex execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// codex non-interactive (§11.4.99): codex exec --json "<prompt>"
+	return m.runCLIAgent(inst, TypeCodex, "codex", []string{"exec", "--json", prompt}, payload)
 }
 
 func (m *InstanceManager) executeCline(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "cline",
-		"message":   "Cline execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// cline non-interactive: cline task "<prompt>"
+	return m.runCLIAgent(inst, TypeCline, "cline", []string{"task", prompt}, payload)
 }
 
 func (m *InstanceManager) executeOpenHands(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "openhands",
-		"message":   "OpenHands execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// openhands non-interactive: openhands -t "<prompt>"
+	return m.runCLIAgent(inst, TypeOpenHands, "openhands", []string{"-t", prompt}, payload)
 }
 
 func (m *InstanceManager) executeKiro(inst *AgentInstance, payload interface{}) (interface{}, error) {

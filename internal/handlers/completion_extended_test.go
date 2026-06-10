@@ -334,35 +334,51 @@ func TestCompletionHandler_Complete_LargePayload(t *testing.T) {
 }
 
 // TestCompletionHandler_Models_ResponseStructure tests models endpoint response structure
+// §11.4.120 reconciliation (CONST-036 / BLUFF-002): previously asserted exactly
+// 3 hardcoded models with a "permission" field. The list is now registry-sourced;
+// with no source it is honestly empty, and with a source each entry carries the
+// real structural fields (id/object/created/owned_by/root). The removed hardcoded
+// "permission" field is no longer part of the contract.
 func TestCompletionHandler_Models_ResponseStructure(t *testing.T) {
 	t.Parallel()
-	handler := &CompletionHandler{}
 
+	// (a) no source → honest empty list
+	handler := &CompletionHandler{}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("GET", "/v1/models", nil)
-
 	handler.Models(c)
-
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-
 	assert.Equal(t, "list", response["object"])
-
 	data, ok := response["data"].([]interface{})
 	require.True(t, ok)
-	require.Len(t, data, 3)
+	assert.Empty(t, data, "no ModelSource wired → honest empty list")
 
-	// Verify model structure
-	model := data[0].(map[string]interface{})
-	assert.Contains(t, model, "id")
+	// (b) source wired → entries carry the real structural fields
+	src := newStaticModelSource()
+	src.add("openai", "gpt-4o")
+	handler.SetModelSource(src)
+
+	w2 := httptest.NewRecorder()
+	c2, _ := gin.CreateTestContext(w2)
+	c2.Request = httptest.NewRequest("GET", "/v1/models", nil)
+	handler.Models(c2)
+	assert.Equal(t, http.StatusOK, w2.Code)
+
+	var resp2 map[string]interface{}
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &resp2))
+	data2, ok := resp2["data"].([]interface{})
+	require.True(t, ok)
+	require.Len(t, data2, 1)
+	model := data2[0].(map[string]interface{})
+	assert.Equal(t, "gpt-4o", model["id"])
 	assert.Contains(t, model, "object")
 	assert.Contains(t, model, "created")
-	assert.Contains(t, model, "owned_by")
-	assert.Contains(t, model, "permission")
+	assert.Equal(t, "openai", model["owned_by"])
 	assert.Contains(t, model, "root")
 }
 

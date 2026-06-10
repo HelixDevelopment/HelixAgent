@@ -8,17 +8,35 @@ import (
 	"strconv"
 	"time"
 
+	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/skills"
 	"github.com/gin-gonic/gin"
 )
 
+// ModelSource is the read surface CompletionHandler.Models consumes to build the
+// model list from live provider/verifier state (CONST-036). It is satisfied by
+// *services.ProviderRegistry — the SAME authoritative source the /v1/providers
+// endpoint reads (router.go ListProviders → GetCapabilities). NO hardcoded list.
+type ModelSource interface {
+	ListProviders() []string
+	GetProvider(name string) (llm.LLMProvider, error)
+}
+
 // CompletionHandler handles LLM completion requests
 type CompletionHandler struct {
 	requestService    *services.RequestService
 	skillsIntegration *skills.Integration
 	intentRouter      *services.IntentBasedRouter
+	modelSource       ModelSource
+}
+
+// SetModelSource wires the authoritative provider/verifier registry into the
+// handler so Models reflects live state (CONST-036). When nil, Models returns an
+// honest empty list rather than a fabricated one (§11.4 anti-bluff).
+func (h *CompletionHandler) SetModelSource(src ModelSource) {
+	h.modelSource = src
 }
 
 // CompletionRequest represents the API request for completion
@@ -402,42 +420,56 @@ StreamLoop:
 	flusher.Flush()
 }
 
-// Models handles model listing requests
+// Models handles model listing requests.
+//
+// CONST-036 / BLUFF-002: the model list is sourced from the live provider
+// registry (the authoritative source — the SAME path /v1/providers reads:
+// ListProviders → GetCapabilities().SupportedModels). NO hardcoded literal.
+// When no registry/verifier source is wired (cold start / verifier down), the
+// endpoint returns an HONEST EMPTY list rather than a fabricated "working" one
+// (§11.4 anti-bluff): an empty list is the truthful answer, never a guess.
 func (h *CompletionHandler) Models(c *gin.Context) {
-	// Create model list response
-	models := []map[string]any{
-		{
-			"id":         "deepseek-coder",
-			"object":     "model",
-			"created":    time.Now().Unix(),
-			"owned_by":   "deepseek",
-			"permission": "code_generation",
-			"root":       "deepseek",
-			"parent":     nil,
-		},
-		{
-			"id":         "claude-3-sonnet-20240229",
-			"object":     "model",
-			"created":    time.Now().Unix(),
-			"owned_by":   "anthropic",
-			"permission": "reasoning",
-			"root":       "claude",
-			"parent":     nil,
-		},
-		{
-			"id":         "gemini-pro",
-			"object":     "model",
-			"created":    time.Now().Unix(),
-			"owned_by":   "google",
-			"permission": "multimodal",
-			"root":       "gemini",
-			"parent":     nil,
-		},
+	created := time.Now().Unix()
+	data := make([]map[string]any, 0)
+	seen := make(map[string]struct{})
+
+	if h.modelSource != nil {
+		for _, providerName := range h.modelSource.ListProviders() {
+			provider, err := h.modelSource.GetProvider(providerName)
+			if err != nil || provider == nil {
+				// Skip providers that cannot be resolved; never fabricate.
+				continue
+			}
+			caps := provider.GetCapabilities()
+			if caps == nil {
+				continue
+			}
+			for _, modelID := range caps.SupportedModels {
+				if modelID == "" {
+					continue
+				}
+				// De-duplicate model ids advertised by multiple providers,
+				// preserving the first provider that owns the id.
+				dedupKey := providerName + "/" + modelID
+				if _, dup := seen[dedupKey]; dup {
+					continue
+				}
+				seen[dedupKey] = struct{}{}
+				data = append(data, map[string]any{
+					"id":       modelID,
+					"object":   "model",
+					"created":  created,
+					"owned_by": providerName,
+					"root":     providerName,
+					"parent":   nil,
+				})
+			}
+		}
 	}
 
 	response := map[string]any{
 		"object": "list",
-		"data":   models,
+		"data":   data,
 	}
 
 	c.JSON(http.StatusOK, response)

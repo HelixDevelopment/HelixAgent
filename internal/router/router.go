@@ -1193,6 +1193,9 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 
 		// Completion endpoints (skills-enhanced completion with intent routing)
 		completionHandler := handlers.NewCompletionHandler(providerRegistry.GetRequestService())
+		// CONST-036 / BLUFF-002: source /v1/completion/models from the live
+		// provider registry (authoritative), never a hardcoded literal.
+		completionHandler.SetModelSource(providerRegistry)
 		completionHandler.SetSkillsIntegration(skillsIntegration)
 		if intentRouter != nil {
 			completionHandler.SetIntentBasedRouter(intentRouter)

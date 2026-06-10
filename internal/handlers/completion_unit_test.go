@@ -446,6 +446,10 @@ func TestCompletionHandlerUnit_ChatStream_InvalidJSON(t *testing.T) {
 }
 
 // TestCompletionHandler_Models tests model listing endpoint
+// §11.4.120 reconciliation (CONST-036 / BLUFF-002): previously asserted
+// len(data) >= 3 against the removed hardcoded literal. The model list is now
+// sourced from the live provider registry; setupCompletionTest wires no
+// ModelSource, so the honest answer is an empty list (never a fabricated one).
 func TestCompletionHandlerUnit_Models(t *testing.T) {
 	t.Parallel()
 	router, _, _ := setupCompletionTest()
@@ -464,16 +468,7 @@ func TestCompletionHandlerUnit_Models(t *testing.T) {
 
 	data, ok := response["data"].([]interface{})
 	require.True(t, ok)
-	assert.GreaterOrEqual(t, len(data), 3)
-
-	// Verify model structure
-	if len(data) > 0 {
-		model := data[0].(map[string]interface{})
-		assert.Contains(t, model, "id")
-		assert.Contains(t, model, "object")
-		assert.Contains(t, model, "created")
-		assert.Contains(t, model, "owned_by")
-	}
+	assert.Empty(t, data, "no ModelSource wired → honest empty list, never a fabricated hardcoded list")
 }
 
 // TestCompletionHandler_Complete_WithSkills tests completion with skills integration

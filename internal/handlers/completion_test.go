@@ -470,9 +470,20 @@ func TestConvertToInternalRequest_WithToolCalls(t *testing.T) {
 	assert.NotNil(t, internalReq.Messages[0].ToolCalls)
 }
 
-// TestCompletionHandler_Models_Direct tests the Models handler directly
+// TestCompletionHandler_Models_Direct tests the Models handler directly.
+//
+// §11.4.120 reconciliation (CONST-036 / BLUFF-002): this test previously
+// asserted the OLD hardcoded 3-model literal (deepseek-coder / claude-3-sonnet /
+// gemini-pro). That literal was the BLUFF-002 defect and has been removed; the
+// test is RECONCILED to assert the NEW mechanism — the list is sourced from the
+// live provider registry, and with no source attached it is HONESTLY EMPTY
+// (never a fabricated "working" list). It is NOT deleted and NOT weakened to a
+// tautology. The deep behavioural guard lives in
+// completion_models_test.go:TestCompletionModels_D1_Polarity.
 func TestCompletionHandler_Models_Direct(t *testing.T) {
 	t.Parallel()
+
+	// (a) No registry/verifier source wired → honest empty list.
 	handler := &CompletionHandler{}
 
 	w := httptest.NewRecorder()
@@ -490,23 +501,37 @@ func TestCompletionHandler_Models_Direct(t *testing.T) {
 	assert.Equal(t, "list", response["object"])
 	data, ok := response["data"].([]interface{})
 	assert.True(t, ok)
-	assert.Len(t, data, 3) // deepseek-coder, claude-3-sonnet, gemini-pro
+	assert.Empty(t, data, "no source wired → honest empty list, never a fabricated hardcoded list")
 
-	// Verify first model
-	model0 := data[0].(map[string]interface{})
-	assert.Equal(t, "deepseek-coder", model0["id"])
-	assert.Equal(t, "model", model0["object"])
-	assert.Equal(t, "deepseek", model0["owned_by"])
+	// (b) Registry source wired → the list reflects live provider capabilities.
+	src := newStaticModelSource()
+	src.add("anthropic", "claude-sonnet-4")
+	handler.SetModelSource(src)
 
-	// Verify second model
-	model1 := data[1].(map[string]interface{})
-	assert.Equal(t, "claude-3-sonnet-20240229", model1["id"])
-	assert.Equal(t, "anthropic", model1["owned_by"])
+	w2 := httptest.NewRecorder()
+	c2, _ := gin.CreateTestContext(w2)
+	c2.Request = httptest.NewRequest("GET", "/v1/models", nil)
+	handler.Models(c2)
+	assert.Equal(t, http.StatusOK, w2.Code)
 
-	// Verify third model
-	model2 := data[2].(map[string]interface{})
-	assert.Equal(t, "gemini-pro", model2["id"])
-	assert.Equal(t, "google", model2["owned_by"])
+	var resp2 map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w2.Body.Bytes(), &resp2))
+	data2, ok := resp2["data"].([]interface{})
+	assert.True(t, ok)
+	if !assert.Len(t, data2, 1, "list must reflect the single registry-advertised model") {
+		return
+	}
+	m0 := data2[0].(map[string]interface{})
+	assert.Equal(t, "claude-sonnet-4", m0["id"])
+	assert.Equal(t, "anthropic", m0["owned_by"])
+	assert.Equal(t, "model", m0["object"])
+
+	// And the removed hardcoded literal must NOT be fabricated.
+	for _, entry := range data2 {
+		em := entry.(map[string]interface{})
+		assert.NotEqual(t, "deepseek-coder", em["id"])
+		assert.NotEqual(t, "gemini-pro", em["id"])
+	}
 }
 
 // TestCompletionHandler_Complete_InvalidJSON tests Complete with invalid JSON

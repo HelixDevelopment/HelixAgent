@@ -9,12 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
+	"dev.helix.agent/internal/services"
 )
 
 // ClaudeCode provides Claude Code CLI integration
@@ -26,6 +28,12 @@ type ClaudeCode struct {
 	mu         sync.RWMutex
 	process    *os.Process
 	mcpEnabled bool
+	// mcp is the real MCP integration seam. handleMCP routes through it so
+	// `list` reports the actually-configured servers and `call` dispatches a
+	// real `tools/call` via the wired MCPTransport (or returns the honest
+	// ErrMCPClientNotWired) — never a hardcoded fleet or a fabricated echo
+	// (BLUFF-001, D-18).
+	mcp *MCPIntegration
 }
 
 // Config holds Claude Code configuration
@@ -119,6 +127,7 @@ func New() *ClaudeCode {
 			},
 		},
 		sessionID: generateSessionID(),
+		mcp:       NewMCPIntegration(""),
 	}
 }
 
@@ -135,6 +144,19 @@ func (c *ClaudeCode) Initialize(ctx context.Context, config interface{}) error {
 	c.workDir = c.config.WorkDir
 	if c.workDir == "" {
 		c.workDir, _ = os.Getwd()
+	}
+
+	// Initialise the real MCP integration seam. When a config path is supplied
+	// its servers are loaded from disk; otherwise the integration starts empty
+	// and `list` honestly reports no configured servers (BLUFF-001, D-18).
+	if c.mcp == nil {
+		c.mcp = NewMCPIntegration(c.config.MCPConfigPath)
+	}
+	if c.config.MCPConfigPath != "" {
+		c.mcp = NewMCPIntegration(c.config.MCPConfigPath)
+		if err := c.mcp.LoadConfig(); err != nil {
+			return fmt.Errorf("failed to load MCP config %q: %w", c.config.MCPConfigPath, err)
+		}
 	}
 
 	// Check for claude-code-source
@@ -464,8 +486,19 @@ func (c *ClaudeCode) handleTest(ctx context.Context, params map[string]interface
 	return response, nil
 }
 
-// handleMCP handles MCP tool operations
+// handleMCP handles MCP tool operations by routing through the real MCP
+// integration seam (mcp_integration.go).
+//
+// Anti-bluff (BLUFF-001, D-18): `list` reports the ACTUALLY-configured servers
+// (honestly empty when none are configured) instead of a hardcoded fleet;
+// `call` dispatches a real `tools/call` through the wired MCPTransport and
+// surfaces its result, or returns the honest ErrMCPClientNotWired when no
+// transport has been installed — never a fabricated "Called .. via MCP" echo.
 func (c *ClaudeCode) handleMCP(ctx context.Context, params map[string]interface{}) (*Response, error) {
+	if c.mcp == nil {
+		c.mcp = NewMCPIntegration(c.config.MCPConfigPath)
+	}
+
 	action, _ := params["action"].(string)
 	if action == "" {
 		action = "list"
@@ -473,25 +506,78 @@ func (c *ClaudeCode) handleMCP(ctx context.Context, params map[string]interface{
 
 	switch action {
 	case "list":
+		servers := c.mcp.GetServers()
+		if len(servers) == 0 {
+			return &Response{
+				Success:   true,
+				Content:   "No MCP servers configured",
+				SessionID: c.sessionID,
+				Metadata: map[string]interface{}{
+					"mcp_enabled":  c.config.MCPEnabled,
+					"server_count": 0,
+				},
+			}, nil
+		}
+		names := make([]string, 0, len(servers))
+		for name := range servers {
+			names = append(names, name)
+		}
+		sort.Strings(names)
 		return &Response{
 			Success:   true,
-			Content:   "Available MCP servers: filesystem, github, memory, fetch, puppeteer",
+			Content:   "Configured MCP servers: " + strings.Join(names, ", "),
 			SessionID: c.sessionID,
 			Metadata: map[string]interface{}{
-				"mcp_enabled": c.config.MCPEnabled,
+				"mcp_enabled":  c.config.MCPEnabled,
+				"server_count": len(names),
+				"servers":      names,
 			},
 		}, nil
 	case "call":
 		server, _ := params["server"].(string)
 		tool, _ := params["tool"].(string)
+		if server == "" || tool == "" {
+			return nil, fmt.Errorf("MCP call requires both server and tool")
+		}
+		args, _ := params["args"].(map[string]interface{})
+
+		// Real dispatch through the MCP transport seam. Returns
+		// ErrMCPClientNotWired when no transport is installed — the honest
+		// error, never a fabricated success.
+		result, err := c.mcp.CallTool(ctx, server, tool, args)
+		if err != nil {
+			return nil, fmt.Errorf("MCP call %s/%s failed: %w", server, tool, err)
+		}
+
 		return &Response{
-			Success:   true,
-			Content:   fmt.Sprintf("Called %s/%s via MCP", server, tool),
+			Success:   !result.IsError,
+			Content:   mcpResultText(result),
 			SessionID: c.sessionID,
+			Metadata: map[string]interface{}{
+				"server":   server,
+				"tool":     tool,
+				"is_error": result.IsError,
+			},
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown MCP action: %s", action)
 	}
+}
+
+// mcpResultText flattens a ToolCallResult's text content items into a single
+// string for display. This surfaces the REAL transport response, never a
+// template.
+func mcpResultText(result *services.ToolCallResult) string {
+	if result == nil {
+		return ""
+	}
+	parts := make([]string, 0, len(result.Content))
+	for _, item := range result.Content {
+		if item.Text != "" {
+			parts = append(parts, item.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 // handleConfig handles configuration operations

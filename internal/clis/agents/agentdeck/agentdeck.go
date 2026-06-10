@@ -190,11 +190,15 @@ func (a *AgentDeck) orchestrate(ctx context.Context, params map[string]interface
 
 	plan := a.createOrchestrationPlan(task, mode)
 
+	// Anti-bluff (BLUFF-001, D-18): no agent is actually executed here — this
+	// builds the execution plan only. Reporting "completed" would falsely
+	// claim a multi-agent run finished. The honest state is that the plan was
+	// PLANNED; the caller drives execution via assign_task / a real runner.
 	return map[string]interface{}{
 		"task":   task,
 		"mode":   mode,
 		"plan":   plan,
-		"status": "completed",
+		"status": "planned",
 	}, nil
 }
 

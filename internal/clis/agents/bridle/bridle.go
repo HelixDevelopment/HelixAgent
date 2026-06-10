@@ -210,8 +210,16 @@ func (b *Bridle) runWorkflow(ctx context.Context, params map[string]interface{})
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
 
-	// Execute workflow with guardrails
+	// Evaluate workflow steps against guardrails.
+	//
+	// Anti-bluff (BLUFF-001, D-18): this method does NOT dispatch step.Action —
+	// there is no action runner wired. It only EVALUATES each step's guardrails.
+	// Reporting "completed" would falsely claim each step's action ran. The
+	// honest per-step state is "evaluated" (guardrails checked, no action run),
+	// or "blocked" when a guardrail violation trips strict mode. The overall
+	// workflow status is "blocked" if any step blocked, else "evaluated".
 	results := make([]map[string]interface{}, 0, len(workflow.Steps))
+	anyBlocked := false
 
 	for _, step := range workflow.Steps {
 		// Check guardrails
@@ -220,21 +228,27 @@ func (b *Bridle) runWorkflow(ctx context.Context, params map[string]interface{})
 		result := map[string]interface{}{
 			"step_id":    step.ID,
 			"step_name":  step.Name,
-			"status":     "completed",
+			"status":     "evaluated",
 			"violations": violations,
 		}
 
 		if len(violations) > 0 && b.config.StrictMode {
 			result["status"] = "blocked"
+			anyBlocked = true
 		}
 
 		results = append(results, result)
 	}
 
+	workflowStatus := "evaluated"
+	if anyBlocked {
+		workflowStatus = "blocked"
+	}
+
 	return map[string]interface{}{
 		"workflow_id": workflowID,
 		"results":     results,
-		"status":      "completed",
+		"status":      workflowStatus,
 	}, nil
 }
 

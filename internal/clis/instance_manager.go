@@ -383,18 +383,21 @@ func (m *InstanceManager) BroadcastRequest(
 	return results
 }
 
-// IsAgentTypeAvailable checks if an agent type is available.
+// IsAgentTypeAvailable reports whether an agent type can actually run on THIS
+// host right now. It performs a REAL per-type binary resolution (exec.LookPath,
+// honoring the HELIX_AGENT_BIN_<TYPE> test override) driven by the shared
+// agentDefaultCommand table — the single source of truth shared with the
+// execute* dispatch (D-11). An agent whose table entry has an empty command
+// (no standalone non-interactive CLI) is genuinely unavailable; this replaces
+// the prior "For now, allow all types" hard-coded enum allowlist that falsely
+// reported stub-only agents as available (BLUFF / CONST-035).
 func (m *InstanceManager) IsAgentTypeAvailable(agentType AgentType) bool {
-	// Check if there's a pool for this type
-	// For now, allow all types defined in the enum
-	switch agentType {
-	case TypeAider, TypeClaudeCode, TypeCodex, TypeCline,
-		TypeOpenHands, TypeKiro, TypeContinue, TypeHelixAgent:
-		return true
-	default:
-		// Could check database or configuration here
-		return false
+	command, ok := agentDefaultCommand[agentType]
+	if !ok || command == "" {
+		return false // no real CLI mapping → genuinely unavailable
 	}
+	_, err := resolveAgentBinary(agentType, command)
+	return err == nil
 }
 
 // GetMetrics returns manager metrics.
@@ -1000,6 +1003,80 @@ func (m *InstanceManager) runCLIAgent(inst *AgentInstance, typ CLIAgentType, com
 	return result, nil
 }
 
+// agentDefaultCommand is the single source of truth mapping each CLIAgentType to
+// the default name of its non-interactive CLI binary, shared by the execute*
+// dispatch and IsAgentTypeAvailable (D-11). An EMPTY command means the agent has
+// no standalone headless CLI (IDE extension / hosted-web agent / raw model name /
+// a project-owned binary whose name is not yet verified) — such agents are never
+// "available" and their dispatch returns an honest error rather than a fabricated
+// success (§11.4.6 no-guessing; BLUFF-003). Commands for the confirmed entries are
+// cross-referenced to docs/research/2026-06-10-sdk-cli-currency.md (§11.4.99).
+var agentDefaultCommand = map[CLIAgentType]string{
+	// Already-real (SP4) — real non-interactive CLIs.
+	TypeAider:      "aider",
+	TypeClaudeCode: "claude",
+	TypeCodex:      "codex",
+	TypeCline:      "cline",
+	TypeOpenHands:  "openhands",
+	// SP4-cont D-12 confirmed-binary conversions (§11.4.99).
+	TypeQwenCoder:     "qwen",
+	TypeGitHubCopilot: "copilot",
+	TypeGeminiAssist:  "gemini",
+	// No standalone headless CLI — honest-error class (empty command).
+	TypeKiro:           "",
+	TypeContinue:       "",
+	TypeSupermaven:     "",
+	TypeCursor:         "",
+	TypeWindsurf:       "",
+	TypeAugment:        "",
+	TypeSourcegraph:    "",
+	TypeCodeium:        "",
+	TypeTabnine:        "",
+	TypeCodeGPT:        "",
+	TypeTwin:           "",
+	TypeDevin:          "",
+	TypeDevika:         "",
+	TypeSWEAgent:       "",
+	TypeGPTPilot:       "",
+	TypeMetamorph:      "",
+	TypeJunie:          "",
+	TypeAmazonQ:        "",
+	TypeJetBrainsAI:    "",
+	TypeCodeGemma:      "",
+	TypeStarCoder:      "",
+	TypeMistralCode:    "",
+	TypeCodey:          "",
+	TypeLlamaCode:      "",
+	TypeDeepSeekCoder:  "",
+	TypeWizardCoder:    "",
+	TypePhind:          "",
+	TypeCody:           "",
+	TypeCursorSh:       "",
+	TypeTrae:           "",
+	TypeBlackbox:       "",
+	TypeLovable:        "",
+	TypeV0:             "",
+	TypeTempo:          "",
+	TypeBolt:           "",
+	TypeReplitAgent:    "",
+	TypeIDX:            "",
+	TypeFirebaseStudio: "",
+	TypeCascade:        "",
+	TypeHelixAgent:     "",
+}
+
+// noHeadlessCLIError returns the honest error emitted for agents in
+// agentDefaultCommand whose command is empty: they have no standalone
+// non-interactive CLI binary, so there is nothing to exec. Returning this error
+// instead of a fabricated "<Agent> execution completed" success is the
+// constitutionally-correct disposition (honest error > fake success; BLUFF-003 /
+// CONST-035 / §11.4.6). The agent's IDE/extension/web/API surface — not a headless
+// CLI — is the supported integration path.
+func noHeadlessCLIError(typ CLIAgentType) error {
+	return fmt.Errorf("%s has no non-interactive CLI binary on this host; "+
+		"it is integrated via its IDE extension / hosted web service / API, not a headless command", typ)
+}
+
 func (m *InstanceManager) executeAider(inst *AgentInstance, payload interface{}) (interface{}, error) {
 	prompt := extractPrompt(payload)
 	// aider non-interactive: --message "<prompt>" --no-auto-commits --yes
@@ -1031,390 +1108,234 @@ func (m *InstanceManager) executeOpenHands(inst *AgentInstance, payload interfac
 }
 
 func (m *InstanceManager) executeKiro(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "kiro",
-		"message":   "Kiro execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// AWS Kiro is an IDE — no standalone headless CLI. Honest error, never a
+	// fabricated success (BLUFF-003 / §11.4.6).
+	return nil, noHeadlessCLIError(TypeKiro)
 }
 
 func (m *InstanceManager) executeContinue(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "continue",
-		"message":   "Continue.dev execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Continue.dev is a VS Code / JetBrains extension — no headless CLI.
+	return nil, noHeadlessCLIError(TypeContinue)
 }
 
 func (m *InstanceManager) executeSupermaven(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "supermaven",
-		"message":   "Supermaven execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Supermaven is an editor extension — no headless CLI.
+	return nil, noHeadlessCLIError(TypeSupermaven)
 }
 
 func (m *InstanceManager) executeCursor(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "cursor",
-		"message":   "Cursor execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Cursor is an IDE — no standalone headless agent CLI.
+	return nil, noHeadlessCLIError(TypeCursor)
 }
 
 func (m *InstanceManager) executeWindsurf(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "windsurf",
-		"message":   "Windsurf execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Windsurf (Codeium) is an IDE — no headless CLI.
+	return nil, noHeadlessCLIError(TypeWindsurf)
 }
 
 func (m *InstanceManager) executeAugment(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "augment",
-		"message":   "Augment execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Augment is an IDE extension — no headless CLI.
+	return nil, noHeadlessCLIError(TypeAugment)
 }
 
 func (m *InstanceManager) executeSourcegraph(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "sourcegraph",
-		"message":   "Sourcegraph execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Sourcegraph's `src` CLI is code-search, not a verified agent runner —
+	// research-needed before any exec (§11.4.99 / §11.4.6). Honest error for now.
+	return nil, noHeadlessCLIError(TypeSourcegraph)
 }
 
 func (m *InstanceManager) executeCodeium(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "codeium",
-		"message":   "Codeium execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Codeium is an IDE extension — no headless CLI.
+	return nil, noHeadlessCLIError(TypeCodeium)
 }
 
 func (m *InstanceManager) executeTabnine(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "tabnine",
-		"message":   "Tabnine execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Tabnine is an IDE extension — no headless CLI.
+	return nil, noHeadlessCLIError(TypeTabnine)
 }
 
 func (m *InstanceManager) executeCodeGPT(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "codegpt",
-		"message":   "CodeGPT execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// CodeGPT is an IDE extension — no headless CLI.
+	return nil, noHeadlessCLIError(TypeCodeGPT)
 }
 
 func (m *InstanceManager) executeTwin(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "twin",
-		"message":   "Twin execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Twin is an IDE-integrated agent — no headless CLI.
+	return nil, noHeadlessCLIError(TypeTwin)
 }
 
 func (m *InstanceManager) executeDevin(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "devin",
-		"message":   "Devin execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Devin (Cognition) is a hosted web agent — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeDevin)
 }
 
 func (m *InstanceManager) executeDevika(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "devika",
-		"message":   "Devika execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Devika is primarily a server + web UI; non-interactive CLI form unverified —
+	// research-needed (§11.4.99 / §11.4.6). Honest error for now.
+	return nil, noHeadlessCLIError(TypeDevika)
 }
 
 func (m *InstanceManager) executeSWEAgent(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "swe_agent",
-		"message":   "SWE Agent execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// SWE-agent ships a `sweagent run` CLI, but exact current non-interactive flags
+	// are unverified — research-needed (§11.4.99 / §11.4.6). Honest error for now.
+	return nil, noHeadlessCLIError(TypeSWEAgent)
 }
 
 func (m *InstanceManager) executeGPTPilot(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "gpt_pilot",
-		"message":   "GPT Pilot execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// GPT-Pilot has a CLI entrypoint, but its non-interactive form is unverified —
+	// research-needed (§11.4.99 / §11.4.6). Honest error for now.
+	return nil, noHeadlessCLIError(TypeGPTPilot)
 }
 
 func (m *InstanceManager) executeMetamorph(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "metamorph",
-		"message":   "Metamorph execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Metamorph is an IDE-integrated agent — no headless CLI.
+	return nil, noHeadlessCLIError(TypeMetamorph)
 }
 
 func (m *InstanceManager) executeJunie(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "junie",
-		"message":   "Junie execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Junie is a JetBrains-integrated agent — no headless CLI.
+	return nil, noHeadlessCLIError(TypeJunie)
 }
 
 func (m *InstanceManager) executeAmazonQ(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "amazon_q",
-		"message":   "Amazon Q execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Amazon Q Developer ships a `q` CLI, but its non-interactive prompt + output
+	// flags are unverified — research-needed (§11.4.99 / §11.4.6). Honest error.
+	return nil, noHeadlessCLIError(TypeAmazonQ)
 }
 
 func (m *InstanceManager) executeGitHubCopilot(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "github_copilot",
-		"message":   "GitHub Copilot execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// GitHub Copilot CLI non-interactive (§11.4.99): copilot -p "<prompt>" -s
+	// (no JSON output format exists; -s emits clean stdout — research negative).
+	return m.runCLIAgent(inst, TypeGitHubCopilot, agentDefaultCommand[TypeGitHubCopilot], []string{"-p", prompt, "-s"}, payload)
 }
 
 func (m *InstanceManager) executeJetBrainsAI(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "jetbrains_ai",
-		"message":   "JetBrains AI execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// JetBrains AI Assistant is IDE-integrated — no headless CLI.
+	return nil, noHeadlessCLIError(TypeJetBrainsAI)
 }
 
 func (m *InstanceManager) executeCodeGemma(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "codegemma",
-		"message":   "CodeGemma execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// CodeGemma is a MODEL, not a CLI agent — reachable only via an ollama/API
+	// runner; the runner choice is an operator decision (§11.4.101). Honest error.
+	return nil, noHeadlessCLIError(TypeCodeGemma)
 }
 
 func (m *InstanceManager) executeStarCoder(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "starcoder",
-		"message":   "StarCoder execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// StarCoder is a MODEL, not a CLI agent — operator decision on the runner.
+	return nil, noHeadlessCLIError(TypeStarCoder)
 }
 
 func (m *InstanceManager) executeQwenCoder(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "qwen_coder",
-		"message":   "Qwen Coder execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// qwen non-interactive (§11.4.99): qwen -p "<prompt>" --output-format json
+	return m.runCLIAgent(inst, TypeQwenCoder, agentDefaultCommand[TypeQwenCoder], []string{"-p", prompt, "--output-format", "json"}, payload)
 }
 
 func (m *InstanceManager) executeMistralCode(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "mistral_code",
-		"message":   "Mistral Code execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Mistral Code is a MODEL family, not a verified CLI agent — operator decision.
+	return nil, noHeadlessCLIError(TypeMistralCode)
 }
 
 func (m *InstanceManager) executeGeminiAssist(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "gemini_assist",
-		"message":   "Gemini Assist execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	prompt := extractPrompt(payload)
+	// gemini non-interactive (§11.4.99): gemini -p "<prompt>" --output-format json
+	return m.runCLIAgent(inst, TypeGeminiAssist, agentDefaultCommand[TypeGeminiAssist], []string{"-p", prompt, "--output-format", "json"}, payload)
 }
 
 func (m *InstanceManager) executeCodey(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "codey",
-		"message":   "Codey execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Codey is a Google MODEL, not a CLI agent — no headless CLI.
+	return nil, noHeadlessCLIError(TypeCodey)
 }
 
 func (m *InstanceManager) executeLlamaCode(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "llama_code",
-		"message":   "Llama Code execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Code Llama is a MODEL — `ollama run codellama` is the realistic runner;
+	// that is an operator decision (§11.4.101). Honest error for now.
+	return nil, noHeadlessCLIError(TypeLlamaCode)
 }
 
 func (m *InstanceManager) executeDeepSeekCoder(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "deepseek_coder",
-		"message":   "DeepSeek Coder execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// DeepSeek-Coder is a MODEL, not a CLI agent — operator decision on the runner.
+	return nil, noHeadlessCLIError(TypeDeepSeekCoder)
 }
 
 func (m *InstanceManager) executeWizardCoder(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "wizardcoder",
-		"message":   "WizardCoder execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// WizardCoder is a MODEL, not a CLI agent — operator decision on the runner.
+	return nil, noHeadlessCLIError(TypeWizardCoder)
 }
 
 func (m *InstanceManager) executePhind(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "phind",
-		"message":   "Phind execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Phind is a web/IDE product — no headless CLI.
+	return nil, noHeadlessCLIError(TypePhind)
 }
 
 func (m *InstanceManager) executeCody(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "cody",
-		"message":   "Cody execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Sourcegraph Cody's historical `cody` CLI / current headless form is
+	// unverified — research-needed (§11.4.99 / §11.4.6). Honest error for now.
+	return nil, noHeadlessCLIError(TypeCody)
 }
 
 func (m *InstanceManager) executeCursorSh(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "cursor_sh",
-		"message":   "Cursor.sh execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Cursor.sh is a hosted web product — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeCursorSh)
 }
 
 func (m *InstanceManager) executeTrae(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "trae",
-		"message":   "Trae execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Trae (ByteDance) is an IDE — no headless CLI.
+	return nil, noHeadlessCLIError(TypeTrae)
 }
 
 func (m *InstanceManager) executeBlackbox(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "blackbox",
-		"message":   "Blackbox execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Blackbox is an IDE extension / web product — no headless CLI.
+	return nil, noHeadlessCLIError(TypeBlackbox)
 }
 
 func (m *InstanceManager) executeLovable(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "lovable",
-		"message":   "Lovable execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Lovable is a hosted web product — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeLovable)
 }
 
 func (m *InstanceManager) executeV0(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "v0",
-		"message":   "V0 execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// V0 (Vercel) is a hosted web product — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeV0)
 }
 
 func (m *InstanceManager) executeTempo(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "tempo",
-		"message":   "Tempo execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Tempo is a hosted web product — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeTempo)
 }
 
 func (m *InstanceManager) executeBolt(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "bolt",
-		"message":   "Bolt execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Bolt (StackBlitz) is a hosted web product — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeBolt)
 }
 
 func (m *InstanceManager) executeReplitAgent(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "replit_agent",
-		"message":   "Replit Agent execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Replit Agent is a hosted web product — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeReplitAgent)
 }
 
 func (m *InstanceManager) executeIDX(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "idx",
-		"message":   "IDX execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// IDX (Google web IDE) — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeIDX)
 }
 
 func (m *InstanceManager) executeFirebaseStudio(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "firebase_studio",
-		"message":   "Firebase Studio execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Firebase Studio (Google web IDE) — no local headless CLI.
+	return nil, noHeadlessCLIError(TypeFirebaseStudio)
 }
 
 func (m *InstanceManager) executeCascade(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "cascade",
-		"message":   "Cascade execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// Cascade is Windsurf's IDE-integrated agent — no headless CLI.
+	return nil, noHeadlessCLIError(TypeCascade)
 }
 
 func (m *InstanceManager) executeHelixAgent(inst *AgentInstance, payload interface{}) (interface{}, error) {
-	return map[string]string{
-		"status":    "executed",
-		"type":      "helixagent",
-		"message":   "HelixAgent execution completed",
-		"timestamp": time.Now().Format(time.RFC3339),
-	}, nil
+	// HelixAgent should exec the project's OWN binary, but its command name must
+	// come from project config — NOT guessed (§11.4.6). Until that name is supplied
+	// the table command is empty and this returns an honest error rather than a
+	// fabricated success (research/operator-blocked, not a verified exec form).
+	return nil, noHeadlessCLIError(TypeHelixAgent)
 }
 
 // Helper functions

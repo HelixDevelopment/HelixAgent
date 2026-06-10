@@ -4,6 +4,9 @@ package clis
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -35,10 +38,18 @@ func TestNewInstanceManager(t *testing.T) {
 }
 
 func TestInstanceManager_CreateInstance(t *testing.T) {
-	t.Parallel()
+	// Not t.Parallel(): injects HELIX_AGENT_BIN_AIDER via t.Setenv (incompatible
+	// with t.Parallel()).
+	//
+	// RECONCILED (§11.4.120) for D-11: CreateInstance gates on IsAgentTypeAvailable,
+	// which is now a REAL exec.LookPath check instead of a hard-coded allowlist.
+	// Creating a TypeAider instance therefore requires the aider binary to resolve;
+	// inject a fake one (matching the new honest contract) so the type is genuinely
+	// available on this host.
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
+	t.Setenv("HELIX_AGENT_BIN_AIDER", writeFakeAgentBin(t, "CREATE_INSTANCE_PROBE"))
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
@@ -446,7 +457,17 @@ func TestInstanceManager_BroadcastRequest(t *testing.T) {
 }
 
 func TestInstanceManager_IsAgentTypeAvailable(t *testing.T) {
-	t.Parallel()
+	// Not t.Parallel(): this test injects HELIX_AGENT_BIN_<TYPE> via t.Setenv,
+	// which is incompatible with t.Parallel().
+	//
+	// RECONCILED (§11.4.120) for D-11: IsAgentTypeAvailable USED to be a hard-coded
+	// enum allowlist that returned true for TypeKiro/TypeContinue/TypeHelixAgent
+	// purely by membership — even though those agents have no resolvable CLI binary
+	// (they are IDE-only / project-owned-name-unverified). It now performs a REAL
+	// per-type exec.LookPath check (resolveAgentBinary, honoring the
+	// HELIX_AGENT_BIN_<TYPE> override) via the shared agentDefaultCommand table.
+	// These assertions now exercise the NEW mechanism: a type is available IFF its
+	// table command resolves to a real binary on this host.
 	if testing.Short() {
 		t.Skip("Skipping InstanceManager test in short mode - requires database setup")  // SKIP-OK: #short-mode
 	}
@@ -466,16 +487,43 @@ func TestInstanceManager_IsAgentTypeAvailable(t *testing.T) {
 	im, err := NewInstanceManager(db, nil)
 	require.NoError(t, err)
 
-	// Available types
-	assert.True(t, im.IsAgentTypeAvailable(TypeAider))
-	assert.True(t, im.IsAgentTypeAvailable(TypeClaudeCode))
-	assert.True(t, im.IsAgentTypeAvailable(TypeCodex))
-	assert.True(t, im.IsAgentTypeAvailable(TypeCline))
-	assert.True(t, im.IsAgentTypeAvailable(TypeOpenHands))
-	assert.True(t, im.IsAgentTypeAvailable(TypeKiro))
-	assert.True(t, im.IsAgentTypeAvailable(TypeContinue))
+	// A real-CLI agent type becomes available the moment its binary resolves —
+	// inject a fake binary on PATH via the HELIX_AGENT_BIN_<TYPE> override (the
+	// same mechanism resolveAgentBinary honors). This proves the check is a REAL
+	// exec.LookPath, not a hard-coded allowlist.
+	fakeBin := writeFakeAgentBin(t, "AVAILABILITY_PROBE")
+	for _, tc := range []struct {
+		envKey string
+		typ    CLIAgentType
+	}{
+		{"HELIX_AGENT_BIN_AIDER", TypeAider},
+		{"HELIX_AGENT_BIN_CLAUDE_CODE", TypeClaudeCode},
+		{"HELIX_AGENT_BIN_CODEX", TypeCodex},
+		{"HELIX_AGENT_BIN_CLINE", TypeCline},
+		{"HELIX_AGENT_BIN_OPENHANDS", TypeOpenHands},
+		{"HELIX_AGENT_BIN_QWENCODER", TypeQwenCoder},
+		{"HELIX_AGENT_BIN_GITHUB_COPILOT", TypeGitHubCopilot},
+		{"HELIX_AGENT_BIN_GEMINI_ASSIST", TypeGeminiAssist},
+	} {
+		t.Setenv(tc.envKey, fakeBin)
+		assert.Truef(t, im.IsAgentTypeAvailable(tc.typ),
+			"%s must be available with a real binary injected", tc.typ)
+	}
 
-	// Unavailable type
+	// IDE-only / hosted-web / project-name-unverified agents have an empty command
+	// in the table → never available (the old allowlist falsely reported these as
+	// available even though they cannot run). This is the §11.4.120 reconciliation:
+	// the assertion now matches the corrected contract, not the removed allowlist.
+	assert.False(t, im.IsAgentTypeAvailable(TypeKiro))
+	assert.False(t, im.IsAgentTypeAvailable(TypeContinue))
+	assert.False(t, im.IsAgentTypeAvailable(TypeHelixAgent))
+	assert.False(t, im.IsAgentTypeAvailable(TypeCursor))
+
+	// The negative branch of the real exec.LookPath check (a real-CLI agent whose
+	// binary override points at a non-existent path → false) is covered by
+	// TestD11_IsAgentTypeAvailable_RealLookPath case (c).
+
+	// Unknown type (not in the table) → false.
 	assert.False(t, im.IsAgentTypeAvailable("unknown_type"))
 
 	im.Close()
@@ -589,6 +637,16 @@ func BenchmarkInstanceManager_CreateInstance(b *testing.B) {
 
 	im, _ := NewInstanceManager(db, nil)
 	defer im.Close()
+
+	// D-11: CreateInstance gates on the real IsAgentTypeAvailable exec.LookPath
+	// check; inject a fake aider binary so the type resolves on this host.
+	if runtime.GOOS != "windows" {
+		bin := filepath.Join(b.TempDir(), "fake-aider")
+		if err := os.WriteFile(bin, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			b.Fatalf("write fake aider binary: %v", err)
+		}
+		b.Setenv("HELIX_AGENT_BIN_AIDER", bin)
+	}
 
 	ctx := context.Background()
 	config := DefaultInstanceConfig(TypeAider)

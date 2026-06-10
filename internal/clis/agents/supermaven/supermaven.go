@@ -5,11 +5,18 @@ package supermaven
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoHeadlessCLI is returned by completion/generation entrypoints that have no
+// real backing capability. Supermaven ships ONLY as an editor plugin / language
+// server embedded in IDEs (VS Code, JetBrains, Neovim, etc.); it exposes NO
+// headless command-line interface that turns a prefix into a completion. Rather
+// than fabricate a templated completion (BLUFF-001), these entrypoints return an
+// honest error. See https://supermaven.com .
+var ErrNoHeadlessCLI = fmt.Errorf("supermaven has no headless CLI: it ships only as an IDE/editor plugin (language server), so code completion cannot be produced from this integration — refusing to fabricate a completion (BLUFF-001)")
 
 // Supermaven provides Supermaven integration
 type Supermaven struct {
@@ -91,59 +98,16 @@ func (s *Supermaven) Execute(ctx context.Context, command string, params map[str
 	}
 }
 
-// complete generates code completion
+// complete returns an HONEST error: Supermaven has no headless CLI that can
+// produce a real completion outside an editor host, so this integration refuses
+// to fabricate one (BLUFF-001). The prefix is required so the contract still
+// validates input before reporting the unsupported capability.
 func (s *Supermaven) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prefix, _ := params["prefix"].(string)
-	suffix, _ := params["suffix"].(string)
-	language, _ := params["language"].(string)
-
-	if language == "" {
-		language = "go"
+	if prefix == "" {
+		return nil, fmt.Errorf("prefix required")
 	}
-
-	// Generate completion based on context
-	completion := s.generateCompletion(prefix, suffix, language)
-
-	return map[string]interface{}{
-		"prefix":     prefix,
-		"suffix":     suffix,
-		"language":   language,
-		"completion": completion,
-		"mode":       s.config.CompletionMode,
-	}, nil
-}
-
-// generateCompletion generates completion
-func (s *Supermaven) generateCompletion(prefix, suffix, language string) string {
-	// Simplified completion generation
-	lines := strings.Split(prefix, "\n")
-	lastLine := ""
-	if len(lines) > 0 {
-		lastLine = lines[len(lines)-1]
-	}
-
-	switch language {
-	case "go":
-		if strings.HasSuffix(lastLine, "func ") {
-			return "functionName() {\n\t// Implementation\n}"
-		}
-		if strings.Contains(lastLine, "if ") {
-			return " {\n\t// Condition body\n}"
-		}
-		return "// Supermaven completion"
-	case "python":
-		if strings.HasSuffix(lastLine, "def ") {
-			return "function_name():\n    pass"
-		}
-		return "# Supermaven completion"
-	case "typescript", "javascript":
-		if strings.HasSuffix(lastLine, "function ") {
-			return "functionName() {\n  // Implementation\n}"
-		}
-		return "// Supermaven completion"
-	default:
-		return "// Supermaven completion"
-	}
+	return nil, ErrNoHeadlessCLI
 }
 
 // accept accepts a completion

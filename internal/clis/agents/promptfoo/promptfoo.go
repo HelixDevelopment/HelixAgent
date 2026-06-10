@@ -182,23 +182,18 @@ func (p *Promptfoo) init(ctx context.Context, params map[string]interface{}) (in
 	}, nil
 }
 
-// eval runs evaluation
+// eval returns an HONEST error: real evaluation requires invoking the promptfoo
+// CLI (`promptfoo eval -c <config>`) against real LLM providers, which this
+// integration does not do. The previous implementation returned a hardcoded
+// scorecard (tests_run:10, passed:8, score:0.8) for an evaluation that never
+// ran — a BLUFF-001 / CONST-035 false-success. Refusing to fabricate eval
+// results. See https://www.promptfoo.dev/docs/usage/command-line/ .
 func (p *Promptfoo) eval(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	configPath, _ := params["config"].(string)
 	if configPath == "" {
 		configPath = "promptfooconfig.yaml"
 	}
-
-	// Run evaluation
-	results := map[string]interface{}{
-		"config":    configPath,
-		"tests_run": 10,
-		"passed":    8,
-		"failed":    2,
-		"score":     0.8,
-	}
-
-	return results, nil
+	return nil, fmt.Errorf("promptfoo eval not run: real evaluation requires the promptfoo CLI against real providers (`promptfoo eval -c %s`), not performed here — refusing to fabricate a scorecard (BLUFF-001)", configPath)
 }
 
 // createSuite creates a test suite
@@ -292,21 +287,12 @@ func (p *Promptfoo) runSuite(ctx context.Context, params map[string]interface{})
 		return nil, fmt.Errorf("suite not found: %s", suiteID)
 	}
 
-	// Run tests
-	results := make([]map[string]interface{}, 0, len(suite.Tests))
-	for _, test := range suite.Tests {
-		results = append(results, map[string]interface{}{
-			"test_id": test.ID,
-			"passed":  true,
-			"score":   1.0,
-		})
-	}
-
-	return map[string]interface{}{
-		"suite":   suite,
-		"results": results,
-		"status":  "completed",
-	}, nil
+	// HONEST error: actually running the suite requires the promptfoo CLI to call
+	// real LLM providers and grade their responses. The previous implementation
+	// returned passed:true / score:1.0 for EVERY test without running anything —
+	// a BLUFF-001 / CONST-035 false-success (the strongest bluff: an always-green
+	// scorecard). Refusing to fabricate per-test results.
+	return nil, fmt.Errorf("promptfoo suite %q not run: real grading requires the promptfoo CLI against real providers, not performed here — refusing to fabricate all-pass results (BLUFF-001)", suiteID)
 }
 
 // listSuites lists test suites

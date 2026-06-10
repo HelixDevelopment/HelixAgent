@@ -5,6 +5,7 @@ package kodu
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,16 @@ import (
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoLLMBackend is returned by the natural-language commands (ask/explain/
+// refactor) because Kodu's semantic INDEX is real (search/index/navigate/
+// relations operate on the on-disk indexed codebase) but there is NO LLM backend
+// wired to produce a real natural-language answer/explanation/refactor. Per
+// CONST-035 / BLUFF-001 those commands return this honest error instead of
+// fabricating "Based on the codebase: <q>", "This file <f> contains...", or a
+// templated change list.
+var ErrNoLLMBackend = errors.New("kodu: the semantic index is real, but no LLM backend is wired to answer/explain/refactor; " +
+	"these require a real model call — refusing to fabricate a natural-language response")
 
 // Kodu provides Kodu agent integration.
 //
@@ -168,22 +179,16 @@ func (k *Kodu) Execute(ctx context.Context, command string, params map[string]in
 	}
 }
 
-// ask asks a question about code
+// ask asks a question about code. The semantic lookup of relevant symbols is
+// real, but the natural-language answer requires an LLM that is not wired, so we
+// return an honest error rather than fabricate "Based on the codebase: <q>"
+// (BLUFF-001). Use `search`/`navigate`/`relations` for real index data.
 func (k *Kodu) ask(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	question, _ := params["question"].(string)
 	if question == "" {
 		return nil, fmt.Errorf("question required")
 	}
-
-	// Use semantic context to provide answer
-	relevantSymbols := k.findRelevantSymbols(question)
-
-	return map[string]interface{}{
-		"question":         question,
-		"answer":           fmt.Sprintf("Based on the codebase: %s", question),
-		"relevant_symbols": relevantSymbols,
-		"model":            k.config.Model,
-	}, nil
+	return nil, fmt.Errorf("kodu ask: %w", ErrNoLLMBackend)
 }
 
 // search searches the codebase
@@ -224,17 +229,16 @@ func (k *Kodu) explain(ctx context.Context, params map[string]interface{}) (inte
 	}
 
 	k.ctxMu.RLock()
-	content, exists := k.context.Codebase[file]
+	_, exists := k.context.Codebase[file]
 	k.ctxMu.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("file not in context: %s", file)
 	}
 
-	return map[string]interface{}{
-		"file":        file,
-		"content":     content,
-		"explanation": fmt.Sprintf("This file %s contains...", file),
-	}, nil
+	// The file content is really indexed, but the natural-language explanation
+	// requires an LLM that is not wired — refuse to fabricate "This file <f>
+	// contains..." (BLUFF-001).
+	return nil, fmt.Errorf("kodu explain: %w", ErrNoLLMBackend)
 }
 
 // refactor performs refactoring
@@ -246,13 +250,9 @@ func (k *Kodu) refactor(ctx context.Context, params map[string]interface{}) (int
 		return nil, fmt.Errorf("file and instruction required")
 	}
 
-	return map[string]interface{}{
-		"file":        file,
-		"instruction": instruction,
-		"changes": []map[string]interface{}{
-			{"type": "refactor", "description": instruction},
-		},
-	}, nil
+	// A real refactor requires an LLM-driven edit that is not wired — refuse to
+	// fabricate a change list that no real refactor produced (BLUFF-001).
+	return nil, fmt.Errorf("kodu refactor: %w", ErrNoLLMBackend)
 }
 
 // index indexes the codebase

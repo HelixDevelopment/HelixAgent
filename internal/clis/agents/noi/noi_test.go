@@ -82,12 +82,12 @@ func TestNoiExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "refactor command",
+			// Reconciled (§11.4.120): refactor has no real backend; it now
+			// returns an HONEST error instead of fabricating a refactor result.
+			name:    "refactor command honest-errors (no backend)",
 			command: "refactor",
-			params: map[string]interface{}{
-				"code": "func main() { print('hello') }",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"code": "func main() { print('hello') }"},
+			wantErr: true,
 		},
 		{
 			name:    "refactor without code fails",
@@ -140,6 +140,9 @@ func TestNoiIsAvailable(t *testing.T) {
 	assert.True(t, n.IsAvailable())
 }
 
+// TestNoiRefactorResult reconciled (§11.4.120 / §11.4.115): refactor no longer
+// returns the "// Refactored by Noi" literal; with no real backend wired it MUST
+// return the honest ErrNoBackend. Standing GREEN guard for D-17.
 func TestNoiRefactorResult(t *testing.T) {
 	t.Parallel()
 	n := New()
@@ -149,12 +152,10 @@ func TestNoiRefactorResult(t *testing.T) {
 	require.NoError(t, err)
 
 	code := "func main() { println('hello') }"
-	result, err := n.Execute(ctx, "refactor", map[string]interface{}{
+	res, err := n.Execute(ctx, "refactor", map[string]interface{}{
 		"code": code,
 	})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, code, resultMap["code"])
+	require.ErrorIs(t, err, ErrNoBackend,
+		"refactor must return the honest no-backend error, never a fabricated result")
+	assert.Nil(t, res)
 }

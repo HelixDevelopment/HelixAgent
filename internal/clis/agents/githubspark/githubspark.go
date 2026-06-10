@@ -176,7 +176,19 @@ func (g *GitHubSpark) createSpark(ctx context.Context, params map[string]interfa
 	}, nil
 }
 
-// editSpark edits a Spark app
+// errNoHeadlessCLI is returned by the AI-edit command: GitHub Spark is a
+// web-only AI micro-app builder with NO official headless coding-agent CLI to
+// exec. Per the 2026-06-10 blocked-agent research there is no scriptable
+// single-prompt AI-edit invocation, so reporting fabricated "changes" would be a
+// BLUFF-001 violation. The local spark registry CRUD (create/list/clone/publish/
+// share) is genuine local state and remains functional; only the AI-prompt edit
+// returns this error.
+var errNoHeadlessCLI = fmt.Errorf(
+	"github spark is a web-only AI builder with no headless CLI; prompt-driven edits " +
+		"require the Spark web UI — this dispatch cannot apply AI changes without fabricating")
+
+// editSpark validates input then returns an honest no-headless-CLI error rather
+// than fabricating an AI-applied change list (BLUFF-001).
 func (g *GitHubSpark) editSpark(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	sparkID, _ := params["spark_id"].(string)
 	prompt, _ := params["prompt"].(string)
@@ -197,12 +209,7 @@ func (g *GitHubSpark) editSpark(ctx context.Context, params map[string]interface
 		return nil, fmt.Errorf("spark not found: %s", sparkID)
 	}
 
-	return map[string]interface{}{
-		"spark":   spark,
-		"prompt":  prompt,
-		"changes": []string{"Updated UI", "Added feature"},
-		"status":  "edited",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
 // publishSpark publishes a Spark app

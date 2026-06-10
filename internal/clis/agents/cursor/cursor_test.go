@@ -60,17 +60,17 @@ func TestCursor_Execute(t *testing.T) {
 		errMsg    string
 		checkFunc func(t *testing.T, result interface{})
 	}{
+		// §11.4.120-reconciled: Cursor is a GUI IDE with no headless CLI, so the
+		// AI commands MUST return an honest no-headless-CLI error after
+		// validating input — NEVER a fabricated response (BLUFF-001). These
+		// cases previously asserted a fabricated success; they now assert the
+		// honest error is surfaced. Session CRUD below stays genuine local state.
 		{
-			name:    "chat command",
+			name:    "chat command returns honest no-CLI error (not fabricated)",
 			command: "chat",
 			params:  map[string]interface{}{"message": "Hello"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Hello", m["message"])
-				assert.NotEmpty(t, m["response"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "chat without message",
@@ -80,59 +80,39 @@ func TestCursor_Execute(t *testing.T) {
 			errMsg:  "message required",
 		},
 		{
-			name:    "edit command",
+			name:    "edit command returns honest no-CLI error (not fabricated)",
 			command: "edit",
 			params:  map[string]interface{}{"file": "test.go", "instruction": "refactor"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "test.go", m["file"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
-			name:    "generate command",
+			name:    "generate command returns honest no-CLI error (not fabricated)",
 			command: "generate",
 			params:  map[string]interface{}{"prompt": "Create function", "language": "go"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.NotEmpty(t, m["code"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
-			name:    "explain command",
+			name:    "explain command returns honest no-CLI error (not fabricated)",
 			command: "explain",
 			params:  map[string]interface{}{"code": "func main() {}"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.NotEmpty(t, m["explanation"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
-			name:    "terminal command",
+			name:    "terminal command returns honest no-CLI error (not fabricated)",
 			command: "terminal",
 			params:  map[string]interface{}{"command": "ls -la"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "ls -la", m["command"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
-			name:    "composer command",
+			name:    "composer command returns honest no-CLI error (not fabricated)",
 			command: "composer",
 			params:  map[string]interface{}{"prompt": "Create app", "files": []interface{}{"main.go"}},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "composed", m["status"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "create_session command",

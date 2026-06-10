@@ -86,31 +86,27 @@ func (w *Warp) Execute(ctx context.Context, command string, params map[string]in
 	}
 }
 
-// aiCommand generates AI command
+// aiCommand returns an HONEST error: Warp is a GUI terminal application whose AI
+// command-generation runs inside the Warp app against Warp's own backend; there
+// is no headless CLI that turns a description into a command from this
+// integration. Refusing to fabricate a command (BLUFF-001). See https://www.warp.dev .
 func (w *Warp) aiCommand(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	description, _ := params["description"].(string)
 	if description == "" {
 		return nil, fmt.Errorf("description required")
 	}
-
-	return map[string]interface{}{
-		"description": description,
-		"command":     fmt.Sprintf("# Warp AI: %s", description),
-		"ai_enabled":  w.config.AIEnabled,
-	}, nil
+	return nil, fmt.Errorf("warp has no headless AI CLI: AI command generation runs inside the Warp GUI terminal app, so it cannot be produced from this integration — refusing to fabricate a command (BLUFF-001)")
 }
 
-// workflow manages workflows
+// workflow returns an HONEST error: Warp Workflows are managed inside the Warp
+// app (and its shared YAML workflow repo); there is no headless CLI to
+// synthesise a workflow here. Refusing to fabricate one (BLUFF-001).
 func (w *Warp) workflow(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	name, _ := params["name"].(string)
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-
-	return map[string]interface{}{
-		"name":     name,
-		"workflow": fmt.Sprintf("Workflow: %s", name),
-	}, nil
+	return nil, fmt.Errorf("warp has no headless workflow CLI: workflows are managed inside the Warp GUI terminal app — refusing to fabricate a workflow (BLUFF-001)")
 }
 
 // status returns status

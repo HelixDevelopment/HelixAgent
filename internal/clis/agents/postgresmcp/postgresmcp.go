@@ -1,14 +1,27 @@
 // Package postgresmcp provides Postgres MCP agent integration.
-// Postgres MCP: Model Context Protocol for PostgreSQL.
+// Postgres MCP: Model Context Protocol server for PostgreSQL — NOT a coding
+// agent.
+//
+// No real PostgreSQL connection or MCP server is wired here. Rather than
+// fabricate a "Query result" string or a hardcoded list of tables (the
+// BLUFF-001/003 anti-pattern), the query/schema commands return an HONEST error.
 package postgresmcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoBackend is returned because no real PostgreSQL connection / MCP server is
+// wired here. Returning a fabricated query result or hardcoded schema instead
+// would be a BLUFF-001/003 violation (CONST-035).
+var ErrNoBackend = errors.New(
+	"postgresmcp: no real backend wired — no PostgreSQL connection / MCP server " +
+		"is configured; refusing to fabricate query results or schema")
 
 // PostgresMCP provides Postgres MCP integration
 type PostgresMCP struct {
@@ -89,17 +102,12 @@ func (p *PostgresMCP) query(ctx context.Context, params map[string]interface{}) 
 		return nil, fmt.Errorf("sql required")
 	}
 
-	return map[string]interface{}{
-		"sql":    sql,
-		"result": "Query result",
-	}, nil
+	return nil, ErrNoBackend
 }
 
-// schema gets schema
+// schema gets schema — honest error, no real DB connection wired.
 func (p *PostgresMCP) schema(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	return map[string]interface{}{
-		"tables": []string{"users", "posts"},
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // status returns status

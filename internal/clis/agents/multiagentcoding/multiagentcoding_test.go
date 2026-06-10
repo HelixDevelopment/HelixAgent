@@ -82,12 +82,12 @@ func TestMultiAgentCodingExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "collaborate command",
+			// Reconciled (§11.4.120): collaborate has no real backend; it now
+			// returns an HONEST error instead of fabricating a result.
+			name:    "collaborate command honest-errors (no backend)",
 			command: "collaborate",
-			params: map[string]interface{}{
-				"task": "Implement auth",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"task": "Implement auth"},
+			wantErr: true,
 		},
 		{
 			name:    "collaborate without task fails",
@@ -140,6 +140,9 @@ func TestMultiAgentCodingIsAvailable(t *testing.T) {
 	assert.True(t, m.IsAvailable())
 }
 
+// TestMultiAgentCodingCollaborateResult reconciled (§11.4.120 / §11.4.115):
+// collaborate no longer fabricates a "completed" result; with no real backend
+// wired it MUST return the honest ErrNoBackend. Standing GREEN guard for D-17.
 func TestMultiAgentCodingCollaborateResult(t *testing.T) {
 	t.Parallel()
 	m := New()
@@ -155,14 +158,10 @@ func TestMultiAgentCodingCollaborateResult(t *testing.T) {
 	err := m.Initialize(ctx, config)
 	require.NoError(t, err)
 
-	result, err := m.Execute(ctx, "collaborate", map[string]interface{}{
+	res, err := m.Execute(ctx, "collaborate", map[string]interface{}{
 		"task": "Build API",
 	})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, 4, resultMap["agents"])
-	assert.Equal(t, "Build API", resultMap["task"])
-	assert.Equal(t, "completed", resultMap["status"])
+	require.ErrorIs(t, err, ErrNoBackend,
+		"collaborate must return the honest no-backend error, never a fabricated result")
+	assert.Nil(t, res)
 }

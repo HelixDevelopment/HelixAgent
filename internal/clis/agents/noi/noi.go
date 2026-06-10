@@ -1,14 +1,27 @@
 // Package noi provides Noi agent integration.
 // Noi: AI-powered code refactoring tool.
+//
+// Noi ships as a desktop/browser application, not as a headless command-line
+// refactoring agent, and no real refactoring backend is wired here. Rather than
+// fabricate a "// Refactored by Noi" literal (the BLUFF-001/003 anti-pattern),
+// the refactor command returns an HONEST error.
 package noi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoBackend is returned because no real Noi refactoring backend (headless
+// CLI or API) is wired here. Returning a fabricated success instead would be a
+// BLUFF-001/003 violation (CONST-035).
+var ErrNoBackend = errors.New(
+	"noi: no real backend wired — Noi ships as a desktop/browser app, not a " +
+		"headless CLI; refusing to fabricate a refactoring result")
 
 // Noi provides Noi integration
 type Noi struct {
@@ -87,10 +100,7 @@ func (n *Noi) refactor(ctx context.Context, params map[string]interface{}) (inte
 		return nil, fmt.Errorf("code required")
 	}
 
-	return map[string]interface{}{
-		"code":   code,
-		"result": "// Refactored by Noi",
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // status returns status

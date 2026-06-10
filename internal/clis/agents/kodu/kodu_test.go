@@ -61,16 +61,16 @@ func TestKodu_Execute(t *testing.T) {
 		checkFunc func(t *testing.T, result interface{})
 	}{
 		{
-			name:    "ask command",
+			// Reconciled (§11.4.120): ask USED to return the fabricated
+			// "Based on the codebase: <q>" answer with wantErr:false — that
+			// codified BLUFF-001. Kodu's index is real but no LLM backend is
+			// wired, so ask now returns an HONEST error. (Use search/navigate/
+			// relations for real index data.)
+			name:    "ask command (honest error — no LLM backend)",
 			command: "ask",
 			params:  map[string]interface{}{"question": "What does this do?"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "What does this do?", m["question"])
-				assert.NotNil(t, m["relevant_symbols"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "ask without question",
@@ -99,15 +99,13 @@ func TestKodu_Execute(t *testing.T) {
 			errMsg:  "file not in context",
 		},
 		{
-			name:    "refactor command",
+			// Reconciled (§11.4.120): refactor USED to return a fabricated
+			// change list with wantErr:false — BLUFF-001. Honest error now.
+			name:    "refactor command (honest error — no LLM backend)",
 			command: "refactor",
 			params:  map[string]interface{}{"file": "main.go", "instruction": "extract function"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "main.go", m["file"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "index command",

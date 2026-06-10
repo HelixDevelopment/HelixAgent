@@ -82,12 +82,11 @@ func TestPostgresMCPExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "query command",
+			// Reconciled (§11.4.120): no real DB/MCP backend; honest error.
+			name:    "query command honest-errors (no backend)",
 			command: "query",
-			params: map[string]interface{}{
-				"sql": "SELECT * FROM users",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"sql": "SELECT * FROM users"},
+			wantErr: true,
 		},
 		{
 			name:    "query without sql fails",
@@ -96,10 +95,11 @@ func TestPostgresMCPExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "schema command",
+			// Reconciled (§11.4.120): no real DB/MCP backend; honest error.
+			name:    "schema command honest-errors (no backend)",
 			command: "schema",
 			params:  map[string]interface{}{},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "status command",
@@ -149,6 +149,9 @@ func TestPostgresMCPIsAvailable(t *testing.T) {
 	assert.True(t, p.IsAvailable())
 }
 
+// TestPostgresMCPQueryResult reconciled (§11.4.120 / §11.4.115): query no longer
+// returns a fabricated "Query result"; with no real DB/MCP backend wired it MUST
+// return the honest ErrNoBackend. Standing GREEN guard for D-17.
 func TestPostgresMCPQueryResult(t *testing.T) {
 	t.Parallel()
 	p := New()
@@ -157,16 +160,17 @@ func TestPostgresMCPQueryResult(t *testing.T) {
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
 
-	result, err := p.Execute(ctx, "query", map[string]interface{}{
+	res, err := p.Execute(ctx, "query", map[string]interface{}{
 		"sql": "SELECT id FROM posts",
 	})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, "SELECT id FROM posts", resultMap["sql"])
+	require.ErrorIs(t, err, ErrNoBackend,
+		"query must return the honest no-backend error, never a fabricated result")
+	assert.Nil(t, res)
 }
 
+// TestPostgresMCPSchemaResult reconciled (§11.4.120 / §11.4.115): schema no
+// longer returns a hardcoded ["users","posts"] list; with no real DB/MCP backend
+// wired it MUST return the honest ErrNoBackend. Standing GREEN guard for D-17.
 func TestPostgresMCPSchemaResult(t *testing.T) {
 	t.Parallel()
 	p := New()
@@ -175,10 +179,8 @@ func TestPostgresMCPSchemaResult(t *testing.T) {
 	err := p.Initialize(ctx, nil)
 	require.NoError(t, err)
 
-	result, err := p.Execute(ctx, "schema", map[string]interface{}{})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.NotNil(t, resultMap["tables"])
+	res, err := p.Execute(ctx, "schema", map[string]interface{}{})
+	require.ErrorIs(t, err, ErrNoBackend,
+		"schema must return the honest no-backend error, never a hardcoded table list")
+	assert.Nil(t, res)
 }

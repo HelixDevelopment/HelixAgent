@@ -83,37 +83,29 @@ func (c *Codai) Execute(ctx context.Context, command string, params map[string]i
 	}
 }
 
-// review reviews code
+// errNoHeadlessCLI is the honest error returned for Codai operations. Codai is
+// a hosted/IDE-bound AI code-review product with no confirmed standalone
+// headless CLI that this integration can exec. Returning a hardcoded
+// "Code review by Codai" string + invented metrics without running anything is
+// a BLUFF-001 violation, so these surface an honest error instead.
+var errNoHeadlessCLI = fmt.Errorf("codai has no confirmed headless CLI / not supported: cannot run a real code review or analysis from this integration")
+
+// review is unsupported — Codai has no exec-able headless review CLI.
 func (c *Codai) review(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	code, _ := params["code"].(string)
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-
-	return map[string]interface{}{
-		"code":   code,
-		"review": "Code review by Codai",
-		"issues": []map[string]interface{}{
-			{"severity": "info", "message": "Consider improvements"},
-		},
-	}, nil
+	return nil, fmt.Errorf("review: %w", errNoHeadlessCLI)
 }
 
-// analyze analyzes code
+// analyze is unsupported — Codai has no exec-able headless analysis CLI.
 func (c *Codai) analyze(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	file, _ := params["file"].(string)
 	if file == "" {
 		return nil, fmt.Errorf("file required")
 	}
-
-	return map[string]interface{}{
-		"file":     file,
-		"analysis": "Code analysis by Codai",
-		"metrics": map[string]interface{}{
-			"complexity": 10,
-			"lines":      100,
-		},
-	}, nil
+	return nil, fmt.Errorf("analyze: %w", errNoHeadlessCLI)
 }
 
 // status returns status
@@ -124,9 +116,11 @@ func (c *Codai) status(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// IsAvailable checks availability
+// IsAvailable reports false: Codai has no confirmed headless CLI this
+// integration can exec, so no real operation is available (honest, never a
+// fabricated "available").
 func (c *Codai) IsAvailable() bool {
-	return true
+	return false
 }
 
 var _ agents.AgentIntegration = (*Codai)(nil)

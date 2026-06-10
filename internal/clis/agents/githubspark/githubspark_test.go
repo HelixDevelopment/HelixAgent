@@ -170,15 +170,18 @@ func TestGitHubSpark_ExecuteWithCreatedSpark(t *testing.T) {
 	spark := m["spark"].(Spark)
 	sparkID := spark.ID
 
-	// Now test edit
-	t.Run("edit existing spark", func(t *testing.T) {
+	// Now test edit. §11.4.120-reconciled: GitHub Spark is web-only with no
+	// headless CLI, so a prompt-driven edit MUST return an honest
+	// no-headless-CLI error after the spark is located — NEVER a fabricated
+	// change list (BLUFF-001). This case previously asserted status:"edited".
+	t.Run("edit existing spark returns honest no-CLI error (not fabricated)", func(t *testing.T) {
 		result, err := g.Execute(ctx, "edit", map[string]interface{}{
 			"spark_id": sparkID,
 			"prompt":   "Add feature",
 		})
-		require.NoError(t, err)
-		m := result.(map[string]interface{})
-		assert.Equal(t, "edited", m["status"])
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "no headless CLI")
 	})
 
 	// Test publish

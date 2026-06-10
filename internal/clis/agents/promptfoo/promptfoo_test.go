@@ -99,12 +99,15 @@ func TestPromptfooExecute(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "eval command",
+			// Reconciled (§11.4.120): eval no longer fabricates a scorecard; it
+			// returns an honest error because real evaluation needs the promptfoo
+			// CLI against real providers. Asserting that honest error here.
+			name:    "eval command returns honest error (no real run)",
 			command: "eval",
 			params: map[string]interface{}{
 				"config": "custom-config.yaml",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "create_suite command",
@@ -137,12 +140,17 @@ func TestPromptfooExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "run_suite command",
+			// Reconciled (§11.4.120): run_suite no longer fabricates all-pass
+			// results; it returns an honest error because real grading needs the
+			// promptfoo CLI against real providers. (suite-1 does not exist in
+			// this fresh instance, so a not-found error is also acceptable — both
+			// are non-fabricated honest errors.)
+			name:    "run_suite command returns honest error (no real run)",
 			command: "run_suite",
 			params: map[string]interface{}{
 				"suite_id": "suite-1",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "run_suite without suite_id fails",
@@ -219,7 +227,14 @@ func TestPromptfooInitResult(t *testing.T) {
 	assert.Equal(t, "initialized", resultMap["status"])
 }
 
-func TestPromptfooEvalResult(t *testing.T) {
+// TestPromptfooEvalNoFabricatedScorecard reconciles the former
+// TestPromptfooEvalResult (§11.4.120): that test asserted a hardcoded scorecard
+// (tests_run/passed/failed/score) was returned by `eval` WITHOUT running
+// anything — i.e. it codified the BLUFF-001 false-success. eval now returns an
+// honest error instead. This is the standing GREEN regression guard (§11.4.135)
+// proving no scorecard is fabricated; reverting eval to return a fake scorecard
+// (err == nil with a result map) makes this FAIL.
+func TestPromptfooEvalNoFabricatedScorecard(t *testing.T) {
 	t.Parallel()
 	p := New()
 	ctx := context.Background()
@@ -230,15 +245,8 @@ func TestPromptfooEvalResult(t *testing.T) {
 	result, err := p.Execute(ctx, "eval", map[string]interface{}{
 		"config": "promptfooconfig.yaml",
 	})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, "promptfooconfig.yaml", resultMap["config"])
-	assert.NotNil(t, resultMap["tests_run"])
-	assert.NotNil(t, resultMap["passed"])
-	assert.NotNil(t, resultMap["failed"])
-	assert.NotNil(t, resultMap["score"])
+	require.Error(t, err, "eval must return an honest error, never a fabricated scorecard (BLUFF-001)")
+	assert.Nil(t, result, "eval must not return a result payload when no real evaluation ran")
 }
 
 func TestPromptfooCreateSuiteResult(t *testing.T) {

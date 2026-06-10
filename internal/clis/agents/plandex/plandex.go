@@ -1,14 +1,25 @@
 // Package plandex provides Plandex agent integration.
-// Plandex: AI task planner and executor.
+// Plandex: AI task planner and executor driven via the real `plandex` CLI
+// non-interactively (`plandex tell --no-build "<task>"`).
 package plandex
 
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// plandexBinary is the Plandex CLI executable looked up on PATH.
+// Overridable in tests via PLANDEX_BIN so a fake binary can be injected to prove
+// real exec is wired (anti-bluff, BLUFF-001/003).
+const plandexBinary = "plandex"
+
+func getPlandexBinOverride() string { return os.Getenv("PLANDEX_BIN") }
 
 // Plandex provides Plandex integration
 type Plandex struct {
@@ -83,33 +94,75 @@ func (p *Plandex) Execute(ctx context.Context, command string, params map[string
 	}
 }
 
-// plan creates a plan
+// resolvePlandexBinary locates the plandex CLI executable. Tests may inject a
+// fake binary via PLANDEX_BIN (absolute path). Returns an honest error when the
+// binary is not available — NEVER a fabricated success (BLUFF-001/003).
+func (p *Plandex) resolvePlandexBinary() (string, error) {
+	if bin := getPlandexBinOverride(); bin != "" {
+		if _, err := exec.LookPath(bin); err != nil {
+			return "", fmt.Errorf("plandex binary override %q not executable: %w", bin, err)
+		}
+		return bin, nil
+	}
+	path, err := exec.LookPath(plandexBinary)
+	if err != nil {
+		return "", fmt.Errorf("plandex CLI not found on PATH: %w", err)
+	}
+	return path, nil
+}
+
+// runPlandex invokes the plandex CLI non-interactively with the given
+// subcommand + task and returns the real stdout.
+func (p *Plandex) runPlandex(ctx context.Context, subcommand, task string) (string, error) {
+	bin, err := p.resolvePlandexBinary()
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.CommandContext(ctx, bin, subcommand, task)
+	cmd.Dir = p.GetWorkDir()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("plandex execution failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
+	}
+
+	return strings.TrimSpace(string(out)), nil
+}
+
+// plan creates a plan by exec-ing the real plandex CLI (`plandex tell`).
 func (p *Plandex) plan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	task, _ := params["task"].(string)
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
 
+	out, err := p.runPlandex(ctx, "tell", task)
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]interface{}{
 		"task": task,
-		"plan": []string{
-			"Step 1: Analyze",
-			"Step 2: Plan",
-			"Step 3: Execute",
-		},
+		"plan": out,
 	}, nil
 }
 
-// execute executes a task
+// execute executes a task by exec-ing the real plandex CLI (`plandex apply`).
 func (p *Plandex) execute(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	task, _ := params["task"].(string)
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
 
+	out, err := p.runPlandex(ctx, "tell", task)
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]interface{}{
 		"task":   task,
-		"result": fmt.Sprintf("Executed: %s", task),
+		"result": out,
 		"mode":   p.config.Mode,
 	}, nil
 }
@@ -122,9 +175,11 @@ func (p *Plandex) status(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// IsAvailable checks availability
+// IsAvailable checks availability — true only when the real plandex CLI
+// (or a PLANDEX_BIN override) is resolvable on PATH.
 func (p *Plandex) IsAvailable() bool {
-	return true
+	_, err := p.resolvePlandexBinary()
+	return err == nil
 }
 
 var _ agents.AgentIntegration = (*Plandex)(nil)

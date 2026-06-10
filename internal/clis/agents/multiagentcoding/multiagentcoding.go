@@ -1,14 +1,27 @@
 // Package multiagentcoding provides Multi-Agent Coding integration.
 // Multi-Agent Coding: Collaborative AI agents for coding.
+//
+// There is no headless command-line "multi-agent coding" binary to drive and no
+// real collaboration backend is wired here. Rather than fabricate a
+// "collaborative result" (the BLUFF-001/003 anti-pattern), the collaborate
+// command returns an HONEST error.
 package multiagentcoding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoBackend is returned because no real multi-agent-coding backend is wired
+// here. Returning a fabricated success instead would be a BLUFF-001/003
+// violation (CONST-035).
+var ErrNoBackend = errors.New(
+	"multiagentcoding: no real backend wired — no headless multi-agent CLI is " +
+		"available; refusing to fabricate a response")
 
 // MultiAgentCoding provides Multi-Agent Coding integration
 type MultiAgentCoding struct {
@@ -88,12 +101,7 @@ func (m *MultiAgentCoding) collaborate(ctx context.Context, params map[string]in
 		return nil, fmt.Errorf("task required")
 	}
 
-	return map[string]interface{}{
-		"task":   task,
-		"agents": m.config.AgentCount,
-		"result": fmt.Sprintf("Collaborative result for: %s", task),
-		"status": "completed",
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // status returns status

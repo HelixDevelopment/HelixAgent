@@ -98,17 +98,24 @@ func (c *Conduit) connect(ctx context.Context, params map[string]interface{}) (i
 	}, nil
 }
 
-// send sends data
+// errNoSendWired is returned by send: no real Conduit transport is wired, and
+// no confirmed headless Conduit CLI/API invocation was found in the 2026-06-10
+// blocked-agent research. Reporting a "sent" status without actually sending
+// would be a BLUFF-001 violation — so send returns an honest error rather than
+// fabricating a successful delivery.
+var errNoSendWired = fmt.Errorf(
+	"conduit send is not wired to a real transport (research-blocked: no confirmed " +
+		"headless Conduit CLI/API); cannot report a send without performing one")
+
+// send validates input then returns an honest not-wired error rather than a
+// fabricated "sent" status (BLUFF-001).
 func (c *Conduit) send(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	data, _ := params["data"].(string)
 	if data == "" {
 		return nil, fmt.Errorf("data required")
 	}
 
-	return map[string]interface{}{
-		"data":   data,
-		"status": "sent",
-	}, nil
+	return nil, errNoSendWired
 }
 
 // status returns status

@@ -82,12 +82,12 @@ func TestMobileAgentExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "generate command",
+			// Reconciled (§11.4.120): generate has no real backend; it now
+			// returns an HONEST error instead of fabricating code.
+			name:    "generate command honest-errors (no backend)",
 			command: "generate",
-			params: map[string]interface{}{
-				"prompt": "Create a button",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"prompt": "Create a button"},
+			wantErr: true,
 		},
 		{
 			name:    "generate without prompt fails",
@@ -96,10 +96,11 @@ func TestMobileAgentExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "build command",
+			// Reconciled (§11.4.120): build has no real backend; honest error.
+			name:    "build command honest-errors (no backend)",
 			command: "build",
 			params:  map[string]interface{}{},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "status command",
@@ -146,6 +147,10 @@ func TestMobileAgentIsAvailable(t *testing.T) {
 	assert.True(t, m.IsAvailable())
 }
 
+// TestMobileAgentGenerateResult reconciled (§11.4.120 / §11.4.115): generate and
+// build no longer fabricate code/status; with no real backend wired they MUST
+// return the honest ErrNoBackend. This is the standing GREEN guard for D-17 on
+// this package — reverting to a fabricated map makes it FAIL.
 func TestMobileAgentGenerateResult(t *testing.T) {
 	t.Parallel()
 	m := New()
@@ -161,13 +166,15 @@ func TestMobileAgentGenerateResult(t *testing.T) {
 	err := m.Initialize(ctx, config)
 	require.NoError(t, err)
 
-	result, err := m.Execute(ctx, "generate", map[string]interface{}{
+	res, err := m.Execute(ctx, "generate", map[string]interface{}{
 		"prompt": "Create a list view",
 	})
-	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrNoBackend,
+		"generate must return the honest no-backend error, never a fabricated result")
+	assert.Nil(t, res)
 
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, "android", resultMap["platform"])
-	assert.Equal(t, "Create a list view", resultMap["prompt"])
+	bres, berr := m.Execute(ctx, "build", map[string]interface{}{})
+	require.ErrorIs(t, berr, ErrNoBackend,
+		"build must return the honest no-backend error, never a fabricated 'built' status")
+	assert.Nil(t, bres)
 }

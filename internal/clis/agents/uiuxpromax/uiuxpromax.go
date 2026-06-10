@@ -83,31 +83,26 @@ func (u *UIUXProMax) Execute(ctx context.Context, command string, params map[str
 	}
 }
 
-// design generates design
+// design returns an HONEST error: "UI/UX Pro Max" is a prompt-pack / prompt
+// template (used by a separate LLM through an editor or chat host), NOT an agent
+// with a headless CLI of its own. There is nothing to exec here, so the
+// integration refuses to fabricate a design (BLUFF-001).
 func (u *UIUXProMax) design(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-
-	return map[string]interface{}{
-		"prompt":        prompt,
-		"design":        fmt.Sprintf("UI design for: %s", prompt),
-		"design_system": u.config.DesignSystem,
-	}, nil
+	return nil, fmt.Errorf("uiuxpromax has no headless CLI: it is a prompt-pack consumed by a separate LLM host, not a runnable agent — refusing to fabricate a design (BLUFF-001)")
 }
 
-// prototype creates prototype
+// prototype returns an HONEST error for the same reason as design: there is no
+// uiuxpromax agent/CLI to produce a prototype. Refusing to fabricate (BLUFF-001).
 func (u *UIUXProMax) prototype(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	name, _ := params["name"].(string)
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-
-	return map[string]interface{}{
-		"name":      name,
-		"prototype": fmt.Sprintf("Prototype: %s", name),
-	}, nil
+	return nil, fmt.Errorf("uiuxpromax has no headless CLI: it is a prompt-pack consumed by a separate LLM host, not a runnable agent — refusing to fabricate a prototype (BLUFF-001)")
 }
 
 // status returns status

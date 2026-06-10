@@ -82,12 +82,12 @@ func TestOctogenExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "generate command",
+			// Reconciled (§11.4.120): generate has no real backend; it now
+			// returns an HONEST error instead of fabricating code.
+			name:    "generate command honest-errors (no backend)",
 			command: "generate",
-			params: map[string]interface{}{
-				"prompt": "Create a service",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"prompt": "Create a service"},
+			wantErr: true,
 		},
 		{
 			name:    "generate without prompt fails",
@@ -140,6 +140,9 @@ func TestOctogenIsAvailable(t *testing.T) {
 	assert.True(t, o.IsAvailable())
 }
 
+// TestOctogenGenerateResult reconciled (§11.4.120 / §11.4.115): generate no
+// longer returns the "// Octogen multi-model" literal; with no real backend
+// wired it MUST return the honest ErrNoBackend. Standing GREEN guard for D-17.
 func TestOctogenGenerateResult(t *testing.T) {
 	t.Parallel()
 	o := New()
@@ -148,13 +151,10 @@ func TestOctogenGenerateResult(t *testing.T) {
 	err := o.Initialize(ctx, nil)
 	require.NoError(t, err)
 
-	result, err := o.Execute(ctx, "generate", map[string]interface{}{
+	res, err := o.Execute(ctx, "generate", map[string]interface{}{
 		"prompt": "Build an API",
 	})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, "Build an API", resultMap["prompt"])
-	assert.NotNil(t, resultMap["models"])
+	require.ErrorIs(t, err, ErrNoBackend,
+		"generate must return the honest no-backend error, never a fabricated result")
+	assert.Nil(t, res)
 }

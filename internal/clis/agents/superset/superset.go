@@ -83,30 +83,29 @@ func (s *Superset) Execute(ctx context.Context, command string, params map[strin
 	}
 }
 
-// dashboard creates dashboard
+// dashboard returns an HONEST error: Apache Superset is a BI web application,
+// not an AI agent. Creating a dashboard requires authenticated REST API calls
+// against a running Superset instance (POST /api/v1/dashboard/), which this
+// integration does not perform. Rather than fabricate a dashboard URL for a
+// dashboard that was never created (BLUFF-001), it returns an honest error.
+// See https://superset.apache.org/docs/api .
 func (s *Superset) dashboard(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	name, _ := params["name"].(string)
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-
-	return map[string]interface{}{
-		"name": name,
-		"url":  fmt.Sprintf("%s/dashboard/%s", s.config.Endpoint, name),
-	}, nil
+	return nil, fmt.Errorf("superset dashboard creation requires an authenticated REST call against a running Superset instance (POST /api/v1/dashboard/), not performed here — refusing to fabricate a dashboard URL (BLUFF-001)")
 }
 
-// chart creates chart
+// chart returns an HONEST error for the same reason as dashboard: real chart
+// data comes from Superset's REST API against a running instance, not from this
+// integration. Refusing to fabricate chart data (BLUFF-001).
 func (s *Superset) chart(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	chartType, _ := params["type"].(string)
 	if chartType == "" {
 		chartType = "bar"
 	}
-
-	return map[string]interface{}{
-		"type": chartType,
-		"data": "Chart data",
-	}, nil
+	return nil, fmt.Errorf("superset chart data requires an authenticated REST call against a running Superset instance (GET /api/v1/chart/), not performed here — refusing to fabricate chart data (BLUFF-001)")
 }
 
 // status returns status

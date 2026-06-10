@@ -117,45 +117,36 @@ func (c *Cline) openVSCode(ctx context.Context, params map[string]interface{}) (
 	}, nil
 }
 
-// chat sends a chat message
+// errNoHeadlessCLI is the honest error returned for operations Cline cannot
+// perform from a headless process. Cline is a VS Code extension driven through
+// the editor's extension API + webview UI; it ships NO standalone headless chat
+// / task / browser CLI. Fabricating a "sent" / "queued" / "executed" status
+// without doing the work is a BLUFF-001/003 violation, so these surface an
+// honest error instead.
+var errNoHeadlessCLI = fmt.Errorf("cline has no headless CLI: it is a VS Code extension driven via the editor extension API; use the \"open\" command to launch VS Code with the Cline extension and drive it interactively")
+
+// chat is unsupported headlessly — Cline has no standalone chat CLI.
 func (c *Cline) chat(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	message, _ := params["message"].(string)
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-
-	// In real implementation, this would communicate with Cline extension
-	return map[string]interface{}{
-		"message": message,
-		"status":  "sent",
-		"note":    "Cline integration requires VS Code extension API",
-	}, nil
+	return nil, fmt.Errorf("chat: %w", errNoHeadlessCLI)
 }
 
-// task executes a task
+// task is unsupported headlessly — Cline has no standalone task-runner CLI.
 func (c *Cline) task(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	task, _ := params["task"].(string)
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
-
-	return map[string]interface{}{
-		"task":   task,
-		"status": "queued",
-		"note":   "Task sent to Cline for execution",
-	}, nil
+	return nil, fmt.Errorf("task: %w", errNoHeadlessCLI)
 }
 
-// browserAction performs a browser action
+// browserAction is unsupported headlessly — Cline's browser automation runs
+// inside the VS Code extension, not from a standalone CLI.
 func (c *Cline) browserAction(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	action, _ := params["action"].(string)
-	url, _ := params["url"].(string)
-
-	return map[string]interface{}{
-		"action": action,
-		"url":    url,
-		"status": "executed",
-	}, nil
+	return nil, fmt.Errorf("browser: %w", errNoHeadlessCLI)
 }
 
 // IsAvailable checks if VS Code and Cline are available

@@ -69,16 +69,15 @@ func TestGPTR_Execute(t *testing.T) {
 		checkFunc func(t *testing.T, result interface{})
 	}{
 		{
-			name:    "run command",
+			// Reconciled (§11.4.120): run USED to return the fabricated
+			// "Result for: Process data" template + status "completed" with
+			// wantErr:false — that codified BLUFF-001. GPTR has no headless LLM
+			// runner wired; run now returns an HONEST error.
+			name:    "run command (honest error — no runner wired)",
 			command: "run",
 			params:  map[string]interface{}{"prompt": "Process data"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Process data", m["prompt"])
-				assert.Equal(t, "completed", m["status"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "run without prompt",

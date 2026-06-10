@@ -1,14 +1,27 @@
 // Package perplexity provides Perplexity CLI agent integration.
 // Perplexity: AI-powered search and coding assistant.
+//
+// Perplexity is a web/API product, not a headless command-line coding agent,
+// and no real Perplexity API client is wired here. Rather than fabricate
+// answers, citations, code, or research sources (the BLUFF-001/003
+// anti-pattern), the search/ask/code/research commands return an HONEST error.
 package perplexity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoBackend is returned because no real Perplexity backend (API client) is
+// wired here. Returning fabricated answers/citations/sources instead would be a
+// BLUFF-001/003 violation (CONST-035).
+var ErrNoBackend = errors.New(
+	"perplexity: no real backend wired — Perplexity is a web/API product with " +
+		"no headless coding-agent CLI; refusing to fabricate answers or sources")
 
 // Perplexity provides Perplexity integration
 type Perplexity struct {
@@ -101,13 +114,7 @@ func (p *Perplexity) search(ctx context.Context, params map[string]interface{}) 
 		return nil, fmt.Errorf("query required")
 	}
 
-	return map[string]interface{}{
-		"query":     query,
-		"answer":    fmt.Sprintf("Answer to: %s", query),
-		"sources":   []string{"source1", "source2"},
-		"citations": p.config.Citations,
-		"model":     p.config.Model,
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // ask asks a question
@@ -117,11 +124,7 @@ func (p *Perplexity) ask(ctx context.Context, params map[string]interface{}) (in
 		return nil, fmt.Errorf("question required")
 	}
 
-	return map[string]interface{}{
-		"question": question,
-		"answer":   fmt.Sprintf("Perplexity: %s", question),
-		"model":    p.config.Model,
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // code generates code with search
@@ -131,11 +134,7 @@ func (p *Perplexity) code(ctx context.Context, params map[string]interface{}) (i
 		return nil, fmt.Errorf("prompt required")
 	}
 
-	return map[string]interface{}{
-		"prompt":  prompt,
-		"code":    fmt.Sprintf("// Generated with Perplexity search\n// %s", prompt),
-		"sources": []string{"docs1", "docs2"},
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // research conducts research
@@ -145,11 +144,7 @@ func (p *Perplexity) research(ctx context.Context, params map[string]interface{}
 		return nil, fmt.Errorf("topic required")
 	}
 
-	return map[string]interface{}{
-		"topic":    topic,
-		"research": fmt.Sprintf("Research on: %s", topic),
-		"sources":  []string{"research1", "research2", "research3"},
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // status returns status

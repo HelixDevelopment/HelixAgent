@@ -83,32 +83,28 @@ func (t *Taskweaver) Execute(ctx context.Context, command string, params map[str
 	}
 }
 
-// chat performs chat
+// chat returns an HONEST error: TaskWeaver (microsoft/TaskWeaver) is a Python
+// agent framework / library, not a headless binary on PATH. Driving it requires
+// a Python runtime hosting the framework (its project/session API), which this
+// Go integration does not embed. Rather than fabricate a reply (BLUFF-001/003),
+// it returns an honest error. See https://github.com/microsoft/TaskWeaver .
 func (t *Taskweaver) chat(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	message, _ := params["message"].(string)
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-
-	return map[string]interface{}{
-		"message":  message,
-		"response": fmt.Sprintf("Taskweaver: %s", message),
-		"model":    t.config.Model,
-	}, nil
+	return nil, fmt.Errorf("taskweaver has no headless CLI: it is a Python agent framework driven through its Python session API, not embedded here — refusing to fabricate a reply (BLUFF-001)")
 }
 
-// code generates code
+// code returns an HONEST error for the same reason as chat: there is no
+// TaskWeaver binary to exec from this Go integration. Refusing to fabricate
+// code (BLUFF-001).
 func (t *Taskweaver) code(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-
-	return map[string]interface{}{
-		"prompt": prompt,
-		"code":   fmt.Sprintf("// Taskweaver\n// %s", prompt),
-		"model":  t.config.Model,
-	}, nil
+	return nil, fmt.Errorf("taskweaver has no headless CLI: it is a Python agent framework driven through its Python session API, not embedded here — refusing to fabricate code (BLUFF-001)")
 }
 
 // status returns status

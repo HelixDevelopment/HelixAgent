@@ -1,14 +1,27 @@
 // Package mobileagent provides Mobile Agent integration.
 // Mobile Agent: AI for mobile development.
+//
+// There is no headless command-line "mobile agent" binary to drive, and no real
+// model/build backend is wired here. Rather than fabricate generated code or a
+// fake "built" status (the BLUFF-001/003 anti-pattern), the generate/build
+// commands return an HONEST error.
 package mobileagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoBackend is returned because no real mobile-agent backend (headless CLI
+// or model API) is wired here. Returning a fabricated success instead would be
+// a BLUFF-001/003 violation (CONST-035).
+var ErrNoBackend = errors.New(
+	"mobileagent: no real backend wired — no headless mobile-agent CLI is " +
+		"available; refusing to fabricate a response")
 
 // MobileAgent provides Mobile Agent integration
 type MobileAgent struct {
@@ -91,19 +104,12 @@ func (m *MobileAgent) generate(ctx context.Context, params map[string]interface{
 		return nil, fmt.Errorf("prompt required")
 	}
 
-	return map[string]interface{}{
-		"prompt":   prompt,
-		"platform": m.config.Platform,
-		"code":     fmt.Sprintf("// Mobile code for %s\n// %s", m.config.Platform, prompt),
-	}, nil
+	return nil, ErrNoBackend
 }
 
-// build builds the app
+// build returns an honest error — no real build backend is wired.
 func (m *MobileAgent) build(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	return map[string]interface{}{
-		"platform": m.config.Platform,
-		"status":   "built",
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // status returns status

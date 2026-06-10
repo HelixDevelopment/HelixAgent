@@ -59,17 +59,17 @@ func TestHoneycomb_Execute(t *testing.T) {
 		errMsg    string
 		checkFunc func(t *testing.T, result interface{})
 	}{
+		// Reconciled (§11.4.120): query/analyze/trace/alert USED to return
+		// fabricated empty result sets, "AI analysis of <metric>" insights,
+		// hardcoded spans, and an "active" alert with wantErr:false — that
+		// codified BLUFF-001. Honeycomb data lives only behind its hosted HTTP
+		// API; with no real client wired these now return an HONEST error.
 		{
-			name:    "query command",
+			name:    "query command (honest error — API not wired)",
 			command: "query",
 			params:  map[string]interface{}{"query": "SELECT count() FROM events"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.NotEmpty(t, m["query"])
-				assert.Equal(t, "production", m["dataset"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "query without query",
@@ -79,39 +79,18 @@ func TestHoneycomb_Execute(t *testing.T) {
 			errMsg:  "query required",
 		},
 		{
-			name:    "analyze command",
+			name:    "analyze command (honest error — API not wired)",
 			command: "analyze",
 			params:  map[string]interface{}{"metric": "latency"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "latency", m["metric"])
-				assert.NotNil(t, m["insights"])
-			},
+			wantErr: true,
+			errMsg:  "Honeycomb HTTP API client",
 		},
 		{
-			name:    "analyze without metric",
-			command: "analyze",
-			params:  map[string]interface{}{},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "duration", m["metric"])
-			},
-		},
-		{
-			name:    "trace command",
+			name:    "trace command (honest error — API not wired)",
 			command: "trace",
 			params:  map[string]interface{}{"trace_id": "abc123"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "abc123", m["trace_id"])
-				assert.NotNil(t, m["spans"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "trace without trace_id",
@@ -121,16 +100,11 @@ func TestHoneycomb_Execute(t *testing.T) {
 			errMsg:  "trace_id required",
 		},
 		{
-			name:    "alert command",
+			name:    "alert command (honest error — API not wired)",
 			command: "alert",
 			params:  map[string]interface{}{"condition": "latency > 1000"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "latency > 1000", m["condition"])
-				assert.Equal(t, "active", m["status"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "status command",

@@ -5,12 +5,21 @@ package copilotcli
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// copilotBinary is the GitHub Copilot CLI executable looked up on PATH.
+// Overridable in tests via the COPILOT_BIN environment variable so a fake
+// binary can be injected to prove real exec is wired (anti-bluff §11.4.115).
+const copilotBinary = "copilot"
+
+// getCopilotBinOverride returns the test-only copilot binary override, if set.
+func getCopilotBinOverride() string { return os.Getenv("COPILOT_BIN") }
 
 // CopilotCLI provides GitHub Copilot CLI integration
 type CopilotCLI struct {
@@ -25,6 +34,7 @@ type Config struct {
 	EnableAuto  bool
 	Suggestions bool
 	PublicCode  bool
+	Model       string
 }
 
 // New creates a new Copilot CLI integration
@@ -104,7 +114,54 @@ func (c *CopilotCLI) Execute(ctx context.Context, command string, params map[str
 	}
 }
 
-// suggest gets code suggestions
+// resolveCopilotBinary locates the GitHub Copilot CLI executable. Tests may
+// inject a fake binary via the COPILOT_BIN environment variable (absolute
+// path); otherwise the real `copilot` command is resolved on PATH. Returns an
+// honest error when the binary is not available — NEVER a fabricated success or
+// fabricated fallback response (BLUFF-001).
+func (c *CopilotCLI) resolveCopilotBinary() (string, error) {
+	if bin := getCopilotBinOverride(); bin != "" {
+		if _, err := exec.LookPath(bin); err != nil {
+			return "", fmt.Errorf("copilot binary override %q not executable: %w", bin, err)
+		}
+		return bin, nil
+	}
+	path, err := exec.LookPath(copilotBinary)
+	if err != nil {
+		return "", fmt.Errorf("copilot CLI not found on PATH: %w", err)
+	}
+	return path, nil
+}
+
+// runCopilot invokes the GitHub Copilot CLI non-interactively and returns its
+// textual output. Per the 2026-06-10 currency research the non-interactive form
+// is `copilot -p "<prompt>" -s --allow-all-tools --no-ask-user`; `-s`/`--silent`
+// strips stats/decoration for clean stdout (Copilot CLI has no JSON output flag
+// — honest negative finding), `--allow-all-tools` + `--no-ask-user` make the run
+// fully unattended. The model is passed via `--model` when configured.
+func (c *CopilotCLI) runCopilot(ctx context.Context, prompt string) (string, error) {
+	bin, err := c.resolveCopilotBinary()
+	if err != nil {
+		return "", err
+	}
+
+	args := []string{"-p", prompt, "-s", "--allow-all-tools", "--no-ask-user"}
+	if c.config != nil && c.config.Model != "" {
+		args = append(args, "--model", c.config.Model)
+	}
+
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Dir = c.GetWorkDir()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("copilot execution failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
+	}
+
+	return strings.TrimSpace(string(out)), nil
+}
+
+// suggest gets code suggestions by exec-ing the real copilot CLI.
 func (c *CopilotCLI) suggest(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
@@ -116,54 +173,39 @@ func (c *CopilotCLI) suggest(ctx context.Context, params map[string]interface{})
 		language = "go"
 	}
 
-	// Build gh copilot command
-	args := []string{"copilot", "suggest", "-t", language, prompt}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	suggestion, err := c.runCopilot(ctx, fmt.Sprintf("Suggest %s code for: %s", language, prompt))
 	if err != nil {
-		// If gh command fails, provide fallback
-		return map[string]interface{}{
-			"prompt":     prompt,
-			"language":   language,
-			"suggestion": fmt.Sprintf("// Generated code for: %s\n// Language: %s\n", prompt, language),
-			"note":       "Using fallback - gh copilot CLI not available",
-		}, nil
+		return nil, err
 	}
 
 	return map[string]interface{}{
 		"prompt":     prompt,
 		"language":   language,
-		"suggestion": string(output),
+		"suggestion": suggestion,
 		"source":     "github_copilot",
 	}, nil
 }
 
-// explain explains code
+// explain explains code by exec-ing the real copilot CLI.
 func (c *CopilotCLI) explain(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	code, _ := params["code"].(string)
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
 
-	args := []string{"copilot", "explain", code}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	explanation, err := c.runCopilot(ctx, "Explain the following code:\n"+code)
 	if err != nil {
-		return map[string]interface{}{
-			"code":        code,
-			"explanation": "Code explanation would be provided by GitHub Copilot",
-			"note":        "Fallback - gh CLI not available",
-		}, nil
+		return nil, err
 	}
 
 	return map[string]interface{}{
 		"code":        code,
-		"explanation": string(output),
+		"explanation": explanation,
 		"source":      "github_copilot",
 	}, nil
 }
 
-// test generates tests
+// test generates tests by exec-ing the real copilot CLI.
 func (c *CopilotCLI) test(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	code, _ := params["code"].(string)
 	file, _ := params["file"].(string)
@@ -179,86 +221,62 @@ func (c *CopilotCLI) test(ctx context.Context, params map[string]interface{}) (i
 		target = code
 	}
 
-	args := []string{"copilot", "suggest", "-t", "test", target}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	tests, err := c.runCopilot(ctx, "Generate tests for the following:\n"+target)
 	if err != nil {
-		return map[string]interface{}{
-			"target": target,
-			"tests":  "// Generated tests would be provided by GitHub Copilot",
-			"note":   "Fallback - gh CLI not available",
-		}, nil
+		return nil, err
 	}
 
 	return map[string]interface{}{
 		"target": target,
-		"tests":  string(output),
+		"tests":  tests,
 		"source": "github_copilot",
 	}, nil
 }
 
-// fix fixes code issues
+// fix fixes code issues by exec-ing the real copilot CLI.
 func (c *CopilotCLI) fix(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	code, _ := params["code"].(string)
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
 
-	args := []string{"copilot", "suggest", "-t", "fix", code}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	fixed, err := c.runCopilot(ctx, "Fix issues in the following code and return the corrected code:\n"+code)
 	if err != nil {
-		return map[string]interface{}{
-			"code":    code,
-			"fixed":   "// Fixed code would be provided by GitHub Copilot",
-			"changes": []string{"No changes - gh CLI not available"},
-		}, nil
+		return nil, err
 	}
 
 	return map[string]interface{}{
-		"code":    code,
-		"fixed":   string(output),
-		"changes": []string{"Applied Copilot suggestions"},
-		"source":  "github_copilot",
+		"code":   code,
+		"fixed":  fixed,
+		"source": "github_copilot",
 	}, nil
 }
 
-// docs generates documentation
+// docs generates documentation by exec-ing the real copilot CLI.
 func (c *CopilotCLI) docs(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	code, _ := params["code"].(string)
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
 
-	args := []string{"copilot", "suggest", "-t", "docs", code}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	documentation, err := c.runCopilot(ctx, "Generate documentation for the following code:\n"+code)
 	if err != nil {
-		return map[string]interface{}{
-			"code":          code,
-			"documentation": "// Generated documentation would be provided by GitHub Copilot",
-			"note":          "Fallback - gh CLI not available",
-		}, nil
+		return nil, err
 	}
 
 	return map[string]interface{}{
 		"code":          code,
-		"documentation": string(output),
+		"documentation": documentation,
 		"source":        "github_copilot",
 	}, nil
 }
 
-// status checks Copilot status
+// status checks Copilot status via the real `gh auth status` command. Returns
+// an honest error when the gh CLI is not available — never a fabricated status.
 func (c *CopilotCLI) status(ctx context.Context) (interface{}, error) {
-	args := []string{"auth", "status"}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	output, err := c.ExecuteCommand(ctx, "gh", "auth", "status")
 	if err != nil {
-		return map[string]interface{}{
-			"authenticated": false,
-			"status":        "unknown",
-			"message":       "Could not check status - gh CLI not available",
-		}, nil
+		return nil, fmt.Errorf("gh auth status failed (gh CLI required): %w", err)
 	}
 
 	isAuth := strings.Contains(string(output), "Logged in")
@@ -270,16 +288,11 @@ func (c *CopilotCLI) status(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// login authenticates with GitHub
+// login authenticates with GitHub via the real `gh auth login` command.
 func (c *CopilotCLI) login(ctx context.Context) (interface{}, error) {
-	args := []string{"auth", "login"}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	output, err := c.ExecuteCommand(ctx, "gh", "auth", "login")
 	if err != nil {
-		return map[string]interface{}{
-			"success": false,
-			"error":   "gh CLI not available or login failed",
-		}, nil
+		return nil, fmt.Errorf("gh auth login failed (gh CLI required): %w", err)
 	}
 
 	return map[string]interface{}{
@@ -288,16 +301,11 @@ func (c *CopilotCLI) login(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// logout logs out from GitHub
+// logout logs out from GitHub via the real `gh auth logout` command.
 func (c *CopilotCLI) logout(ctx context.Context) (interface{}, error) {
-	args := []string{"auth", "logout"}
-
-	output, err := c.ExecuteCommand(ctx, "gh", args...)
+	output, err := c.ExecuteCommand(ctx, "gh", "auth", "logout")
 	if err != nil {
-		return map[string]interface{}{
-			"success": false,
-			"error":   "gh CLI not available",
-		}, nil
+		return nil, fmt.Errorf("gh auth logout failed (gh CLI required): %w", err)
 	}
 
 	return map[string]interface{}{
@@ -306,9 +314,9 @@ func (c *CopilotCLI) logout(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// IsAvailable checks if gh CLI is available
+// IsAvailable checks if the GitHub Copilot CLI is available on PATH.
 func (c *CopilotCLI) IsAvailable() bool {
-	_, err := exec.LookPath("gh")
+	_, err := c.resolveCopilotBinary()
 	return err == nil
 }
 

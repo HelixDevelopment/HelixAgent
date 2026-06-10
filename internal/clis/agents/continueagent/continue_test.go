@@ -57,17 +57,17 @@ func TestContinue_Execute(t *testing.T) {
 		errMsg    string
 		checkFunc func(t *testing.T, result interface{})
 	}{
+		// §11.4.120-reconciled: Continue is an IDE extension with no headless
+		// CLI, so its commands MUST return an honest no-headless-CLI error after
+		// validating input — NEVER a fabricated "sent"/"executed" status
+		// (BLUFF-001). These cases previously asserted a fabricated success;
+		// they now assert the honest error is surfaced.
 		{
-			name:    "chat command",
+			name:    "chat command returns honest no-CLI error (not fabricated)",
 			command: "chat",
 			params:  map[string]interface{}{"message": "Hello"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Hello", m["message"])
-				assert.Equal(t, "sent", m["status"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "chat without message",
@@ -77,27 +77,18 @@ func TestContinue_Execute(t *testing.T) {
 			errMsg:  "message required",
 		},
 		{
-			name:    "autocomplete command",
+			name:    "autocomplete command returns honest no-CLI error (not fabricated)",
 			command: "autocomplete",
 			params:  map[string]interface{}{"file": "test.go", "line": 10, "column": 5},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "test.go", m["file"])
-				assert.Equal(t, 10, m["line"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
-			name:    "edit command",
+			name:    "edit command returns honest no-CLI error (not fabricated)",
 			command: "edit",
 			params:  map[string]interface{}{"prompt": "Refactor this code"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Refactor this code", m["prompt"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "edit without prompt",
@@ -107,15 +98,11 @@ func TestContinue_Execute(t *testing.T) {
 			errMsg:  "prompt required",
 		},
 		{
-			name:    "action command",
+			name:    "action command returns honest no-CLI error (not fabricated)",
 			command: "action",
 			params:  map[string]interface{}{"action": "explain"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "explain", m["action"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "action without action",

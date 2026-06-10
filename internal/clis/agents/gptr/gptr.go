@@ -5,6 +5,7 @@ package gptr
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -151,22 +152,23 @@ func (g *GPTR) Execute(ctx context.Context, command string, params map[string]in
 	}
 }
 
-// run runs a task
+// ErrNoRunner is returned by run because GPTR has no headless LLM runner CLI
+// wired — there is no `gptr` prompt→result executable to invoke. Per CONST-035 /
+// BLUFF-001 run returns this honest error instead of fabricating a
+// "Result for: <prompt>" template + a "completed" status no real run produced.
+// (The task-management commands create_task/list_tasks/get_result are real —
+// they persist to and read from tasks.json on disk.)
+var ErrNoRunner = errors.New("gptr: no headless LLM runner CLI is wired; " +
+	"run requires a real prompt→result executor — refusing to fabricate a result")
+
+// run runs a task. Honest error: no real runner is wired, so we refuse to
+// fabricate a "Result for: <prompt>" template (BLUFF-001).
 func (g *GPTR) run(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-
-	// Execute task
-	result := fmt.Sprintf("Result for: %s", prompt)
-
-	return map[string]interface{}{
-		"prompt": prompt,
-		"result": result,
-		"model":  g.config.Model,
-		"status": "completed",
-	}, nil
+	return nil, fmt.Errorf("gptr run: %w", ErrNoRunner)
 }
 
 // createTask creates a task

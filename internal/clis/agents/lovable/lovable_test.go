@@ -3,6 +3,7 @@ package lovable
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,18 +61,17 @@ func TestLovable_Execute(t *testing.T) {
 		errMsg    string
 		checkFunc func(t *testing.T, result interface{})
 	}{
+		// Reconciled (§11.4.120): create_app/add_feature/connect_database USED to
+		// return fabricated project URLs, file/component lists, and success
+		// statuses with wantErr:false — that codified BLUFF-001. Lovable is a
+		// hosted web-only builder with no wired client; these now return an
+		// HONEST error.
 		{
-			name:    "create_app command",
+			name:    "create_app command (honest error — hosted-only)",
 			command: "create_app",
 			params:  map[string]interface{}{"name": "MyApp", "description": "Test app"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "created", m["status"])
-				assert.NotNil(t, m["project"])
-				assert.NotNil(t, m["files"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "create_app without name",
@@ -81,45 +81,37 @@ func TestLovable_Execute(t *testing.T) {
 			errMsg:  "name required",
 		},
 		{
-			name:    "edit command",
+			name:    "edit command (honest error — hosted-only)",
 			command: "edit",
 			params:  map[string]interface{}{"project_id": "proj-1", "prompt": "Change color"},
-			wantErr: true, // Project doesn't exist
-			errMsg:  "project not found",
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
-			name:    "deploy command",
+			name:    "deploy command (honest error — hosted-only)",
 			command: "deploy",
 			params:  map[string]interface{}{"project_id": "proj-1"},
 			wantErr: true,
-			errMsg:  "project not found",
+			errMsg:  "refusing to fabricate",
 		},
 		{
-			name:    "add_feature command",
+			name:    "add_feature command (honest error — hosted-only)",
 			command: "add_feature",
 			params:  map[string]interface{}{"project_id": "proj-1", "feature": "auth"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "auth", m["feature"])
-				assert.Equal(t, "added", m["status"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
-			name:    "connect_database command",
+			name:    "connect_database command (honest error — hosted-only)",
 			command: "connect_database",
 			params:  map[string]interface{}{"project_id": "proj-1", "type": "mysql"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "mysql", m["database"])
-				assert.Equal(t, "connected", m["status"])
-			},
+			wantErr: true,
+			errMsg:  "refusing to fabricate",
 		},
 		{
-			name:    "list_projects command",
+			// list_projects reads REAL local state (the project registry) — stays
+			// non-error, returns the real (empty) list.
+			name:    "list_projects command (real local registry)",
 			command: "list_projects",
 			params:  map[string]interface{}{},
 			wantErr: false,
@@ -130,11 +122,11 @@ func TestLovable_Execute(t *testing.T) {
 			},
 		},
 		{
-			name:    "export_code command",
+			name:    "export_code command (honest error — hosted-only)",
 			command: "export_code",
 			params:  map[string]interface{}{"project_id": "proj-1"},
 			wantErr: true,
-			errMsg:  "project not found",
+			errMsg:  "refusing to fabricate",
 		},
 		{
 			name:    "unknown command",
@@ -161,55 +153,42 @@ func TestLovable_Execute(t *testing.T) {
 	}
 }
 
+// Reconciled (§11.4.120): this test USED to assert that create_app →
+// edit/deploy/export_code all succeed with fabricated "created"/"edited"/
+// "deployed"/"exported" statuses — the ENTIRE flow codified BLUFF-001 (no real
+// Lovable operation ever ran). Lovable is a hosted web-only builder with no
+// wired client; the flow now asserts every builder command returns the honest
+// hosted-only error rather than fabricating a successful build pipeline.
 func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
 	t.Parallel()
 	l := New()
 	ctx := context.Background()
 
-	err := l.Initialize(ctx, nil)
-	require.NoError(t, err)
+	require.NoError(t, l.Initialize(ctx, nil))
 
-	// Create a project first
-	result, err := l.Execute(ctx, "create_app", map[string]interface{}{
+	// create_app must NOT fabricate a project — honest hosted-only error.
+	_, err := l.Execute(ctx, "create_app", map[string]interface{}{
 		"name":        "TestApp",
 		"description": "Test application",
 	})
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "refusing to fabricate")
 
-	m := result.(map[string]interface{})
-	project := m["project"].(Project)
-	projectID := project.ID
-
-	// Now test edit
-	t.Run("edit existing project", func(t *testing.T) {
-		result, err := l.Execute(ctx, "edit", map[string]interface{}{
-			"project_id": projectID,
-			"prompt":     "Change colors",
+	for _, cmd := range []struct {
+		name   string
+		params map[string]interface{}
+	}{
+		{"edit", map[string]interface{}{"project_id": "proj-x", "prompt": "Change colors"}},
+		{"deploy", map[string]interface{}{"project_id": "proj-x"}},
+		{"export_code", map[string]interface{}{"project_id": "proj-x"}},
+	} {
+		t.Run(cmd.name+" is honest error", func(t *testing.T) {
+			_, err := l.Execute(ctx, cmd.name, cmd.params)
+			require.Error(t, err)
+			assert.True(t, errors.Is(err, ErrHostedOnly),
+				"%s must wrap ErrHostedOnly, got: %v", cmd.name, err)
 		})
-		require.NoError(t, err)
-		m := result.(map[string]interface{})
-		assert.Equal(t, "edited", m["status"])
-	})
-
-	// Test deploy
-	t.Run("deploy existing project", func(t *testing.T) {
-		result, err := l.Execute(ctx, "deploy", map[string]interface{}{
-			"project_id": projectID,
-		})
-		require.NoError(t, err)
-		m := result.(map[string]interface{})
-		assert.Equal(t, "deployed", m["status"])
-	})
-
-	// Test export_code
-	t.Run("export_code for existing project", func(t *testing.T) {
-		result, err := l.Execute(ctx, "export_code", map[string]interface{}{
-			"project_id": projectID,
-		})
-		require.NoError(t, err)
-		m := result.(map[string]interface{})
-		assert.Equal(t, "exported", m["status"])
-	})
+	}
 }
 
 func TestLovable_IsAvailable(t *testing.T) {

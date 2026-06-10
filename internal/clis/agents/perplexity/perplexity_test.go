@@ -90,12 +90,11 @@ func TestPerplexityExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "search command",
+			// Reconciled (§11.4.120): search has no real backend; honest error.
+			name:    "search command honest-errors (no backend)",
 			command: "search",
-			params: map[string]interface{}{
-				"query": "Go concurrency",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"query": "Go concurrency"},
+			wantErr: true,
 		},
 		{
 			name:    "search without query fails",
@@ -104,12 +103,11 @@ func TestPerplexityExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "ask command",
+			// Reconciled (§11.4.120): ask has no real backend; honest error.
+			name:    "ask command honest-errors (no backend)",
 			command: "ask",
-			params: map[string]interface{}{
-				"question": "What is Go?",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"question": "What is Go?"},
+			wantErr: true,
 		},
 		{
 			name:    "ask without question fails",
@@ -118,12 +116,11 @@ func TestPerplexityExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "code command",
+			// Reconciled (§11.4.120): code has no real backend; honest error.
+			name:    "code command honest-errors (no backend)",
 			command: "code",
-			params: map[string]interface{}{
-				"prompt": "Write a function",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"prompt": "Write a function"},
+			wantErr: true,
 		},
 		{
 			name:    "code without prompt fails",
@@ -132,12 +129,11 @@ func TestPerplexityExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "research command",
+			// Reconciled (§11.4.120): research has no real backend; honest error.
+			name:    "research command honest-errors (no backend)",
 			command: "research",
-			params: map[string]interface{}{
-				"topic": "AI",
-			},
-			wantErr: false,
+			params:  map[string]interface{}{"topic": "AI"},
+			wantErr: true,
 		},
 		{
 			name:    "research without topic fails",
@@ -193,6 +189,10 @@ func TestPerplexityIsAvailable(t *testing.T) {
 	assert.True(t, p.IsAvailable())
 }
 
+// TestPerplexitySearchResult reconciled (§11.4.120 / §11.4.115): search no
+// longer fabricates an answer + fake sources; with no real backend wired it MUST
+// return the honest ErrNoBackend. This is the standing GREEN guard for D-17 —
+// reverting to a fabricated answer/sources map makes it FAIL.
 func TestPerplexitySearchResult(t *testing.T) {
 	t.Parallel()
 	p := New()
@@ -209,13 +209,10 @@ func TestPerplexitySearchResult(t *testing.T) {
 	err := p.Initialize(ctx, config)
 	require.NoError(t, err)
 
-	result, err := p.Execute(ctx, "search", map[string]interface{}{
+	res, err := p.Execute(ctx, "search", map[string]interface{}{
 		"query": "Go channels",
 	})
-	require.NoError(t, err)
-
-	resultMap, ok := result.(map[string]interface{})
-	require.True(t, ok)
-	assert.Equal(t, "Go channels", resultMap["query"])
-	assert.True(t, resultMap["citations"].(bool))
+	require.ErrorIs(t, err, ErrNoBackend,
+		"search must return the honest no-backend error, never fabricated answers/sources")
+	assert.Nil(t, res)
 }

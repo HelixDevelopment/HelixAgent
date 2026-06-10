@@ -87,41 +87,35 @@ func (c *CodeiumWindsurf) Execute(ctx context.Context, command string, params ma
 	}
 }
 
-// complete generates completion
-func (c *CodeiumWindsurf) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	prefix, _ := params["prefix"].(string)
+// errNoHeadlessCLI is the honest error returned for Codeium Windsurf
+// operations. Windsurf is an AI-native IDE; its completion / chat / Cascade
+// agent run inside the editor, NOT from a standalone headless CLI this
+// integration can exec. Fabricating "// Codeium completion" / "Codeium: <msg>"
+// / a templated cascade result without running anything is a BLUFF-001
+// violation, so these surface an honest error instead.
+var errNoHeadlessCLI = fmt.Errorf("codeium windsurf has no headless CLI: it is an AI-native IDE whose completion/chat/Cascade run inside the editor, not from a standalone CLI")
 
-	return map[string]interface{}{
-		"prefix":     prefix,
-		"completion": "// Codeium completion",
-	}, nil
+// complete is unsupported headlessly — Windsurf completion runs in-editor.
+func (c *CodeiumWindsurf) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+	return nil, fmt.Errorf("complete: %w", errNoHeadlessCLI)
 }
 
-// chat performs chat
+// chat is unsupported headlessly — Windsurf chat runs in-editor.
 func (c *CodeiumWindsurf) chat(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	message, _ := params["message"].(string)
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-
-	return map[string]interface{}{
-		"message":  message,
-		"response": fmt.Sprintf("Codeium: %s", message),
-	}, nil
+	return nil, fmt.Errorf("chat: %w", errNoHeadlessCLI)
 }
 
-// cascade runs cascade
+// cascade is unsupported headlessly — Windsurf Cascade runs in-editor.
 func (c *CodeiumWindsurf) cascade(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-
-	return map[string]interface{}{
-		"prompt": prompt,
-		"result": fmt.Sprintf("Cascade result for: %s", prompt),
-		"files":  []string{"generated.go"},
-	}, nil
+	return nil, fmt.Errorf("cascade: %w", errNoHeadlessCLI)
 }
 
 // status returns status

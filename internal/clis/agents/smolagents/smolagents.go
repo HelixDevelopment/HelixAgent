@@ -180,32 +180,26 @@ func (s *Smolagents) run(ctx context.Context, params map[string]interface{}) (in
 		return nil, fmt.Errorf("task required")
 	}
 
-	var agent *Agent
+	var found bool
 	for i := range s.agents {
 		if s.agents[i].ID == agentID {
-			agent = &s.agents[i]
+			found = true
 			break
 		}
 	}
 
-	if agent == nil {
+	if !found {
 		return nil, fmt.Errorf("agent not found: %s", agentID)
 	}
 
-	// Execute task
-	steps := []map[string]interface{}{
-		{"step": 1, "action": "Analyze task", "result": "Analyzed"},
-		{"step": 2, "action": "Plan approach", "result": "Planned"},
-		{"step": 3, "action": "Execute", "result": "Completed"},
-	}
-
-	return map[string]interface{}{
-		"agent":  agent,
-		"task":   task,
-		"steps":  steps,
-		"result": "Task completed successfully",
-		"status": "completed",
-	}, nil
+	// HONEST error: smolagents (huggingface/smolagents) is a Python agent library,
+	// not a headless binary on PATH. Running an agent requires a Python runtime
+	// hosting the framework (CodeAgent / ToolCallingAgent + a real model backend).
+	// The previous implementation returned fixed "Analyze/Plan/Execute" steps and
+	// "Task completed successfully" without running anything — a BLUFF-001 /
+	// CONST-035 false-success. Refusing to fabricate a run transcript.
+	// See https://github.com/huggingface/smolagents .
+	return nil, fmt.Errorf("smolagents agent %q not run: it is a Python agent library driven through a Python runtime, not embedded here — refusing to fabricate a run transcript (BLUFF-001)", agentID)
 }
 
 // listAgents lists agents

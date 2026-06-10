@@ -165,7 +165,21 @@ func (c *CopilotWorkspace) createTask(ctx context.Context, params map[string]int
 	}, nil
 }
 
-// plan creates implementation plan
+// errNoHeadlessCLI is returned by the AI-work commands: GitHub Copilot
+// Workspace is a web-only task-driven development environment with NO official
+// headless coding-agent CLI to exec. Per the 2026-06-10 blocked-agent research
+// there is no scriptable plan/implement/review invocation, so returning a
+// fabricated plan, a fabricated file list, or a fabricated review would be a
+// BLUFF-001 violation. The local task registry CRUD (create_task/list_tasks/
+// submit) is genuine local state and remains functional; only the AI-work
+// commands return this error.
+var errNoHeadlessCLI = fmt.Errorf(
+	"github copilot workspace is a web-only environment with no headless CLI; " +
+		"plan/implement/review require the Workspace web UI — this dispatch cannot " +
+		"run them without fabricating")
+
+// plan validates the task then returns an honest no-headless-CLI error rather
+// than a fabricated static plan (BLUFF-001).
 func (c *CopilotWorkspace) plan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	taskID, _ := params["task_id"].(string)
 	if taskID == "" {
@@ -184,21 +198,11 @@ func (c *CopilotWorkspace) plan(ctx context.Context, params map[string]interface
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
 
-	plan := []map[string]interface{}{
-		{"step": 1, "action": "Analyze requirements", "status": "pending"},
-		{"step": 2, "action": "Design solution", "status": "pending"},
-		{"step": 3, "action": "Implement changes", "status": "pending"},
-		{"step": 4, "action": "Add tests", "status": "pending"},
-		{"step": 5, "action": "Review", "status": "pending"},
-	}
-
-	return map[string]interface{}{
-		"task": task,
-		"plan": plan,
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
-// implement implements the task
+// implement validates the task then returns an honest no-headless-CLI error
+// rather than fabricating an implemented file list (BLUFF-001).
 func (c *CopilotWorkspace) implement(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	taskID, _ := params["task_id"].(string)
 	if taskID == "" {
@@ -217,33 +221,18 @@ func (c *CopilotWorkspace) implement(ctx context.Context, params map[string]inte
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
 
-	task.Status = "implementing"
-	task.Files = []string{"src/main.go", "src/utils.go"}
-
-	if err := c.saveTasks(); err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"task":    task,
-		"changes": []string{"Added feature implementation"},
-		"status":  "implemented",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
-// review reviews changes
+// review validates the task then returns an honest no-headless-CLI error rather
+// than a fabricated review verdict (BLUFF-001).
 func (c *CopilotWorkspace) review(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	taskID, _ := params["task_id"].(string)
 	if taskID == "" {
 		return nil, fmt.Errorf("task_id required")
 	}
 
-	return map[string]interface{}{
-		"task_id": taskID,
-		"review":  "Code review completed",
-		"issues":  []string{},
-		"status":  "reviewed",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
 // submit creates PR

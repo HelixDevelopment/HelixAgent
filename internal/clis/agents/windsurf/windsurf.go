@@ -163,45 +163,17 @@ func (w *Windsurf) Execute(ctx context.Context, command string, params map[strin
 	}
 }
 
-// cascade runs Cascade flow for full-stack generation
+// cascade returns an HONEST error: Cascade is Windsurf's in-IDE agentic flow
+// (Codeium's Windsurf editor); it has no headless CLI that synthesises a
+// full-stack application from a prompt. Rather than fabricate a fake file
+// manifest for an app that was never generated (BLUFF-001), this returns an
+// honest error. See https://windsurf.com .
 func (w *Windsurf) cascade(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
-
-	projectType, _ := params["project_type"].(string)
-	if projectType == "" {
-		projectType = "web"
-	}
-
-	framework, _ := params["framework"].(string)
-	if framework == "" {
-		framework = "nextjs"
-	}
-
-	// Generate full-stack application
-	result := map[string]interface{}{
-		"prompt":       prompt,
-		"project_type": projectType,
-		"framework":    framework,
-		"components": []string{
-			"frontend",
-			"backend",
-			"database",
-			"api",
-		},
-		"files": []map[string]interface{}{
-			{"path": "pages/index.tsx", "type": "frontend"},
-			{"path": "pages/api/[[...route]].ts", "type": "api"},
-			{"path": "prisma/schema.prisma", "type": "database"},
-			{"path": "package.json", "type": "config"},
-		},
-		"status": "generated",
-		"note":   "Cascade flow generated full-stack structure",
-	}
-
-	return result, nil
+	return nil, fmt.Errorf("windsurf Cascade has no headless CLI: it is an in-IDE agentic flow, so full-stack generation cannot be produced from this integration — refusing to fabricate a file manifest (BLUFF-001)")
 }
 
 // createProject creates a new project
@@ -248,63 +220,17 @@ func (w *Windsurf) createProject(ctx context.Context, params map[string]interfac
 	}, nil
 }
 
-// generateComponent generates a UI component
+// generateComponent returns an HONEST error: AI component generation is a
+// Windsurf in-IDE feature with no headless CLI. The previous implementation
+// returned a static boilerplate template while labelling it "generated" — a
+// BLUFF-001 (it claimed AI generation but only string-formatted a fixed
+// skeleton). Refusing to present a hardcoded skeleton as a generated component.
 func (w *Windsurf) generateComponent(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	name, _ := params["name"].(string)
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-
-	componentType, _ := params["type"].(string)
-	if componentType == "" {
-		componentType = "functional"
-	}
-
-	framework, _ := params["framework"].(string)
-	if framework == "" {
-		framework = "react"
-	}
-
-	// Generate component code
-	var code string
-	switch framework {
-	case "react":
-		code = fmt.Sprintf(`import React from 'react';
-
-interface %sProps {
-  // Add props here
-}
-
-export const %s: React.FC<%sProps> = (props) => {
-  return (
-    <div className="%s">
-      {/* Component content */}
-    </div>
-  );
-};
-`, name, name, name, name)
-	case "vue":
-		code = fmt.Sprintf(`<template>
-  <div class="%s">
-    <!-- Component content -->
-  </div>
-</template>
-
-<script setup lang="ts">
-// Component logic
-</script>
-`, name)
-	default:
-		code = fmt.Sprintf("// %s component\n// Framework: %s\n", name, framework)
-	}
-
-	return map[string]interface{}{
-		"name":      name,
-		"type":      componentType,
-		"framework": framework,
-		"code":      code,
-		"status":    "generated",
-	}, nil
+	return nil, fmt.Errorf("windsurf component generation has no headless CLI: it is an in-IDE feature, and returning a fixed boilerplate skeleton as AI output would be a bluff — refusing (BLUFF-001)")
 }
 
 // openProject opens a project in Windsurf
@@ -348,19 +274,17 @@ func (w *Windsurf) deploy(ctx context.Context, params map[string]interface{}) (i
 		platform = "vercel"
 	}
 
-	// Snapshot the project (same pattern as openProject).
-	found, ok := w.projects.Find(func(p Project) bool { return p.ID == projectID })
-	if !ok {
+	// Snapshot the project (same pattern as openProject) so the not-found check
+	// still validates input before reporting the unsupported deploy capability.
+	if _, ok := w.projects.Find(func(p Project) bool { return p.ID == projectID }); !ok {
 		return nil, fmt.Errorf("project not found: %s", projectID)
 	}
-	project := &found
 
-	return map[string]interface{}{
-		"project":  project,
-		"platform": platform,
-		"url":      fmt.Sprintf("https://%s-%s.vercel.app", project.Name, projectID),
-		"status":   "deployed",
-	}, nil
+	// HONEST error: this integration performs no real deployment. Returning a
+	// fabricated "deployed" status + a guessed *.vercel.app URL for a deploy that
+	// never ran is a BLUFF-001. Real deployment requires the platform's own CLI/
+	// API (e.g. `vercel deploy`) against authenticated credentials.
+	return nil, fmt.Errorf("windsurf deploy performs no real deployment to %s: refusing to report a fabricated 'deployed' status and URL (BLUFF-001) — use the platform's own deploy CLI/API", platform)
 }
 
 // listProjects lists all projects — returns a defensive snapshot.
@@ -372,24 +296,16 @@ func (w *Windsurf) listProjects(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// terminalAI runs AI in terminal
+// terminalAI returns an HONEST error: Windsurf's AI terminal is an in-IDE
+// feature with no headless CLI. The previous implementation returned a
+// "Enhanced: <cmd>" echo plus a fixed list of suggestions — fabricated AI
+// output (BLUFF-001). Refusing to present a templated echo as AI assistance.
 func (w *Windsurf) terminalAI(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	command, _ := params["command"].(string)
 	if command == "" {
 		return nil, fmt.Errorf("command required")
 	}
-
-	// AI-enhanced terminal command
-	return map[string]interface{}{
-		"command":  command,
-		"enhanced": fmt.Sprintf("Enhanced: %s", command),
-		"suggested": []string{
-			"git status",
-			"npm install",
-			"npm run dev",
-		},
-		"status": "processed",
-	}, nil
+	return nil, fmt.Errorf("windsurf terminal AI has no headless CLI: it is an in-IDE feature, and a templated echo + fixed suggestions is not real AI output — refusing (BLUFF-001)")
 }
 
 // IsAvailable checks availability

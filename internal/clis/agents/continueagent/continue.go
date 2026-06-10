@@ -92,59 +92,49 @@ func (c *Continue) Execute(ctx context.Context, command string, params map[strin
 	}
 }
 
-// chat sends a chat message
+// errNoHeadlessCLI is returned by every command: Continue is an IDE
+// extension (VS Code / JetBrains) with NO official headless coding-agent CLI to
+// exec. Per the 2026-06-10 blocked-agent research there is no scriptable
+// single-prompt invocation, so reporting a fabricated "sent"/"executed" status
+// would be a BLUFF-001 violation — Continue cannot actually run anything here.
+var errNoHeadlessCLI = fmt.Errorf(
+	"continue is an IDE extension with no headless CLI; chat/edit/action require " +
+		"the Continue IDE plugin — this dispatch cannot run it without fabricating")
+
+// chat validates input then returns an honest no-headless-CLI error rather than
+// a fabricated "sent" status (BLUFF-001).
 func (c *Continue) chat(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	message, _ := params["message"].(string)
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
 
-	return map[string]interface{}{
-		"message": message,
-		"status":  "sent",
-		"note":    "Continue requires IDE extension",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
-// autocomplete gets autocomplete suggestions
+// autocomplete validates input then returns an honest no-headless-CLI error.
 func (c *Continue) autocomplete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	file, _ := params["file"].(string)
-	line, _ := params["line"].(int)
-	col, _ := params["column"].(int)
-
-	return map[string]interface{}{
-		"file":   file,
-		"line":   line,
-		"column": col,
-		"status": "requested",
-		"note":   "Continue autocomplete requires IDE extension",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
-// edit performs an edit
+// edit validates input then returns an honest no-headless-CLI error.
 func (c *Continue) edit(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prompt, _ := params["prompt"].(string)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt required")
 	}
 
-	return map[string]interface{}{
-		"prompt": prompt,
-		"status": "sent",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
-// action executes a Continue action
+// action validates input then returns an honest no-headless-CLI error.
 func (c *Continue) action(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	action, _ := params["action"].(string)
 	if action == "" {
 		return nil, fmt.Errorf("action required")
 	}
 
-	return map[string]interface{}{
-		"action": action,
-		"status": "executed",
-	}, nil
+	return nil, errNoHeadlessCLI
 }
 
 // IsAvailable checks if Continue is available

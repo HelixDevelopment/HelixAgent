@@ -1,14 +1,27 @@
 // Package honeycomb provides Honeycomb agent integration.
-// Honeycomb: AI-powered observability and debugging.
+// Honeycomb: AI-powered observability and debugging. Honeycomb data lives only
+// behind its hosted HTTP API (api.honeycomb.io, authed with an API key) — there
+// is no local source for query results, traces, or AI analysis. Until that real
+// client is wired, query/analyze/trace/alert return an HONEST error rather than
+// fabricating results, spans, insights, or an "active" alert (BLUFF-001).
 package honeycomb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrAPINotWired is returned by the data commands because Honeycomb's query,
+// trace, AI-analysis, and alert surfaces exist only behind its hosted HTTP API
+// and no real client is wired here. Per CONST-035 / BLUFF-001 the integration
+// returns this honest error instead of fabricating results, hardcoded spans,
+// "AI analysis of <metric>" insights, or an "active" alert.
+var ErrAPINotWired = errors.New("honeycomb: the hosted Honeycomb HTTP API client (api.honeycomb.io) is not wired; " +
+	"query/analyze/trace/alert require real authed API calls — refusing to fabricate results")
 
 // Honeycomb provides Honeycomb integration
 type Honeycomb struct {
@@ -92,65 +105,40 @@ func (h *Honeycomb) Execute(ctx context.Context, command string, params map[stri
 	}
 }
 
-// query runs a query
+// query runs a query. Honest error: no real Honeycomb API is wired, so we refuse
+// to return a fabricated empty result set as if a query ran (BLUFF-001).
 func (h *Honeycomb) query(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	query, _ := params["query"].(string)
 	if query == "" {
 		return nil, fmt.Errorf("query required")
 	}
-
-	return map[string]interface{}{
-		"query":   query,
-		"results": []map[string]interface{}{},
-		"dataset": h.config.Dataset,
-	}, nil
+	return nil, fmt.Errorf("honeycomb query: %w", ErrAPINotWired)
 }
 
-// analyze analyzes data
+// analyze analyzes data. Honest error: no real backend, so we refuse to
+// fabricate an "AI analysis of <metric>" string and invented insights (BLUFF-001).
 func (h *Honeycomb) analyze(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	metric, _ := params["metric"].(string)
-	if metric == "" {
-		metric = "duration"
-	}
-
-	return map[string]interface{}{
-		"metric":   metric,
-		"analysis": fmt.Sprintf("AI analysis of %s", metric),
-		"insights": []string{
-			"Performance is within normal range",
-			"No anomalies detected",
-		},
-	}, nil
+	return nil, fmt.Errorf("honeycomb analyze: %w", ErrAPINotWired)
 }
 
-// trace retrieves traces
+// trace retrieves traces. Honest error: no real backend, so we refuse to
+// fabricate hardcoded spans (BLUFF-001).
 func (h *Honeycomb) trace(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	traceID, _ := params["trace_id"].(string)
 	if traceID == "" {
 		return nil, fmt.Errorf("trace_id required")
 	}
-
-	return map[string]interface{}{
-		"trace_id": traceID,
-		"spans": []map[string]interface{}{
-			{"id": "span-1", "name": "request", "duration_ms": 100},
-			{"id": "span-2", "name": "database", "duration_ms": 50},
-		},
-	}, nil
+	return nil, fmt.Errorf("honeycomb trace: %w", ErrAPINotWired)
 }
 
-// alert configures alerts
+// alert configures alerts. Honest error: no real backend, so we refuse to claim
+// an "active" alert was configured without a real API call (BLUFF-001).
 func (h *Honeycomb) alert(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	condition, _ := params["condition"].(string)
 	if condition == "" {
 		return nil, fmt.Errorf("condition required")
 	}
-
-	return map[string]interface{}{
-		"condition": condition,
-		"alert":     "Alert configured",
-		"status":    "active",
-	}, nil
+	return nil, fmt.Errorf("honeycomb alert: %w", ErrAPINotWired)
 }
 
 // status returns status

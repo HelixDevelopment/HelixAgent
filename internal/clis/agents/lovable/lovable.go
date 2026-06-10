@@ -1,10 +1,17 @@
 // Package lovable provides Lovable agent integration.
-// Lovable: AI-powered full-stack app builder with visual editing.
+// Lovable is a HOSTED, web-only AI full-stack app builder (lovable.dev) — there
+// is no headless CLI or local builder. Creating, editing, deploying, adding
+// features to, connecting a database for, or exporting an app all require real
+// calls to Lovable's hosted service. Until that real HTTP client is wired, those
+// commands return an HONEST error rather than fabricating project URLs, file
+// lists, or "created"/"deployed"/"exported" statuses (anti-bluff: BLUFF-001).
+// Only the real local project registry (list_projects) is served locally.
 package lovable
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +19,14 @@ import (
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrHostedOnly is returned by the app-builder commands because Lovable runs
+// only as a hosted web service and no real HTTP client is wired here. Per
+// CONST-035 / BLUFF-001 those commands return this honest error instead of
+// fabricating a project URL, a file/component list, or a success status that no
+// real Lovable operation produced.
+var ErrHostedOnly = errors.New("lovable: a hosted web-only builder with no headless CLI and no wired HTTP client; " +
+	"create/edit/deploy/add_feature/connect_database/export require real calls to lovable.dev — refusing to fabricate a result")
 
 // Lovable provides Lovable integration
 type Lovable struct {
@@ -139,153 +154,60 @@ func (l *Lovable) Execute(ctx context.Context, command string, params map[string
 	}
 }
 
-// createApp creates a new full-stack application
+// createApp creates a new full-stack application. Honest error: Lovable is a
+// hosted web builder and no real client is wired, so we refuse to fabricate a
+// project URL + file list + "created" status (BLUFF-001).
 func (l *Lovable) createApp(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	name, _ := params["name"].(string)
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
-
-	description, _ := params["description"].(string)
-	stack, _ := params["stack"].(string)
-	if stack == "" {
-		stack = l.config.DefaultStack
-	}
-
-	project := Project{
-		ID:          fmt.Sprintf("lovable-%d", len(l.projects)+1),
-		Name:        name,
-		Description: description,
-		Stack:       stack,
-		Status:      "created",
-		URL:         fmt.Sprintf("https://lovable.dev/p/%s", name),
-	}
-
-	l.projects = append(l.projects, project)
-
-	if err := l.saveProjects(); err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"project": project,
-		"files": []string{
-			"src/App.tsx",
-			"src/components/",
-			"src/pages/",
-			"api/routes.ts",
-			"prisma/schema.prisma",
-		},
-		"status": "created",
-	}, nil
+	return nil, fmt.Errorf("lovable create_app: %w", ErrHostedOnly)
 }
 
-// edit makes visual edits
+// edit makes visual edits. Honest error: no real hosted client wired (BLUFF-001).
 func (l *Lovable) edit(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	projectID, _ := params["project_id"].(string)
 	prompt, _ := params["prompt"].(string)
-
 	if projectID == "" || prompt == "" {
 		return nil, fmt.Errorf("project_id and prompt required")
 	}
-
-	var project *Project
-	for i := range l.projects {
-		if l.projects[i].ID == projectID {
-			project = &l.projects[i]
-			break
-		}
-	}
-
-	if project == nil {
-		return nil, fmt.Errorf("project not found: %s", projectID)
-	}
-
-	return map[string]interface{}{
-		"project": project,
-		"prompt":  prompt,
-		"edits": []map[string]interface{}{
-			{"type": "visual", "target": "ui", "change": prompt},
-		},
-		"status": "edited",
-	}, nil
+	return nil, fmt.Errorf("lovable edit: %w", ErrHostedOnly)
 }
 
-// deploy deploys the application
+// deploy deploys the application. Honest error: no real hosted client wired, so
+// we refuse to fabricate a deploy URL + "deployed" status (BLUFF-001).
 func (l *Lovable) deploy(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	projectID, _ := params["project_id"].(string)
 	if projectID == "" {
 		return nil, fmt.Errorf("project_id required")
 	}
-
-	var project *Project
-	for i := range l.projects {
-		if l.projects[i].ID == projectID {
-			project = &l.projects[i]
-			break
-		}
-	}
-
-	if project == nil {
-		return nil, fmt.Errorf("project not found: %s", projectID)
-	}
-
-	project.Status = "deployed"
-	project.URL = fmt.Sprintf("https://%s.lovable.app", project.Name)
-
-	if err := l.saveProjects(); err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"project": project,
-		"url":     project.URL,
-		"status":  "deployed",
-	}, nil
+	return nil, fmt.Errorf("lovable deploy: %w", ErrHostedOnly)
 }
 
-// addFeature adds a feature
+// addFeature adds a feature. Honest error: no real hosted client wired, so we
+// refuse to fabricate a generated component list (BLUFF-001).
 func (l *Lovable) addFeature(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	projectID, _ := params["project_id"].(string)
 	feature, _ := params["feature"].(string)
-
 	if projectID == "" || feature == "" {
 		return nil, fmt.Errorf("project_id and feature required")
 	}
-
-	return map[string]interface{}{
-		"project_id": projectID,
-		"feature":    feature,
-		"components": []string{
-			fmt.Sprintf("%s.tsx", feature),
-			fmt.Sprintf("%s.test.tsx", feature),
-		},
-		"status": "added",
-	}, nil
+	return nil, fmt.Errorf("lovable add_feature: %w", ErrHostedOnly)
 }
 
-// connectDatabase connects a database
+// connectDatabase connects a database. Honest error: no real hosted client
+// wired, so we refuse to claim a database was connected (BLUFF-001).
 func (l *Lovable) connectDatabase(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	projectID, _ := params["project_id"].(string)
-	dbType, _ := params["type"].(string)
-
 	if projectID == "" {
 		return nil, fmt.Errorf("project_id required")
 	}
-
-	if dbType == "" {
-		dbType = "postgres"
-	}
-
-	return map[string]interface{}{
-		"project_id": projectID,
-		"database":   dbType,
-		"schema":     "auto-generated",
-		"status":     "connected",
-	}, nil
+	return nil, fmt.Errorf("lovable connect_database: %w", ErrHostedOnly)
 }
 
-// listProjects lists all projects
+// listProjects lists the real local project registry (read from projects.json
+// on disk). This is honest local state — never fabricated.
 func (l *Lovable) listProjects(ctx context.Context) (interface{}, error) {
 	return map[string]interface{}{
 		"projects": l.projects,
@@ -293,31 +215,14 @@ func (l *Lovable) listProjects(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
-// exportCode exports project code
+// exportCode exports project code. Honest error: no real hosted client wired, so
+// we refuse to claim an export happened to a fabricated path (BLUFF-001).
 func (l *Lovable) exportCode(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	projectID, _ := params["project_id"].(string)
 	if projectID == "" {
 		return nil, fmt.Errorf("project_id required")
 	}
-
-	var project *Project
-	for i := range l.projects {
-		if l.projects[i].ID == projectID {
-			project = &l.projects[i]
-			break
-		}
-	}
-
-	if project == nil {
-		return nil, fmt.Errorf("project not found: %s", projectID)
-	}
-
-	return map[string]interface{}{
-		"project":     project,
-		"export_path": filepath.Join(l.GetWorkDir(), "exports", project.Name),
-		"format":      "zip",
-		"status":      "exported",
-	}, nil
+	return nil, fmt.Errorf("lovable export_code: %w", ErrHostedOnly)
 }
 
 // IsAvailable checks availability

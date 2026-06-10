@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -81,14 +82,27 @@ func TestClaudeCode_StartStop(t *testing.T) {
 	assert.False(t, cc.IsStarted())
 }
 
+// TestClaudeCode_Execute_Chat is reconciled per §11.4.120: the pre-D-16
+// version asserted the fabricated "Claude Code received" echo (the bluff).
+// It now asserts the REAL claude-exec mechanism by injecting a fake `claude`
+// binary whose unforgeable stdout marker flows through — proving genuine
+// os/exec, impossible via any in-process template.
 func TestClaudeCode_Execute_Chat(t *testing.T) {
-	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-binary injection unsupported on windows")
+	}
 	cc := New()
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	config := &Config{BaseConfig: base.BaseConfig{WorkDir: tempDir}}
 	cc.Initialize(ctx, config)
+
+	const marker = "EXEC-CHAT-marker-7b2"
+	bin := filepath.Join(tempDir, "claude")
+	require.NoError(t, os.WriteFile(bin,
+		[]byte("#!/bin/sh\nprintf '{\"result\":\""+marker+"\"}'\n"), 0o755))
+	t.Setenv("CLAUDE_BIN", bin)
 
 	result, err := cc.Execute(ctx, "chat", map[string]interface{}{
 		"message": "Hello, Claude!",
@@ -99,7 +113,10 @@ func TestClaudeCode_Execute_Chat(t *testing.T) {
 	require.True(t, ok)
 	assert.True(t, response.Success)
 	assert.NotEmpty(t, response.SessionID)
-	assert.Contains(t, response.Content, "Claude Code received")
+	assert.Equal(t, marker, response.Content,
+		"chat must surface real claude stdout, not the fabricated echo")
+	assert.NotContains(t, response.Content, "Claude Code received",
+		"the fabricated echo literal must be gone")
 }
 
 func TestClaudeCode_Execute_Bash(t *testing.T) {
@@ -146,8 +163,13 @@ func TestClaudeCode_Execute_Git(t *testing.T) {
 	assert.NotNil(t, response)
 }
 
+// TestClaudeCode_Execute_Edit is reconciled per §11.4.120: the pre-D-16
+// version asserted the fabricated "Applied edit" string. It now asserts the
+// REAL claude-exec mechanism via fake-binary injection.
 func TestClaudeCode_Execute_Edit(t *testing.T) {
-	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-binary injection unsupported on windows")
+	}
 	cc := New()
 
 	ctx := context.Background()
@@ -161,17 +183,23 @@ func TestClaudeCode_Execute_Edit(t *testing.T) {
 	config := &Config{BaseConfig: base.BaseConfig{WorkDir: tempDir}}
 	cc.Initialize(ctx, config)
 
+	const marker = "EXEC-EDIT-marker-c4d"
+	bin := filepath.Join(tempDir, "claude")
+	require.NoError(t, os.WriteFile(bin,
+		[]byte("#!/bin/sh\nprintf '{\"result\":\""+marker+"\"}'\n"), 0o755))
+	t.Setenv("CLAUDE_BIN", bin)
+
 	result, err := cc.Execute(ctx, "edit", map[string]interface{}{
 		"file":        testFile,
 		"instruction": "Change to new content",
-		"content":     "new content",
 	})
 
 	require.NoError(t, err)
 	response, ok := result.(*Response)
 	require.True(t, ok)
 	assert.True(t, response.Success)
-	assert.Len(t, response.Actions, 1)
+	assert.Equal(t, marker, response.Content,
+		"edit must surface real claude stdout, not the fabricated 'Applied edit' string")
 }
 
 func TestClaudeCode_Execute_UnknownCommand(t *testing.T) {

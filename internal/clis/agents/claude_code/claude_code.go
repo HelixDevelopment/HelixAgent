@@ -212,18 +212,98 @@ func (c *ClaudeCode) Execute(ctx context.Context, command string, params map[str
 	}
 }
 
-// handleChat handles conversational chat with Claude
+// claudeBinary is the Claude Code CLI executable looked up on PATH.
+// Overridable in tests via the CLAUDE_BIN environment variable so a fake
+// binary can be injected to prove real exec is wired (anti-bluff, BLUFF-001).
+const claudeBinary = "claude"
+
+// getClaudeBinOverride returns the test-only claude binary override, if set.
+func getClaudeBinOverride() string { return os.Getenv("CLAUDE_BIN") }
+
+// resolveClaudeBinary locates the claude CLI executable. Tests may inject a
+// fake binary via the CLAUDE_BIN environment variable (absolute path);
+// otherwise the real `claude` command is resolved on PATH. Returns an honest
+// error when the binary is not available — NEVER a fabricated success
+// (BLUFF-001).
+func (c *ClaudeCode) resolveClaudeBinary() (string, error) {
+	if bin := getClaudeBinOverride(); bin != "" {
+		if _, err := exec.LookPath(bin); err != nil {
+			return "", fmt.Errorf("claude binary override %q not executable: %w", bin, err)
+		}
+		return bin, nil
+	}
+	path, err := exec.LookPath(claudeBinary)
+	if err != nil {
+		return "", fmt.Errorf("claude CLI not found on PATH: %w", err)
+	}
+	return path, nil
+}
+
+// runClaude invokes the Claude Code CLI non-interactively and returns its
+// textual output. The non-interactive form is `claude -p "<prompt>"
+// --output-format json`; the JSON envelope's text/result field is extracted
+// when present, otherwise the raw stdout is returned. The model is passed via
+// `--model` when configured. This is a REAL process execution — never a
+// simulated/templated response (BLUFF-001).
+func (c *ClaudeCode) runClaude(ctx context.Context, prompt string) (string, error) {
+	bin, err := c.resolveClaudeBinary()
+	if err != nil {
+		return "", err
+	}
+
+	args := []string{"-p", prompt, "--output-format", "json"}
+	if c.config != nil && c.config.Model != "" {
+		args = append(args, "--model", c.config.Model)
+	}
+
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Dir = c.workDir
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("claude execution failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
+	}
+
+	return extractClaudeText(out), nil
+}
+
+// extractClaudeText pulls the human-visible text out of the claude JSON
+// envelope. The claude CLI `--output-format json` emits an object; the text
+// lives under one of the common keys. When the payload is not JSON or has no
+// known key, the trimmed raw stdout is returned (still real process output,
+// never a template).
+func extractClaudeText(out []byte) string {
+	trimmed := strings.TrimSpace(string(out))
+	var env map[string]interface{}
+	if err := json.Unmarshal(out, &env); err == nil {
+		for _, k := range []string{"result", "response", "text", "output", "content", "message"} {
+			if v, ok := env[k]; ok {
+				if s, ok := v.(string); ok && s != "" {
+					return s
+				}
+			}
+		}
+	}
+	return trimmed
+}
+
+// handleChat handles conversational chat with Claude by exec-ing the real
+// `claude` CLI. Absent binary → honest error, never a fabricated echo.
 func (c *ClaudeCode) handleChat(ctx context.Context, params map[string]interface{}) (*Response, error) {
 	message, _ := params["message"].(string)
 	if message == "" {
 		return nil, fmt.Errorf("message is required")
 	}
 
-	// In a full implementation, this would communicate with the Claude Code process
-	// For now, we simulate the response
+	content, err := c.runClaude(ctx, message)
+	if err != nil {
+		return nil, fmt.Errorf("claude chat failed: %w", err)
+	}
+
 	response := &Response{
 		Success:   true,
-		Content:   fmt.Sprintf("Claude Code received: %s", message),
+		Content:   content,
+		Actions:   c.extractActions(content),
 		SessionID: c.sessionID,
 		Metadata: map[string]interface{}{
 			"model":       c.config.Model,
@@ -235,30 +315,31 @@ func (c *ClaudeCode) handleChat(ctx context.Context, params map[string]interface
 	return response, nil
 }
 
-// handleEdit handles code editing requests
+// handleEdit handles code editing requests by driving the real `claude` CLI
+// to apply the instruction. Absent binary → honest error, never a fabricated
+// "Applied edit" string.
 func (c *ClaudeCode) handleEdit(ctx context.Context, params map[string]interface{}) (*Response, error) {
 	file, _ := params["file"].(string)
 	instruction, _ := params["instruction"].(string)
-	content, _ := params["content"].(string)
 
 	if instruction == "" {
 		return nil, fmt.Errorf("instruction is required")
 	}
 
-	// Simulate file editing
-	actions := []Action{}
+	prompt := instruction
 	if file != "" {
-		actions = append(actions, Action{
-			Type:    "edit_file",
-			File:    file,
-			Content: content,
-		})
+		prompt = fmt.Sprintf("Edit file %s: %s", file, instruction)
+	}
+
+	content, err := c.runClaude(ctx, prompt)
+	if err != nil {
+		return nil, fmt.Errorf("claude edit failed: %w", err)
 	}
 
 	response := &Response{
 		Success:   true,
-		Content:   fmt.Sprintf("Applied edit to %s: %s", file, instruction),
-		Actions:   actions,
+		Content:   content,
+		Actions:   c.extractActions(content),
 		SessionID: c.sessionID,
 	}
 
@@ -328,16 +409,23 @@ func (c *ClaudeCode) handleGit(ctx context.Context, params map[string]interface{
 	return response, nil
 }
 
-// handleReview handles code review
+// handleReview handles code review by driving the real `claude` CLI to review
+// the target. Absent binary → honest error, never a fabricated review string.
 func (c *ClaudeCode) handleReview(ctx context.Context, params map[string]interface{}) (*Response, error) {
 	fileOrDir, _ := params["target"].(string)
 	if fileOrDir == "" {
 		fileOrDir = "."
 	}
 
+	prompt := fmt.Sprintf("Review %s for code quality, security, and best practices", fileOrDir)
+	content, err := c.runClaude(ctx, prompt)
+	if err != nil {
+		return nil, fmt.Errorf("claude review failed: %w", err)
+	}
+
 	response := &Response{
 		Success:   true,
-		Content:   fmt.Sprintf("Reviewed %s for code quality, security, and best practices", fileOrDir),
+		Content:   content,
 		SessionID: c.sessionID,
 		Metadata: map[string]interface{}{
 			"target": fileOrDir,

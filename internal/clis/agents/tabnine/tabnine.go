@@ -10,6 +10,14 @@ import (
 	"dev.helix.agent/internal/clis/agents/base"
 )
 
+// ErrNoHeadlessCLI is returned by completion/chat/review entrypoints that have
+// no real backing capability. Tabnine ships as an IDE/editor plugin (VS Code,
+// JetBrains, Vim, etc.) backed by a local/cloud model engine reached through the
+// editor host — it exposes NO general headless command-line interface that turns
+// a prompt into a completion/chat/review. Rather than fabricate templated text
+// (BLUFF-001), these entrypoints return an honest error. See https://www.tabnine.com .
+var ErrNoHeadlessCLI = fmt.Errorf("tabnine has no headless CLI: it ships as an IDE/editor plugin backed by an engine reached through the editor host, so completion/chat/review cannot be produced from this integration — refusing to fabricate output (BLUFF-001)")
+
 // Tabnine provides Tabnine integration
 type Tabnine struct {
 	*base.BaseIntegration
@@ -97,74 +105,36 @@ func (t *Tabnine) Execute(ctx context.Context, command string, params map[string
 	}
 }
 
-// complete generates code completion
+// complete returns an HONEST error: Tabnine has no headless CLI that can produce
+// a real completion outside an editor host, so this integration refuses to
+// fabricate one (BLUFF-001).
 func (t *Tabnine) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prefix, _ := params["prefix"].(string)
-	suffix, _ := params["suffix"].(string)
-	language, _ := params["language"].(string)
-
-	if language == "" {
-		language = "go"
+	if prefix == "" {
+		return nil, fmt.Errorf("prefix required")
 	}
-
-	// Generate completion
-	completion := t.generateCompletion(prefix, suffix, language)
-
-	return map[string]interface{}{
-		"prefix":     prefix,
-		"suffix":     suffix,
-		"language":   language,
-		"completion": completion,
-		"model_type": t.config.ModelType,
-		"local_mode": t.config.LocalMode,
-	}, nil
+	return nil, ErrNoHeadlessCLI
 }
 
-// generateCompletion generates completion
-func (t *Tabnine) generateCompletion(prefix, suffix, language string) string {
-	switch language {
-	case "go":
-		if len(prefix) > 0 && prefix[len(prefix)-1] == '(' {
-			return "params) {\n\t// Implementation\n}"
-		}
-		return "// Tabnine completion"
-	case "python":
-		return "# Tabnine completion"
-	case "javascript", "typescript":
-		return "// Tabnine completion"
-	default:
-		return "// Tabnine completion"
-	}
-}
-
-// chat performs chat
+// chat returns an HONEST error: Tabnine Chat is an in-editor feature with no
+// headless CLI; this integration refuses to fabricate a reply (BLUFF-001/003).
 func (t *Tabnine) chat(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	message, _ := params["message"].(string)
 	if message == "" {
 		return nil, fmt.Errorf("message required")
 	}
-
-	return map[string]interface{}{
-		"message":  message,
-		"response": fmt.Sprintf("Tabnine: %s", message),
-		"mode":     t.config.ModelType,
-	}, nil
+	return nil, ErrNoHeadlessCLI
 }
 
-// review reviews code
+// review returns an HONEST error: Tabnine code review runs inside the editor
+// host with no headless CLI; this integration refuses to fabricate review
+// findings (BLUFF-001).
 func (t *Tabnine) review(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	code, _ := params["code"].(string)
 	if code == "" {
 		return nil, fmt.Errorf("code required")
 	}
-
-	return map[string]interface{}{
-		"code":   code,
-		"review": "Code review by Tabnine",
-		"issues": []map[string]interface{}{
-			{"type": "style", "message": "Consider formatting"},
-		},
-	}, nil
+	return nil, ErrNoHeadlessCLI
 }
 
 // status returns status

@@ -83,15 +83,26 @@ func (f *Fauxpilot) Execute(ctx context.Context, command string, params map[stri
 	}
 }
 
-// complete generates completion
+// errNoCompletionWired is returned by complete: FauxPilot is a self-hosted
+// inference server (OpenAI-compatible HTTP), not a headless CLI, and no real
+// HTTP completion client is wired here. Per the 2026-06-10 blocked-agent
+// research there is no confirmed per-agent CLI invocation, so emitting a
+// hardcoded "// Fauxpilot completion" string would be a BLUFF-001 violation —
+// complete returns an honest error rather than a fabricated completion.
+var errNoCompletionWired = fmt.Errorf(
+	"fauxpilot completion is not wired to its real inference endpoint " +
+		"(research-blocked: no confirmed headless CLI; needs the OpenAI-compatible HTTP " +
+		"client); cannot return a completion without fabricating")
+
+// complete validates input then returns an honest not-wired error rather than a
+// fabricated completion string (BLUFF-001).
 func (f *Fauxpilot) complete(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	prefix, _ := params["prefix"].(string)
+	if prefix == "" {
+		return nil, fmt.Errorf("prefix required")
+	}
 
-	return map[string]interface{}{
-		"prefix":     prefix,
-		"completion": "// Fauxpilot completion",
-		"model":      f.config.Model,
-	}, nil
+	return nil, errNoCompletionWired
 }
 
 // status returns status

@@ -1,14 +1,27 @@
 // Package octogen provides Octogen agent integration.
 // Octogen: Multi-model code generation system.
+//
+// There is no canonical headless command-line Octogen binary to drive and no
+// real multi-model backend is wired here. Rather than fabricate generated code
+// (the BLUFF-001/003 anti-pattern), the generate command returns an HONEST
+// error.
 package octogen
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dev.helix.agent/internal/clis/agents"
 	"dev.helix.agent/internal/clis/agents/base"
 )
+
+// ErrNoBackend is returned because no real Octogen backend is wired here.
+// Returning a fabricated success instead would be a BLUFF-001/003 violation
+// (CONST-035).
+var ErrNoBackend = errors.New(
+	"octogen: no real backend wired — no headless Octogen CLI is available; " +
+		"refusing to fabricate generated code")
 
 // Octogen provides Octogen integration
 type Octogen struct {
@@ -88,11 +101,7 @@ func (o *Octogen) generate(ctx context.Context, params map[string]interface{}) (
 		return nil, fmt.Errorf("prompt required")
 	}
 
-	return map[string]interface{}{
-		"prompt": prompt,
-		"code":   fmt.Sprintf("// Octogen multi-model\n// %s", prompt),
-		"models": o.config.Models,
-	}, nil
+	return nil, ErrNoBackend
 }
 
 // status returns status

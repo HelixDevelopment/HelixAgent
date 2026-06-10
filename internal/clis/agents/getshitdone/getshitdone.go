@@ -81,18 +81,24 @@ func (g *GetShitDone) Execute(ctx context.Context, command string, params map[st
 	}
 }
 
-// execute executes a task
+// errNoExecWired is returned by execute: no real Get-Shit-Done agent backend is
+// wired, and no confirmed headless GSD CLI invocation was found in the
+// 2026-06-10 currency/blocked-agent research. Echoing "Executed: <task>" without
+// actually executing the task would be a BLUFF-001 violation — so execute
+// returns an honest error rather than fabricating a result.
+var errNoExecWired = fmt.Errorf(
+	"get-shit-done execute is not wired to a real agent backend (research-blocked: " +
+		"no confirmed headless GSD CLI); cannot report a result without performing the task")
+
+// execute validates input then returns an honest not-wired error rather than an
+// echoed "Executed: <task>" result (BLUFF-001).
 func (g *GetShitDone) execute(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	task, _ := params["task"].(string)
 	if task == "" {
 		return nil, fmt.Errorf("task required")
 	}
 
-	return map[string]interface{}{
-		"task":   task,
-		"result": fmt.Sprintf("Executed: %s", task),
-		"mode":   g.config.Mode,
-	}, nil
+	return nil, errNoExecWired
 }
 
 // status returns status

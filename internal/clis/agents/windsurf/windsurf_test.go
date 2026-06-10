@@ -113,14 +113,17 @@ func TestWindsurfExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "cascade command",
+			// Reconciled (§11.4.120): cascade now returns an honest error —
+			// Windsurf Cascade is an in-IDE agentic flow with no headless CLI, so
+			// it refuses to fabricate a full-stack file manifest (BLUFF-001).
+			name:    "cascade command returns honest error (no headless CLI)",
 			command: "cascade",
 			params: map[string]interface{}{
 				"prompt":       "Build a todo app",
 				"project_type": "web",
 				"framework":    "nextjs",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "cascade without prompt fails",
@@ -145,14 +148,17 @@ func TestWindsurfExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "generate_component command",
+			// Reconciled (§11.4.120): generate_component now returns an honest
+			// error — it previously returned a fixed boilerplate skeleton labelled
+			// "generated" (BLUFF-001). In-IDE feature, no headless CLI.
+			name:    "generate_component command returns honest error (no headless CLI)",
 			command: "generate_component",
 			params: map[string]interface{}{
 				"name":      "Button",
 				"type":      "functional",
 				"framework": "react",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "generate_component without name fails",
@@ -167,12 +173,15 @@ func TestWindsurfExecute(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "terminal_ai command",
+			// Reconciled (§11.4.120): terminal_ai now returns an honest error — it
+			// previously returned a "Enhanced: <cmd>" echo + fixed suggestions
+			// (BLUFF-001). In-IDE feature, no headless CLI.
+			name:    "terminal_ai command returns honest error (no headless CLI)",
 			command: "terminal_ai",
 			params: map[string]interface{}{
 				"command": "git status",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "terminal_ai without command fails",
@@ -203,13 +212,17 @@ func TestWindsurfExecute(t *testing.T) {
 	}
 }
 
-func TestWindsurfCascade(t *testing.T) {
+// TestWindsurfCascadeNoFabrication reconciles the former TestWindsurfCascade
+// (§11.4.120): it asserted a fabricated file/component manifest was returned for
+// a full-stack app that was never generated — BLUFF-001. cascade now returns an
+// honest error. Standing GREEN regression guard (§11.4.135): reverting cascade
+// to return a fake manifest (err == nil) makes this FAIL.
+func TestWindsurfCascadeNoFabrication(t *testing.T) {
 	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
-	err := w.Initialize(ctx, nil)
-	if err != nil {
+	if err := w.Initialize(ctx, nil); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
@@ -218,33 +231,11 @@ func TestWindsurfCascade(t *testing.T) {
 		"project_type": "web",
 		"framework":    "nextjs",
 	})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	if err == nil {
+		t.Errorf("cascade returned nil error — must return an honest error, never a fabricated file manifest (BLUFF-001); got %v", result)
 	}
-
-	resultMap, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatal("result is not a map")
-	}
-
-	if resultMap["prompt"] != "Create an e-commerce site" {
-		t.Errorf("prompt = %v, want %v", resultMap["prompt"], "Create an e-commerce site")
-	}
-
-	if resultMap["project_type"] != "web" {
-		t.Errorf("project_type = %v, want %v", resultMap["project_type"], "web")
-	}
-
-	if resultMap["framework"] != "nextjs" {
-		t.Errorf("framework = %v, want %v", resultMap["framework"], "nextjs")
-	}
-
-	if _, ok := resultMap["components"]; !ok {
-		t.Error("cascade result missing 'components' field")
-	}
-
-	if _, ok := resultMap["files"]; !ok {
-		t.Error("cascade result missing 'files' field")
+	if result != nil {
+		t.Errorf("cascade returned a result payload %v — must be nil when no real generation ran", result)
 	}
 }
 
@@ -301,56 +292,32 @@ func TestWindsurfCreateProject(t *testing.T) {
 	}
 }
 
-func TestWindsurfGenerateComponent(t *testing.T) {
+// TestWindsurfGenerateComponentNoFabrication reconciles the former
+// TestWindsurfGenerateComponent (§11.4.120): it asserted a fixed boilerplate
+// skeleton was returned in the "code" field labelled "generated" — BLUFF-001
+// (a static template presented as AI output). generate_component now returns an
+// honest error. Standing GREEN regression guard (§11.4.135).
+func TestWindsurfGenerateComponentNoFabrication(t *testing.T) {
 	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
-	err := w.Initialize(ctx, nil)
-	if err != nil {
+	if err := w.Initialize(ctx, nil); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
-	tests := []struct {
-		framework string
-		wantCode  bool
-	}{
-		{"react", true},
-		{"vue", true},
-		{"unknown", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.framework, func(t *testing.T) {
-			t.Parallel()
-			result, err := w.Execute(ctx, "generate_component", map[string]interface{}{
-				"name":      "Card",
-				"type":      "functional",
-				"framework": tt.framework,
-			})
-			if err != nil {
-				t.Fatalf("Execute() error = %v", err)
-			}
-
-			resultMap, ok := result.(map[string]interface{})
-			if !ok {
-				t.Fatal("result is not a map")
-			}
-
-			if resultMap["name"] != "Card" {
-				t.Errorf("name = %v, want %v", resultMap["name"], "Card")
-			}
-
-			if resultMap["framework"] != tt.framework {
-				t.Errorf("framework = %v, want %v", resultMap["framework"], tt.framework)
-			}
-
-			if tt.wantCode {
-				if _, ok := resultMap["code"]; !ok {
-					t.Error("generate_component result missing 'code' field")
-				}
-			}
+	for _, framework := range []string{"react", "vue", "unknown"} {
+		result, err := w.Execute(ctx, "generate_component", map[string]interface{}{
+			"name":      "Card",
+			"type":      "functional",
+			"framework": framework,
 		})
+		if err == nil {
+			t.Errorf("generate_component(framework=%s) returned nil error — must return an honest error, never a fabricated component (BLUFF-001); got %v", framework, result)
+		}
+		if result != nil {
+			t.Errorf("generate_component(framework=%s) returned a result payload %v — must be nil when no real generation ran", framework, result)
+		}
 	}
 }
 
@@ -428,25 +395,19 @@ func TestWindsurfDeploy(t *testing.T) {
 	}
 	projectID := projects[0].ID
 
+	// Reconciled (§11.4.120): deploy on an EXISTING project no longer fabricates
+	// a "deployed" status + a guessed *.vercel.app URL for a deploy that never
+	// ran (BLUFF-001). It returns an honest error. The not-found path
+	// (TestWindsurfDeployProjectNotFound) still errors for a different reason.
 	result, err := w.Execute(ctx, "deploy", map[string]interface{}{
 		"project_id": projectID,
 		"platform":   "vercel",
 	})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	if err == nil {
+		t.Errorf("deploy returned nil error — must return an honest error, never a fabricated 'deployed' status/URL (BLUFF-001); got %v", result)
 	}
-
-	resultMap, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatal("result is not a map")
-	}
-
-	if resultMap["platform"] != "vercel" {
-		t.Errorf("platform = %v, want %v", resultMap["platform"], "vercel")
-	}
-
-	if _, ok := resultMap["url"]; !ok {
-		t.Error("deploy result missing 'url' field")
+	if result != nil {
+		t.Errorf("deploy returned a result payload %v — must be nil when no real deployment ran", result)
 	}
 }
 
@@ -468,38 +429,27 @@ func TestWindsurfDeployProjectNotFound(t *testing.T) {
 	}
 }
 
-func TestWindsurfTerminalAI(t *testing.T) {
+// TestWindsurfTerminalAINoFabrication reconciles the former
+// TestWindsurfTerminalAI (§11.4.120): it asserted a "Enhanced: <cmd>" echo + a
+// fixed suggestion list was returned — fabricated AI output (BLUFF-001).
+// terminal_ai now returns an honest error. Standing GREEN regression guard.
+func TestWindsurfTerminalAINoFabrication(t *testing.T) {
 	t.Parallel()
 	w := New()
 	ctx := context.Background()
 
-	err := w.Initialize(ctx, nil)
-	if err != nil {
+	if err := w.Initialize(ctx, nil); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
 	result, err := w.Execute(ctx, "terminal_ai", map[string]interface{}{
 		"command": "npm install",
 	})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	if err == nil {
+		t.Errorf("terminal_ai returned nil error — must return an honest error, never a fabricated echo/suggestions (BLUFF-001); got %v", result)
 	}
-
-	resultMap, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatal("result is not a map")
-	}
-
-	if resultMap["command"] != "npm install" {
-		t.Errorf("command = %v, want %v", resultMap["command"], "npm install")
-	}
-
-	if _, ok := resultMap["enhanced"]; !ok {
-		t.Error("terminal_ai result missing 'enhanced' field")
-	}
-
-	if _, ok := resultMap["suggested"]; !ok {
-		t.Error("terminal_ai result missing 'suggested' field")
+	if result != nil {
+		t.Errorf("terminal_ai returned a result payload %v — must be nil when no real AI ran", result)
 	}
 }
 

@@ -58,28 +58,24 @@ func TestCodeiumWindsurf_Execute(t *testing.T) {
 		errMsg    string
 		checkFunc func(t *testing.T, result interface{})
 	}{
+		// RECONCILED per §11.4.120: complete/chat/cascade USED to assert a
+		// fabricated "// Codeium completion" / "Codeium: <msg>" / templated
+		// cascade PASS. Windsurf is an AI-native IDE with NO headless agent CLI,
+		// so the de-bluffed handlers now return an HONEST error — these cases
+		// assert that honest error rather than codifying the former bluff.
 		{
-			name:    "complete command",
+			name:    "complete command (no headless CLI -> honest error)",
 			command: "complete",
 			params:  map[string]interface{}{"prefix": "func main"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "func main", m["prefix"])
-				assert.NotEmpty(t, m["completion"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
-			name:    "chat command",
+			name:    "chat command (no headless CLI -> honest error)",
 			command: "chat",
 			params:  map[string]interface{}{"message": "Hello"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Hello", m["message"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "chat without message",
@@ -89,15 +85,11 @@ func TestCodeiumWindsurf_Execute(t *testing.T) {
 			errMsg:  "message required",
 		},
 		{
-			name:    "cascade command",
+			name:    "cascade command (no headless CLI -> honest error)",
 			command: "cascade",
 			params:  map[string]interface{}{"prompt": "Create a web app"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Create a web app", m["prompt"])
-			},
+			wantErr: true,
+			errMsg:  "no headless CLI",
 		},
 		{
 			name:    "cascade without prompt",

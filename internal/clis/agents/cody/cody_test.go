@@ -43,8 +43,13 @@ func TestCody_Initialize(t *testing.T) {
 	assert.Equal(t, "test-token", c.config.AccessToken)
 }
 
+// TestCody_Execute covers the command surface that does NOT call the cody CLI:
+// required-param validation, the local save_snippet store, and unknown commands.
+// The LLM-backed commands (chat/explain/generate/search/review/edit/symbol) are
+// covered by the fake-binary-injected real-exec suite below — RECONCILED per
+// §11.4.120 from the former bluff-codifying assertions that accepted fabricated
+// "Cody: <msg>" / templated-code responses as PASS.
 func TestCody_Execute(t *testing.T) {
-	t.Parallel()
 	c := New()
 	ctx := context.Background()
 
@@ -60,90 +65,11 @@ func TestCody_Execute(t *testing.T) {
 		checkFunc func(t *testing.T, result interface{})
 	}{
 		{
-			name:    "chat command",
-			command: "chat",
-			params:  map[string]interface{}{"message": "Hello", "context": "test"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "Hello", m["message"])
-				assert.Equal(t, "test", m["context"])
-			},
-		},
-		{
 			name:    "chat without message",
 			command: "chat",
 			params:  map[string]interface{}{},
 			wantErr: true,
 			errMsg:  "message required",
-		},
-		{
-			name:    "explain command",
-			command: "explain",
-			params:  map[string]interface{}{"code": "func main() {}"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.NotEmpty(t, m["explanation"])
-			},
-		},
-		{
-			name:    "generate command",
-			command: "generate",
-			params:  map[string]interface{}{"prompt": "Create function", "language": "go"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "go", m["language"])
-				assert.NotEmpty(t, m["code"])
-			},
-		},
-		{
-			name:    "search command",
-			command: "search",
-			params:  map[string]interface{}{"query": "function"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.NotNil(t, m["results"])
-			},
-		},
-		{
-			name:    "review command",
-			command: "review",
-			params:  map[string]interface{}{"code": "test code"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.NotNil(t, m["issues"])
-			},
-		},
-		{
-			name:    "edit command",
-			command: "edit",
-			params:  map[string]interface{}{"file": "test.go", "instruction": "fix bug"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "test.go", m["file"])
-			},
-		},
-		{
-			name:    "symbol command",
-			command: "symbol",
-			params:  map[string]interface{}{"name": "MyFunc"},
-			wantErr: false,
-			checkFunc: func(t *testing.T, result interface{}) {
-				m, ok := result.(map[string]interface{})
-				require.True(t, ok)
-				assert.Equal(t, "MyFunc", m["symbol"])
-			},
 		},
 		{
 			name:    "save_snippet command",
@@ -167,7 +93,6 @@ func TestCody_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			result, err := c.Execute(ctx, tt.command, tt.params)
 			if tt.wantErr {
 				require.Error(t, err)

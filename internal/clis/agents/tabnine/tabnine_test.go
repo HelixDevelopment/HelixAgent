@@ -119,30 +119,35 @@ func TestTabnineExecute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "complete command",
+			// Reconciled (§11.4.120): complete now returns an honest error —
+			// Tabnine is an IDE plugin with no headless CLI, so it cannot produce
+			// a completion here and refuses to fabricate one (BLUFF-001).
+			name:    "complete command returns honest error (no headless CLI)",
 			command: "complete",
 			params: map[string]interface{}{
 				"prefix":   "func main()",
 				"suffix":   "}",
 				"language": "go",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
-			name:    "complete with default language",
+			// Still errors: prefix present but capability unavailable (honest).
+			name:    "complete returns honest error regardless of language",
 			command: "complete",
 			params: map[string]interface{}{
 				"prefix": "func main()",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
-			name:    "chat command",
+			// Reconciled (§11.4.120): chat now returns an honest error.
+			name:    "chat command returns honest error (no headless CLI)",
 			command: "chat",
 			params: map[string]interface{}{
 				"message": "Hello Tabnine",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "chat without message fails",
@@ -151,12 +156,13 @@ func TestTabnineExecute(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "review command",
+			// Reconciled (§11.4.120): review now returns an honest error.
+			name:    "review command returns honest error (no headless CLI)",
 			command: "review",
 			params: map[string]interface{}{
 				"code": "func main() {}",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "review without code fails",
@@ -203,138 +209,78 @@ func TestTabnineExecute(t *testing.T) {
 	}
 }
 
-func TestTabnineComplete(t *testing.T) {
+// TestTabnineCompleteNoFabrication reconciles the former TestTabnineComplete /
+// TestTabnineCompleteLanguages (§11.4.120): those tests asserted a templated
+// completion ("// Tabnine completion" etc.) was returned WITHOUT any real
+// engine call — codifying BLUFF-001. complete now returns an honest error
+// (ErrNoHeadlessCLI). Standing GREEN regression guard (§11.4.135): reverting to
+// a fabricated completion (err == nil) makes this FAIL.
+func TestTabnineCompleteNoFabrication(t *testing.T) {
 	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
-	err := tn.Initialize(ctx, nil)
-	if err != nil {
+	if err := tn.Initialize(ctx, nil); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
-	result, err := tn.Execute(ctx, "complete", map[string]interface{}{
-		"prefix":   "func fibonacci(n int) int {",
-		"suffix":   "}",
-		"language": "go",
-	})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
-	}
-
-	resultMap, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatal("result is not a map")
-	}
-
-	if resultMap["prefix"] != "func fibonacci(n int) int {" {
-		t.Errorf("prefix = %v, want %v", resultMap["prefix"], "func fibonacci(n int) int {")
-	}
-
-	if resultMap["language"] != "go" {
-		t.Errorf("language = %v, want %v", resultMap["language"], "go")
-	}
-}
-
-func TestTabnineCompleteLanguages(t *testing.T) {
-	t.Parallel()
-	tn := New()
-	ctx := context.Background()
-
-	err := tn.Initialize(ctx, nil)
-	if err != nil {
-		t.Fatalf("Initialize() error = %v", err)
-	}
-
-	tests := []struct {
-		language string
-		prefix   string
-	}{
-		{"go", "func main("},
-		{"python", "def main():"},
-		{"javascript", "function main()"},
-		{"typescript", "function main(): void"},
-		{"unknown", "some code"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.language, func(t *testing.T) {
-			t.Parallel()
-			result, err := tn.Execute(ctx, "complete", map[string]interface{}{
-				"prefix":   tt.prefix,
-				"language": tt.language,
-			})
-			if err != nil {
-				t.Fatalf("Execute() error = %v", err)
-			}
-
-			resultMap, ok := result.(map[string]interface{})
-			if !ok {
-				t.Fatal("result is not a map")
-			}
-
-			if resultMap["language"] != tt.language {
-				t.Errorf("language = %v, want %v", resultMap["language"], tt.language)
-			}
+	for _, lang := range []string{"go", "python", "javascript", "typescript", "unknown"} {
+		result, err := tn.Execute(ctx, "complete", map[string]interface{}{
+			"prefix":   "func main(",
+			"language": lang,
 		})
+		if err == nil {
+			t.Errorf("complete(lang=%s) returned nil error — must return an honest error, never a fabricated completion (BLUFF-001); got result %v", lang, result)
+		}
+		if result != nil {
+			t.Errorf("complete(lang=%s) returned a result payload %v — must be nil when no real completion ran", lang, result)
+		}
 	}
 }
 
-func TestTabnineChat(t *testing.T) {
+// TestTabnineChatNoFabrication reconciles the former TestTabnineChat
+// (§11.4.120): it asserted a "Tabnine: <msg>" echo was returned. chat now
+// returns an honest error; this guard pins that no echo is fabricated.
+func TestTabnineChatNoFabrication(t *testing.T) {
 	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
-	err := tn.Initialize(ctx, nil)
-	if err != nil {
+	if err := tn.Initialize(ctx, nil); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
 	result, err := tn.Execute(ctx, "chat", map[string]interface{}{
 		"message": "Explain Go concurrency",
 	})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	if err == nil {
+		t.Errorf("chat returned nil error — must return an honest error, never a fabricated reply (BLUFF-003); got %v", result)
 	}
-
-	resultMap, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatal("result is not a map")
-	}
-
-	if resultMap["message"] != "Explain Go concurrency" {
-		t.Errorf("message = %v, want %v", resultMap["message"], "Explain Go concurrency")
+	if result != nil {
+		t.Errorf("chat returned a result payload %v — must be nil when no real reply ran", result)
 	}
 }
 
-func TestTabnineReview(t *testing.T) {
+// TestTabnineReviewNoFabrication reconciles the former TestTabnineReview
+// (§11.4.120): it asserted a fabricated "Code review by Tabnine" + a fixed
+// issue. review now returns an honest error; this guard pins that.
+func TestTabnineReviewNoFabrication(t *testing.T) {
 	t.Parallel()
 	tn := New()
 	ctx := context.Background()
 
-	err := tn.Initialize(ctx, nil)
-	if err != nil {
+	if err := tn.Initialize(ctx, nil); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
 	result, err := tn.Execute(ctx, "review", map[string]interface{}{
 		"code": "func main() { fmt.Println('Hello') }",
 	})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	if err == nil {
+		t.Errorf("review returned nil error — must return an honest error, never fabricated findings (BLUFF-001); got %v", result)
 	}
-
-	resultMap, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatal("result is not a map")
-	}
-
-	if _, ok := resultMap["review"]; !ok {
-		t.Error("review missing 'review' field")
-	}
-
-	if _, ok := resultMap["issues"]; !ok {
-		t.Error("review missing 'issues' field")
+	if result != nil {
+		t.Errorf("review returned a result payload %v — must be nil when no real review ran", result)
 	}
 }
 

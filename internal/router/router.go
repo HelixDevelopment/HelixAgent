@@ -771,12 +771,16 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// AI-debate ensemble (+ presets), HelixLLM (when enabled), every
 		// discovered provider, and every VERIFIED model as uniformly-named
 		// selectable targets. Reuses the live provider registry (the :773
-		// providers path) + the ensemble path (:676); honest-empty of model
-		// entries when the verifier discovery service is not wired (CONST-036).
+		// providers path) + the ensemble path (:676). The Verified source is
+		// the already-populated StartupVerifier (the same one wired into the
+		// debate team at :907) so /v1/catalog surfaces REAL Verified models
+		// within the CONST-037 24h window; honest-empty of model entries when
+		// the StartupVerifier is not wired (GetStartupVerifier() == nil),
+		// CONST-036.
 		{
 			catalogSvc := catalog.New(catalog.Options{
 				Providers:       catalog.NewRegistryProviderSource(providerRegistry),
-				Verified:        catalog.NewDiscoveryVerifiedSource(nil), // discovery svc not wired here → honest-empty
+				Verified:        catalog.NewStartupVerifierSource(providerRegistry.GetStartupVerifier()),
 				EnsemblePresets: catalog.WiredEnsemblePresets(),
 				HelixLLMEnabled: os.Getenv("USE_HELIX_LLM") == "true",
 				HelixLLMModels:  catalog.DefaultHelixLLMModels(),

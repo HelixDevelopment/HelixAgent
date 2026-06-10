@@ -15,30 +15,31 @@ import (
 	"dev.helix.agent/internal/benchmark"
 	"dev.helix.agent/internal/browser"
 	"dev.helix.agent/internal/cache"
-	"dev.helix.agent/internal/ensemble/multi_instance"
-	"dev.helix.agent/internal/llm"
-	"dev.helix.agent/internal/llmops"
+	"dev.helix.agent/internal/catalog"
 	"dev.helix.agent/internal/checkpoints"
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/database"
+	"dev.helix.agent/internal/ensemble/multi_instance"
 	"dev.helix.agent/internal/features"
 	"dev.helix.agent/internal/formatters"
 	formattersproviders "dev.helix.agent/internal/formatters/providers"
 	helixgraphql "dev.helix.agent/internal/graphql"
 	"dev.helix.agent/internal/handlers"
+	"dev.helix.agent/internal/llm"
+	"dev.helix.agent/internal/llmops"
 	"dev.helix.agent/internal/middleware"
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/modelsdev"
 	httpmetrics "dev.helix.agent/internal/observability/metrics"
 	"dev.helix.agent/internal/search"
-	"dev.helix.agent/internal/verifier"
-	"dev.helix.agent/internal/verifier/adapters"
 	"dev.helix.agent/internal/search/indexer"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/services/debate_integration"
 	"dev.helix.agent/internal/skills"
 	"dev.helix.agent/internal/templates"
+	"dev.helix.agent/internal/verifier"
+	"dev.helix.agent/internal/verifier/adapters"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -765,6 +766,24 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 				},
 			})
 		})
+
+		// Unified exposure catalog (SP2 P2.1/P2.2): one root list joining the
+		// AI-debate ensemble (+ presets), HelixLLM (when enabled), every
+		// discovered provider, and every VERIFIED model as uniformly-named
+		// selectable targets. Reuses the live provider registry (the :773
+		// providers path) + the ensemble path (:676); honest-empty of model
+		// entries when the verifier discovery service is not wired (CONST-036).
+		{
+			catalogSvc := catalog.New(catalog.Options{
+				Providers:       catalog.NewRegistryProviderSource(providerRegistry),
+				Verified:        catalog.NewDiscoveryVerifiedSource(nil), // discovery svc not wired here → honest-empty
+				EnsemblePresets: catalog.WiredEnsemblePresets(),
+				HelixLLMEnabled: os.Getenv("USE_HELIX_LLM") == "true",
+				HelixLLMModels:  catalog.DefaultHelixLLMModels(),
+			})
+			catalogHandler := catalog.NewHandler(catalogSvc)
+			protected.GET("/catalog", catalogHandler.List)
+		}
 
 		// Provider management endpoints
 		providerMgmtHandler := handlers.NewProviderManagementHandler(providerRegistry, logger)

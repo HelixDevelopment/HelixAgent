@@ -116,7 +116,17 @@ func (l *Lovable) loadProjects() error {
 	return json.Unmarshal(data, &l.projects)
 }
 
-// saveProjects saves project list
+// saveProjects persists the local project registry to projects.json. It is the
+// write pair of loadProjects (which IS wired — Initialize calls it). The two
+// call sites that invoked saveProjects (createApp + deploy appending a
+// fabricated Project) were deliberately removed by the D-17 de-bluff
+// (commit ecdf5b81): Lovable is a hosted web-only builder, so we no longer
+// fabricate a local "created" project to persist (BLUFF-001). Kept per §11.4.124
+// as the documented, tested round-trip pair of loadProjects: it writes valid
+// JSON that loadProjects reads back, mirrors the windsurf agent's load/save
+// idiom, and is the legitimate persistence path the moment a real hosted client
+// produces a genuine local registry mutation worth persisting. Round-trip
+// covered by TestLovable_SaveLoadProjects_RoundTrip.
 func (l *Lovable) saveProjects() error {
 	projectsPath := filepath.Join(l.GetWorkDir(), "projects.json")
 	data, err := json.MarshalIndent(l.projects, "", "  ")

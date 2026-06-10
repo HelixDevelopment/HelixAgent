@@ -4,6 +4,8 @@ package lovable
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -189,6 +191,49 @@ func TestLovable_ExecuteWithCreatedProject(t *testing.T) {
 				"%s must wrap ErrHostedOnly, got: %v", cmd.name, err)
 		})
 	}
+}
+
+// TestLovable_SaveLoadProjects_RoundTrip wires the saveProjects→loadProjects
+// pair under test (§11.4.124: a kept previously-unwired primitive must carry the
+// test that was missing). saveProjects lost its production call sites in the
+// D-17 de-bluff; it is retained as the documented write pair of loadProjects.
+// This proves the round-trip really works against a REAL on-disk projects.json
+// in a temp work dir (no mocks): write N projects, read them back, assert
+// byte-faithful field equality.
+func TestLovable_SaveLoadProjects_RoundTrip(t *testing.T) {
+	t.Parallel()
+	workDir := t.TempDir()
+
+	writer := New()
+	writer.SetWorkDir(workDir)
+	writer.projects = []Project{
+		{ID: "lovable-1", Name: "Alpha", Description: "first", Stack: "react-node-postgres", Status: "created", URL: "https://lovable.dev/p/alpha"},
+		{ID: "lovable-2", Name: "Beta", Description: "second", Stack: "vue-node-mysql", Status: "deployed", URL: "https://lovable.dev/p/beta"},
+	}
+
+	// Real disk write via the kept primitive.
+	require.NoError(t, writer.saveProjects())
+
+	// projects.json must really exist + be non-empty (anti-bluff: no in-memory
+	// shortcut — the file is the evidence).
+	data, err := os.ReadFile(filepath.Join(workDir, "projects.json"))
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+
+	// A FRESH instance reads it back via loadProjects (the wired read pair).
+	reader := New()
+	reader.SetWorkDir(workDir)
+	require.NoError(t, reader.loadProjects())
+
+	require.Equal(t, writer.projects, reader.projects,
+		"saveProjects→loadProjects must round-trip the registry byte-faithfully")
+
+	// loadProjects on a work dir with no projects.json is a clean no-op (the
+	// honest empty-registry path Initialize relies on).
+	empty := New()
+	empty.SetWorkDir(t.TempDir())
+	require.NoError(t, empty.loadProjects())
+	assert.Empty(t, empty.projects)
 }
 
 func TestLovable_IsAvailable(t *testing.T) {

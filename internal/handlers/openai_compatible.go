@@ -597,7 +597,7 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 
 		// Return as OpenAI-compatible response
 		response := OpenAIChatResponse{
-			ID:                "chatcmpl-tool-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			ID:                utils.SecureRandomID("chatcmpl-tool"), // D-20: crypto-random, collision-free
 			Object:            "chat.completion",
 			Created:           time.Now().Unix(),
 			Model:             "helixagent-ensemble",
@@ -649,7 +649,7 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 	logrus.Info("New user request - initiating AI Debate")
 
 	// Generate request ID for skills tracking
-	requestID := fmt.Sprintf("openai_%d", time.Now().UnixNano())
+	requestID := utils.SecureRandomID("openai") // D-20: crypto-random, collision-free
 
 	// Process skills for this request
 	var skillsCtx *skills.RequestContext
@@ -767,7 +767,7 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 	defer cancel()
 
 	// Generate stream ID early for potential orchestrator use
-	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+	streamID := utils.SecureRandomID("chatcmpl") // D-20: crypto-random, collision-free; one ID per stream, reused across chunks
 
 	// 8-phase orchestrator DISABLED for streaming — it consistently times out after 5 minutes,
 	// wastes resources, and then the fallback debate fires a DUPLICATE debate request.
@@ -1056,7 +1056,7 @@ Respond concisely and helpfully.`, clientName, toolList)
 			topic = "User Query"
 		}
 
-		debateID := fmt.Sprintf("debate-%d", time.Now().UnixNano())
+		debateID := utils.SecureRandomID("debate") // D-20: crypto-random, collision-free
 		startTime := time.Now()
 
 		// Set up SSE streaming
@@ -2143,7 +2143,7 @@ func (h *UnifiedHandler) ChatCompletionsStream(c *gin.Context) {
 	// Track streaming state for OpenCode/Crush/HelixCode compatibility
 	isFirstChunk := false
 	sentFinalChunk := false                                       // Track if we've already sent a finish_reason chunk
-	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()) // Consistent ID across all chunks
+	streamID := utils.SecureRandomID("chatcmpl") // D-20: crypto-random, collision-free. Consistent ID across all chunks
 
 	// Client disconnect detection via request context cancellation.
 	// c.Request.Context() is cancelled when the client disconnects,
@@ -2421,7 +2421,7 @@ func (h *UnifiedHandler) processSkillsForRequest(ctx context.Context, req *OpenA
 
 func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin.Context) *models.LLMRequest {
 	// Generate request ID
-	requestID := fmt.Sprintf("openai_%d", time.Now().UnixNano())
+	requestID := utils.SecureRandomID("openai") // D-20: crypto-random, collision-free
 
 	// Get user info from context
 	userID := "anonymous"
@@ -2431,7 +2431,7 @@ func (h *UnifiedHandler) convertOpenAIChatRequest(req *OpenAIChatRequest, c *gin
 		}
 	}
 
-	sessionID := fmt.Sprintf("session_%d", time.Now().UnixNano())
+	sessionID := fmt.Sprintf("session_%d_%s", time.Now().UnixNano(), utils.SecureRandomID("")) // D-20: crypto-random suffix, collision-free
 	if sid, exists := c.Get("session_id"); exists {
 		if sidStr, ok := sid.(string); ok {
 			sessionID = sidStr
@@ -2839,7 +2839,7 @@ func (h *UnifiedHandler) streamWithHelixLLM(c *gin.Context, req *OpenAIChatReque
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
-	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+	streamID := utils.SecureRandomID("chatcmpl") // D-20: crypto-random, collision-free; one ID per stream, reused across chunks
 	for chunk := range streamChan {
 		// Convert chunk to SSE format
 		sseData := h.convertChunkToSSE(chunk, streamID, req.Model)
@@ -3103,7 +3103,7 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 	}
 
 	internalReq := h.convertOpenAIChatRequest(req, c)
-	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+	streamID := utils.SecureRandomID("chatcmpl") // D-20: crypto-random, collision-free; one ID per stream, reused across chunks
 
 	// Try helixllm first
 	provider, err := h.providerRegistry.GetProvider(PrimaryProviderName)
@@ -3155,7 +3155,7 @@ func (h *UnifiedHandler) streamWithProviderChain(c *gin.Context, req *OpenAIChat
 // chunks that talk ABOUT calling the tool.
 func (h *UnifiedHandler) streamToolCallViaNonStreaming(c *gin.Context, req *OpenAIChatRequest) {
 	internalReq := h.convertOpenAIChatRequest(req, c)
-	streamID := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+	streamID := utils.SecureRandomID("chatcmpl") // D-20: crypto-random, collision-free; one ID per stream, reused across chunks
 
 	// Try helixllm first, then fallback chain — same priority as
 	// non-streaming processWithProviderChain.
@@ -3439,7 +3439,7 @@ func (h *UnifiedHandler) processWithComprehensiveStream(ctx context.Context, req
 		}
 
 		debateConfig := services.DebateConfig{
-			DebateID:  fmt.Sprintf("comp-%d", time.Now().UnixNano()),
+			DebateID:  utils.SecureRandomID("comp"), // D-20: crypto-random, collision-free
 			Topic:     topic,
 			MaxRounds: 3,
 			Metadata:  make(map[string]any),
@@ -3708,7 +3708,7 @@ func (h *UnifiedHandler) processWithOrchestrator(ctx context.Context, req *model
 	}
 
 	debateConfig := services.DebateConfig{
-		DebateID:     fmt.Sprintf("debate-%d", time.Now().UnixNano()),
+		DebateID:     utils.SecureRandomID("debate"), // D-20: crypto-random, collision-free
 		Topic:        topic,
 		MaxRounds:    1,
 		Timeout:      120 * time.Second,
@@ -4862,7 +4862,9 @@ func (h *UnifiedHandler) generateRealDebateResponse(ctx context.Context, positio
 
 		// Create the request with this member's model
 		llmReq := &models.LLMRequest{
-			ID:        fmt.Sprintf("debate-%d-%d-%d", position, attemptNum, time.Now().UnixNano()),
+			// D-20: crypto-random suffix makes the ID unique-by-construction even
+			// when the same position/attempt is retried within one coarse clock tick.
+			ID:        fmt.Sprintf("debate-%d-%d-%d-%s", position, attemptNum, time.Now().UnixNano(), utils.SecureRandomID("")),
 			SessionID: "debate-session",
 			Prompt:    userPrompt,
 			Messages: []models.Message{
@@ -6297,7 +6299,7 @@ Based on this context, call the appropriate tool(s) to execute the planned actio
 
 	// Create the LLM request with tools enabled
 	llmReq := &models.LLMRequest{
-		ID:        fmt.Sprintf("tool-call-%d", time.Now().UnixNano()),
+		ID:        utils.SecureRandomID("tool-call"), // D-20: crypto-random, collision-free
 		SessionID: "tool-call-session",
 		Prompt:    userPromptBuilder.String(),
 		Messages: []models.Message{

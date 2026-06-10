@@ -13,6 +13,7 @@ import (
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/ensemble/multi_instance"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -458,7 +459,9 @@ func (h *EnsembleHandler) AddAgentToTeam(c *gin.Context) {
 	}
 
 	if agent.ID == "" {
-		agent.ID = fmt.Sprintf("agent_%d", time.Now().UnixNano())
+		// D-20: uuid suffix makes the agent ID unique-by-construction; the bare
+		// UnixNano suffix collided for agents created within one coarse clock tick.
+		agent.ID = fmt.Sprintf("agent_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 	}
 
 	var found bool
@@ -740,7 +743,11 @@ func DefaultTeamConfig() TeamConfig {
 	}
 }
 
-// generateTeamID generates a unique team ID
+// generateTeamID generates a unique team ID.
+// D-20: prefix_<unixnano>_<short-uuid> — keeps the human-readable, time-sortable
+// prefix while a uuid suffix makes the ID unique-by-construction. The bare
+// UnixNano suffix collided when two teams were created within one coarse clock
+// tick (see TestIDGenerators_NoCollisionUnderSameTickLoad).
 func generateTeamID() string {
-	return fmt.Sprintf("team_%d", time.Now().UnixNano())
+	return fmt.Sprintf("team_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 }

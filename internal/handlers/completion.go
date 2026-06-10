@@ -13,6 +13,7 @@ import (
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/skills"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // ModelSource is the read surface CompletionHandler.Models consumes to build the
@@ -478,8 +479,10 @@ func (h *CompletionHandler) Models(c *gin.Context) {
 // Helper methods
 
 func (h *CompletionHandler) convertToInternalRequest(req *CompletionRequest, c *gin.Context) *models.LLMRequest {
-	// Generate request ID
-	requestID := fmt.Sprintf("req_%d", time.Now().UnixNano())
+	// Generate request ID.
+	// D-20: uuid suffix makes the request ID unique-by-construction; the bare
+	// UnixNano suffix collided for requests within one coarse clock tick.
+	requestID := fmt.Sprintf("req_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 
 	// Get user ID from context (set by auth middleware)
 	userID := "anonymous"
@@ -489,8 +492,10 @@ func (h *CompletionHandler) convertToInternalRequest(req *CompletionRequest, c *
 		}
 	}
 
-	// Get session ID from context
-	sessionID := fmt.Sprintf("session_%d", time.Now().UnixNano())
+	// Get session ID from context.
+	// D-20: uuid suffix makes the fallback session ID unique-by-construction; the
+	// bare UnixNano suffix collided for sessions within one coarse clock tick.
+	sessionID := fmt.Sprintf("session_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 	if sessionIDValue, exists := c.Get("session_id"); exists {
 		if sid, ok := sessionIDValue.(string); ok {
 			sessionID = sid

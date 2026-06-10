@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -315,7 +316,9 @@ func translateOpenAIToAnthropic(openaiResp []byte, requestedModel string) *Anthr
 
 	id := openai.ID
 	if id == "" {
-		id = fmt.Sprintf("msg_%d", time.Now().UnixNano())
+		// D-20: uuid suffix makes the fallback message ID unique-by-construction;
+		// the bare UnixNano suffix collided within one coarse clock tick.
+		id = fmt.Sprintf("msg_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 	}
 	model := openai.Model
 	if model == "" {

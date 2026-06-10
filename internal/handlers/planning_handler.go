@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/models"
@@ -1285,12 +1286,16 @@ func (h *PlanningHandler) executePlan(sessionID string) {
 	}).Info("Plan execution completed")
 }
 
-// generatePlanModeID generates a unique plan mode session ID
+// generatePlanModeID generates a unique plan mode session ID.
+// D-20: uuid suffix makes the ID unique-by-construction; the bare UnixNano suffix
+// collided for plan sessions created within one coarse clock tick.
 func generatePlanModeID() string {
-	return fmt.Sprintf("plan_%d", time.Now().UnixNano())
+	return fmt.Sprintf("plan_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 }
 
-// generateTaskID generates a unique task ID
+// generateTaskID generates a unique task ID.
+// D-20: uuid suffix makes the ID unique-by-construction; the bare UnixNano suffix
+// collided for tasks created within one coarse clock tick.
 func generateTaskID() string {
-	return fmt.Sprintf("task_%d", time.Now().UnixNano())
+	return fmt.Sprintf("task_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 }

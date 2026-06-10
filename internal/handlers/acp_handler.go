@@ -11,6 +11,7 @@ import (
 	"digital.vasic.concurrency/pkg/safe"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	"dev.helix.agent/internal/services"
@@ -444,8 +445,10 @@ func (h *ACPHandler) handleSessionCreate(c *gin.Context, msg *JSONRPCMessage) {
 		return
 	}
 
-	// Create session
-	sessionID := fmt.Sprintf("session_%d", time.Now().UnixNano())
+	// Create session.
+	// D-20: uuid suffix makes the session ID unique-by-construction; the bare
+	// UnixNano suffix collided for sessions created within one coarse clock tick.
+	sessionID := fmt.Sprintf("session_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 	session := &ACPSession{
 		ID:        sessionID,
 		AgentID:   params.AgentID,

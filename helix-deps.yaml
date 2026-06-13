@@ -27,6 +27,211 @@ deps:
       unique IDs, no dangling deps, no cycle) + dag.NewScheduler().Run
       (bounded-parallelism ready-set dispatch, fail-fast).
     layout: flat
+  - name: digital.vasic.agentic
+    ssh_url: git@github.com:vasic-digital/Agentic.git
+    ref: main
+    why: "Agentic-loop primitives (replace ../agentic). [inferred from module name]"
+    layout: flat
+  - name: digital.vasic.auth
+    ssh_url: git@github.com:vasic-digital/Auth.git
+    ref: main
+    why: "Authentication / authorization primitives (replace ../auth). [inferred]"
+    layout: flat
+  - name: digital.vasic.background
+    ssh_url: git@github.com:vasic-digital/BackgroundTasks.git
+    ref: main
+    why: "Background-task scheduling/execution (replace ../background_tasks). [inferred]"
+    layout: flat
+  - name: digital.vasic.benchmark
+    ssh_url: git@github.com:vasic-digital/Benchmark.git
+    ref: main
+    why: "Benchmarking harness/utilities (replace ../benchmark). [inferred]"
+    layout: flat
+  - name: digital.vasic.cache
+    ssh_url: git@github.com:vasic-digital/Cache.git
+    ref: main
+    why: "Caching layer (replace ../cache). [inferred]"
+    layout: flat
+  - name: digital.vasic.challenges
+    ssh_url: git@github.com:vasic-digital/Challenges.git
+    ref: main
+    why: "Challenge bank / anti-bluff Challenge runner (replace ../challenges). [inferred]"
+    layout: flat
+  - name: digital.vasic.concurrency
+    ssh_url: git@github.com:vasic-digital/Concurrency.git
+    ref: main
+    why: "Concurrency primitives (replace ../concurrency). [inferred]"
+    layout: flat
+  - name: digital.vasic.containers
+    ssh_url: git@github.com:vasic-digital/Containers.git
+    ref: main
+    why: "Containerization runtime/lifecycle per §11.4.76 (replace ../containers). [inferred]"
+    layout: flat
+  - name: digital.vasic.database
+    ssh_url: git@github.com:vasic-digital/Database.git
+    ref: main
+    why: "Database access layer (replace ../database). [inferred]"
+    layout: flat
+  - name: digital.vasic.debate
+    ssh_url: git@github.com:HelixDevelopment/DebateOrchestrator.git
+    ref: main
+    why: "Multi-agent debate orchestration (replace ../debate_orchestrator). [inferred]"
+    layout: flat
+  - name: digital.vasic.docprocessor
+    ssh_url: git@github.com:HelixDevelopment/DocProcessor.git
+    ref: main
+    why: "Document processing (indirect dep; replace ../doc_processor). [inferred]"
+    layout: flat
+  - name: digital.vasic.embeddings
+    ssh_url: git@github.com:vasic-digital/Embeddings.git
+    ref: main
+    why: "Embeddings generation (replace ../embeddings; replace-only, no require). [inferred]"
+    layout: flat
+  - name: digital.vasic.eventbus
+    ssh_url: git@github.com:vasic-digital/EventBus.git
+    ref: main
+    why: "Event bus / pub-sub (replace ../event_bus). [inferred]"
+    layout: flat
+  - name: digital.vasic.formatters
+    ssh_url: git@github.com:vasic-digital/Formatters.git
+    ref: main
+    why: "Output formatters (replace ../formatters). [inferred]"
+    layout: flat
+  - name: digital.vasic.helixmemory
+    ssh_url: git@github.com:HelixDevelopment/HelixMemory.git
+    ref: main
+    why: "Agent memory subsystem (replace ../helix_memory). [inferred]"
+    layout: flat
+  - name: digital.vasic.helixqa
+    ssh_url: git@github.com:HelixDevelopment/HelixQA.git
+    ref: main
+    why: "HelixQA autonomous QA per §11.4.27/§11.4.50 (replace ../helix_qa). [inferred]"
+    layout: flat
+  - name: digital.vasic.helixspecifier
+    ssh_url: git@github.com:HelixDevelopment/HelixSpecifier.git
+    ref: main
+    why: "Specification engine (replace ../helix_specifier). [inferred]"
+    layout: flat
+  - name: digital.vasic.llmops
+    ssh_url: git@github.com:vasic-digital/LLMOps.git
+    ref: main
+    why: "LLM-ops tooling (replace ../llm_ops). [inferred]"
+    layout: flat
+  - name: digital.vasic.llmorchestrator
+    ssh_url: git@github.com:HelixDevelopment/LLMOrchestrator.git
+    ref: main
+    why: "LLM orchestration (indirect dep; replace ../llm_orchestrator). [inferred]"
+    layout: flat
+  - name: digital.vasic.llmprovider
+    ssh_url: git@github.com:HelixDevelopment/LLMProvider.git
+    ref: main
+    why: "LLM provider abstraction per CONST-039 (replace ../llm_provider). [inferred]"
+    layout: flat
+  - name: digital.vasic.llmsverifier
+    ssh_url: git@github.com:vasic-digital/LLMsVerifier.git
+    ref: main
+    why: "LLMsVerifier single-source-of-truth per CONST-036 (replace ../llms_verifier/llm-verifier). [inferred]"
+    layout: flat
+  - name: digital.vasic.mcp
+    ssh_url: git@github.com:vasic-digital/MCP_Module.git
+    ref: main
+    why: "Model Context Protocol module (replace ../mcp_module). [inferred]"
+    layout: flat
+  - name: digital.vasic.memory
+    ssh_url: git@github.com:vasic-digital/Memory.git
+    ref: main
+    why: "Generic memory store (replace ../memory). [inferred]"
+    layout: flat
+  - name: digital.vasic.messaging
+    ssh_url: git@github.com:vasic-digital/Messaging.git
+    ref: main
+    why: "Messaging layer (replace ../messaging). [inferred]"
+    layout: flat
+  - name: digital.vasic.models
+    ssh_url: git@github.com:vasic-digital/Models.git
+    ref: main
+    why: "Shared data models (replace ../models). [inferred]"
+    layout: flat
+  - name: digital.vasic.normalize
+    ssh_url: git@github.com:vasic-digital/Normalize.git
+    ref: main
+    why: "Data normalization (replace ../normalize). [inferred]"
+    layout: flat
+  - name: digital.vasic.observability
+    ssh_url: git@github.com:vasic-digital/Observability.git
+    ref: main
+    why: "Observability/telemetry (replace ../observability; replace-only, no require). [inferred]"
+    layout: flat
+  - name: digital.vasic.optimization
+    ssh_url: git@github.com:vasic-digital/Optimization.git
+    ref: main
+    why: "Optimization routines (replace ../optimization). [inferred]"
+    layout: flat
+  - name: digital.vasic.planning
+    ssh_url: git@github.com:vasic-digital/Planning.git
+    ref: main
+    why: "Planning subsystem (replace ../planning). [inferred]"
+    layout: flat
+  - name: digital.vasic.plugins
+    ssh_url: git@github.com:vasic-digital/Plugins.git
+    ref: main
+    why: "Plugin subsystem per CONST-040 (replace ../plugins). [inferred]"
+    layout: flat
+  - name: digital.vasic.rag
+    ssh_url: git@github.com:vasic-digital/RAG.git
+    ref: main
+    why: "Retrieval-augmented generation (replace ../rag). [inferred]"
+    layout: flat
+  - name: digital.vasic.redteam
+    ssh_url: git@github.com:vasic-digital/RedTeam.git
+    ref: main
+    why: "Red-team / adversarial testing (replace ../red_team). [inferred]"
+    layout: flat
+  - name: digital.vasic.security
+    ssh_url: git@github.com:vasic-digital/Security.git
+    ref: main
+    why: "Security tooling (replace ../security). [inferred]"
+    layout: flat
+  - name: digital.vasic.selfimprove
+    ssh_url: git@github.com:vasic-digital/SelfImprove.git
+    ref: main
+    why: "Self-improvement loop (replace ../self_improve). [inferred]"
+    layout: flat
+  - name: digital.vasic.skillregistry
+    ssh_url: git@github.com:vasic-digital/SkillRegistry.git
+    ref: main
+    why: "Skill registry per CONST-040 (replace ../skill_registry; replace-only, no require). [inferred]"
+    layout: flat
+  - name: digital.vasic.storage
+    ssh_url: git@github.com:vasic-digital/Storage.git
+    ref: main
+    why: "Storage abstraction (replace ../storage). [inferred]"
+    layout: flat
+  - name: digital.vasic.streaming
+    ssh_url: git@github.com:vasic-digital/Streaming.git
+    ref: main
+    why: "Streaming I/O (replace ../streaming). [inferred]"
+    layout: flat
+  - name: digital.vasic.toolschema
+    ssh_url: git@github.com:vasic-digital/ToolSchema.git
+    ref: main
+    why: "Tool schema definitions (replace ../tool_schema). [inferred]"
+    layout: flat
+  - name: digital.vasic.vectordb
+    ssh_url: git@github.com:vasic-digital/VectorDB.git
+    ref: main
+    why: "Vector database (replace ../vector_db). [inferred]"
+    layout: flat
+  - name: digital.vasic.visionengine
+    ssh_url: git@github.com:HelixDevelopment/VisionEngine.git
+    ref: main
+    why: "Vision engine (replace ../vision_engine). [inferred]"
+    layout: flat
+  - name: digital.vasic.conversation
+    ssh_url: git@github.com:vasic-digital/conversation.git
+    ref: main
+    why: "Conversation state management (replace ../conversation; replace-only, no require). [inferred]"
+    layout: flat
 
 transitive_handling:
   recursive: true

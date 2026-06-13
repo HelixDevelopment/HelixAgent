@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"dev.helix.dag"
 	"digital.vasic.concurrency/pkg/safe"
 	"github.com/google/uuid"
 )
@@ -120,19 +121,102 @@ func (o *Orchestrator) ExecutePlan(ctx context.Context, sessionID string, plan O
 		s.UpdatedAt = time.Now()
 	})
 
-	// Build dependency graph
-	completedSteps := make(map[string]bool)
-	stepResults := make(map[string]*SubAgentTaskResult)
+	// Build the step dependency graph through the reusable dev.helix.dag
+	// scheduler (CONST-051(C): reached via the project-root sibling
+	// ../dag_orchestrator). dag.Build validates the graph up front — unique
+	// step names, every DependsOn references an existing step, no cycle — so a
+	// malformed plan fails fast with a clean error instead of the previous
+	// hand-rolled busy-spin that could loop forever on a missing dependency.
+	nodes := make([]dag.Node, 0, len(plan.Steps))
+	for i := range plan.Steps {
+		step := plan.Steps[i] // capture per-node
+		nodes = append(nodes, &dag.FuncNode{
+			NodeID: step.Name,
+			Deps:   step.DependsOn,
+			Fn: func(nodeCtx context.Context, _ dag.Inputs) (dag.Output, error) {
+				return o.executeStep(nodeCtx, session, step, nil)
+			},
+		})
+	}
 
-	// Execute steps respecting dependencies
-	for len(completedSteps) < len(plan.Steps) {
+	graph, err := dag.Build(nodes)
+	if err != nil {
+		o.updateSession(sessionID, func(s *Session) {
+			s.Status = SessionStatusFailed
+			s.UpdatedAt = time.Now()
+		})
+		return fmt.Errorf("invalid orchestration plan: %w", err)
+	}
+
+	// Honour an already-cancelled caller context (or in-flight shutdown) before
+	// dispatching any work — preserves the previous contract that a cancelled
+	// run reports SessionStatusCancelled + ctx.Err() rather than completing.
+	select {
+	case <-ctx.Done():
+		o.updateSession(sessionID, func(s *Session) {
+			s.Status = SessionStatusCancelled
+			s.UpdatedAt = time.Now()
+		})
+		return ctx.Err()
+	case <-o.shutdown:
+		o.updateSession(sessionID, func(s *Session) {
+			s.Status = SessionStatusCancelled
+			s.UpdatedAt = time.Now()
+		})
+		return fmt.Errorf("orchestrator shutting down")
+	default:
+	}
+
+	// Wire shutdown into the run context so an orchestrator Shutdown cancels an
+	// in-flight plan (preserving the previous o.shutdown semantics).
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
 		select {
-		case <-ctx.Done():
+		case <-o.shutdown:
+			cancel()
+		case <-runCtx.Done():
+		}
+	}()
+
+	// Steps with all dependencies satisfied run concurrently up to the
+	// parallelism cap; FailFast preserves "first failing step aborts the
+	// plan". Each step's executeStep creates its own agent and the session is
+	// mutated only through the concurrency-safe safe.Store, so concurrent
+	// ready-steps are race-free. The cap is the step count (every independent
+	// step may run at once); dev.helix.dag bounds concurrent execution to this
+	// value and is safe at any cap >= 1 (an empty plan resolves to the
+	// scheduler's >= 1 default).
+	result, runErr := dag.NewScheduler().Run(runCtx, graph, dag.Options{
+		Parallelism: len(plan.Steps),
+		Failure:     dag.FailFast,
+	})
+
+	// Stage every successfully-completed step's result onto the session.
+	for stepName, out := range result.Outputs {
+		taskResult, ok := out.(*SubAgentTaskResult)
+		if !ok {
+			continue
+		}
+		name := stepName
+		tr := taskResult
+		o.updateSession(sessionID, func(s *Session) {
+			s.Results[name] = tr
+			s.UpdatedAt = time.Now()
+		})
+	}
+
+	if runErr != nil {
+		// Distinguish caller/shutdown cancellation from a genuine step failure
+		// so the session status matches the previous contract.
+		if ctxErr := ctx.Err(); ctxErr != nil {
 			o.updateSession(sessionID, func(s *Session) {
 				s.Status = SessionStatusCancelled
 				s.UpdatedAt = time.Now()
 			})
-			return ctx.Err()
+			return ctxErr
+		}
+		select {
 		case <-o.shutdown:
 			o.updateSession(sessionID, func(s *Session) {
 				s.Status = SessionStatusCancelled
@@ -141,45 +225,15 @@ func (o *Orchestrator) ExecutePlan(ctx context.Context, sessionID string, plan O
 			return fmt.Errorf("orchestrator shutting down")
 		default:
 		}
-
-		// Find steps that are ready to execute
-		for _, step := range plan.Steps {
-			if completedSteps[step.Name] {
-				continue
-			}
-
-			// Check if dependencies are met
-			depsMet := true
-			for _, dep := range step.DependsOn {
-				if !completedSteps[dep] {
-					depsMet = false
-					break
-				}
-			}
-
-			if !depsMet {
-				continue
-			}
-
-			// Execute the step
-			result, err := o.executeStep(ctx, session, step, stepResults)
-			if err != nil {
-				o.updateSession(sessionID, func(s *Session) {
-					s.Status = SessionStatusFailed
-					s.UpdatedAt = time.Now()
-				})
-				return fmt.Errorf("step %s failed: %w", step.Name, err)
-			}
-
-			completedSteps[step.Name] = true
-			stepResults[step.Name] = result
-
-			stepName := step.Name
-			o.updateSession(sessionID, func(s *Session) {
-				s.Results[stepName] = result
-				s.UpdatedAt = time.Now()
-			})
+		o.updateSession(sessionID, func(s *Session) {
+			s.Status = SessionStatusFailed
+			s.UpdatedAt = time.Now()
+		})
+		// Surface the first failing step (FailFast guarantees exactly one).
+		for failedStep, stepErr := range result.Failed {
+			return fmt.Errorf("step %s failed: %w", failedStep, stepErr)
 		}
+		return runErr
 	}
 
 	o.updateSession(sessionID, func(s *Session) {

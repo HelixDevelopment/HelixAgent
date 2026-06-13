@@ -1,0 +1,35 @@
+# helix-deps.yaml — HelixAgent Submodule-Dependency Manifest
+# Per HelixConstitution §11.4.31 / CONST-054 (Submodule-Dependency-Manifest Mandate).
+#
+# HelixAgent (dev.helix.agent) consumes own-org Go modules via Go `replace`
+# directives in go.mod, reached from the consuming project's root per
+# CONST-051(C) (no nested own-org chains). This manifest lets a new consuming
+# project reconstruct the dependency graph at its own root.
+#
+# Schema reference: <constitution-submodule>/Constitution.md §11.4.31.
+#
+# NOTE (Stream D, G-2): this manifest currently declares the dev.helix.dag
+# dependency wired into internal/agents/subagent (the subagent orchestrator's
+# step-dependency scheduler). HelixAgent also consumes many digital.vasic.*
+# modules via go.mod replace directives; those entries are a tracked follow-up
+# to enumerate here so the manifest is complete per CONST-054.
+
+schema_version: 1
+deps:
+  - name: dev.helix.dag
+    ssh_url: git@github.com:HelixDevelopment/DagOrchestrator.git
+    ref: main
+    why: >-
+      Generic pure-data DAG ready-set scheduler. Backs the subagent
+      Orchestrator.ExecutePlan step-dependency execution
+      (internal/agents/subagent/orchestrator.go) — replaces a hand-rolled
+      busy-spin topological loop with dag.Build (up-front graph validation:
+      unique IDs, no dangling deps, no cycle) + dag.NewScheduler().Run
+      (bounded-parallelism ready-set dispatch, fail-fast).
+    layout: flat
+
+transitive_handling:
+  recursive: true
+  conflict_resolution: operator-required
+
+language_specific_subtree: false

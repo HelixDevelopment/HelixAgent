@@ -6,6 +6,7 @@ require github.com/gin-gonic/gin v1.12.0
 
 require (
 	dev.helix.agent/pkg/api v0.0.0-00010101000000-000000000000
+	dev.helix.dag v0.0.0-00010101000000-000000000000
 	digital.vasic.agentic v0.0.0-00010101000000-000000000000
 	digital.vasic.auth v0.0.0-00010101000000-000000000000
 	digital.vasic.background v0.0.0
@@ -214,6 +215,8 @@ require (
 )
 
 replace dev.helix.agent/pkg/api => ./pkg/api
+
+replace dev.helix.dag => ../dag_orchestrator
 
 replace digital.vasic.containers => ../containers
 

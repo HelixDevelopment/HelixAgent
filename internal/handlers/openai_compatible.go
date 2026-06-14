@@ -331,6 +331,12 @@ type OpenAIChatResponse struct {
 	Choices           []OpenAIChoice `json:"choices"`
 	Usage             *OpenAIUsage   `json:"usage,omitempty"`
 	SystemFingerprint string         `json:"system_fingerprint,omitempty"`
+	// Agentic carries the agentic-ensemble provenance metadata
+	// (mode, stages_completed, agents_spawned, per-subagent results)
+	// when the request was processed by the dual-mode decompose→execute
+	// engine. Omitted for non-agentic responses so plain chat is
+	// unaffected.
+	Agentic any `json:"agentic,omitempty"`
 }
 
 // OpenAIChoice represents a choice in OpenAI response
@@ -3845,7 +3851,7 @@ func (h *UnifiedHandler) convertToOpenAIChatResponse(result *services.EnsembleRe
 		FinishReason: selected.FinishReason,
 	}
 
-	return &OpenAIChatResponse{
+	resp := &OpenAIChatResponse{
 		ID:                selected.ID,
 		Object:            "chat.completion",
 		Created:           selected.CreatedAt.Unix(),
@@ -3854,6 +3860,19 @@ func (h *UnifiedHandler) convertToOpenAIChatResponse(result *services.EnsembleRe
 		Usage:             usage,
 		SystemFingerprint: "fp_helixagent_ensemble",
 	}
+
+	// Surface agentic-ensemble provenance (mode / stages_completed /
+	// agents_spawned / per-subagent results) so callers get positive
+	// runtime evidence that the decompose→execute engine actually ran.
+	// Without this the engine could run yet the user-visible response
+	// would carry no proof (a §11.4.108 SOURCE→USER-VISIBLE gap).
+	if result.Metadata != nil {
+		if am, ok := result.Metadata["agentic"]; ok && am != nil {
+			resp.Agentic = am
+		}
+	}
+
+	return resp
 }
 
 // convertToOpenAIChatStreamResponse converts an LLM response to OpenAI streaming format

@@ -962,11 +962,15 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// Simple messages (greetings, confirmations) → single provider
 		// Complex requests (debug, refactor, implement) → full ensemble
 		var intentRouter *services.IntentBasedRouter
+		// llmClassifier is hoisted to the outer scope so the agentic
+		// ensemble wiring below can route actionable prompts through the
+		// decompose→execute pipeline via the same LLM-backed classifier.
+		var llmClassifier *services.LLMIntentClassifier
 		if sv := providerRegistry.GetStartupVerifier(); sv != nil {
 			intentRouter = services.NewIntentBasedRouter(sv, logger)
 			// Wire LLM-based intent classifier for real semantic understanding
 			// Uses the strongest scored model for multilingual intent recognition
-			llmClassifier := services.NewLLMIntentClassifier(providerRegistry, logger)
+			llmClassifier = services.NewLLMIntentClassifier(providerRegistry, logger)
 			intentRouter.SetLLMClassifier(llmClassifier)
 			unifiedHandler.SetIntentBasedRouter(intentRouter)
 			logger.Info("IntentBasedRouter configured with LLM classifier - semantic intent routing for all languages")
@@ -997,6 +1001,24 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 
 		// CRITICAL: Set debate service on UnifiedHandler so it can use the configured debate team
 		unifiedHandler.SetDebateService(debateService)
+
+		// CRITICAL: Wire the real dual-mode agentic ensemble (decompose →
+		// execute, subagent-driven) as the PRIMARY chat-completions path so
+		// it runs out-of-the-box (no opt-in flag). Without this the engine
+		// at services.AgenticEnsemble is constructed nowhere and the gate in
+		// processWithEnsemble (h.agenticEnsemble != nil) is always false — the
+		// engine never runs. BuildAgenticEnsemble reuses the existing engine
+		// (planner + verifier + classifier + debate service + registry);
+		// EnableExecution defaults true so actionable prompts decompose and
+		// dispatch subagents.
+		agenticEnsemble := handlers.BuildAgenticEnsemble(
+			debateService,
+			llmClassifier,
+			providerRegistry,
+			logger,
+		)
+		unifiedHandler.SetAgenticEnsemble(agenticEnsemble)
+		logger.Info("AgenticEnsemble wired as PRIMARY chat path (dual-mode decompose→execute, subagent-driven, out-of-the-box)")
 
 		// Wire the comprehensive IntegrationManager so its agent pool gets populated
 		if ci := debateService.GetComprehensiveIntegration(); ci != nil {

@@ -70,6 +70,48 @@ func isQuotaError(err error) bool {
 		strings.Contains(s, "requests per minute")
 }
 
+// isProviderUnavailableError reports whether the error means the chosen
+// provider/model cannot serve classification at all (model does not exist,
+// no access, auth failure, route gone). Unlike a transient quota error, a
+// dead model permanently poisons the classifier if the provider stays in
+// rotation — every call would re-hit the same 404 and silently fall back
+// to the heuristic classifier, starving the agentic execute path. Such a
+// provider MUST be benched (and another tried) just like a quota error.
+func isProviderUnavailableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	// Precise model-existence / access signals first — these are
+	// unambiguous and safe to bench on.
+	if strings.Contains(s, "model_not_found") ||
+		strings.Contains(s, "does not exist") ||
+		strings.Contains(s, "do not have access") ||
+		strings.Contains(s, "not_found_error") ||
+		strings.Contains(s, "unauthorized") ||
+		strings.Contains(s, "forbidden") {
+		return true
+	}
+	// HTTP-status signals: match only status-shaped occurrences (e.g.
+	// "error: 404 -", "status 401", "code 403", "http 404") rather than
+	// any bare digits, so a request-id / URL / unrelated body that merely
+	// contains "404" does not needlessly bench a healthy provider.
+	for _, code := range []string{"404", "401", "403"} {
+		if strings.Contains(s, "error: "+code) ||
+			strings.Contains(s, "status "+code) ||
+			strings.Contains(s, "status: "+code) ||
+			strings.Contains(s, "status_code "+code) ||
+			strings.Contains(s, "code "+code) ||
+			strings.Contains(s, "code: "+code) ||
+			strings.Contains(s, "http "+code) ||
+			strings.Contains(s, code+" not found") ||
+			strings.Contains(s, code+" - ") {
+			return true
+		}
+	}
+	return false
+}
+
 // LLMIntentResponse is the structured response from the LLM
 type LLMIntentResponse struct {
 	Intent           string   `json:"intent"`            // "confirmation", "refusal", "question", "request", "clarification", "unclear"
@@ -83,65 +125,75 @@ type LLMIntentResponse struct {
 // ClassifyIntentWithLLM uses an LLM to understand user intent semantically
 // This is ZERO hardcoding - pure AI understanding
 func (lic *LLMIntentClassifier) ClassifyIntentWithLLM(ctx context.Context, userMessage string, conversationContext string) (*IntentClassificationResult, error) {
-	// Try to get a fast, lightweight LLM for classification
-	provider, providerName, err := lic.getClassificationProvider()
-	if err != nil {
-		lic.logger.WithError(err).Warn("No LLM available for intent classification, using fallback")
-		return lic.fallbackClassifier.EnhancedClassifyIntent(userMessage, conversationContext != ""), nil
-	}
-
-	// Build the intent classification prompt
+	// Build the intent classification prompt once.
 	prompt := lic.buildIntentClassificationPrompt(userMessage, conversationContext)
 
-	// Create request with timeout
-	classifyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	request := &models.LLMRequest{
-		ID:     fmt.Sprintf("intent-classify-%d", time.Now().UnixNano()),
-		Prompt: prompt,
-		ModelParams: models.ModelParameters{
-			MaxTokens:   500, // Keep it small for speed
-			Temperature: 0.1, // Low temperature for consistent classification
-		},
-		Messages: []models.Message{
-			{Role: "system", Content: lic.getSystemPrompt()},
-			{Role: "user", Content: prompt},
-		},
-	}
-
-	// Call the LLM
-	response, err := provider.Complete(classifyCtx, request)
-	if err != nil {
-		if isQuotaError(err) && providerName != "" {
-			lic.markProviderCooldown(providerName)
-			lic.logger.WithFields(logrus.Fields{
-				"provider": providerName,
-				"cooldown": providerCooldownDuration.String(),
-			}).Info("Intent classifier provider hit quota — benched, will retry after cooldown")
-		} else {
-			lic.logger.WithError(err).Warn("LLM intent classification failed, using fallback")
+	// Try up to maxClassifyAttempts distinct providers. A provider that
+	// fails with a quota OR a model-unavailable (404 / no-access) error is
+	// benched and the NEXT provider is tried in the SAME call — so a single
+	// dead model (e.g. a Cerebras model the key lacks access to) no longer
+	// poisons every classification and silently starves the agentic execute
+	// path. Only after every attempt fails do we fall back to the heuristic.
+	const maxClassifyAttempts = 4
+	for attempt := 0; attempt < maxClassifyAttempts; attempt++ {
+		provider, providerName, err := lic.getClassificationProvider()
+		if err != nil {
+			lic.logger.WithError(err).Warn("No LLM available for intent classification, using fallback")
+			break
 		}
-		return lic.fallbackClassifier.EnhancedClassifyIntent(userMessage, conversationContext != ""), nil
+
+		classifyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		request := &models.LLMRequest{
+			ID:     fmt.Sprintf("intent-classify-%d", time.Now().UnixNano()),
+			Prompt: prompt,
+			ModelParams: models.ModelParameters{
+				MaxTokens:   500, // Keep it small for speed
+				Temperature: 0.1, // Low temperature for consistent classification
+			},
+			Messages: []models.Message{
+				{Role: "system", Content: lic.getSystemPrompt()},
+				{Role: "user", Content: prompt},
+			},
+		}
+
+		response, err := provider.Complete(classifyCtx, request)
+		cancel()
+		if err != nil {
+			// Bench the provider and try the next one when the failure
+			// means this provider cannot serve classification (transient
+			// quota OR a dead model / auth failure).
+			if (isQuotaError(err) || isProviderUnavailableError(err)) && providerName != "" {
+				lic.markProviderCooldown(providerName)
+				lic.logger.WithFields(logrus.Fields{
+					"provider": providerName,
+					"cooldown": providerCooldownDuration.String(),
+					"attempt":  attempt + 1,
+				}).Warn("Intent classifier provider unavailable — benched, trying next provider")
+				continue
+			}
+			lic.logger.WithError(err).Warn("LLM intent classification failed, using fallback")
+			break
+		}
+
+		result, err := lic.parseLLMIntentResponse(response.Content)
+		if err != nil {
+			lic.logger.WithError(err).Warn("Failed to parse LLM intent response, using fallback")
+			break
+		}
+
+		lic.logger.WithFields(logrus.Fields{
+			"user_message": truncateString(userMessage, 50),
+			"intent":       result.Intent,
+			"confidence":   result.Confidence,
+			"actionable":   result.IsActionable,
+			"reasoning":    truncateString(result.Reasoning, 100),
+			"provider":     providerName,
+		}).Info("LLM classified user intent")
+
+		return lic.convertToClassificationResult(result), nil
 	}
 
-	// Parse the LLM response
-	result, err := lic.parseLLMIntentResponse(response.Content)
-	if err != nil {
-		lic.logger.WithError(err).Warn("Failed to parse LLM intent response, using fallback")
-		return lic.fallbackClassifier.EnhancedClassifyIntent(userMessage, conversationContext != ""), nil
-	}
-
-	lic.logger.WithFields(logrus.Fields{
-		"user_message": truncateString(userMessage, 50),
-		"intent":       result.Intent,
-		"confidence":   result.Confidence,
-		"actionable":   result.IsActionable,
-		"reasoning":    truncateString(result.Reasoning, 100),
-	}).Info("LLM classified user intent")
-
-	// Convert to standard result
-	return lic.convertToClassificationResult(result), nil
+	return lic.fallbackClassifier.EnhancedClassifyIntent(userMessage, conversationContext != ""), nil
 }
 
 // getClassificationProvider gets a fast LLM for intent classification.

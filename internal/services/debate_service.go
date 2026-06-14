@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -47,10 +48,10 @@ type DebateService struct {
 		Get(ctx context.Context, id string) (*helixmem.Memory, error)
 		Search(ctx context.Context, query string, opts *helixmem.SearchOptions) ([]*helixmem.Memory, error)
 	}
-	specifierAdapter    *specifieradapter.SpecAdapter          // HelixSpecifier fusion engine (default)
-	logRepository       DebateLogRepository                    // Optional: for persistent logging
-	teamConfig          *DebateTeamConfig                      // Team configuration with Claude/Qwen roles
-	commLogger          *DebateCommLogger                           // Retrofit-like communication logger
+	specifierAdapter    *specifieradapter.SpecAdapter                    // HelixSpecifier fusion engine (default)
+	logRepository       DebateLogRepository                              // Optional: for persistent logging
+	teamConfig          *DebateTeamConfig                                // Team configuration with Claude/Qwen roles
+	commLogger          *DebateCommLogger                                // Retrofit-like communication logger
 	intentCache         *safe.Store[string, *IntentClassificationResult] // Cache for intent classification
 	codeIntentCache     *safe.Store[string, bool]                        // Cache for code generation intent results
 	enhancedIntentCache *safe.Store[string, *EnhancedIntentResult]       // Cache full EnhancedIntentResult per topic
@@ -295,8 +296,25 @@ func NewDebateServiceWithDeps(
 	// store error is never silently swallowed into a no-op nil adapter — debate
 	// analyses are always persisted to at least the local fallback.
 	if memAdapter == nil {
-		memAdapter = helixmem.NewInMemoryStore()
-		logger.Warn("[Debate Service] HelixMemory unavailable; using local in-memory store fallback for memory persistence")
+		// Prefer a disk-durable SQLite-backed store so fallback memory survives
+		// process restart. Fall back to the process-lifetime in-memory store ONLY
+		// if the durable path is unwritable — preserving the never-nil guarantee
+		// (a store error is never silently swallowed into a no-op nil adapter).
+		dbPath := debateMemoryFallbackPath()
+		if dbPath != "" {
+			if disk, err := helixmem.NewDiskStore(dbPath); err == nil {
+				memAdapter = disk
+				logger.WithField("path", dbPath).
+					Warn("[Debate Service] HelixMemory unavailable; using disk-durable SQLite store fallback for memory persistence")
+			} else {
+				logger.WithError(err).WithField("path", dbPath).
+					Warn("[Debate Service] disk-durable memory fallback unavailable; using in-memory store")
+			}
+		}
+		if memAdapter == nil {
+			memAdapter = helixmem.NewInMemoryStore()
+			logger.Warn("[Debate Service] HelixMemory unavailable; using local in-memory store fallback for memory persistence")
+		}
 	}
 
 	// Initialize HelixSpecifier spec-driven development fusion engine (default)
@@ -4206,4 +4224,32 @@ func (ds *DebateService) conductHelixSpecifierDebate(
 	}).Info("[HelixSpecifier Flow] Spec-driven development flow completed")
 
 	return result, nil
+}
+
+// debateMemoryFallbackPath returns a writable, durable file path for the
+// disk-backed debate-memory fallback store, or "" if no writable base dir can
+// be determined. It probes the OS user-cache dir first (durable across runs),
+// falling back to the OS temp dir; the directory is created if absent. A "" or
+// unwritable result causes the caller to use the in-memory store instead,
+// preserving the never-nil store guarantee.
+func debateMemoryFallbackPath() string {
+	candidates := []string{}
+	if cacheDir, err := os.UserCacheDir(); err == nil && cacheDir != "" {
+		candidates = append(candidates, filepath.Join(cacheDir, "helixagent", "memory"))
+	}
+	candidates = append(candidates, filepath.Join(os.TempDir(), "helixagent", "memory"))
+
+	for _, dir := range candidates {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			continue
+		}
+		// Confirm writability before handing the path to the store.
+		probe := filepath.Join(dir, ".write_probe")
+		if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
+			continue
+		}
+		_ = os.Remove(probe)
+		return filepath.Join(dir, "debate_memory_fallback.db")
+	}
+	return ""
 }

@@ -35,7 +35,7 @@ func NewOptimalStoreAdapter() *HelixMemoryFusionAdapter {
 	adapter, err := NewHelixMemoryFusionAdapter(cfg)
 	if err != nil {
 		log.Printf("[HelixMemory] Warning: Failed to initialize fusion engine: %v", err)
-		log.Printf("[HelixMemory] Falling back to in-memory store")
+		log.Printf("[HelixMemory] Returning nil; caller substitutes the local in-memory store fallback")
 		return nil
 	}
 

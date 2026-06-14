@@ -254,37 +254,50 @@ func (eic *EnhancedIntentClassifier) extractJSON(content string) string {
 	return strings.TrimSpace(content)
 }
 
-// shouldUseSpecKit determines if SpecKit should be used based on classification
+// shouldUseSpecKit determines whether the HelixSpecifier 7-phase spec-driven
+// flow handles the request.
+//
+// DEFAULT-ON POLICY (operator mandate 2026-06-14: "spec driven development which
+// MUST BE default way of the development and planning by HelixAgent"): spec-driven
+// is the DEFAULT for any development/planning-class request — feature creation,
+// implementation, fixing-that-produces-code, improvements, and refactoring all
+// route through the 7-phase flow by default. The bias is inverted versus the
+// historical opt-in heuristic: instead of "spec only for whole-functionality /
+// major-refactor / big-creation", the engine now specs by default and only a
+// TRIVIAL set of intents bypass it.
+//
+// Trivial bypass (do not spec "what is 2+2"): pure conversation, pure analysis /
+// investigation, and single-action / one-off operations stay lightweight. These
+// are the only paths that skip the spec flow. The ensemble / agentic / plain-chat
+// paths are unaffected — they consult RequiresSpecKit and continue to handle the
+// bypass classes themselves.
 func (eic *EnhancedIntentClassifier) shouldUseSpecKit(result *EnhancedIntentResult) bool {
-	// SpecKit is required for:
-	// 1. Whole functionality creation
-	// 2. Major refactoring
-	// 3. Big creation with high complexity
-
-	// Never trigger SpecKit for conversational/question/single-action messages
+	// --- Trivial-bypass escape (the ONLY non-spec paths) ---
+	// Conversational chat/greetings/questions and pure analysis/review never spec.
 	if result.ActionType == ActionConversation || result.ActionType == ActionAnalysis {
 		return false
 	}
-	if result.Granularity == GranularitySingleAction {
+	// One-off discrete operations (single command / single edit) stay lightweight.
+	if result.Granularity == GranularitySingleAction || result.ActionType == ActionSingleOp {
 		return false
 	}
 
-	if result.Granularity == GranularityWholeFunctionality {
+	// --- Development / planning class → spec-driven by DEFAULT ---
+	// Any request that builds, changes, fixes, improves, or restructures code
+	// (i.e. survived the trivial-bypass escape and carries a development-class
+	// action OR a code-producing granularity) defaults to the 7-phase spec flow.
+	switch result.ActionType {
+	case ActionCreation, ActionRefactoring, ActionImprovements, ActionFixing, ActionDebugging:
+		return true
+	}
+	switch result.Granularity {
+	case GranularitySmallCreation, GranularityBigCreation,
+		GranularityWholeFunctionality, GranularityRefactoring:
 		return true
 	}
 
-	if result.Granularity == GranularityRefactoring {
-		return true
-	}
-
-	if result.Granularity == GranularityBigCreation && result.GranularityScore >= 0.8 {
-		return true
-	}
-
-	if result.ActionType == ActionRefactoring && result.GranularityScore >= 0.7 {
-		return true
-	}
-
+	// Anything left is neither trivial nor recognisably development-class;
+	// keep it lightweight (no spec) rather than over-spec an unclassified turn.
 	return false
 }
 

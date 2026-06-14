@@ -161,26 +161,51 @@ func TestEnhancedIntentClassifier_ShouldUseSpecKit(t *testing.T) {
 			true,
 		},
 		{
-			"Big Creation Low Score - No SpecKit",
+			// RECONCILED per §11.4.120: under the default-on policy a
+			// big-creation development request routes through spec by DEFAULT,
+			// regardless of granularity score.
+			"Big Creation Low Score - Default Spec",
 			&EnhancedIntentResult{
 				Granularity:      GranularityBigCreation,
 				GranularityScore: 0.6,
 			},
-			false,
+			true,
 		},
 		{
-			"Small Creation - No SpecKit",
+			// RECONCILED per §11.4.120: a small-creation development request
+			// (ordinary "implement feature X") now defaults to the spec flow.
+			"Small Creation - Default Spec",
 			&EnhancedIntentResult{
 				Granularity:      GranularitySmallCreation,
 				GranularityScore: 0.7,
 			},
-			false,
+			true,
 		},
 		{
-			"Single Action - No SpecKit",
+			// Trivial-bypass invariant preserved: single-action one-off stays
+			// lightweight and never spec-drives.
+			"Single Action - No SpecKit (trivial bypass)",
 			&EnhancedIntentResult{
 				Granularity:      GranularitySingleAction,
 				GranularityScore: 0.5,
+			},
+			false,
+		},
+		{
+			// Trivial-bypass invariant: pure conversation never spec-drives.
+			"Conversation - No SpecKit (trivial bypass)",
+			&EnhancedIntentResult{
+				ActionType:  ActionConversation,
+				Granularity: GranularitySmallCreation,
+			},
+			false,
+		},
+		{
+			// Trivial-bypass invariant: pure analysis/review never spec-drives.
+			"Analysis - No SpecKit (trivial bypass)",
+			&EnhancedIntentResult{
+				ActionType:  ActionAnalysis,
+				Granularity: GranularityBigCreation,
 			},
 			false,
 		},
@@ -264,9 +289,14 @@ func TestEnhancedIntentClassifier_QuickClassify_WithSpecKit(t *testing.T) {
 			true,
 		},
 		{
-			"Small fix does not trigger SpecKit",
+			// RECONCILED per §11.4.120: under the spec-driven-default policy a
+			// fix request is development-class (SmallCreation + ActionFixing) and
+			// routes through the 7-phase flow by default. Genuinely trivial
+			// one-off turns (conversation / pure analysis / single-action that is
+			// not a fix/build) still bypass — see the trivial-bypass tests.
+			"Fix request defaults to SpecKit",
 			"Fix typo in comment",
-			false,
+			true,
 		},
 		{
 			"Whole system triggers SpecKit",

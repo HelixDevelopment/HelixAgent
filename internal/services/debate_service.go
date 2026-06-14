@@ -283,11 +283,20 @@ func NewDebateServiceWithDeps(
 		Search(ctx context.Context, query string, opts *helixmem.SearchOptions) ([]*helixmem.Memory, error)
 	}
 	if memoryadapter.IsHelixMemoryEnabled() {
-		memAdapter = memoryadapter.NewOptimalStoreAdapter()
-		if memAdapter != nil {
+		if optimal := memoryadapter.NewOptimalStoreAdapter(); optimal != nil {
+			memAdapter = optimal
 			logger.WithField("backend", memoryadapter.MemoryBackendName()).
 				Info("[Debate Service] HelixMemory unified engine initialized as default memory")
 		}
+	}
+	// Durable persist path is default-on: if the HelixMemory fusion engine failed
+	// to initialize (e.g. external services unreachable), fall back to the local
+	// in-process store instead of leaving memory unconfigured. This guarantees a
+	// store error is never silently swallowed into a no-op nil adapter — debate
+	// analyses are always persisted to at least the local fallback.
+	if memAdapter == nil {
+		memAdapter = helixmem.NewInMemoryStore()
+		logger.Warn("[Debate Service] HelixMemory unavailable; using local in-memory store fallback for memory persistence")
 	}
 
 	// Initialize HelixSpecifier spec-driven development fusion engine (default)
@@ -2172,7 +2181,9 @@ func (ds *DebateService) analyzeWithHelixMemory(ctx context.Context, content str
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		_ = ds.memoryAdapter.Add(storeCtx, debateMemory) //nolint:errcheck
+		if err := ds.memoryAdapter.Add(storeCtx, debateMemory); err != nil {
+			ds.logger.WithError(err).Warn("[Debate Service] Failed to persist debate analysis to memory store")
+		}
 	}()
 
 	return &CogneeAnalysis{

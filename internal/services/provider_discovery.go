@@ -282,6 +282,14 @@ var providerMappings = []ProviderMapping{
 	{EnvVar: "TOGETHER_API_KEY", ProviderType: "together", ProviderName: "together", BaseURL: "https://api.together.xyz/v1/chat/completions", DefaultModel: "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo", Priority: 6},
 	{EnvVar: "ApiKey_Together", ProviderType: "together", ProviderName: "together", BaseURL: "https://api.together.xyz/v1/chat/completions", DefaultModel: "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo", Priority: 6},
 
+	// Inference.net - OpenAI-compatible inference gateway (open-source models).
+	// Base + bearer auth verified live 2026-06-14: POST /v1/chat/completions with
+	// INFERENCE_API_KEY returns HTTP 400 (model-scope) NOT 401, while a bogus key
+	// returns 401 — proving the key authenticates. Official base per
+	// https://docs.inference.net/api/api-quickstart (checked 2026-06-14).
+	{EnvVar: "INFERENCE_API_KEY", ProviderType: "inference", ProviderName: "inference", BaseURL: "https://api.inference.net/v1", DefaultModel: "meta-llama/llama-3.1-8b-instruct/fp-16", Priority: 6},
+	{EnvVar: "ApiKey_Inference", ProviderType: "inference", ProviderName: "inference", BaseURL: "https://api.inference.net/v1", DefaultModel: "meta-llama/llama-3.1-8b-instruct/fp-16", Priority: 6},
+
 	// Hyperbolic
 	{EnvVar: "HYPERBOLIC_API_KEY", ProviderType: "hyperbolic", ProviderName: "hyperbolic", BaseURL: "https://api.hyperbolic.xyz/v1", DefaultModel: "meta-llama/Llama-3.3-70B-Instruct", Priority: 6},
 	{EnvVar: "ApiKey_Hyperbolic", ProviderType: "hyperbolic", ProviderName: "hyperbolic", BaseURL: "https://api.hyperbolic.xyz/v1", DefaultModel: "meta-llama/Llama-3.3-70B-Instruct", Priority: 6},
@@ -874,6 +882,15 @@ func (pd *ProviderDiscovery) createProvider(mapping ProviderMapping, apiKey stri
 	// fallback until CLOUDFLARE_ACCOUNT_ID discovery lands.
 	case "cloudflare":
 		return pd.createOpenAICompatibleProvider(mapping, apiKey)
+
+	case "inference":
+		// Inference.net speaks the OpenAI /v1/chat/completions wire format
+		// with bearer auth — route through the native OpenAI provider.
+		baseURL := mapping.BaseURL
+		if baseURL == "" {
+			baseURL = "https://api.inference.net/v1"
+		}
+		return openai.NewProvider(apiKey, baseURL, mapping.DefaultModel), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", mapping.ProviderType)

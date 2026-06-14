@@ -735,6 +735,38 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 				return
 			}
 
+			// Per-member visibility: expose EVERY participating member's
+			// response (content), the model it served, its score, and whether it
+			// was selected — so a consuming UI can show the operator each
+			// member's answer + which model it used, not just the final winner.
+			// Decoupled (CONST-051(B)): no consuming-project context here, just
+			// the engine's own EnsembleResult.Responses re-shaped to JSON.
+			members := make([]gin.H, 0, len(result.Responses))
+			nameScores := make(map[string]float64, len(result.Responses))
+			for _, r := range result.Responses {
+				if r == nil {
+					continue
+				}
+				model := ""
+				if r.Metadata != nil {
+					if m, ok := r.Metadata["model"].(string); ok {
+						model = m
+					}
+				}
+				members = append(members, gin.H{
+					"provider_name":   r.ProviderName,
+					"model":           model,
+					"content":         r.Content,
+					"confidence":      r.Confidence,
+					"selection_score": r.SelectionScore,
+					"selected":        r.ProviderName == result.Selected.ProviderName,
+				})
+				// Attributable scores keyed by provider name (result.Scores may
+				// be keyed by an opaque id; this name-keyed map is renderable
+				// directly by a consumer).
+				nameScores[r.ProviderName] = r.SelectionScore
+			}
+
 			// Return ensemble result with metadata
 			c.JSON(200, gin.H{
 				"id":      result.Selected.ID,
@@ -760,6 +792,8 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 					"voting_method":     result.VotingMethod,
 					"responses_count":   len(result.Responses),
 					"scores":            result.Scores,
+					"name_scores":       nameScores,
+					"members":           members,
 					"metadata":          result.Metadata,
 					"selected_provider": result.Selected.ProviderName,
 					"selection_score":   result.Selected.SelectionScore,

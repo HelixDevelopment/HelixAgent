@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"dev.helix.agent/internal/models"
@@ -715,8 +716,12 @@ func (p *CerebrasProvider) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Simple health check - try to get models list
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.cerebras.ai/v1/models", nil)
+	// Simple health check - try to get models list. Derive the models endpoint
+	// from the configured base URL (the chat-completions URL) so a custom/injected
+	// base URL is honored instead of the hardcoded production literal — otherwise
+	// HealthCheck ignores p.baseURL entirely.
+	modelsURL := strings.TrimSuffix(p.baseURL, "/chat/completions") + "/models"
+	req, err := http.NewRequestWithContext(ctx, "GET", modelsURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}

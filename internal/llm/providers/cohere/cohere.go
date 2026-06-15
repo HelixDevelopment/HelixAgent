@@ -382,7 +382,13 @@ func (p *Provider) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", CohereModelsURL, nil)
+	// Derive the models endpoint from the configured base URL (the chat URL) so a
+	// custom/injected base URL is honored instead of the hardcoded production
+	// constant — otherwise HealthCheck ignores p.baseURL entirely. Cohere's chat
+	// endpoint is "/v2/chat" while models live at "/v1/models", so trim the chat
+	// suffix and append the models path.
+	modelsURL := strings.TrimSuffix(p.baseURL, "/v2/chat") + "/v1/models"
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", modelsURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

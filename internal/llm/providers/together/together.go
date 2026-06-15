@@ -337,7 +337,11 @@ func (p *Provider) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", TogetherModelsURL, nil)
+	// Derive the models endpoint from the configured base URL (the chat-completions
+	// URL) so a custom/injected base URL is honored instead of the hardcoded
+	// production constant — otherwise HealthCheck ignores p.baseURL entirely.
+	modelsURL := strings.TrimSuffix(p.baseURL, "/chat/completions") + "/models"
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", modelsURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

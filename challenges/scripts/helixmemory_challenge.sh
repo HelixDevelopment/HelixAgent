@@ -294,7 +294,7 @@ run_test "Fusion dedup threshold defined (0.92)" \
     "grep -q '0.92' '$PROJECT_ROOT/HelixMemory/pkg/config/config.go'"
 
 run_test "Fusion uses 4 scoring weights" \
-    "grep -cP 'Weight.*float64' '$PROJECT_ROOT/HelixMemory/pkg/config/config.go' | grep -q '[4-9]'"
+    "grep -cE 'Weight.*float64' '$PROJECT_ROOT/HelixMemory/pkg/config/config.go' | grep -q '[4-9]'"
 
 run_test "Fusion engine has Fuse method" \
     "grep -q 'func.*Engine.*Fuse' '$PROJECT_ROOT/HelixMemory/pkg/fusion/engine.go'"

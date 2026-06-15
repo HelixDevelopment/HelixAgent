@@ -60,7 +60,7 @@ section() {
 
 # Check if a string contains ANSI escape codes
 contains_ansi() {
-    echo "$1" | grep -qP '\x1b\[' 2>/dev/null || echo "$1" | grep -q $'\033\[' 2>/dev/null
+    echo "$1" | grep -q $'\033\[' 2>/dev/null
 }
 
 # Check if a string contains rendered escape sequences (visible garbage)

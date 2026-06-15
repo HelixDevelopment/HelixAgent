@@ -222,8 +222,8 @@ else
 fi
 
 # Test 6.3: provider_types.go Chutes matches provider_discovery.go Chutes domain
-TYPES_CHUTES_DOMAIN=$(grep -A10 '"chutes":' "$PROVIDER_TYPES" | grep 'BaseURL:' | grep -oP 'https://[^/]+' | head -1)
-DISCOVERY_CHUTES_DOMAIN=$(grep 'ProviderType: "chutes"' "$PROVIDER_DISCOVERY" | grep -oP 'https://[^/]+' | head -1)
+TYPES_CHUTES_DOMAIN=$(grep -A10 '"chutes":' "$PROVIDER_TYPES" | grep 'BaseURL:' | grep -oE 'https://[^/]+' | head -1)
+DISCOVERY_CHUTES_DOMAIN=$(grep 'ProviderType: "chutes"' "$PROVIDER_DISCOVERY" | grep -oE 'https://[^/]+' | head -1)
 if [ -n "$TYPES_CHUTES_DOMAIN" ] && [ -n "$DISCOVERY_CHUTES_DOMAIN" ] && \
    [ "$TYPES_CHUTES_DOMAIN" = "$DISCOVERY_CHUTES_DOMAIN" ]; then
     pass "provider_types.go Chutes domain matches provider_discovery.go Chutes domain ($TYPES_CHUTES_DOMAIN)"

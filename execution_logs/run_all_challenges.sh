@@ -45,9 +45,9 @@ for challenge in "$CHALLENGES_DIR"/*.sh; do
         PASSED=$((PASSED + 1))
         
         # Parse results from log
-        PASSED_TESTS=$(grep -oP '\d+(?= tests passed|/\d+ tests)' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1 || echo "0")
-        FAILED_TESTS=$(grep -oP '(?<=Failed: )\d+' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1 || echo "0")
-        
+        PASSED_TESTS=$(sed -nE 's/(^|.*[^0-9])([0-9]+) tests passed.*/\2/p; s/(^|.*[^0-9])([0-9]+)\/[0-9]+ tests.*/\2/p' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1); PASSED_TESTS=${PASSED_TESTS:-0}
+        FAILED_TESTS=$(sed -nE 's/.*Failed: ([0-9]+).*/\1/p' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1); FAILED_TESTS=${FAILED_TESTS:-0}
+
         echo "$BASENAME,PASS,$DURATION,$PASSED_TESTS,$FAILED_TESTS,0" >> "$RESULTS_FILE"
         echo "  ✅ PASSED (${DURATION}s)"
     else
@@ -55,9 +55,9 @@ for challenge in "$CHALLENGES_DIR"/*.sh; do
         DURATION=$((END_TIME - START_TIME))
         FAILED=$((FAILED + 1))
         
-        PASSED_TESTS=$(grep -oP '\d+(?= tests passed|/\d+ tests)' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1 || echo "0")
-        FAILED_TESTS=$(grep -oP '(?<=Failed: )\d+' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1 || echo "1")
-        
+        PASSED_TESTS=$(sed -nE 's/(^|.*[^0-9])([0-9]+) tests passed.*/\2/p; s/(^|.*[^0-9])([0-9]+)\/[0-9]+ tests.*/\2/p' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1); PASSED_TESTS=${PASSED_TESTS:-0}
+        FAILED_TESTS=$(sed -nE 's/.*Failed: ([0-9]+).*/\1/p' "$LOG_DIR/${BASENAME%.sh}.log" | tail -1); FAILED_TESTS=${FAILED_TESTS:-1}
+
         echo "$BASENAME,FAIL,$DURATION,$PASSED_TESTS,$FAILED_TESTS,1" >> "$RESULTS_FILE"
         echo "  ❌ FAILED (${DURATION}s)"
     fi

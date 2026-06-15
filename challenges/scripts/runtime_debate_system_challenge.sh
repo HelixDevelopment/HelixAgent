@@ -58,7 +58,7 @@ else
 fi
 
 # Test 1.2: At least 10 providers registered
-PROVIDER_COUNT=$(echo "$HEALTH" | grep -oP '"total":\K[0-9]+' || echo "0")
+PROVIDER_COUNT=$(echo "$HEALTH" | sed -nE 's/.*"total":[[:space:]]*([0-9]+).*/\1/p' | head -1); PROVIDER_COUNT=${PROVIDER_COUNT:-0}
 if [ "$PROVIDER_COUNT" -ge 10 ]; then
     pass "At least 10 providers registered (found: $PROVIDER_COUNT)"
 else
@@ -66,7 +66,7 @@ else
 fi
 
 # Test 1.3: At least 10 providers healthy
-HEALTHY_COUNT=$(echo "$HEALTH" | grep -oP '"healthy":\K[0-9]+' || echo "0")
+HEALTHY_COUNT=$(echo "$HEALTH" | sed -nE 's/.*"healthy":[[:space:]]*([0-9]+).*/\1/p' | head -1); HEALTHY_COUNT=${HEALTHY_COUNT:-0}
 if [ "$HEALTHY_COUNT" -ge 10 ]; then
     pass "At least 10 providers healthy (found: $HEALTHY_COUNT)"
 else
@@ -182,7 +182,7 @@ fi
 # Test 3.5: Ollama should not be sole provider
 PROVIDERS_LIST=$(curl -s --max-time 60 "$SERVER_URL/v1/providers" 2>/dev/null)
 if echo "$PROVIDERS_LIST" | grep -q '"count"'; then
-    PROV_COUNT=$(echo "$PROVIDERS_LIST" | grep -oP '"count":\K[0-9]+' || echo "0")
+    PROV_COUNT=$(echo "$PROVIDERS_LIST" | sed -nE 's/.*"count":[[:space:]]*([0-9]+).*/\1/p' | head -1); PROV_COUNT=${PROV_COUNT:-0}
     if [ "$PROV_COUNT" -ge 5 ]; then
         pass "Multiple providers registered (not Ollama-only): $PROV_COUNT providers"
     else
@@ -194,7 +194,7 @@ fi
 
 # Test 3.6: Debate team should have at least 15 unique LLMs configured
 if [ -f "$LOG" ]; then
-    UNIQUE_LLMS=$(grep -oP "unique_llms=\K[0-9]+" "$LOG" 2>/dev/null | tail -1)
+    UNIQUE_LLMS=$(sed -nE 's/.*unique_llms=([0-9]+).*/\1/p' "$LOG" 2>/dev/null | tail -1)
     if [ -n "$UNIQUE_LLMS" ] && [ "$UNIQUE_LLMS" -ge 10 ]; then
         pass "Debate team has $UNIQUE_LLMS unique LLMs (minimum 10)"
     elif [ -n "$UNIQUE_LLMS" ]; then
@@ -262,7 +262,7 @@ fi
 if grep -q "result.Score >= 50\|OverallScore >= 50" internal/verifier/service.go 2>/dev/null; then
     pass "Verification threshold is 50 (not overly strict)"
 else
-    THRESHOLD=$(grep -oP 'OverallScore >= \K[0-9]+' internal/verifier/service.go 2>/dev/null | head -1)
+    THRESHOLD=$(sed -nE 's/.*OverallScore >= ([0-9]+).*/\1/p' internal/verifier/service.go 2>/dev/null | head -1)
     if [ -n "$THRESHOLD" ] && [ "$THRESHOLD" -le 60 ]; then
         pass "Verification threshold is $THRESHOLD (acceptable)"
     else

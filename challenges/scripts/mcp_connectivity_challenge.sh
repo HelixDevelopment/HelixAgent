@@ -155,7 +155,7 @@ for pkg in "mcp-fetch" "mcp-server-time" "@modelcontextprotocol/server-fetch" "@
     # Check exact match (not as substring of mcp-fetch-server)
     if [ "$pkg" = "mcp-fetch" ]; then
         # Match "mcp-fetch" but not "mcp-fetch-server"
-        if ! grep -P '"mcp-fetch"(?!-server)' "$MAIN_FILE" >/dev/null 2>&1; then
+        if ! grep -F '"mcp-fetch"' "$MAIN_FILE" >/dev/null 2>&1; then
             pass "No reference to stale package '$pkg' in main.go"
         else
             fail "Stale package '$pkg' still referenced in main.go"

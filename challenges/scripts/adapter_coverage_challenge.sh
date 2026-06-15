@@ -53,7 +53,7 @@ for pkg in "${ADAPTER_PKGS[@]}"; do
         "$PROJECT_ROOT/internal/adapters/$pkg/..." 2>&1 || true)
 
     # Extract coverage percentage
-    coverage_pct=$(echo "$coverage_output" | grep -oP 'coverage: \K[0-9]+\.[0-9]+' | head -1 || echo "0")
+    coverage_pct=$(echo "$coverage_output" | sed -nE 's/.*coverage: ([0-9]+\.[0-9]+).*/\1/p' | head -1); coverage_pct=${coverage_pct:-0}
 
     if [ -z "$coverage_pct" ]; then
         # Check if package has no test files

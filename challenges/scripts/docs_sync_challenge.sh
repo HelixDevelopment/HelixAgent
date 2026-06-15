@@ -66,7 +66,7 @@ echo "--- Test Group 1: CLAUDE.md Module Count Matches MODULES.md ---"
 MODULES_COUNT=$(grep -cE '^\| [0-9]+ \|' "$MODULES_MD" 2>/dev/null || echo "0")
 
 # Extract module count from CLAUDE.md "XX extracted modules" reference
-CLAUDE_COUNT=$(grep -oP '\*\*(\d+) extracted modules\*\*' "$CLAUDE_MD" 2>/dev/null | grep -oP '\d+' | head -1 || echo "0")
+CLAUDE_COUNT=$(sed -nE 's/.*\*\*([0-9]+) extracted modules\*\*.*/\1/p' "$CLAUDE_MD" 2>/dev/null | head -1); CLAUDE_COUNT=${CLAUDE_COUNT:-0}
 
 if [ "$MODULES_COUNT" -eq "$CLAUDE_COUNT" ] && [ "$MODULES_COUNT" -gt 0 ]; then
     pass_test "CLAUDE.md module count ($CLAUDE_COUNT) matches MODULES.md table ($MODULES_COUNT)"
@@ -75,7 +75,7 @@ else
 fi
 
 # Also check MODULES.md total line
-MODULES_TOTAL_LINE=$(grep -oP 'Total: (\d+) modules' "$MODULES_MD" 2>/dev/null | grep -oP '\d+' | head -1 || echo "0")
+MODULES_TOTAL_LINE=$(sed -nE 's/.*Total: ([0-9]+) modules.*/\1/p' "$MODULES_MD" 2>/dev/null | head -1); MODULES_TOTAL_LINE=${MODULES_TOTAL_LINE:-0}
 if [ "$MODULES_TOTAL_LINE" -eq "$MODULES_COUNT" ]; then
     pass_test "MODULES.md 'Total' line ($MODULES_TOTAL_LINE) matches table row count ($MODULES_COUNT)"
 else
@@ -89,7 +89,7 @@ echo ""
 echo "--- Test Group 2: AGENTS.md Module Count ---"
 
 # AGENTS.md should reference the same module count
-AGENTS_COUNT=$(grep -oP '(\d+) extracted modules' "$AGENTS_MD" 2>/dev/null | grep -oP '\d+' | head -1 || echo "0")
+AGENTS_COUNT=$(sed -nE 's/(^|.*[^0-9])([0-9]+) extracted modules.*/\2/p' "$AGENTS_MD" 2>/dev/null | head -1); AGENTS_COUNT=${AGENTS_COUNT:-0}
 
 if [ "$AGENTS_COUNT" -eq "$MODULES_COUNT" ] && [ "$AGENTS_COUNT" -gt 0 ]; then
     pass_test "AGENTS.md module count ($AGENTS_COUNT) matches MODULES.md ($MODULES_COUNT)"

@@ -136,7 +136,7 @@ fi
 
 run_test "Cognee version is 0.5.0+"
 # Extract version from logs, handling ANSI color codes
-VERSION=$(podman logs helixagent-cognee 2>&1 | grep "cognee_version" | head -1 | sed 's/\x1b\[[0-9;]*m//g' | grep -oP 'cognee_version=\K[0-9.]+' | head -1)
+VERSION=$(podman logs helixagent-cognee 2>&1 | grep "cognee_version" | head -1 | sed 's/\x1b\[[0-9;]*m//g' | sed -nE 's/.*cognee_version=([0-9.]+).*/\1/p' | head -1)
 if [ -n "$VERSION" ]; then
     MAJOR=$(echo "$VERSION" | cut -d. -f1)
     MINOR=$(echo "$VERSION" | cut -d. -f2)
@@ -408,7 +408,7 @@ fi
 
 run_test "HelixAgent Cognee config timeout is reasonable"
 if [ -f "${PROJECT_ROOT}/internal/config/config.go" ]; then
-    TIMEOUT=$(grep -oP 'COGNEE_TIMEOUT.*?(\d+)\s*\*\s*time\.Second' "${PROJECT_ROOT}/internal/config/config.go" | grep -oP '\d+' | head -1)
+    TIMEOUT=$(sed -nE 's/.*COGNEE_TIMEOUT[^0-9]*([0-9]+)[[:space:]]*\*[[:space:]]*time\.Second.*/\1/p' "${PROJECT_ROOT}/internal/config/config.go" | head -1)
     if [ -n "$TIMEOUT" ]; then
         if [ "$TIMEOUT" -ge 5 ] && [ "$TIMEOUT" -le 30 ]; then
             pass_test "Cognee timeout ${TIMEOUT}s is reasonable (5-30s range)"
@@ -641,7 +641,7 @@ fi
 
 run_test "CogneeService supports multiple search types"
 if [ -f "${PROJECT_ROOT}/internal/services/cognee_service.go" ]; then
-    SEARCH_TYPES=$(grep -oP 'searchType.*?CHUNKS|GRAPH_COMPLETION|RAG_COMPLETION|SUMMARIES' "${PROJECT_ROOT}/internal/services/cognee_service.go" | wc -l)
+    SEARCH_TYPES=$(grep -oE 'searchType.*CHUNKS|GRAPH_COMPLETION|RAG_COMPLETION|SUMMARIES' "${PROJECT_ROOT}/internal/services/cognee_service.go" | wc -l)
     if [ "$SEARCH_TYPES" -ge 3 ]; then
         pass_test "Multiple search types supported ($SEARCH_TYPES types found)"
     else

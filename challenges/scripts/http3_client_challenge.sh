@@ -148,7 +148,7 @@ fi
 # Check 10: Test coverage
 log_info "Check 10: Verifying test coverage..."
 cd "$PROJECT_ROOT"
-COVERAGE=$(go test -cover ./internal/transport/... 2>/dev/null | grep -oP '\d+\.?\d*%' | head -1 | tr -d '%')
+COVERAGE=$(go test -cover ./internal/transport/... 2>/dev/null | grep -oE '[0-9]+\.?[0-9]*%' | head -1 | tr -d '%')
 if [ -n "$$COVERAGE" ] && [ "${COVERAGE%.*}" -ge 70 ]; then
     log_info "✓ Test coverage is ${COVERAGE}% (>= 70%)"
     SCORE=$((SCORE + 10))

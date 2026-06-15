@@ -520,7 +520,7 @@ validate_real_result() {
 
     case "$validation_type" in
         "count_gt_zero")
-            local count=$(echo "$response_body" | grep -oP '"count":\s*\K\d+' 2>/dev/null || echo "0")
+            local count=$(echo "$response_body" | sed -nE 's/.*"count":[[:space:]]*([0-9]+).*/\1/p' | head -1); count=${count:-0}
             [[ "$count" -gt 0 ]]
             return $?
             ;;
@@ -591,8 +591,8 @@ run_section_9() {
             # STRICT VALIDATION: Check HTTP 200 AND real results
             if [[ "$response_code" == "200" ]]; then
                 # Parse JSON to check if results exist
-                local count=$(echo "$response_body" | grep -oP '"count":\s*\K\d+' 2>/dev/null || echo "0")
-                local has_tool_names=$(echo "$response_body" | grep -oP '"name":\s*"[^"]+' 2>/dev/null | head -1)
+                local count=$(echo "$response_body" | sed -nE 's/.*"count":[[:space:]]*([0-9]+).*/\1/p' | head -1); count=${count:-0}
+                local has_tool_names=$(echo "$response_body" | grep -oE '"name":[[:space:]]*"[^"]+' 2>/dev/null | head -1)
 
                 if [[ "$count" -gt 0 ]] && [[ -n "$has_tool_names" ]]; then
                     # REAL SUCCESS: Has count > 0 AND actual tool names in results
@@ -691,7 +691,7 @@ run_section_9() {
             rm -f "${temp_file}"
 
             if [[ "$response_code" == "200" ]]; then
-                local results=$(echo "$response_body" | grep -oP '"results":\s*\[\K[^\]]*' 2>/dev/null || echo "")
+                local results=$(echo "$response_body" | sed -nE 's/.*"results":[[:space:]]*\[([^]]*)\].*/\1/p' | head -1)
 
                 if [[ -n "$results" ]]; then
                     TESTS_PASSED=$((TESTS_PASSED + 1))

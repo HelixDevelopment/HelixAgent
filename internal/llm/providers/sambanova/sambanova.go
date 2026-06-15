@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"dev.helix.agent/internal/llm/discovery"
@@ -435,7 +436,11 @@ func (p *SambaNovaProvider) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, _ := http.NewRequestWithContext(ctx, "GET", SambaNovaModelsURL, nil) //nolint:errcheck
+	// Derive the models endpoint from the configured base URL (the chat-completions
+	// URL) so a custom/injected base URL is honored instead of the hardcoded
+	// production constant — otherwise HealthCheck ignores p.baseURL entirely.
+	modelsURL := strings.TrimSuffix(p.baseURL, "/chat/completions") + "/models"
+	req, _ := http.NewRequestWithContext(ctx, "GET", modelsURL, nil) //nolint:errcheck
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
 
 	resp, err := p.httpClient.Do(req)

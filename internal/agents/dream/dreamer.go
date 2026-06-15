@@ -718,12 +718,22 @@ func (d *Dreamer) updateMemoryIndex() {
 	os.WriteFile(memoryMdPath, []byte(content.String()), 0644)
 }
 
+// dreamIDCounter and memoryIDCounter guarantee ID uniqueness even when the
+// generators are called multiple times within the same nanosecond tick
+// (UnixNano resolution is not fine enough on fast hosts to distinguish
+// back-to-back calls, which would otherwise overwrite map entries and silently
+// lose dreams/memories).
+var (
+	dreamIDCounter  uint64
+	memoryIDCounter uint64
+)
+
 // generateDreamID generates a unique dream ID
 func generateDreamID() string {
-	return fmt.Sprintf("dream_%d", time.Now().UnixNano())
+	return fmt.Sprintf("dream_%d_%d", time.Now().UnixNano(), atomic.AddUint64(&dreamIDCounter, 1))
 }
 
 // generateMemoryID generates a unique memory ID
 func generateMemoryID() string {
-	return fmt.Sprintf("mem_%d", time.Now().UnixNano())
+	return fmt.Sprintf("mem_%d_%d", time.Now().UnixNano(), atomic.AddUint64(&memoryIDCounter, 1))
 }

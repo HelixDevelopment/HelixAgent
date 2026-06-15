@@ -4,12 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"dev.helix.agent/internal/memory"
 	"dev.helix.agent/internal/messaging"
 	"github.com/sirupsen/logrus"
 )
+
+// eventIDCounter guarantees event-ID uniqueness even when generateEventID is
+// called multiple times within the same nanosecond tick (UnixNano resolution is
+// not fine enough on fast hosts to distinguish back-to-back calls, which would
+// otherwise emit colliding event IDs into the analytics/entity/memory streams).
+var eventIDCounter uint64
 
 // MemoryIntegration bridges the existing memory manager with distributed memory
 type MemoryIntegration struct {
@@ -255,7 +262,7 @@ func (mi *MemoryIntegration) applyRemoteEvent(ctx context.Context, event *Memory
 
 // Helper functions
 func generateEventID() string {
-	return fmt.Sprintf("evt_%d", time.Now().UnixNano())
+	return fmt.Sprintf("evt_%d_%d", time.Now().UnixNano(), atomic.AddUint64(&eventIDCounter, 1))
 }
 
 func getNodeID() string {

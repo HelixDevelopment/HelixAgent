@@ -186,11 +186,15 @@ func TestZenCLIProvider_ProviderInterface(t *testing.T) {
 
 	t.Run("SetModel changes current model", func(t *testing.T) {
 		t.Parallel()
-		provider.SetModel("new-model")
-		assert.Equal(t, "new-model", provider.GetCurrentModel())
+		// Use a dedicated provider instance: this subtest mutates the model and
+		// runs in parallel with "GetCurrentModel returns set model", which reads
+		// it — sharing the outer provider would race and corrupt both.
+		mutable := NewZenCLIProviderWithModel("test-model")
+		mutable.SetModel("new-model")
+		assert.Equal(t, "new-model", mutable.GetCurrentModel())
 
-		provider.SetModel("another-model")
-		assert.Equal(t, "another-model", provider.GetCurrentModel())
+		mutable.SetModel("another-model")
+		assert.Equal(t, "another-model", mutable.GetCurrentModel())
 	})
 
 	t.Run("GetCapabilities returns valid capabilities", func(t *testing.T) {

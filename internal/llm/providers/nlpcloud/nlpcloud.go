@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"dev.helix.agent/internal/llm/discovery"
@@ -445,7 +446,12 @@ func (p *NLPCloudProvider) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, _ := http.NewRequestWithContext(ctx, "GET", NLPCloudModelsURL, nil) //nolint:errcheck
+	// Derive the models endpoint from the configured base URL (the .../v1/gpu API
+	// URL) so a custom/injected base URL is honored instead of the hardcoded
+	// production constant — otherwise HealthCheck ignores p.baseURL entirely.
+	// NLPCloud's base path ends in "/gpu"; the models endpoint is its sibling.
+	modelsURL := strings.TrimSuffix(p.baseURL, "/gpu") + "/models"
+	req, _ := http.NewRequestWithContext(ctx, "GET", modelsURL, nil) //nolint:errcheck
 	req.Header.Set("Authorization", "Token "+p.apiKey)
 
 	resp, err := p.httpClient.Do(req)

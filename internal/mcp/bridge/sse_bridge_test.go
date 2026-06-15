@@ -52,8 +52,17 @@ func createMockMCPServer(t *testing.T, dir string) string {
 # Function to extract JSON-RPC ID using pure bash
 extract_id() {
     local line="$1"
-    # Use grep with perl regex to extract the id value
-    echo "$line" | grep -oP '"id"\s*:\s*\K[0-9]+' || echo "null"
+    # Extract the JSON-RPC id with a POSIX sed BRE/ERE that is portable across
+    # GNU and BSD (macOS) — grep -oP/\K is a GNU/PCRE-only extension absent from
+    # BSD grep, so the previous implementation always fell through to "null" on
+    # Darwin, breaking request/response correlation (context deadline exceeded).
+    local id
+    id=$(echo "$line" | sed -nE 's/.*"id"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p')
+    if [ -n "$id" ]; then
+        echo "$id"
+    else
+        echo "null"
+    fi
 }
 
 # Read line by line from stdin

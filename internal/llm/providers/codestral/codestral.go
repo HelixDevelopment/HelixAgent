@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"dev.helix.agent/internal/llm/discovery"
@@ -517,7 +518,11 @@ func (p *CodestralProvider) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", CodestralModelsURL, nil)
+	// Derive the models endpoint from the configured base URL (the chat-completions
+	// URL) so a custom/injected base URL is honored instead of the hardcoded
+	// production constant — otherwise HealthCheck ignores p.baseURL entirely.
+	modelsURL := strings.TrimSuffix(p.baseURL, "/chat/completions") + "/models"
+	req, err := http.NewRequestWithContext(ctx, "GET", modelsURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}

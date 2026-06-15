@@ -12,10 +12,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-git/go-git/v5"
 )
+
+// checkpointIDCounter guarantees ID uniqueness even when generateID is called
+// multiple times within the same nanosecond tick (UnixNano resolution is not
+// fine enough on fast hosts to distinguish back-to-back calls).
+var checkpointIDCounter uint64
 
 // Checkpoint represents a workspace snapshot
 type Checkpoint struct {
@@ -373,7 +379,7 @@ func (m *Manager) checkpointPath(id string) string {
 
 // generateID generates a unique checkpoint ID
 func generateID() string {
-	return fmt.Sprintf("checkpoint-%d", time.Now().UnixNano())
+	return fmt.Sprintf("checkpoint-%d-%d", time.Now().UnixNano(), atomic.AddUint64(&checkpointIDCounter, 1))
 }
 
 // shouldSkipDir returns true if directory should be skipped

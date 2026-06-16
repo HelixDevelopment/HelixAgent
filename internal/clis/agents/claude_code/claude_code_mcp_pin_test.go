@@ -122,7 +122,7 @@ func TestPin_HandleMCPCall_HonestErrorWhenNotWired(t *testing.T) {
 
 func TestPin_HandleMCPCall_RealTransportResult(t *testing.T) {
 	if isRedMode() {
-		t.Skip("real-transport dispatch path only exists post-fix")
+		t.Skip("SKIP-OK: real-transport dispatch path only exists post-fix")
 	}
 	cc, ctx := newClaudeWithMCP(t)
 	cc.mcp.servers["fs"] = &MCPServer{Name: "fs", Enabled: true}

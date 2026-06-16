@@ -109,7 +109,7 @@ func TestIDGenerators_NoCollisionUnderSameTickLoad(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			if redMode() && !historicallyDefective[name] {
-				t.Skipf("RED_MODE=1: %q was never UnixNano-only (already crypto-random) "+
+				t.Skipf("SKIP-OK: RED_MODE=1: %q was never UnixNano-only (already crypto-random) "+
 					"— no defect to reproduce; covered by the GREEN guard", name)
 			}
 

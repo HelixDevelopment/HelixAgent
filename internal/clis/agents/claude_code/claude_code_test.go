@@ -89,7 +89,7 @@ func TestClaudeCode_StartStop(t *testing.T) {
 // os/exec, impossible via any in-process template.
 func TestClaudeCode_Execute_Chat(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("fake-binary injection unsupported on windows")
+		t.Skip("SKIP-OK: fake-binary injection unsupported on windows")
 	}
 	cc := New()
 
@@ -168,7 +168,7 @@ func TestClaudeCode_Execute_Git(t *testing.T) {
 // REAL claude-exec mechanism via fake-binary injection.
 func TestClaudeCode_Execute_Edit(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("fake-binary injection unsupported on windows")
+		t.Skip("SKIP-OK: fake-binary injection unsupported on windows")
 	}
 	cc := New()
 

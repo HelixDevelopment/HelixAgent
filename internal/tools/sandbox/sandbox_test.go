@@ -50,7 +50,7 @@ func TestNewSandbox(t *testing.T) {
 
 	// May fail if docker/podman not available
 	if err != nil {
-		t.Skipf("Sandbox creation failed: %v", err)
+		t.Skipf("SKIP-OK: Sandbox creation failed: %v", err)
 	}
 
 	assert.NotNil(t, sandbox)
@@ -86,7 +86,7 @@ func TestSandbox_Execute(t *testing.T) {
 
 	sandbox, err := NewSandbox(config, "alpine:latest")
 	if err != nil {
-		t.Skipf("Sandbox creation failed: %v", err)
+		t.Skipf("SKIP-OK: Sandbox creation failed: %v", err)
 	}
 
 	ctx := context.Background()
@@ -112,7 +112,7 @@ func TestSandbox_Execute_WithTimeout(t *testing.T) {
 
 	sandbox, err := NewSandbox(config, "alpine:latest")
 	if err != nil {
-		t.Skipf("Sandbox creation failed: %v", err)
+		t.Skipf("SKIP-OK: Sandbox creation failed: %v", err)
 	}
 
 	ctx := context.Background()
@@ -142,7 +142,7 @@ func TestSandbox_Execute_WithNetworkDisabled(t *testing.T) {
 
 	sandbox, err := NewSandbox(config, "alpine:latest")
 	if err != nil {
-		t.Skipf("Sandbox creation failed: %v", err)
+		t.Skipf("SKIP-OK: Sandbox creation failed: %v", err)
 	}
 
 	ctx := context.Background()
@@ -170,7 +170,7 @@ func TestSandbox_Execute_WithNetworkEnabled(t *testing.T) {
 
 	sandbox, err := NewSandbox(config, "alpine:latest")
 	if err != nil {
-		t.Skipf("Sandbox creation failed: %v", err)
+		t.Skipf("SKIP-OK: Sandbox creation failed: %v", err)
 	}
 
 	ctx := context.Background()
@@ -179,7 +179,7 @@ func TestSandbox_Execute_WithNetworkEnabled(t *testing.T) {
 
 	// May fail in CI environments, so just check no error
 	if err != nil {
-		t.Skipf("Network test failed: %v", err)
+		t.Skipf("SKIP-OK: Network test failed: %v", err)
 	}
 	assert.NotNil(t, result)
 }

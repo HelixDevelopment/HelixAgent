@@ -141,7 +141,7 @@ func testProviderStability(t *testing.T, provider ProviderStabilityConfig) {
 			strings.Contains(msg, "Unauthorized") || strings.Contains(msg, "credits") ||
 			strings.Contains(msg, "model_not_found") || strings.Contains(msg, "does not exist") ||
 			strings.Contains(msg, "rate limit") {
-			tt.Skipf("%s unavailable in this environment: %v", provider.Name, err)
+			tt.Skipf("SKIP-OK: %s unavailable in this environment: %v", provider.Name, err)
 			return true
 		}
 		return false

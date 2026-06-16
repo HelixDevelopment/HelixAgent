@@ -89,7 +89,7 @@ func TestPin_RunWorkflow_NotFabricatedCompleted(t *testing.T) {
 // is preserved and remains honest (never "completed").
 func TestPin_RunWorkflow_BlockedStillHonest(t *testing.T) {
 	if isRedMode() {
-		t.Skip("blocked-path honesty only meaningful post-fix")
+		t.Skip("SKIP-OK: blocked-path honesty only meaningful post-fix")
 	}
 	b := New()
 	ctx := context.Background()

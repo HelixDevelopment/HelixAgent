@@ -44,7 +44,7 @@ func isRedMode() bool { return os.Getenv(redMode) == "1" }
 func writeFakeClaude(t *testing.T, marker string) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		t.Skip("fake-binary injection unsupported on windows")
+		t.Skip("SKIP-OK: fake-binary injection unsupported on windows")
 	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "claude")
@@ -151,7 +151,7 @@ func TestPin_HandleEdit_NotFabricated(t *testing.T) {
 // success response (the §11.4 / BLUFF-001 contract).
 func TestPin_AbsentBinary_HonestError(t *testing.T) {
 	if isRedMode() {
-		t.Skip("absent-binary honest-error behaviour only exists post-fix")
+		t.Skip("SKIP-OK: absent-binary honest-error behaviour only exists post-fix")
 	}
 	cc := New()
 	ctx := context.Background()

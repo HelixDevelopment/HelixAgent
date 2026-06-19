@@ -503,6 +503,7 @@ func TestAllProvidersHaveMultipleMappings(t *testing.T) {
 		"huggingface": {"HUGGINGFACE_API_KEY", "HF_API_KEY", "HF_TOKEN", "HUGGINGFACE_TOKEN", "ApiKey_HuggingFace"},
 		"openrouter":  {"OPENROUTER_API_KEY", "ApiKey_OpenRouter"},
 		"ollama":      {"OLLAMA_BASE_URL", "OLLAMA_HOST", "OLLAMA_API_URL"},
+		"xiaomi":      {"XIAOMI_MIMO_API_KEY", "ApiKey_Xiaomi_MiMo", "XIAOMI_API_KEY"},
 	}
 
 	for providerName, expectedVars := range expectedMappings {
@@ -535,13 +536,60 @@ func TestTotalProviderMappingsCount(t *testing.T) {
 	t.Logf("Total provider mappings: %d", actualCount)
 }
 
+// TestXiaomiMiMoAlternatives verifies Xiaomi MiMo has alternative mappings
+func TestXiaomiMiMoAlternatives(t *testing.T) {
+	xiaomiEnvVars := []string{"XIAOMI_MIMO_API_KEY", "ApiKey_Xiaomi_MiMo", "XIAOMI_API_KEY"}
+	foundVars := make(map[string]bool)
+
+	for _, mapping := range providerMappings {
+		if mapping.ProviderType == "xiaomi" {
+			foundVars[mapping.EnvVar] = true
+			assert.Equal(t, "xiaomi", mapping.ProviderName,
+				"Xiaomi mapping should have provider name 'xiaomi'")
+			assert.Contains(t, mapping.BaseURL, "xiaomimimo.com",
+				"Xiaomi should use Xiaomi MiMo API")
+			assert.Equal(t, "mimo-v2.5-pro", mapping.DefaultModel,
+				"Xiaomi should default to mimo-v2.5-pro model")
+			assert.Equal(t, 8, mapping.Priority,
+				"Xiaomi should be Tier 6 (priority 8)")
+		}
+	}
+
+	for _, envVar := range xiaomiEnvVars {
+		assert.True(t, foundVars[envVar],
+			"Missing Xiaomi MiMo mapping for env var: %s", envVar)
+	}
+}
+
+// TestCreateProviderSupportsXiaomi verifies Xiaomi provider can be created
+func TestCreateProviderSupportsXiaomi(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+
+	pd := NewProviderDiscovery(logger, false)
+
+	// Find Xiaomi mapping
+	var xiaomiMapping ProviderMapping
+	for _, m := range providerMappings {
+		if m.ProviderType == "xiaomi" {
+			xiaomiMapping = m
+			break
+		}
+	}
+
+	// Create provider with test API key
+	provider, err := pd.createProvider(xiaomiMapping, "sk-test-api-key")
+	assert.NoError(t, err, "Should be able to create Xiaomi MiMo provider")
+	assert.NotNil(t, provider, "Xiaomi MiMo provider should not be nil")
+}
+
 // TestUniqueProviderTypes verifies all expected provider types are present
 func TestUniqueProviderTypes(t *testing.T) {
 	expectedTypes := []string{
 		"claude", "openai", "gemini", "deepseek", "mistral", "qwen", "xai", "zai",
 		"cohere", "perplexity", "ai21", "groq", "cerebras", "sambanova",
 		"fireworks", "together", "hyperbolic", "replicate", "siliconflow",
-		"cloudflare", "nvidia", "kimi", "huggingface", "novita", "upstage",
+		"cloudflare", "nvidia", "kimi", "xiaomi", "huggingface", "novita", "upstage",
 		"chutes", "openrouter", "zen", "ollama",
 	}
 

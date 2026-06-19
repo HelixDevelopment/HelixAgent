@@ -61,6 +61,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/vertex"
 	"dev.helix.agent/internal/llm/providers/vulavula"
 	"dev.helix.agent/internal/llm/providers/xai"
+	"dev.helix.agent/internal/llm/providers/xiaomi"
 	"dev.helix.agent/internal/llm/providers/zai"
 	"dev.helix.agent/internal/llm/providers/zen"
 	"dev.helix.agent/internal/llm/providers/zhipu"
@@ -1801,6 +1802,12 @@ func (r *ProviderRegistry) createProviderFromConfig(cfg ProviderConfig) (llm.LLM
 			return kimi.NewKimiProvider(cfg.APIKey, baseURL, model), nil
 		}
 		return nil, fmt.Errorf("Kimi provider not available: API key missing or disabled")
+
+	case "xiaomi":
+		if cfg.Enabled && cfg.APIKey != "" {
+			return xiaomi.NewXiaomiProvider(cfg.APIKey, baseURL, model), nil
+		}
+		return nil, fmt.Errorf("Xiaomi MiMo provider not available: API key missing or disabled")
 
 	case "kimi-code", "kimicode":
 		if cfg.Enabled {

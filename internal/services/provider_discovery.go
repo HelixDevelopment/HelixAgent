@@ -44,6 +44,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/upstage"
 	"dev.helix.agent/internal/llm/providers/venice"
 	"dev.helix.agent/internal/llm/providers/xai"
+	"dev.helix.agent/internal/llm/providers/xiaomi"
 	"dev.helix.agent/internal/llm/providers/zai"
 	"dev.helix.agent/internal/llm/providers/zen"
 	"dev.helix.agent/internal/models"
@@ -318,6 +319,11 @@ var providerMappings = []ProviderMapping{
 	{EnvVar: "KIMI_API_KEY", ProviderType: "kimi", ProviderName: "kimi", BaseURL: "https://api.moonshot.cn/v1", DefaultModel: "moonshot-v1-128k", Priority: 8},
 	{EnvVar: "MOONSHOT_API_KEY", ProviderType: "kimi", ProviderName: "kimi", BaseURL: "https://api.moonshot.cn/v1", DefaultModel: "moonshot-v1-128k", Priority: 8},
 	{EnvVar: "ApiKey_Kimi", ProviderType: "kimi", ProviderName: "kimi", BaseURL: "https://api.moonshot.cn/v1", DefaultModel: "moonshot-v1-128k", Priority: 8},
+
+	// Xiaomi MiMo - Multiple key name variations
+	{EnvVar: "XIAOMI_MIMO_API_KEY", ProviderType: "xiaomi", ProviderName: "xiaomi", BaseURL: "https://api.xiaomimimo.com/v1/chat/completions", DefaultModel: "mimo-v2.5-pro", Priority: 8},
+	{EnvVar: "ApiKey_Xiaomi_MiMo", ProviderType: "xiaomi", ProviderName: "xiaomi", BaseURL: "https://api.xiaomimimo.com/v1/chat/completions", DefaultModel: "mimo-v2.5-pro", Priority: 8},
+	{EnvVar: "XIAOMI_API_KEY", ProviderType: "xiaomi", ProviderName: "xiaomi", BaseURL: "https://api.xiaomimimo.com/v1/chat/completions", DefaultModel: "mimo-v2.5-pro", Priority: 8},
 
 	// HuggingFace - Multiple key name variations
 	{EnvVar: "HUGGINGFACE_API_KEY", ProviderType: "huggingface", ProviderName: "huggingface", BaseURL: "https://api-inference.huggingface.co", DefaultModel: "meta-llama/Llama-3.2-3B-Instruct", Priority: 8},
@@ -873,6 +879,8 @@ func (pd *ProviderDiscovery) createProvider(mapping ProviderMapping, apiKey stri
 		return nvidia.NewNvidiaProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
 	case "kimi":
 		return kimi.NewKimiProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
+	case "xiaomi":
+		return xiaomi.NewXiaomiProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
 	case "novita":
 		return novita.NewNovitaProvider(apiKey, mapping.BaseURL, mapping.DefaultModel), nil
 	case "upstage":

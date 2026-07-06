@@ -21,7 +21,25 @@ import (
 )
 
 const (
-	defaultEndpoint    = "https://localhost:8443"
+	// DefaultEndpoint is the HelixLLM gateway's default TLS serving endpoint
+	// (the HelixLLM binary listens on :8443 with TLS by default —
+	// HelixLLM internal/shared/config Server.Port default 8443). Exported so
+	// consumers (e.g. the provider registry) reference a single source of
+	// truth instead of re-hardcoding the host:port (CONST-045).
+	DefaultEndpoint = "https://localhost:8443"
+	// defaultEndpoint is retained as an internal alias for readability.
+	defaultEndpoint = DefaultEndpoint
+
+	// EnvEndpoint overrides the endpoint with any OpenAI-compatible base URL
+	// (TLS gateway or plain-HTTP). EnvLocalOpenAIEndpoint is a first-class,
+	// higher-precedence seam for pointing at a LOCAL plain-HTTP
+	// OpenAI-compatible HelixLLM router (e.g. the max-perf llama.cpp image
+	// serving /v1/chat/completions on a plain-HTTP port such as
+	// http://localhost:8080). Neither is a hardcoded host — both are
+	// operator-supplied (CONST-045).
+	EnvEndpoint            = "HELIX_LLM_ENDPOINT"
+	EnvLocalOpenAIEndpoint = "HELIX_LLM_LOCAL_OPENAI_ENDPOINT"
+
 	defaultModel       = "helixllm-default"
 	defaultTimeout     = 60 * time.Second
 	chatEndpoint       = "/v1/chat/completions"
@@ -29,6 +47,27 @@ const (
 	modelsEndpoint     = "/v1/models"
 	healthEndpoint     = "/internal/health"
 )
+
+// resolveEndpoint picks the HelixLLM endpoint by precedence, without ever
+// hardcoding a reachable host beyond the documented localhost default
+// (CONST-045). Precedence:
+//  1. explicit (cfg.Endpoint set by the caller / provider registry baseURL)
+//  2. HELIX_LLM_LOCAL_OPENAI_ENDPOINT — the local plain-HTTP OpenAI router seam
+//  3. HELIX_LLM_ENDPOINT — the general endpoint override (TLS gateway or any
+//     OpenAI-compatible base URL)
+//  4. DefaultEndpoint — the TLS :8443 gateway default (unchanged legacy behaviour)
+func resolveEndpoint(explicit string) string {
+	if explicit != "" {
+		return explicit
+	}
+	if v := os.Getenv(EnvLocalOpenAIEndpoint); v != "" {
+		return v
+	}
+	if v := os.Getenv(EnvEndpoint); v != "" {
+		return v
+	}
+	return DefaultEndpoint
+}
 
 // Provider implements the LLMProvider interface for HelixLLM
 type Provider struct {
@@ -53,21 +92,28 @@ type Config struct {
 	Model         string
 	Timeout       time.Duration
 	TLSSkipVerify bool
-	// UseLlamaCpp toggles HelixLLM's local llama.cpp backend. When false,
-	// HelixLLM will only use cloud providers (Chutes, OpenRouter,
-	// HuggingFace, Nvidia, Cerebras, SambaNova, Together). When true (or
-	// unset), HelixLLM may fall back to local llama.cpp as the last
-	// resort. Sourced from HELIX_LLM_USE_LLAMACPP env var (default false).
-	// Communicated to the HelixLLM backend via the
-	// X-Helix-LLM-Use-LlamaCpp HTTP header.
+	// UseLlamaCpp is an ADVISORY, HelixAgent-side hint. When false, this
+	// provider sends the X-Helix-LLM-Use-LlamaCpp: false HTTP header on chat
+	// requests. Sourced from HELIX_LLM_USE_LLAMACPP env var (default false).
+	//
+	// CONTRACT NOTE (verified against the HelixLLM submodule, github.com/
+	// HelixDevelopment/HelixLLM): the current HelixLLM gateway does NOT read
+	// this header (its handlers consume only Accept-Language / Authorization /
+	// Accept). The AUTHORITATIVE toggle for HelixLLM's embedded llama.cpp
+	// backend is SERVER-SIDE — HelixLLM's own config field LlamaServerEmbed
+	// (env HELIX_LLAMA_SERVER_EMBEDDED, default true), set on the HelixLLM
+	// process, NOT communicated per-request from HelixAgent. The header is
+	// retained here for forward-compatibility (harmless if unread) but MUST
+	// NOT be relied upon to change backend routing on today's HelixLLM.
 	UseLlamaCpp bool
 }
 
 // NewProvider creates a new HelixLLM provider
 func NewProvider(cfg Config) *Provider {
-	if cfg.Endpoint == "" {
-		cfg.Endpoint = getEnv("HELIX_LLM_ENDPOINT", defaultEndpoint)
-	}
+	// Resolve the endpoint via the documented precedence (explicit →
+	// local plain-HTTP OpenAI seam → general env override → TLS default).
+	// No hardcoded reachable host beyond the localhost default (CONST-045).
+	cfg.Endpoint = resolveEndpoint(cfg.Endpoint)
 	if cfg.Model == "" {
 		cfg.Model = defaultModel
 	}
@@ -99,6 +145,10 @@ func NewProvider(cfg Config) *Provider {
 		},
 	}
 }
+
+// Endpoint returns the resolved HelixLLM base URL this provider will call.
+// Useful for logging the effective endpoint after env/default resolution.
+func (p *Provider) Endpoint() string { return p.endpoint }
 
 // NewProviderFromEnv creates a new HelixLLM provider from environment variables
 func NewProviderFromEnv() *Provider {
@@ -157,9 +207,11 @@ func (p *Provider) Complete(ctx context.Context, req *models.LLMRequest) (*model
 	if p.apiKey != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
 	}
-	// HELIX_LLM_USE_LLAMACPP — when false, instruct HelixLLM backend to
-	// skip its local llama.cpp link and only use cloud providers. The
-	// backend treats absence as the legacy default (llama.cpp included).
+	// Advisory X-Helix-LLM-Use-LlamaCpp header (forward-compat only). The
+	// current HelixLLM gateway does NOT read this header — the authoritative
+	// llama.cpp toggle is server-side (HELIX_LLAMA_SERVER_EMBEDDED). See the
+	// Config.UseLlamaCpp doc for the verified contract. Sent when false so a
+	// future HelixLLM version could honour it; harmless if unread.
 	if !p.useLlamaCpp {
 		httpReq.Header.Set("X-Helix-LLM-Use-LlamaCpp", "false")
 	}

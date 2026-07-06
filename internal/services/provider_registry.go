@@ -1602,21 +1602,25 @@ func (r *ProviderRegistry) createProviderFromConfig(cfg ProviderConfig) (llm.LLM
 			// backend that doesn't exist. Operators who want llama.cpp
 			// in the rotation set HELIX_LLM_USE_LLAMACPP=true.
 			useLlamaCpp := strings.EqualFold(os.Getenv("HELIX_LLM_USE_LLAMACPP"), "true")
+			// Endpoint is left to the provider's resolveEndpoint precedence
+			// (CONST-045: no hardcoded host here). Explicit config baseURL wins;
+			// otherwise HELIX_LLM_LOCAL_OPENAI_ENDPOINT (local plain-HTTP OpenAI
+			// router) → HELIX_LLM_ENDPOINT (general override) → the TLS :8443
+			// default. To reach a local plain-HTTP HelixLLM router an operator
+			// sets HELIX_LLM_LOCAL_OPENAI_ENDPOINT=http://<host>:<port> (or
+			// HELIX_LLM_ENDPOINT), no code change required.
 			config := helixllm.Config{
-				Endpoint:      getEnv("HELIX_LLM_ENDPOINT", "https://localhost:8443"),
+				Endpoint:      baseURL, // empty ⇒ provider resolves via env/default
 				APIKey:        cfg.APIKey,
 				Model:         model,
 				TLSSkipVerify: os.Getenv("HELIX_LLM_TLS_SKIP_VERIFY") == "true",
 				UseLlamaCpp:   useLlamaCpp,
 			}
-			if baseURL != "" {
-				config.Endpoint = baseURL
-			}
 			provider := helixllm.NewProvider(config)
 			logrus.WithFields(logrus.Fields{
-				"provider":      cfg.Name,
-				"use_llamacpp":  useLlamaCpp,
-				"endpoint":      config.Endpoint,
+				"provider":     cfg.Name,
+				"use_llamacpp": useLlamaCpp,
+				"endpoint":     provider.Endpoint(),
 			}).Info("Created HelixLLM provider")
 			return provider, nil
 		}

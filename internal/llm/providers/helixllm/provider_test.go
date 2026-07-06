@@ -80,10 +80,93 @@ func TestNewProvider_TLSEnvVarFalseKeepsVerification(t *testing.T) {
 
 func TestNewProvider_DefaultEndpoint(t *testing.T) {
 	os.Unsetenv("HELIX_LLM_ENDPOINT")
+	os.Unsetenv("HELIX_LLM_LOCAL_OPENAI_ENDPOINT")
 	defer os.Unsetenv("HELIX_LLM_ENDPOINT")
+	defer os.Unsetenv("HELIX_LLM_LOCAL_OPENAI_ENDPOINT")
 
 	p := NewProvider(Config{})
 	assert.Equal(t, defaultEndpoint, p.endpoint)
+}
+
+// TestResolveEndpoint_PrecedenceChain covers the full 4-way precedence chain
+// documented on resolveEndpoint (provider.go:51-70):
+//  1. explicit cfg.Endpoint wins over everything.
+//  2. HELIX_LLM_LOCAL_OPENAI_ENDPOINT alone is used.
+//  3. HELIX_LLM_ENDPOINT alone is used.
+//  4. BOTH local + general set -> HELIX_LLM_LOCAL_OPENAI_ENDPOINT wins (the
+//     precedence a code review flagged as previously unverified).
+//  5. nothing set -> DefaultEndpoint.
+//
+// Every case sets/unsets both env vars via t.Setenv (auto-cleanup, per-test
+// isolation) so cases are order-independent regardless of run order (-shuffle).
+func TestResolveEndpoint_PrecedenceChain(t *testing.T) {
+	tests := []struct {
+		name           string
+		explicit       string
+		localOpenAIEnv string // "" means unset
+		generalEnv     string // "" means unset
+		want           string
+	}{
+		{
+			name:           "explicit endpoint wins over everything",
+			explicit:       "https://explicit:9999",
+			localOpenAIEnv: "http://local-openai:8080",
+			generalEnv:     "https://general:8443",
+			want:           "https://explicit:9999",
+		},
+		{
+			name:           "only local OpenAI endpoint set is used",
+			explicit:       "",
+			localOpenAIEnv: "http://local-openai:8080",
+			generalEnv:     "",
+			want:           "http://local-openai:8080",
+		},
+		{
+			name:           "only general endpoint set is used",
+			explicit:       "",
+			localOpenAIEnv: "",
+			generalEnv:     "https://general:8443",
+			want:           "https://general:8443",
+		},
+		{
+			name:           "both local and general set: local OpenAI endpoint wins",
+			explicit:       "",
+			localOpenAIEnv: "http://local-openai:8080",
+			generalEnv:     "https://general:8443",
+			want:           "http://local-openai:8080",
+		},
+		{
+			name:           "nothing set falls back to DefaultEndpoint",
+			explicit:       "",
+			localOpenAIEnv: "",
+			generalEnv:     "",
+			want:           DefaultEndpoint,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.localOpenAIEnv != "" {
+				t.Setenv(EnvLocalOpenAIEndpoint, tt.localOpenAIEnv)
+			} else {
+				// Ensure isolation from any ambient env: unset explicitly via
+				// t.Setenv("") is not "unset", so use os.Unsetenv + a cleanup
+				// that restores whatever was there before (t.Setenv semantics
+				// require a value; for the "unset" case we drive it directly).
+				os.Unsetenv(EnvLocalOpenAIEndpoint)
+				t.Cleanup(func() { os.Unsetenv(EnvLocalOpenAIEndpoint) })
+			}
+			if tt.generalEnv != "" {
+				t.Setenv(EnvEndpoint, tt.generalEnv)
+			} else {
+				os.Unsetenv(EnvEndpoint)
+				t.Cleanup(func() { os.Unsetenv(EnvEndpoint) })
+			}
+
+			got := resolveEndpoint(tt.explicit)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestNewProvider_CustomEndpoint(t *testing.T) {

@@ -40,6 +40,27 @@ const (
 	EnvEndpoint            = "HELIX_LLM_ENDPOINT"
 	EnvLocalOpenAIEndpoint = "HELIX_LLM_LOCAL_OPENAI_ENDPOINT"
 
+	// EnvHost / EnvPort are the CLIENT-side connection target that lets an
+	// operator point HelixAgent at a plain-HTTP OpenAI-compatible HelixLLM /
+	// llama.cpp router reachable over the LAN or VPN (not just localhost). They
+	// compose the BASE endpoint http://${HELIX_LLM_HOST}:${HELIX_LLM_PORT} —
+	// deliberately WITHOUT a trailing /v1, because Complete/CompleteStream/
+	// GetModels append the OpenAI /v1/... path themselves (a trailing /v1 here
+	// would double to /v1/v1 → 404, the load-bearing base-URL gotcha). They sit
+	// BELOW the explicit endpoint seams in precedence, so an operator who already
+	// sets HELIX_LLM_ENDPOINT or HELIX_LLM_LOCAL_OPENAI_ENDPOINT is unaffected.
+	// No hardcoded reachable host — both default to localhost:18434 and are
+	// operator-supplied (CONST-045). Example LAN use:
+	//   HELIX_LLM_HOST=10.6.100.221 HELIX_LLM_PORT=18434 HELIX_LLM_API_KEY=<key>
+	EnvHost = "HELIX_LLM_HOST"
+	EnvPort = "HELIX_LLM_PORT"
+
+	// defaultHost / defaultPort are the CLIENT-target fallbacks used ONLY when
+	// the HELIX_LLM_HOST/HELIX_LLM_PORT composition is engaged and one half is
+	// omitted. 18434 is the plain-HTTP OpenAI-compatible coder port.
+	defaultHost = "localhost"
+	defaultPort = "18434"
+
 	defaultModel       = "helixllm-default"
 	defaultTimeout     = 60 * time.Second
 	chatEndpoint       = "/v1/chat/completions"
@@ -48,23 +69,67 @@ const (
 	healthEndpoint     = "/internal/health"
 )
 
+// normalizeBase makes an OpenAI-compatible BASE URL safe to concatenate with
+// the hardcoded /v1/... paths (chatEndpoint / embeddingsEndpoint / modelsEndpoint).
+// It trims surrounding whitespace, any trailing slash, and a single trailing
+// "/v1" segment, so a base supplied either as "http://h:18434" OR
+// "http://h:18434/v1" both resolve to "http://h:18434" — eliminating the
+// double-"/v1/v1" 404 gotcha regardless of how the operator wrote the env var.
+func normalizeBase(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return s
+	}
+	s = strings.TrimRight(s, "/")
+	if strings.HasSuffix(s, "/v1") {
+		s = strings.TrimRight(strings.TrimSuffix(s, "/v1"), "/")
+	}
+	return s
+}
+
 // resolveEndpoint picks the HelixLLM endpoint by precedence, without ever
 // hardcoding a reachable host beyond the documented localhost default
-// (CONST-045). Precedence:
+// (CONST-045). Every branch is run through normalizeBase so no source can
+// introduce the double-/v1 gotcha. Precedence:
 //  1. explicit (cfg.Endpoint set by the caller / provider registry baseURL)
 //  2. HELIX_LLM_LOCAL_OPENAI_ENDPOINT — the local plain-HTTP OpenAI router seam
 //  3. HELIX_LLM_ENDPOINT — the general endpoint override (TLS gateway or any
 //     OpenAI-compatible base URL)
-//  4. DefaultEndpoint — the TLS :8443 gateway default (unchanged legacy behaviour)
+//  4. HELIX_LLM_HOST / HELIX_LLM_PORT — the LAN/VPN client-target composition
+//     http://${host|localhost}:${port|18434} (engaged when either is set)
+//  5. DefaultEndpoint — the TLS :8443 gateway default (unchanged legacy behaviour)
 func resolveEndpoint(explicit string) string {
 	if explicit != "" {
-		return explicit
+		return normalizeBase(explicit)
 	}
 	if v := os.Getenv(EnvLocalOpenAIEndpoint); v != "" {
-		return v
+		return normalizeBase(v)
 	}
 	if v := os.Getenv(EnvEndpoint); v != "" {
-		return v
+		return normalizeBase(v)
+	}
+	// LAN/VPN client-target composition. Engaged when either HELIX_LLM_HOST or
+	// HELIX_LLM_PORT is set; each missing half falls back to its default so an
+	// operator can pin only the host (HELIX_LLM_HOST=10.6.100.221) and inherit
+	// port 18434.
+	host := strings.TrimSpace(os.Getenv(EnvHost))
+	port := strings.TrimSpace(os.Getenv(EnvPort))
+	if host != "" || port != "" {
+		if host == "" {
+			host = defaultHost
+		}
+		// A bind-all address is never a valid CLIENT connect target; map it to
+		// localhost so a server-bind value (e.g. the .env.example
+		// HELIX_LLM_HOST=0.0.0.0) leaking into the client process still yields a
+		// reachable endpoint (§11.4.6 — safe, evidence-based normalisation).
+		switch host {
+		case "0.0.0.0", "::", "[::]":
+			host = defaultHost
+		}
+		if port == "" {
+			port = defaultPort
+		}
+		return normalizeBase("http://" + host + ":" + port)
 	}
 	return DefaultEndpoint
 }

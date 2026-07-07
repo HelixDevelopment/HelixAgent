@@ -6,9 +6,13 @@
 // the normal unit suite (`go test ./...`) and only runs when explicitly
 // requested against a LIVE HelixLLM OpenAI-compatible endpoint:
 //
-//	HELIX_LLM_LOCAL_OPENAI_ENDPOINT=http://localhost:18434/v1 \
+//	HELIX_LLM_LOCAL_OPENAI_ENDPOINT=http://localhost:18434 \
 //	  go test -tags=helixllm_e2e -run TestE2E_HelixAgent_To_LiveHelixLLM -v \
 //	  ./internal/llm/providers/helixllm/
+//
+// The endpoint MUST be the BASE (no trailing /v1) — Complete appends
+// /v1/chat/completions itself; a trailing /v1 is auto-stripped by
+// normalizeBase (provider.go) to defuse the double-/v1/v1 → 404 gotcha.
 //
 // It drives the REAL HelixAgent HelixLLM provider (Provider.Complete) against
 // the live local coder — no stub, no mock (§11.4.50 / §11.4.5 / §11.4.69).
@@ -92,8 +96,8 @@ func TestE2E_HelixAgent_To_LiveHelixLLM(t *testing.T) {
 	}
 
 	p := NewProvider(Config{Timeout: 90 * time.Second})
-	require.Equal(t, endpoint, p.Endpoint(),
-		"provider must resolve to the pinned live endpoint via the highest-precedence local seam")
+	require.Equal(t, normalizeBase(endpoint), p.Endpoint(),
+		"provider must resolve to the normalized (no double-/v1) pinned live endpoint via the highest-precedence local seam")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()

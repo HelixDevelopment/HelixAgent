@@ -28,6 +28,11 @@ coverage/
 !.env.mcp.example
 !.env.mcps.example
 !.env.scale.example
+
+# Host-local secret exports sourced from the shell rc — NEVER committed
+# (CONST-042 / CONST-053 / §11.4.10). Only the placeholder template is tracked.
+api_keys.sh
+!api_keys.sh.example
 *.swp
 *.tmp
 *.bak

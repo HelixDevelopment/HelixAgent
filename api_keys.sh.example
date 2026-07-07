@@ -1,0 +1,31 @@
+# api_keys.sh.example — HelixAgent host-local secret / endpoint exports.
+#
+# Copy to `api_keys.sh` (gitignored — CONST-042 / CONST-053 / §11.4.10) and
+# `source` it from your shell rc, OR fold these into the project `.env`.
+# NEVER commit a real api_keys.sh or a real key.
+#
+#   cp api_keys.sh.example api_keys.sh && chmod 600 api_keys.sh
+#   # edit api_keys.sh, then:  source api_keys.sh
+#
+# ---------------------------------------------------------------------------
+# HelixAgent -> HelixLLM (local coder fleet on :18434, or the :8443 gateway).
+#
+# Point the helixllm provider at an OpenAI-compatible router. Precedence
+# (first non-empty wins): explicit baseURL > HELIX_LLM_LOCAL_OPENAI_ENDPOINT >
+# HELIX_LLM_ENDPOINT > HELIX_LLM_HOST/HELIX_LLM_PORT composition > TLS :8443.
+#
+# The endpoint MUST be the BASE without /v1 — the provider appends
+# /v1/chat/completions itself (a trailing /v1 doubles to /v1/v1 -> 404; a
+# trailing /v1 is stripped defensively by normalizeBase).
+
+# --- LAN / VPN over the host IP (recommended: the explicit base-URL seam) ---
+# export HELIX_LLM_LOCAL_OPENAI_ENDPOINT="http://<HOST-LAN-IP>:18434"   # e.g. 10.6.100.221
+
+# --- OR the HOST/PORT composition (client target; defaults localhost:18434) ---
+# export HELIX_LLM_HOST="<HOST-LAN-IP>"     # e.g. 10.6.100.221 ; 0.0.0.0 maps to localhost
+# export HELIX_LLM_PORT="18434"
+
+# --- Optional Bearer auth (sent as "Authorization: Bearer <key>") ---
+# Required only if the router enforces auth (e.g. llama-server --api-key <key>,
+# or the :8443 gateway). The raw :18434 coder fleet does not enforce auth.
+# export HELIX_LLM_API_KEY="replace-with-your-key"

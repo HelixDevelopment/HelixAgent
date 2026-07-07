@@ -28,4 +28,11 @@
 # --- Optional Bearer auth (sent as "Authorization: Bearer <key>") ---
 # Required only if the router enforces auth (e.g. llama-server --api-key <key>,
 # or the :8443 gateway). The raw :18434 coder fleet does not enforce auth.
+#
+# SECURITY (cleartext caveat): the HELIX_LLM_HOST/HELIX_LLM_PORT composition
+# always builds an http:// URL, so a Bearer key set alongside HOST/PORT travels
+# in CLEARTEXT. Over an untrusted LAN, either (a) run the provider behind a VPN
+# tunnel (the intended transport), or (b) use an https:// URL via the
+# higher-precedence HELIX_LLM_LOCAL_OPENAI_ENDPOINT seam so the key is
+# TLS-protected. Never send a real key over plain http:// on an untrusted network.
 # export HELIX_LLM_API_KEY="replace-with-your-key"

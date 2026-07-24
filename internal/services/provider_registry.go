@@ -29,6 +29,7 @@ import (
 	"dev.helix.agent/internal/llm/providers/deepseek"
 	"dev.helix.agent/internal/llm/providers/fireworks"
 	"dev.helix.agent/internal/llm/providers/gemini"
+	"dev.helix.agent/internal/llm/providers/generic"
 	"dev.helix.agent/internal/llm/providers/githubmodels"
 	"dev.helix.agent/internal/llm/providers/groq"
 	"dev.helix.agent/internal/llm/providers/helixllm"
@@ -797,6 +798,22 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 		}
 	}
 	r.storeProviderConfig(openrouterConfig)
+
+	// Zen (OpenCode) — supports anonymous free models with fallback chain
+	zenConfig := cfg.Providers["zen"]
+	if zenConfig == nil {
+		zenConfig = &ProviderConfig{
+			Name:    "zen",
+			Type:    "zen",
+			Enabled: true,
+			Models: []ModelConfig{
+				{ID: "big-pickle", Name: "Big Pickle (Free)", Enabled: true, Weight: 1.0},
+				{ID: "glm-5-free", Name: "GLM-5 Free", Enabled: true, Weight: 0.9},
+				{ID: "kimi-k2", Name: "Kimi K2 (Paid)", Enabled: true, Weight: 1.1},
+			},
+		}
+	}
+	r.storeProviderConfig(zenConfig)
 
 	logrus.Info("Stored provider configurations for lazy loading")
 }
@@ -1970,6 +1987,14 @@ func (r *ProviderRegistry) RegisterProviderFromConfig(cfg ProviderConfig) error 
 			Model:     model,
 			APIKey:    cfg.APIKey,
 		})
+	case "generic":
+		genericCfg := generic.Config{
+			APIKey:  cfg.APIKey,
+			BaseURL: cfg.BaseURL,
+			Model:   model,
+			Name:    cfg.Name,
+		}
+		provider = generic.NewProvider(genericCfg)
 	default:
 		return fmt.Errorf("unsupported provider type: %s", cfg.Type)
 	}

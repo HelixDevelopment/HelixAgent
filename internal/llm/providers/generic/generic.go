@@ -23,6 +23,14 @@ const (
 	MaxTokensCap = 16384
 )
 
+// Config holds the configuration for a generic OpenAI-compatible provider.
+type Config struct {
+	APIKey  string
+	BaseURL string
+	Model   string
+	Name    string
+}
+
 // Provider implements LLMProvider for any OpenAI-compatible chat completions endpoint.
 // This enables verification of providers that have OpenAI-compatible APIs but no
 // dedicated HelixAgent provider implementation (e.g., nvidia, sambanova, hyperbolic).
@@ -32,6 +40,19 @@ type Provider struct {
 	model      string
 	name       string
 	httpClient *http.Client
+}
+
+// NewProvider creates a new generic OpenAI-compatible provider from a Config struct.
+func NewProvider(cfg Config) *Provider {
+	return &Provider{
+		apiKey:  cfg.APIKey,
+		baseURL: cfg.BaseURL,
+		model:   cfg.Model,
+		name:    cfg.Name,
+		httpClient: &http.Client{
+			Timeout: DefaultTimeout,
+		},
+	}
 }
 
 // Request represents an OpenAI-compatible chat completion request

@@ -1987,7 +1987,7 @@ func (r *ProviderRegistry) RegisterProviderFromConfig(cfg ProviderConfig) error 
 			Model:     model,
 			APIKey:    cfg.APIKey,
 		})
-	case "generic":
+	case "generic", "hyper":
 		genericCfg := generic.Config{
 			APIKey:  cfg.APIKey,
 			BaseURL: cfg.BaseURL,

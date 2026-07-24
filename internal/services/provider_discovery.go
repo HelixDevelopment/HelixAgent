@@ -295,6 +295,10 @@ var providerMappings = []ProviderMapping{
 	{EnvVar: "HYPERBOLIC_API_KEY", ProviderType: "hyperbolic", ProviderName: "hyperbolic", BaseURL: "https://api.hyperbolic.xyz/v1", DefaultModel: "meta-llama/Llama-3.3-70B-Instruct", Priority: 6},
 	{EnvVar: "ApiKey_Hyperbolic", ProviderType: "hyperbolic", ProviderName: "hyperbolic", BaseURL: "https://api.hyperbolic.xyz/v1", DefaultModel: "meta-llama/Llama-3.3-70B-Instruct", Priority: 6},
 
+	// Hyper (Charm.land) — OpenAI-compatible coding inference
+	{EnvVar: "HYPER_API_KEY", ProviderType: "hyper", ProviderName: "hyper", BaseURL: "https://hyper.charm.land/v1", DefaultModel: "deepseek-v4-pro", Priority: 5},
+	{EnvVar: "ApiKey_Hyper", ProviderType: "hyper", ProviderName: "hyper", BaseURL: "https://hyper.charm.land/v1", DefaultModel: "deepseek-v4-pro", Priority: 5},
+
 	// Tier 5: Specialized providers
 	// Replicate - Multiple key name variations
 	{EnvVar: "REPLICATE_API_KEY", ProviderType: "replicate", ProviderName: "replicate", BaseURL: "https://api.replicate.com/v1", DefaultModel: "meta/llama-2-70b-chat", Priority: 7},

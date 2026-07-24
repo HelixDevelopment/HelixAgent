@@ -885,6 +885,23 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		},
 		Free: false,
 	},
+	"hyper": {
+		Type:        "hyper",
+		DisplayName: "Hyper (Charm.land)",
+		AuthType:    AuthTypeAPIKey,
+		Tier:        2,
+		Priority:    3,
+		EnvVars:     []string{"HYPER_API_KEY", "ApiKey_Hyper"},
+		BaseURL:     "https://hyper.charm.land/v1/chat/completions",
+		Models: []string{
+			"deepseek-v4-pro",
+			"deepseek-v4-flash",
+			"glm-5.2",
+			"kimi-k2.7-code",
+			"qwen3.7-max",
+		},
+		Free: false,
+	},
 	"replicate": {
 		Type:        "replicate",
 		DisplayName: "Replicate",

@@ -310,7 +310,7 @@ func TestMCPServerConnectivity(t *testing.T) {
 // TestMCPServerInitialize tests MCP protocol initialization
 func TestMCPServerInitialize(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping MCP integration test in -short mode (requires running MCP servers)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping MCP integration test in -short mode (requires running MCP servers)") // SKIP-OK: #short-mode
 	}
 	for _, server := range CoreMCPServers {
 		t.Run(server.Name, func(t *testing.T) {
@@ -328,7 +328,7 @@ func TestMCPServerInitialize(t *testing.T) {
 // TestMCPServerToolDiscovery tests MCP tool discovery
 func TestMCPServerToolDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP integration test in -short mode") // SKIP-OK: #short-mode
 	}
 	for _, server := range CoreMCPServers {
 		t.Run(server.Name, func(t *testing.T) {
@@ -352,7 +352,7 @@ func TestMCPServerToolDiscovery(t *testing.T) {
 // TestMCPToolExecution tests actual MCP tool execution
 func TestMCPToolExecution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP integration test in -short mode") // SKIP-OK: #short-mode
 	}
 	testCases := []struct {
 		server    string
@@ -410,7 +410,7 @@ func TestMCPToolExecution(t *testing.T) {
 // TestMCPDebateIntegration tests MCP tools with AI Debate system
 func TestMCPDebateIntegration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP integration test in -short mode") // SKIP-OK: #short-mode
 	}
 	// First, collect MCP tool results
 	mcpContext := &MCPContext{
@@ -450,7 +450,7 @@ func TestMCPDebateIntegration(t *testing.T) {
 	_ = timeClient.Close()
 
 	// Now test with AI Debate
-	debateClient := NewDebateClient("http://localhost:8080")
+	debateClient := NewDebateClient(helixAgentBaseURL(t))
 
 	debateReq := &DebateRequest{
 		Topic:      "What is the current time and why is time measurement important?",
@@ -458,7 +458,6 @@ func TestMCPDebateIntegration(t *testing.T) {
 		MCPContext: mcpContext,
 	}
 
-	testutil.RequireServer(t)
 	debateResp, err := debateClient.CreateDebate(debateReq)
 	require.NoError(t, err, "Failed to create debate")
 
@@ -473,7 +472,7 @@ func TestMCPDebateIntegration(t *testing.T) {
 // TestMCPContextualDebate tests debate with multiple MCP tool contexts
 func TestMCPContextualDebate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP integration test in -short mode") // SKIP-OK: #short-mode
 	}
 	ctx := context.Background()
 	mcpContext := &MCPContext{
@@ -527,7 +526,7 @@ func TestMCPContextualDebate(t *testing.T) {
 	}
 
 	if len(mcpContext.ToolResults) == 0 {
-		t.Skip("No MCP tool results collected")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No MCP tool results collected") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -536,8 +535,7 @@ func TestMCPContextualDebate(t *testing.T) {
 	t.Logf("Collected %d tool results from %d servers", len(mcpContext.ToolResults), len(mcpContext.ServerInfo))
 
 	// Test debate with this context
-	testutil.RequireServer(t)
-	debateClient := NewDebateClient("http://localhost:8080")
+	debateClient := NewDebateClient(helixAgentBaseURL(t))
 
 	debateReq := &DebateRequest{
 		Topic:      "Based on the file system information and current time, discuss how to organize temporary files effectively",
@@ -555,7 +553,7 @@ func TestMCPContextualDebate(t *testing.T) {
 // TestAllMCPServersForDebate tests that all MCP servers can provide context for debate
 func TestAllMCPServersForDebate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP integration test in -short mode") // SKIP-OK: #short-mode
 	}
 	runningServers := 0
 

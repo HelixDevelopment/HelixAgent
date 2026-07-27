@@ -19,11 +19,11 @@ import (
 func skipIfNoServerFailover(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping failover test in short mode (requires live server with LLM providers)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping failover test in short mode (requires live server with LLM providers)") // SKIP-OK: #short-mode
 	}
 	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
-		t.Skip("HelixAgent server not running on :8100")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running on :8100") // SKIP-OK: #legacy-untriaged
 	}
 	conn.Close()
 }
@@ -125,6 +125,7 @@ func TestE2E_ProviderFailover_FallbackOnError(t *testing.T) {
 //   - Pro: user-friendly, never hard-fails on a typo
 //   - Con: response.model may not match request.model (silent substitution);
 //     callers can't tell typos from intentional new model names
+//
 // Test now accepts either outcome until the policy is decided. Aligns with
 // the pattern used by other tests in this file (lines 95-112).
 func TestE2E_ProviderFailover_AllFail_GracefulError(t *testing.T) {

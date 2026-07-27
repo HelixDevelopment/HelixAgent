@@ -4,9 +4,9 @@
 //
 // PROTOCOL REFERENCES
 // -------------------
-//   * Model Context Protocol specification — protocol version
+//   - Model Context Protocol specification — protocol version
 //     "2024-11-05" — https://spec.modelcontextprotocol.io
-//   * JSON-RPC 2.0 specification — https://www.jsonrpc.org/specification
+//   - JSON-RPC 2.0 specification — https://www.jsonrpc.org/specification
 //
 // CANONICAL HANDSHAKE SEQUENCE
 // ----------------------------
@@ -15,26 +15,26 @@
 // then keeps the spawned child process alive for subsequent calls
 // against the same server:
 //
-//   1. Client (us) spawns the server's command/args/env as a child
-//      process. The child speaks JSON-RPC over its stdin / stdout,
-//      one JSON object per line (line-delimited JSON — the MCP
-//      stdio framing).
-//   2. Client sends:
-//        {"jsonrpc":"2.0","id":<n>,"method":"initialize",
-//         "params":{"protocolVersion":"2024-11-05",
-//                   "capabilities":{},
-//                   "clientInfo":{"name":"helix_agent/claude_code",
-//                                 "version":"round-39"}}}
-//   3. Server replies on stdout with:
-//        {"jsonrpc":"2.0","id":<n>,
-//         "result":{"protocolVersion":"...",
-//                   "capabilities":{...},
-//                   "serverInfo":{"name":"...","version":"..."}}}
-//   4. Client sends the canonical "initialized" notification (no id):
-//        {"jsonrpc":"2.0","method":"notifications/initialized",
-//         "params":{}}
-//   5. Client may now issue tools/call (and tools/list etc.) and
-//      correlate responses by the monotonic request id.
+//  1. Client (us) spawns the server's command/args/env as a child
+//     process. The child speaks JSON-RPC over its stdin / stdout,
+//     one JSON object per line (line-delimited JSON — the MCP
+//     stdio framing).
+//  2. Client sends:
+//     {"jsonrpc":"2.0","id":<n>,"method":"initialize",
+//     "params":{"protocolVersion":"2024-11-05",
+//     "capabilities":{},
+//     "clientInfo":{"name":"helix_agent/claude_code",
+//     "version":"round-39"}}}
+//  3. Server replies on stdout with:
+//     {"jsonrpc":"2.0","id":<n>,
+//     "result":{"protocolVersion":"...",
+//     "capabilities":{...},
+//     "serverInfo":{"name":"...","version":"..."}}}
+//  4. Client sends the canonical "initialized" notification (no id):
+//     {"jsonrpc":"2.0","method":"notifications/initialized",
+//     "params":{}}
+//  5. Client may now issue tools/call (and tools/list etc.) and
+//     correlate responses by the monotonic request id.
 //
 // ANTI-BLUFF POSTURE
 // ------------------

@@ -1218,8 +1218,12 @@ func TestInMemoryContinuousEvaluator_CompareRuns_Success(t *testing.T) {
 	require.NoError(t, evaluator.CreateRun(ctx, run2))
 
 	// Manually set results
-	if r, _ := evaluator.runs.Get(run1.ID); r != nil { r.Results = run1.Results }
-	if r, _ := evaluator.runs.Get(run2.ID); r != nil { r.Results = run2.Results }
+	if r, _ := evaluator.runs.Get(run1.ID); r != nil {
+		r.Results = run1.Results
+	}
+	if r, _ := evaluator.runs.Get(run2.ID); r != nil {
+		r.Results = run2.Results
+	}
 
 	comparison, err := evaluator.CompareRuns(ctx, run1.ID, run2.ID)
 	require.NoError(t, err)
@@ -1256,8 +1260,12 @@ func TestInMemoryContinuousEvaluator_CompareRuns_NoSignificantChanges(t *testing
 	require.NoError(t, evaluator.CreateRun(ctx, run1))
 	require.NoError(t, evaluator.CreateRun(ctx, run2))
 
-	if r, _ := evaluator.runs.Get(run1.ID); r != nil { r.Results = run1.Results }
-	if r, _ := evaluator.runs.Get(run2.ID); r != nil { r.Results = run2.Results }
+	if r, _ := evaluator.runs.Get(run1.ID); r != nil {
+		r.Results = run1.Results
+	}
+	if r, _ := evaluator.runs.Get(run2.ID); r != nil {
+		r.Results = run2.Results
+	}
 
 	comparison, err := evaluator.CompareRuns(ctx, run1.ID, run2.ID)
 	require.NoError(t, err)

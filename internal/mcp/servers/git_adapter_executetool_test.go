@@ -23,6 +23,17 @@ func setupTestGitRepo(t *testing.T) (string, func()) {
 	cmd.Dir = tempDir
 	require.NoError(t, cmd.Run())
 
+	// Pin the initial branch to `main`. `git init` names the initial branch
+	// from the host's `init.defaultBranch` setting, which defaults to
+	// `master` when unset — but every push/pull/checkout assertion built on
+	// this fixture targets `main`. Without this the fixture's branch name is
+	// host-config-dependent and the tests fail on any host that has not set
+	// `init.defaultBranch=main`. `symbolic-ref` (rather than `git init -b`)
+	// keeps the fixture working on git < 2.28 as well.
+	cmd = exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/main")
+	cmd.Dir = tempDir
+	require.NoError(t, cmd.Run())
+
 	// Configure git for the test repo
 	cmd = exec.Command("git", "config", "user.email", "test@test.com")
 	cmd.Dir = tempDir
@@ -56,7 +67,7 @@ func TestGitAdapter_ExecuteTool_AllTools(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("git not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)
@@ -373,13 +384,19 @@ func TestGitAdapter_PushPullFetch(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("git not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a bare repo to act as remote
 	bareDir := t.TempDir()
 
 	cmd := exec.Command("git", "init", "--bare")
+	cmd.Dir = bareDir
+	require.NoError(t, cmd.Run())
+
+	// Pin the bare remote's HEAD to `main` too, so it agrees with the
+	// working repo's branch (see setupTestGitRepo).
+	cmd = exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/main")
 	cmd.Dir = bareDir
 	require.NoError(t, cmd.Run())
 
@@ -483,13 +500,19 @@ func TestGitAdapter_Clone(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("git not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create a bare repo to clone from
 	bareDir := t.TempDir()
 
 	cmd := exec.Command("git", "init", "--bare")
+	cmd.Dir = bareDir
+	require.NoError(t, cmd.Run())
+
+	// Pin the bare remote's HEAD to `main` so `git clone` of it checks out a
+	// real working tree instead of warning about a dangling remote HEAD.
+	cmd = exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/main")
 	cmd.Dir = bareDir
 	require.NoError(t, cmd.Run())
 
@@ -597,7 +620,7 @@ func TestGitAdapter_ExecuteTool_Errors(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("git not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)
@@ -694,7 +717,7 @@ func TestGitAdapter_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("git not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)
@@ -753,7 +776,7 @@ func TestGitAdapter_ContextTimeout(t *testing.T) {
 	t.Parallel()
 	// Skip if git is not available
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("git not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	tempDir, cleanup := setupTestGitRepo(t)

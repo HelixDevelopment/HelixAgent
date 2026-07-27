@@ -103,7 +103,6 @@ func TestFreeProviderAdapter_GetVerifiedModels(t *testing.T) {
 		}
 		adapter.verifiedModels.Put("test-model", testModel)
 
-
 		models := adapter.GetVerifiedModels()
 		assert.Len(t, models, 1)
 		assert.Contains(t, models, "test-model")
@@ -133,7 +132,6 @@ func TestFreeProviderAdapter_IsModelVerified(t *testing.T) {
 			Verified: true,
 		})
 
-
 		verified := adapter.IsModelVerified("test-model")
 		assert.True(t, verified)
 	})
@@ -153,10 +151,9 @@ func TestFreeProviderAdapter_GetHealthStatus(t *testing.T) {
 	t.Run("returns copy of health status", func(t *testing.T) {
 		t.Parallel()
 		adapter := NewFreeProviderAdapter(nil, nil)
-		
+
 		adapter.healthStatus.Put("zen", true)
 		adapter.healthStatus.Put("openrouter", false)
-		
 
 		status := adapter.GetHealthStatus()
 		assert.Len(t, status, 2)
@@ -582,7 +579,6 @@ func TestFreeProviderAdapter_FailedAPIModels(t *testing.T) {
 		// Manually add a failed model
 		adapter.failedAPIModels.Put("test-model", assert.AnError)
 
-
 		failed1 := adapter.GetFailedAPIModels()
 		failed2 := adapter.GetFailedAPIModels()
 
@@ -664,7 +660,6 @@ func TestFreeProviderAdapter_GetCLIFacadeModels(t *testing.T) {
 				"verified_via": "cli_facade",
 			},
 		})
-
 
 		cliModels := adapter.GetCLIFacadeModels()
 		assert.Len(t, cliModels, 2)

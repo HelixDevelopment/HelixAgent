@@ -51,12 +51,12 @@ import (
 // newHTTPStubServer spins up an httptest.Server that implements
 // just enough of MCP-over-HTTP to validate the round-41 wiring:
 //
-//   * `initialize`        — returns serverInfo + capabilities
-//   * `notifications/initialized` — accepts (returns 202, no body)
-//   * `tools/list`        — returns a single "echo" tool
-//   * `tools/call`        — for tool="echo", echoes args.message;
-//                           for any other tool, returns a JSON-RPC
-//                           "unknown tool" error.
+//   - `initialize`        — returns serverInfo + capabilities
+//   - `notifications/initialized` — accepts (returns 202, no body)
+//   - `tools/list`        — returns a single "echo" tool
+//   - `tools/call`        — for tool="echo", echoes args.message;
+//     for any other tool, returns a JSON-RPC
+//     "unknown tool" error.
 //
 // The returned *atomic.Int32 increments on every request so
 // tests can assert the transport actually hit the server (not

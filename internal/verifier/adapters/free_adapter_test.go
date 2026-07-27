@@ -142,7 +142,6 @@ func TestFreeProviderAdapter_GetVerifiedModels_WithModels(t *testing.T) {
 		Score:    6.8,
 	})
 
-
 	models := adapter.GetVerifiedModels()
 
 	assert.Len(t, models, 2)
@@ -171,7 +170,6 @@ func TestFreeProviderAdapter_IsModelVerified_True(t *testing.T) {
 		Verified: true,
 	})
 
-
 	verified := adapter.IsModelVerified("test-model")
 
 	assert.True(t, verified)
@@ -192,10 +190,9 @@ func TestFreeProviderAdapter_GetHealthStatus_WithStatus(t *testing.T) {
 	adapter := NewFreeProviderAdapter(nil, nil)
 
 	// Add health status
-	
+
 	adapter.healthStatus.Put("zen", true)
 	adapter.healthStatus.Put("openrouter", false)
-	
 
 	status := adapter.GetHealthStatus()
 
@@ -507,9 +504,9 @@ func TestFreeProviderAdapter_ConcurrentAccess(t *testing.T) {
 	// Writer for health status
 	go func() {
 		for i := 0; i < 100; i++ {
-			
+
 			adapter.healthStatus.Put("zen", true)
-			
+
 		}
 		done <- true
 	}()

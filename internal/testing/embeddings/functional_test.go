@@ -133,10 +133,9 @@ var EmbeddingProviders = []EmbeddingProviderConfig{
 // TestEmbeddingProviderDiscovery tests provider discovery endpoint
 func TestEmbeddingProviderDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
-	client := NewEmbeddingClient(testutil.ServerURL())
+	client := NewEmbeddingClient(helixAgentBaseURL(t))
 
 	providers, err := client.ListProviders()
 	require.NoError(t, err)
@@ -148,10 +147,9 @@ func TestEmbeddingProviderDiscovery(t *testing.T) {
 // TestEmbeddingGeneration tests actual embedding generation
 func TestEmbeddingGeneration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
-	client := NewEmbeddingClient(testutil.ServerURL())
+	client := NewEmbeddingClient(helixAgentBaseURL(t))
 
 	testInputs := []string{
 		"Hello, world!",
@@ -192,10 +190,9 @@ func TestEmbeddingGeneration(t *testing.T) {
 // TestEmbeddingSimilarity tests that similar texts have similar embeddings
 func TestEmbeddingSimilarity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
-	client := NewEmbeddingClient(testutil.ServerURL())
+	client := NewEmbeddingClient(helixAgentBaseURL(t))
 
 	// Test with first available provider
 	for _, provider := range EmbeddingProviders {
@@ -250,11 +247,9 @@ func TestEmbeddingSimilarity(t *testing.T) {
 // TestEmbeddingHealthCheck tests embedding service health
 func TestEmbeddingHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "embeddings", testutil.ServerURL()+"/v1/embeddings/providers")
-
-	client := NewEmbeddingClient(testutil.ServerURL())
+	client := NewEmbeddingClient(helixAgentBaseURL(t))
 
 	resp, err := client.httpClient.Get(client.baseURL + "/v1/embeddings/providers")
 	require.NoError(t, err)
@@ -296,7 +291,11 @@ func sqrt(x float64) float64 {
 
 // BenchmarkEmbedding benchmarks embedding generation
 func BenchmarkEmbedding(b *testing.B) {
-	client := NewEmbeddingClient(testutil.ServerURL())
+	base, probed := resolveHelixAgentEmbeddings()
+	if base == "" {
+		b.Skipf("HelixAgent embeddings API not reachable; probed %v", probed)
+	}
+	client := NewEmbeddingClient(base)
 
 	req := &EmbeddingRequest{
 		Provider: "openai",

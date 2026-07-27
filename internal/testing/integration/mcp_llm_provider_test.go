@@ -177,21 +177,34 @@ func (c *LLMClient) ListProviders() ([]string, error) {
 		return nil, fmt.Errorf("list providers failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
+	// GET /v1/providers returns HelixAgent's registered provider set. Every
+	// entry in that list IS an available provider — the registry only lists
+	// providers it constructed successfully — and each entry carries the
+	// provider's capabilities rather than a status flag.
+	//
+	// This previously filtered on a `status` field equal to "available" or
+	// "verified". That field has never existed on this endpoint: per-provider
+	// verification state is served separately by /v1/providers/verification
+	// (CONST-036/037, LLMsVerifier as the source of truth). The filter
+	// therefore discarded every provider unconditionally, so the caller's
+	// NotEmpty assertion could never hold. Decode the real contract instead,
+	// and treat a nameless entry as the malformed payload it would be.
 	var result struct {
 		Providers []struct {
-			Name   string `json:"name"`
-			Status string `json:"status"`
+			Name            string   `json:"name"`
+			SupportedModels []string `json:"supported_models"`
 		} `json:"providers"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	providers := make([]string, 0)
-	for _, p := range result.Providers {
-		if p.Status == "available" || p.Status == "verified" {
-			providers = append(providers, p.Name)
+	providers := make([]string, 0, len(result.Providers))
+	for i, p := range result.Providers {
+		if p.Name == "" {
+			return nil, fmt.Errorf("malformed /v1/providers payload: entry %d has an empty name", i)
 		}
+		providers = append(providers, p.Name)
 	}
 
 	return providers, nil
@@ -200,11 +213,9 @@ func (c *LLMClient) ListProviders() ([]string, error) {
 // TestLLMProviderDiscovery tests that LLM providers are discoverable
 func TestLLMProviderDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireServer(t)
-
-	client := NewLLMClient("http://localhost:8080")
+	client := NewLLMClient(helixAgentBaseURL(t))
 
 	providers, err := client.ListProviders()
 	require.NoError(t, err, "Failed to list providers")
@@ -216,11 +227,9 @@ func TestLLMProviderDiscovery(t *testing.T) {
 // TestLLMProviderCompletion tests each LLM provider with a simple completion
 func TestLLMProviderCompletion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireServer(t)
-
-	client := NewLLMClient("http://localhost:8080")
+	client := NewLLMClient(helixAgentBaseURL(t))
 
 	for _, provider := range SupportedLLMProviders {
 		t.Run(provider.Name, func(t *testing.T) {
@@ -256,7 +265,7 @@ func TestLLMProviderCompletion(t *testing.T) {
 // TestMCPContextWithLLMProvider tests providing MCP context to LLM providers
 func TestMCPContextWithLLMProvider(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP integration test in -short mode") // SKIP-OK: #short-mode
 	}
 	// First, collect MCP tool results
 	mcpContext := &MCPToolContext{
@@ -292,8 +301,7 @@ func TestMCPContextWithLLMProvider(t *testing.T) {
 	_ = timeClient.Close()
 
 	// Now test with each LLM provider
-	testutil.RequireServer(t)
-	llmClient := NewLLMClient("http://localhost:8080")
+	llmClient := NewLLMClient(helixAgentBaseURL(t))
 
 	for _, provider := range SupportedLLMProviders {
 		t.Run(provider.Name, func(t *testing.T) {
@@ -333,8 +341,7 @@ func TestMCPContextWithLLMProvider(t *testing.T) {
 
 // TestLLMToolCalling tests LLM providers with tool calling capability
 func TestLLMToolCalling(t *testing.T) {
-	testutil.RequireServer(t)
-	llmClient := NewLLMClient("http://localhost:8080")
+	llmClient := NewLLMClient(helixAgentBaseURL(t))
 
 	// Define tools that mirror MCP tools
 	tools := []Tool{
@@ -463,7 +470,7 @@ func TestAllMCPServersWithAllProviders(t *testing.T) {
 	}
 
 	if connectedServers == 0 {
-		t.Skip("No MCP servers available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No MCP servers available") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -473,8 +480,7 @@ func TestAllMCPServersWithAllProviders(t *testing.T) {
 	_ = ctx // For cancellation in real implementation
 
 	// Test with each LLM provider
-	testutil.RequireServer(t)
-	llmClient := NewLLMClient("http://localhost:8080")
+	llmClient := NewLLMClient(helixAgentBaseURL(t))
 
 	for _, provider := range SupportedLLMProviders {
 		t.Run(provider.Name, func(t *testing.T) {
@@ -515,7 +521,11 @@ func TestAllMCPServersWithAllProviders(t *testing.T) {
 
 // BenchmarkLLMCompletion benchmarks LLM completion with MCP context
 func BenchmarkLLMCompletion(b *testing.B) {
-	llmClient := NewLLMClient("http://localhost:8080")
+	base, probed := resolveHelixAgent()
+	if base == "" {
+		b.Skipf("HelixAgent provider API not reachable; probed %v", probed)
+	}
+	llmClient := NewLLMClient(base)
 
 	req := &CompletionRequest{
 		Model: "auto",

@@ -1388,7 +1388,6 @@ func TestRandomLoadBalancer_UpdateLoad(t *testing.T) {
 	lb.UpdateLoad("", 0) // edge case: empty instance ID
 }
 
-
 // Test-only helpers for plugin_system_test.go after CONST-029 migration.
 // These translate the legacy `obj.field["K"]` map-indexed access into the
 // new safe.Store.Get(...) call while preserving the zero-value-on-miss
@@ -1397,6 +1396,6 @@ func TestRandomLoadBalancer_UpdateLoad(t *testing.T) {
 // pluginSystemTestGet returns the stored value for key in a safe.Store,
 // or the zero value if absent.
 func pluginSystemTestGet[K comparable, V any](s *safe.Store[K, V], k K) V {
-    v, _ := s.Get(k)
-    return v
+	v, _ := s.Get(k)
+	return v
 }

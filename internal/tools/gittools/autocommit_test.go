@@ -20,6 +20,19 @@ func setupTestRepo(t *testing.T) string {
 	cmd.Dir = tempDir
 	require.NoError(t, cmd.Run())
 
+	// Pin the initial branch to "main".
+	//
+	// `git init` takes the initial branch name from the HOST's
+	// `init.defaultBranch`, which is unset on a default install and therefore
+	// yields "master". Every assertion in this package expects "main", so
+	// without this the suite's verdict depends on the developer's git config
+	// rather than on the code under test (§11.4.50 determinism). Using
+	// symbolic-ref rather than `git init -b main` keeps this working on
+	// git < 2.28, where the -b flag does not exist.
+	cmd = exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/main")
+	cmd.Dir = tempDir
+	require.NoError(t, cmd.Run())
+
 	// Configure git user
 	cmd = exec.Command("git", "config", "user.email", "test@test.com")
 	cmd.Dir = tempDir

@@ -50,17 +50,17 @@ type NovitaRequest struct {
 }
 
 type NovitaMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string `json:"role"`
+	Content    string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 
-	ToolCalls  []NovitaMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
+	ToolCalls []NovitaMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
 
 // NovitaMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
 type NovitaMessageToolCall struct {
-	ID       string                `json:"id"`
-	Type     string                `json:"type"`
+	ID       string                        `json:"id"`
+	Type     string                        `json:"type"`
 	Function NovitaMessageToolCallFunction `json:"function"`
 }
 
@@ -69,7 +69,6 @@ type NovitaMessageToolCallFunction struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
 }
-
 
 type NovitaResponse struct {
 	ID      string         `json:"id"`

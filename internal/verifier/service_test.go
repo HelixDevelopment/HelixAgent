@@ -486,11 +486,16 @@ func TestVerificationService_calculateOverallScore(t *testing.T) {
 
 func TestVerificationService_verifyExistence(t *testing.T) {
 	t.Parallel()
-	svc := NewVerificationService(&Config{})
-	svc.SetTestMode(true) // Enable test mode to skip quality validation
+
+	// Each parallel subtest owns its own service: SetProviderFunc mutates
+	// shared state, so a single service shared across parallel subtests is a
+	// last-writer-wins race (the "error" func can land before "success" reads
+	// it). Matches the per-subtest instance pattern in verifyStreaming below.
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
+		svc.SetTestMode(true) // Enable test mode to skip quality validation
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "OK", nil
 		})
@@ -506,6 +511,8 @@ func TestVerificationService_verifyExistence(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
+		svc.SetTestMode(true) // Enable test mode to skip quality validation
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "", errors.New("error")
 		})
@@ -522,11 +529,14 @@ func TestVerificationService_verifyExistence(t *testing.T) {
 
 func TestVerificationService_verifyResponsiveness(t *testing.T) {
 	t.Parallel()
-	svc := NewVerificationService(&Config{})
-	svc.SetTestMode(true) // Enable test mode to skip quality validation
+
+	// Per-subtest service instance — see verifyExistence above for why a
+	// shared service across parallel subtests races on SetProviderFunc.
 
 	t.Run("fast response", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
+		svc.SetTestMode(true) // Enable test mode to skip quality validation
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "4", nil
 		})
@@ -542,6 +552,8 @@ func TestVerificationService_verifyResponsiveness(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
+		svc.SetTestMode(true) // Enable test mode to skip quality validation
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "", errors.New("error")
 		})
@@ -555,10 +567,12 @@ func TestVerificationService_verifyResponsiveness(t *testing.T) {
 
 func TestVerificationService_verifyFunctionCalling(t *testing.T) {
 	t.Parallel()
-	svc := NewVerificationService(&Config{})
+
+	// Per-subtest service instance — see verifyExistence above.
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return `{"function": "get_weather", "arguments": {"location": "San Francisco"}}`, nil
 		})
@@ -574,6 +588,7 @@ func TestVerificationService_verifyFunctionCalling(t *testing.T) {
 
 	t.Run("no function call", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "The weather is nice today", nil
 		})
@@ -587,10 +602,12 @@ func TestVerificationService_verifyFunctionCalling(t *testing.T) {
 
 func TestVerificationService_verifyCodingCapability(t *testing.T) {
 	t.Parallel()
-	svc := NewVerificationService(&Config{})
+
+	// Per-subtest service instance — see verifyExistence above.
 
 	t.Run("good code", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return `def is_prime(n):
     if n <= 1:
@@ -612,6 +629,7 @@ func TestVerificationService_verifyCodingCapability(t *testing.T) {
 
 	t.Run("bad code", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "I don't know how to write code", nil
 		})
@@ -625,10 +643,12 @@ func TestVerificationService_verifyCodingCapability(t *testing.T) {
 
 func TestVerificationService_verifyErrorDetection(t *testing.T) {
 	t.Parallel()
-	svc := NewVerificationService(&Config{})
+
+	// Per-subtest service instance — see verifyExistence above.
 
 	t.Run("finds bug", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "The bug is that you're using variable 'c' which is undefined. You should use 'b' instead.", nil
 		})
@@ -644,6 +664,7 @@ func TestVerificationService_verifyErrorDetection(t *testing.T) {
 
 	t.Run("partial detection", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		// Response mentions "error" but doesn't identify the specific bug (using 'c' instead of 'b')
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "There appears to be an error in the return statement", nil
@@ -660,6 +681,7 @@ func TestVerificationService_verifyErrorDetection(t *testing.T) {
 
 	t.Run("no detection", func(t *testing.T) {
 		t.Parallel()
+		svc := NewVerificationService(&Config{})
 		svc.SetProviderFunc(func(ctx context.Context, modelID, provider, prompt string) (string, error) {
 			return "This code looks fine to me", nil
 		})

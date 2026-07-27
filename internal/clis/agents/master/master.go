@@ -133,14 +133,34 @@ func (m *MasterIntegration) Execute(ctx context.Context, agentType agents.AgentT
 	return m.registry.Execute(ctx, agentType, command, params)
 }
 
-// ListAgents lists all registered agents
+// ListAgents lists all registered agents.
+//
+// The returned slice is always non-nil: when no agent is registered the result
+// is an empty slice, never nil. Callers (and JSON encoders) can therefore rely
+// on this being a list — `[]` rather than `null` on the wire.
 func (m *MasterIntegration) ListAgents() []agents.AgentInfo {
-	return m.registry.List()
+	return nonNilAgentInfos(m.registry.List())
 }
 
-// ListAvailable lists all available agents
+// ListAvailable lists all agents that are actually available on this host
+// (their CLI binary is installed and reachable).
+//
+// The returned slice is always non-nil: on a host where none of the registered
+// CLI agents is installed the result is an empty slice, never nil. Returning
+// nil here made the distinction between "no agents available" and "no answer"
+// unrepresentable and serialised as JSON `null` instead of `[]`.
 func (m *MasterIntegration) ListAvailable() []agents.AgentInfo {
-	return m.registry.ListAvailable()
+	return nonNilAgentInfos(m.registry.ListAvailable())
+}
+
+// nonNilAgentInfos normalises a possibly-nil agent list into a non-nil slice,
+// preserving contents and length exactly. It only substitutes an empty slice
+// for nil; a populated slice is returned untouched.
+func nonNilAgentInfos(infos []agents.AgentInfo) []agents.AgentInfo {
+	if infos == nil {
+		return []agents.AgentInfo{}
+	}
+	return infos
 }
 
 // HealthCheck checks health of all agents

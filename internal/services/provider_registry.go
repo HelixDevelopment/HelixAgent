@@ -92,13 +92,13 @@ type ProviderRegistry struct {
 	ensemble              *EnsembleService
 	requestService        *RequestService
 	memory                *MemoryService
-	discovery             *ProviderDiscovery                        // Auto-discovery service for environment-based provider detection
-	scoreAdapter          *LLMsVerifierScoreAdapter                 // LLMsVerifier score adapter for dynamic provider ordering
-	startupVerifier       atomic.Pointer[verifier.StartupVerifier]  // Unified startup verification (optional)
-	drainTimeout          time.Duration                             // Timeout for graceful shutdown request draining
-	autoDiscovery         bool                                      // Whether auto-discovery is enabled
-	initSemaphore         *semaphore.Weighted                       // Semaphore to limit concurrent provider initialization
-	initOnce              *safe.Store[string, *sync.Once]           // sync.Once per provider for thread-safe initialization
+	discovery             *ProviderDiscovery                       // Auto-discovery service for environment-based provider detection
+	scoreAdapter          *LLMsVerifierScoreAdapter                // LLMsVerifier score adapter for dynamic provider ordering
+	startupVerifier       atomic.Pointer[verifier.StartupVerifier] // Unified startup verification (optional)
+	drainTimeout          time.Duration                            // Timeout for graceful shutdown request draining
+	autoDiscovery         bool                                     // Whether auto-discovery is enabled
+	initSemaphore         *semaphore.Weighted                      // Semaphore to limit concurrent provider initialization
+	initOnce              *safe.Store[string, *sync.Once]          // sync.Once per provider for thread-safe initialization
 }
 
 // ProviderConfig holds configuration for an LLM provider
@@ -799,13 +799,29 @@ func (r *ProviderRegistry) registerDefaultProviders(cfg *RegistryConfig) {
 	}
 	r.storeProviderConfig(openrouterConfig)
 
-	// Zen (OpenCode) — supports anonymous free models with fallback chain
+	// Zen (OpenCode) — supports anonymous free models with fallback chain.
+	//
+	// Unlike every other synthesized default, Zen needs NO credential: enabling it
+	// makes GetProvider("zen") lazily materialise a live provider that talks to a
+	// public endpoint. That is an IMPLICIT provider acquisition, so it MUST obey
+	// the same auto-discovery switch that gates every other implicit acquisition
+	// (see the `r.autoDiscovery &&` guards on the Claude/Qwen OAuth paths in
+	// createProviderFromConfig). Otherwise a registry built via
+	// NewProviderRegistryWithoutAutoDiscovery — whose contract is that the caller
+	// controls exactly which providers are registered — silently gains an
+	// unconfigured provider and can route user prompts to it.
+	//
+	// This does NOT change out-of-the-box behaviour for the real application:
+	// when auto-discovery is on, initAutoDiscovery discovers Zen anonymously and
+	// registers a live instance regardless of this flag. An operator who wants
+	// Zen in a no-auto-discovery registry supplies cfg.Providers["zen"]
+	// explicitly, which takes precedence over this synthesized default.
 	zenConfig := cfg.Providers["zen"]
 	if zenConfig == nil {
 		zenConfig = &ProviderConfig{
 			Name:    "zen",
 			Type:    "zen",
-			Enabled: true,
+			Enabled: r.autoDiscovery,
 			Models: []ModelConfig{
 				{ID: "big-pickle", Name: "Big Pickle (Free)", Enabled: true, Weight: 1.0},
 				{ID: "glm-5-free", Name: "GLM-5 Free", Enabled: true, Weight: 0.9},
@@ -991,9 +1007,9 @@ func (r *ProviderRegistry) ListProviders() []string {
 //   - (true, true)   — at least one provider claims this model
 //   - (false, true)  — registry has model data and none claim this name
 //   - (false, false) — no provider has populated SupportedModels yet
-//                      (cold-start, discovery never ran, or every API
-//                      was unreachable at startup); caller should
-//                      fail-OPEN and let the request proceed
+//     (cold-start, discovery never ran, or every API
+//     was unreachable at startup); caller should
+//     fail-OPEN and let the request proceed
 //
 // The lookup is case-insensitive and matches both bare model IDs
 // ("gpt-4") and provider-qualified IDs ("openai/gpt-4").

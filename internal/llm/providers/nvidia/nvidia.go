@@ -50,17 +50,17 @@ type NvidiaRequest struct {
 }
 
 type NvidiaMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string `json:"role"`
+	Content    string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 
-	ToolCalls  []NvidiaMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
+	ToolCalls []NvidiaMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
 
 // NvidiaMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
 type NvidiaMessageToolCall struct {
-	ID       string                `json:"id"`
-	Type     string                `json:"type"`
+	ID       string                        `json:"id"`
+	Type     string                        `json:"type"`
 	Function NvidiaMessageToolCallFunction `json:"function"`
 }
 
@@ -69,7 +69,6 @@ type NvidiaMessageToolCallFunction struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
 }
-
 
 type NvidiaResponse struct {
 	ID      string         `json:"id"`

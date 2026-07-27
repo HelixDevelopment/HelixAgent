@@ -16,8 +16,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"dev.helix.agent/internal/testutil"
 )
 
 // VisionClient provides a client for testing vision capabilities
@@ -157,10 +155,9 @@ func createTestImage() string {
 // TestVisionCapabilityDiscovery tests capability discovery endpoint
 func TestVisionCapabilityDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	capabilities, err := client.ListCapabilities()
 	require.NoError(t, err)
@@ -172,10 +169,9 @@ func TestVisionCapabilityDiscovery(t *testing.T) {
 // TestVisionAnalyze tests image analysis capability
 func TestVisionAnalyze(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	for _, cap := range VisionCapabilities {
 		t.Run(cap.Capability, func(t *testing.T) {
@@ -207,10 +203,9 @@ func TestVisionAnalyze(t *testing.T) {
 // TestVisionWithURL tests vision analysis with image URL
 func TestVisionWithURL(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	// Use a public test image
 	testURL := "https://httpbin.org/image/png"
@@ -234,10 +229,9 @@ func TestVisionWithURL(t *testing.T) {
 // TestVisionOCR tests OCR capability specifically
 func TestVisionOCR(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	// In a real test, you'd use an image with actual text
 	req := &VisionRequest{
@@ -259,10 +253,9 @@ func TestVisionOCR(t *testing.T) {
 // TestVisionDetection tests object detection capability
 func TestVisionDetection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	req := &VisionRequest{
 		Capability: "detect",
@@ -285,11 +278,9 @@ func TestVisionDetection(t *testing.T) {
 // TestVisionHealthCheck tests vision service health
 func TestVisionHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	resp, err := client.httpClient.Get(client.baseURL + "/v1/vision/health")
 	require.NoError(t, err)
@@ -301,10 +292,9 @@ func TestVisionHealthCheck(t *testing.T) {
 // TestVisionFromFile tests vision analysis from a local file
 func TestVisionFromFile(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "vision", testutil.ServerURL()+"/v1/vision/health")
-	client := NewVisionClient(testutil.ServerURL())
+	client := NewVisionClient(helixAgentBaseURL(t))
 
 	// Create a temporary test image file
 	tmpFile := "/tmp/test_image.png"
@@ -339,7 +329,11 @@ func TestVisionFromFile(t *testing.T) {
 
 // BenchmarkVisionAnalyze benchmarks vision analysis
 func BenchmarkVisionAnalyze(b *testing.B) {
-	client := NewVisionClient(testutil.ServerURL())
+	base, probed := resolveHelixAgentVision()
+	if base == "" {
+		b.Skipf("HelixAgent vision API not reachable; probed %v", probed)
+	}
+	client := NewVisionClient(base)
 
 	req := &VisionRequest{
 		Capability: "analyze",

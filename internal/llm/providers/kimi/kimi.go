@@ -50,17 +50,17 @@ type KimiRequest struct {
 }
 
 type KimiMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string `json:"role"`
+	Content    string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 
-	ToolCalls  []KimiMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
+	ToolCalls []KimiMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
 
 // KimiMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
 type KimiMessageToolCall struct {
-	ID       string                `json:"id"`
-	Type     string                `json:"type"`
+	ID       string                      `json:"id"`
+	Type     string                      `json:"type"`
 	Function KimiMessageToolCallFunction `json:"function"`
 }
 
@@ -69,7 +69,6 @@ type KimiMessageToolCallFunction struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
 }
-
 
 type KimiResponse struct {
 	ID      string       `json:"id"`

@@ -16,6 +16,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -23,6 +25,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"dev.helix.agent/internal/middleware"
 )
 
 const (
@@ -43,17 +47,118 @@ func isHelixAgentAvailable(t *testing.T) bool {
 	return true
 }
 
-// liveClient returns an http.Client with a short timeout suitable for CI.
-// Request bodies are small; responses from handler-layer endpoints are
-// bounded by the 10 MiB middleware cap (see CLAUDE.md).
+// liveClient returns an http.Client for driving the live instance.
+//
+// The timeout MUST exceed the server's own worst-case handler latency,
+// otherwise the test races the server and a client-side abort is reported as a
+// transport error instead of the server's real HTTP verdict. The service's
+// per-provider timeout is 10s (configs/development.yaml), so /v1/chat/completions
+// can legitimately spend a full 10s upstream before answering 502 — a client
+// deadline of 10s tied with it and aborted the request. 60s clears that worst
+// case while staying well inside the server's own 180s request_timeout.
 func liveClient() *http.Client {
-	return &http.Client{Timeout: 10 * time.Second}
+	return &http.Client{Timeout: 60 * time.Second}
+}
+
+// resolveJWTSecret returns the JWT signing secret the live HelixAgent instance
+// is running with, or "" when it cannot be determined.
+//
+// Resolution order (no hardcoded project paths — this submodule stays
+// project-decoupled per CONST-051(B)):
+//  1. the JWT_SECRET environment variable;
+//  2. the first `.env` file found walking up from the working directory that
+//     defines JWT_SECRET — this mirrors how the service itself is launched
+//     (its unit loads `.env` from the consuming project's root).
+//
+// The secret is never logged, echoed, or embedded in a failure message
+// (CONST-042 / §11.4.10).
+func resolveJWTSecret() string {
+	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
+		return s
+	}
+
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	// Bounded ancestor walk; stops at the filesystem root.
+	for i := 0; i < 10; i++ {
+		if s := jwtSecretFromEnvFile(filepath.Join(dir, ".env")); s != "" {
+			return s
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// jwtSecretFromEnvFile extracts JWT_SECRET from a dotenv-style file. Missing or
+// unreadable files yield "" rather than an error — the caller treats an
+// unresolvable secret as "cannot authenticate".
+func jwtSecretFromEnvFile(path string) string {
+	raw, err := os.ReadFile(path) // #nosec G304 -- test-only, path derived from cwd ancestry
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "export ")
+		key, value, found := strings.Cut(line, "=")
+		if !found || strings.TrimSpace(key) != "JWT_SECRET" {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		value = strings.Trim(value, `"'`)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// liveAuthToken mints a real Bearer token for the live instance's protected
+// routes, or returns "" when the signing secret is not resolvable on this host.
+//
+// It deliberately uses the PRODUCTION token generator
+// (middleware.AuthMiddleware.GenerateToken) rather than re-implementing JWT
+// signing, so the token this test presents is byte-for-byte the same shape the
+// service issues to real users — the live server validates it with its own
+// middleware, so this is a genuine authenticated round-trip, not a bypass.
+func liveAuthToken(t *testing.T) string {
+	t.Helper()
+	secret := resolveJWTSecret()
+	if secret == "" {
+		return ""
+	}
+	auth, err := middleware.NewAuthMiddleware(middleware.AuthConfig{
+		SecretKey:   secret,
+		TokenExpiry: 10 * time.Minute,
+	}, nil)
+	require.NoError(t, err, "failed to construct auth middleware for token minting")
+
+	token, err := auth.GenerateToken("integration-test-user", "integration-test", "admin")
+	require.NoError(t, err, "failed to mint integration-test bearer token")
+	return token
 }
 
 // doJSON is a small helper: POST/GET with a JSON body, parse the response
 // body into out (may be nil), return status code. Any transport error is
 // surfaced; assertion on HTTP status is the caller's responsibility.
 func doJSON(t *testing.T, method, path string, reqBody any, out any) (int, http.Header) {
+	t.Helper()
+	return doJSONAuth(t, method, path, reqBody, out, "")
+}
+
+// doJSONAuth is doJSON with an Authorization header. An empty token sends no
+// header (the public/skip-listed routes need none). Used by the tests that
+// drive /v1/debates, which the router mounts on the JWT-protected group.
+func doJSONAuth(t *testing.T, method, path string, reqBody any, out any, token string) (int, http.Header) {
 	t.Helper()
 	var body io.Reader
 	if reqBody != nil {
@@ -65,6 +170,9 @@ func doJSON(t *testing.T, method, path string, reqBody any, out any) (int, http.
 	require.NoError(t, err)
 	if reqBody != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := liveClient().Do(req)
 	require.NoError(t, err)
@@ -83,7 +191,7 @@ func doJSON(t *testing.T, method, path string, reqBody any, out any) (int, http.
 func TestIntegration_HealthEndpoint(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	status, _ := doJSON(t, http.MethodGet, "/v1/health", nil, nil)
@@ -99,7 +207,7 @@ func TestIntegration_HealthEndpoint(t *testing.T) {
 func TestIntegration_CompleteFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	reqBody := map[string]any{
@@ -127,7 +235,7 @@ func TestIntegration_CompleteFlow(t *testing.T) {
 func TestIntegration_ChatFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	reqBody := map[string]any{
@@ -148,7 +256,7 @@ func TestIntegration_ChatFlow(t *testing.T) {
 func TestIntegration_ModelsEndpoint(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	var payload map[string]any
@@ -162,7 +270,15 @@ func TestIntegration_ModelsEndpoint(t *testing.T) {
 func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
+	}
+
+	// /v1/debates is mounted on the router's JWT-protected group (see
+	// internal/router/router.go — debateHandler.RegisterRoutes(protected)),
+	// so this flow needs a real bearer token.
+	token := liveAuthToken(t)
+	if token == "" {
+		t.Skip("JWT_SECRET not resolvable — cannot authenticate against the protected /v1/debates route (SKIP-OK: #requires-credentials)")
 	}
 
 	createBody := map[string]any{
@@ -174,7 +290,7 @@ func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 		"max_rounds": 3,
 	}
 	var createResp map[string]any
-	status, _ := doJSON(t, http.MethodPost, "/v1/debates", createBody, &createResp)
+	status, _ := doJSONAuth(t, http.MethodPost, "/v1/debates", createBody, &createResp, token)
 	if status == http.StatusServiceUnavailable || status == http.StatusNotImplemented {
 		t.Skipf("/v1/debates not available on this instance (status=%d) (SKIP-OK: #infra-unavailable)", status)
 	}
@@ -185,7 +301,7 @@ func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 	require.NotEmpty(t, debateID)
 
 	var getResp map[string]any
-	status, _ = doJSON(t, http.MethodGet, "/v1/debates/"+debateID, nil, &getResp)
+	status, _ = doJSONAuth(t, http.MethodGet, "/v1/debates/"+debateID, nil, &getResp, token)
 	require.Equal(t, http.StatusOK, status)
 	assert.Equal(t, debateID, getResp["debate_id"])
 }
@@ -194,7 +310,13 @@ func TestIntegration_DebateCreateAndRetrieve(t *testing.T) {
 func TestIntegration_DebateStatusFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
+	}
+
+	// /v1/debates lives on the JWT-protected router group; authenticate first.
+	token := liveAuthToken(t)
+	if token == "" {
+		t.Skip("JWT_SECRET not resolvable — cannot authenticate against the protected /v1/debates route (SKIP-OK: #requires-credentials)")
 	}
 
 	createBody := map[string]any{
@@ -205,7 +327,7 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 		},
 	}
 	var createResp map[string]any
-	status, _ := doJSON(t, http.MethodPost, "/v1/debates", createBody, &createResp)
+	status, _ := doJSONAuth(t, http.MethodPost, "/v1/debates", createBody, &createResp, token)
 	if status == http.StatusServiceUnavailable || status == http.StatusNotImplemented {
 		t.Skipf("/v1/debates not available on this instance (status=%d) (SKIP-OK: #infra-unavailable)", status)
 	}
@@ -214,7 +336,7 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 	require.NotEmpty(t, debateID)
 
 	var statusResp map[string]any
-	status, _ = doJSON(t, http.MethodGet, "/v1/debates/"+debateID+"/status", nil, &statusResp)
+	status, _ = doJSONAuth(t, http.MethodGet, "/v1/debates/"+debateID+"/status", nil, &statusResp, token)
 	require.Equal(t, http.StatusOK, status)
 	assert.Equal(t, debateID, statusResp["debate_id"])
 	assert.Contains(t, statusResp, "status")
@@ -224,7 +346,13 @@ func TestIntegration_DebateStatusFlow(t *testing.T) {
 func TestIntegration_DebateListAndDelete(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
+	}
+
+	// /v1/debates lives on the JWT-protected router group; authenticate first.
+	token := liveAuthToken(t)
+	if token == "" {
+		t.Skip("JWT_SECRET not resolvable — cannot authenticate against the protected /v1/debates route (SKIP-OK: #requires-credentials)")
 	}
 
 	// Create three debates.
@@ -236,7 +364,7 @@ func TestIntegration_DebateListAndDelete(t *testing.T) {
 				{"name": "Participant 2"},
 			},
 		}
-		status, _ := doJSON(t, http.MethodPost, "/v1/debates", createBody, nil)
+		status, _ := doJSONAuth(t, http.MethodPost, "/v1/debates", createBody, nil, token)
 		if status == http.StatusServiceUnavailable || status == http.StatusNotImplemented {
 			t.Skipf("/v1/debates not available on this instance (status=%d) (SKIP-OK: #infra-unavailable)", status)
 		}
@@ -244,7 +372,7 @@ func TestIntegration_DebateListAndDelete(t *testing.T) {
 	}
 
 	var listResp map[string]any
-	status, _ := doJSON(t, http.MethodGet, "/v1/debates", nil, &listResp)
+	status, _ := doJSONAuth(t, http.MethodGet, "/v1/debates", nil, &listResp, token)
 	require.Equal(t, http.StatusOK, status)
 	assert.Contains(t, listResp, "debates")
 }
@@ -253,7 +381,7 @@ func TestIntegration_DebateListAndDelete(t *testing.T) {
 func TestIntegration_MCPFlow(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	for _, path := range []string{
@@ -275,7 +403,7 @@ func TestIntegration_MCPFlow(t *testing.T) {
 func TestIntegration_InvalidRoutes(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	cases := []struct {
@@ -315,7 +443,7 @@ func TestIntegration_InvalidRoutes(t *testing.T) {
 func TestIntegration_MiddlewareNotFound(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	status, _ := doJSON(t, http.MethodGet, "/non-existent-route-const030", nil, nil)
@@ -328,7 +456,7 @@ func TestIntegration_MiddlewareNotFound(t *testing.T) {
 func TestIntegration_ConcurrentRequests(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	const n = 10
@@ -360,7 +488,7 @@ func TestIntegration_ConcurrentRequests(t *testing.T) {
 func TestIntegration_ResponseHeaders(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	_, hdr := doJSON(t, http.MethodGet, "/v1/models", nil, nil)
@@ -371,7 +499,7 @@ func TestIntegration_ResponseHeaders(t *testing.T) {
 func TestIntegration_ErrorResponseFormat(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	var resp map[string]any
@@ -386,7 +514,7 @@ func TestIntegration_ErrorResponseFormat(t *testing.T) {
 func TestIntegration_URLRouting(t *testing.T) {
 	t.Parallel()
 	if !isHelixAgentAvailable(t) {
-		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)")  // SKIP-OK: #requires-network
+		t.Skip("HelixAgent unreachable on :7061 — start with `./bin/helixagent` (CONST-030)") // SKIP-OK: #requires-network
 	}
 
 	t.Run("GET_/v1/models", func(t *testing.T) {

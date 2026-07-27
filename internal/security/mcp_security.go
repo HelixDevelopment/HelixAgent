@@ -20,7 +20,7 @@ import (
 //   - trustedServers / toolRegistry / callStack are safe.* containers.
 //   - mu (sync.RWMutex) survives as a Pattern Zeta scalar mutex: it
 //     serialises CheckToolCall's compound operation (call-depth check
-//     + push + rate-limit read-modify-write on the cached
+//   - push + rate-limit read-modify-write on the cached
 //     *ToolPermission). Individual store operations are already atomic;
 //     mu guards the cross-field invariant. The audit is happy because
 //     no bare map/slice field sits next to the mutex any more.

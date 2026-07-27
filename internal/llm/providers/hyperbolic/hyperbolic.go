@@ -50,17 +50,17 @@ type HyperbolicRequest struct {
 }
 
 type HyperbolicMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string `json:"role"`
+	Content    string `json:"content"`
 	ToolCallID string `json:"tool_call_id,omitempty"` // CONST-032: required when role="tool"
 
-	ToolCalls  []HyperbolicMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
+	ToolCalls []HyperbolicMessageToolCall `json:"tool_calls,omitempty"` // CONST-032: required on assistant message
 }
 
 // HyperbolicMessageToolCall mirrors OpenAI tool_call shape on an assistant message.
 type HyperbolicMessageToolCall struct {
-	ID       string                `json:"id"`
-	Type     string                `json:"type"`
+	ID       string                            `json:"id"`
+	Type     string                            `json:"type"`
 	Function HyperbolicMessageToolCallFunction `json:"function"`
 }
 
@@ -69,7 +69,6 @@ type HyperbolicMessageToolCallFunction struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
 }
-
 
 type HyperbolicResponse struct {
 	ID      string             `json:"id"`

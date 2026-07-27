@@ -14,8 +14,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"dev.helix.agent/internal/testutil"
 )
 
 // ACPClient provides a client for testing ACP agents
@@ -160,10 +158,9 @@ var ACPAgents = []ACPAgentConfig{
 // TestACPAgentDiscovery tests agent discovery endpoint
 func TestACPAgentDiscovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
-	client := NewACPClient(testutil.ServerURL())
+	client := NewACPClient(helixAgentBaseURL(t))
 
 	agents, err := client.ListAgents()
 	require.NoError(t, err)
@@ -175,10 +172,9 @@ func TestACPAgentDiscovery(t *testing.T) {
 // TestACPAgentInfo tests getting agent information
 func TestACPAgentInfo(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
-	client := NewACPClient(testutil.ServerURL())
+	client := NewACPClient(helixAgentBaseURL(t))
 
 	for _, agent := range ACPAgents {
 		t.Run(agent.ID, func(t *testing.T) {
@@ -197,10 +193,9 @@ func TestACPAgentInfo(t *testing.T) {
 // TestACPAgentExecution tests actual agent task execution
 func TestACPAgentExecution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
-	client := NewACPClient(testutil.ServerURL())
+	client := NewACPClient(helixAgentBaseURL(t))
 
 	testCode := `
 func add(a, b int) int {
@@ -236,11 +231,9 @@ func add(a, b int) int {
 // TestACPHealthCheck tests ACP service health
 func TestACPHealthCheck(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping functional test in short mode") // SKIP-OK: #short-mode
 	}
-	testutil.RequireHTTPEndpoint(t, "acp", testutil.ServerURL()+"/v1/acp/health")
-
-	client := NewACPClient(testutil.ServerURL())
+	client := NewACPClient(helixAgentBaseURL(t))
 
 	resp, err := client.httpClient.Get(client.baseURL + "/v1/acp/health")
 	require.NoError(t, err)
@@ -251,7 +244,11 @@ func TestACPHealthCheck(t *testing.T) {
 
 // BenchmarkACPAgentExecution benchmarks agent task execution
 func BenchmarkACPAgentExecution(b *testing.B) {
-	client := NewACPClient(testutil.ServerURL())
+	base, probed := resolveHelixAgentACP()
+	if base == "" {
+		b.Skipf("HelixAgent ACP API not reachable; probed %v", probed)
+	}
+	client := NewACPClient(base)
 
 	req := &AgentRequest{
 		AgentID: "code-reviewer",

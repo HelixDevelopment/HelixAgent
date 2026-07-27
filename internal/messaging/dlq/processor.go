@@ -427,7 +427,6 @@ func (p *Processor) DiscardMessage(ctx context.Context, messageID string, reason
 		zap.String("message_id", messageID),
 		zap.String("reason", reason))
 
-
 	dlqMsg, exists := p.messages.Get(messageID)
 	if !exists {
 		return fmt.Errorf("message not found: %s", messageID)
@@ -522,7 +521,6 @@ func (p *Processor) AddMessage(ctx context.Context, dlqMsg *DeadLetterMessage) e
 	if dlqMsg.ID == "" {
 		return fmt.Errorf("message ID is required")
 	}
-
 
 	// Check if message already exists
 	if _, exists := p.messages.Get(dlqMsg.ID); exists {

@@ -199,7 +199,12 @@ func TestTool_Execute_Branch(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.True(t, result.Success)
-	assert.Contains(t, result.Output, "main")
+	// Exact match, not Contains("main"): setupTestRepo pins the initial branch
+	// to "main" via `git symbolic-ref`, and GetCurrentBranch TrimSpaces the
+	// `git branch --show-current` output, so the full line is deterministic.
+	// Contains would also accept "Current branch: maintenance" — or any other
+	// branch whose name merely embeds "main" — which is not what this asserts.
+	assert.Equal(t, "Current branch: main", result.Output)
 }
 
 func TestTool_Execute_Branch_Create(t *testing.T) {

@@ -4,6 +4,9 @@ package multi_instance
 import (
 	"context"
 	"database/sql"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -14,6 +17,45 @@ import (
 	"dev.helix.agent/internal/clis"
 	"dev.helix.agent/internal/ensemble/synchronization"
 )
+
+// writeFakeAgentBinary creates a REAL executable file on disk and returns its
+// absolute path.
+//
+// It is injected through the production-supported `HELIX_AGENT_BIN_<TYPE>`
+// override (clis/instance_manager.go → resolveAgentBinary), so
+// clis.InstanceManager.IsAgentTypeAvailable still resolves the binary through
+// its REAL exec.LookPath + executable-bit check. The availability gate is
+// genuinely exercised, never bypassed — this is the same seam the clis
+// package's own D-11 regression guard uses
+// (clis/instance_manager_stub_pin_d12_test.go:TestD11_IsAgentTypeAvailable_RealLookPath).
+func writeFakeAgentBinary(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("SKIP-OK: #posix-fake-agent-binary — the injected agent binary is a POSIX " +
+			"shell script; the real exec.LookPath code path is identical across platforms.")
+	}
+	bin := filepath.Join(t.TempDir(), "fake-agent")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake agent binary: %v", err)
+	}
+	return bin
+}
+
+// injectAgentBinaries makes the CLI agent types exercised by the ensemble
+// coordinator tests resolvable on THIS host.
+//
+// clis.InstanceManager.CreateInstance refuses to create an instance for an
+// agent type whose CLI binary cannot actually be resolved — deliberate
+// anti-bluff behaviour (CONST-035) that replaced an older "allow all types"
+// allowlist. The ensemble tests therefore have to supply real, resolvable
+// binaries rather than relying on `aider` / `claude` being installed on the
+// host running the suite.
+func injectAgentBinaries(t *testing.T) {
+	t.Helper()
+	bin := writeFakeAgentBinary(t)
+	t.Setenv("HELIX_AGENT_BIN_AIDER", bin)       // clis.TypeAider == "aider"
+	t.Setenv("HELIX_AGENT_BIN_CLAUDE_CODE", bin) // clis.TypeClaudeCode == "claude_code"
+}
 
 func TestNewCoordinator(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -37,8 +79,15 @@ func TestNewCoordinator(t *testing.T) {
 
 func TestCoordinator_CreateSession(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
+	// CreateSession creates REAL clis agent instances, and
+	// clis.InstanceManager.CreateInstance gates on IsAgentTypeAvailable, which
+	// performs a real binary resolution for the agent type. Supply resolvable
+	// binaries through the documented override seam so the gate is satisfied
+	// honestly rather than requiring `aider`/`claude` on the host's PATH.
+	injectAgentBinaries(t)
+
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
@@ -72,17 +121,27 @@ func TestCoordinator_CreateSession(t *testing.T) {
 
 	session, err := coord.CreateSession(ctx, StrategyVoting, DefaultEnsembleConfig(), participants)
 	require.NoError(t, err)
-	assert.NotNil(t, session)
+	require.NotNil(t, session)
 	assert.Equal(t, StrategyVoting, session.Strategy)
 	assert.Equal(t, SessionStatusCreating, session.Status)
 	assert.NotEmpty(t, session.ID)
+
+	// The session must actually carry the participant instances it was asked
+	// for — a session object with the right metadata but no wired instances
+	// would be a CONST-035 PASS-bluff.
+	require.NotNil(t, session.Primary, "CreateSession must create the primary agent instance")
+	assert.Equal(t, clis.TypeAider, session.Primary.Type)
+	assert.NotEmpty(t, session.Primary.ID, "primary instance must carry a real instance ID")
+	require.Len(t, session.Critiques, 1, "CreateSession must create the requested critique instance")
+	assert.Equal(t, clis.TypeClaudeCode, session.Critiques[0].Type)
+	assert.NotEmpty(t, session.Critiques[0].ID, "critique instance must carry a real instance ID")
 
 	coord.Close()
 }
 
 func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -140,7 +199,7 @@ func TestCoordinator_ExecuteSession_Voting(t *testing.T) {
 
 func TestCoordinator_GetSession(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -174,7 +233,7 @@ func TestCoordinator_GetSession(t *testing.T) {
 
 func TestCoordinator_ListSessions(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -214,7 +273,7 @@ func TestCoordinator_ListSessions(t *testing.T) {
 
 func TestCoordinator_CancelSession(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -248,7 +307,7 @@ func TestCoordinator_CancelSession(t *testing.T) {
 
 func TestCoordinator_collectParticipants(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -280,7 +339,7 @@ func TestCoordinator_collectParticipants(t *testing.T) {
 
 func TestCoordinator_calculateAgreement(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -330,7 +389,7 @@ func TestCoordinator_calculateAgreement(t *testing.T) {
 
 func TestCoordinator_resultKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping coordinator test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping coordinator test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)

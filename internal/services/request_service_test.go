@@ -772,7 +772,12 @@ func TestProviderMetrics(t *testing.T) {
 	})
 
 	t.Run("GetSuccessRate with mixed results", func(t *testing.T) {
-		pm := func() *ProviderMetrics { pm := NewProviderMetrics(); pm.SuccessCount.Store(80); pm.FailureCount.Store(20); return pm }()
+		pm := func() *ProviderMetrics {
+			pm := NewProviderMetrics()
+			pm.SuccessCount.Store(80)
+			pm.FailureCount.Store(20)
+			return pm
+		}()
 		rate := pm.GetSuccessRate()
 		assert.Equal(t, 0.8, rate)
 	})
@@ -796,7 +801,7 @@ func TestProviderMetrics(t *testing.T) {
 		assert.Equal(t, int64(1), pm.SuccessCount.Load())
 		assert.Equal(t, int64(150), pm.TotalLatencyMs.Load())
 		assert.Equal(t, 1, pm.LatencyHistory.Len())
-		assert.Equal(t, int64(150), func() int64 {v,_:=pm.LatencyHistory.At(0); return v}())
+		assert.Equal(t, int64(150), func() int64 { v, _ := pm.LatencyHistory.At(0); return v }())
 	})
 
 	t.Run("RecordSuccess maintains rolling window", func(t *testing.T) {
@@ -804,7 +809,7 @@ func TestProviderMetrics(t *testing.T) {
 		pm.LatencyHistory.Replace(make([]int64, 100)) // pre-fill with 100 zero entries
 		pm.RecordSuccess(999)
 		assert.Equal(t, 100, pm.LatencyHistory.Len(), "should maintain 100 entries")
-		assert.Equal(t, int64(999), func() int64 {v,_:=pm.LatencyHistory.At(99); return v}(), "newest entry should be at end")
+		assert.Equal(t, int64(999), func() int64 { v, _ := pm.LatencyHistory.At(99); return v }(), "newest entry should be at end")
 	})
 
 	t.Run("RecordFailure updates metrics", func(t *testing.T) {

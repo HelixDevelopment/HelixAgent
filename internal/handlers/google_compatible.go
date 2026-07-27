@@ -51,8 +51,8 @@ type GoogleGenerateContentRequest struct {
 // GoogleContent is one turn in the conversation. Roles are "user" or
 // "model" (Google's vocabulary; OpenAI uses "user" and "assistant").
 type GoogleContent struct {
-	Role  string        `json:"role,omitempty"`
-	Parts []GooglePart  `json:"parts"`
+	Role  string       `json:"role,omitempty"`
+	Parts []GooglePart `json:"parts"`
 }
 
 // GooglePart is one piece of a content turn. Only text parts are
@@ -360,4 +360,3 @@ func sendGoogleError(c *gin.Context, status int, statusCode, message string) {
 		},
 	})
 }
-

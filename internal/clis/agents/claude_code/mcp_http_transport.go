@@ -6,9 +6,10 @@
 // ROUND-44 ADDENDUM — SSE AUTO-RECONNECT + Last-Event-ID RETRY
 // ------------------------------------------------------------
 // Round-41 deferred two SSE-spec optional behaviours:
-//   1. Automatic reconnect after the server disconnects.
-//   2. Replay-on-reconnect via the Last-Event-ID HTTP request
-//      header (the W3C / HTML5 EventSource recipe).
+//  1. Automatic reconnect after the server disconnects.
+//  2. Replay-on-reconnect via the Last-Event-ID HTTP request
+//     header (the W3C / HTML5 EventSource recipe).
+//
 // Round-44 (this file's current revision) wires both, with the
 // hard caps required by CONST-035:
 //   - Exponential backoff with ±25% jitter: 1s → 2s → 4s → 8s,
@@ -31,10 +32,10 @@
 //
 // PROTOCOL REFERENCES
 // -------------------
-//   * Model Context Protocol specification — protocol version
+//   - Model Context Protocol specification — protocol version
 //     "2024-11-05" — https://spec.modelcontextprotocol.io
-//   * JSON-RPC 2.0 specification — https://www.jsonrpc.org/specification
-//   * HTML5 Server-Sent Events ("EventSource") —
+//   - JSON-RPC 2.0 specification — https://www.jsonrpc.org/specification
+//   - HTML5 Server-Sent Events ("EventSource") —
 //     https://html.spec.whatwg.org/multipage/server-sent-events.html
 //
 // CANONICAL HTTP+SSE FLOW
@@ -47,17 +48,17 @@
 // channel — typically the same endpoint with Accept:
 // text/event-stream, or a sibling `/sse` endpoint.
 //
-//   1. On first CallTool the transport sends the canonical MCP
-//      initialize JSON-RPC request via POST and parses the
-//      response from the body.
-//   2. It then POSTs the notifications/initialized notification
-//      (no response is expected — the server returns 202 or 204).
-//   3. Subsequent CallTool invocations POST a tools/call request
-//      and decode the response.
-//   4. Optional: EnableSSE spawns a background goroutine that
-//      GETs the SSE endpoint with Accept: text/event-stream and
-//      forwards each `event: <type>\ndata: <json>\n\n` frame to
-//      a channel the caller can drain.
+//  1. On first CallTool the transport sends the canonical MCP
+//     initialize JSON-RPC request via POST and parses the
+//     response from the body.
+//  2. It then POSTs the notifications/initialized notification
+//     (no response is expected — the server returns 202 or 204).
+//  3. Subsequent CallTool invocations POST a tools/call request
+//     and decode the response.
+//  4. Optional: EnableSSE spawns a background goroutine that
+//     GETs the SSE endpoint with Accept: text/event-stream and
+//     forwards each `event: <type>\ndata: <json>\n\n` frame to
+//     a channel the caller can drain.
 //
 // ANTI-BLUFF POSTURE
 // ------------------

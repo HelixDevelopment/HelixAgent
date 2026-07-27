@@ -494,13 +494,20 @@ func TestLLMIntentClassifier_getClassificationProvider_NilRegistry(t *testing.T)
 	lic := NewLLMIntentClassifier(nil, logger)
 
 	provider, name, err := lic.getClassificationProvider()
-	assert.Error(t, err)
+	// require, not assert: err.Error() below nil-derefs (panicking the whole
+	// package binary and masking every later test) when the assertion fails.
+	require.Error(t, err)
 	assert.Nil(t, provider)
 	assert.Empty(t, name)
 	assert.Contains(t, err.Error(), "no provider registry")
 }
 
 func TestLLMIntentClassifier_getClassificationProvider_EmptyRegistry(t *testing.T) {
+	// The synthesized "helixllm" default provider is enabled by the ambient
+	// USE_HELIX_LLM env var, which would otherwise make this test's verdict
+	// depend on host state. Pin it so the registry is genuinely empty.
+	t.Setenv("USE_HELIX_LLM", "")
+
 	logger := newLLMClassifierTestLogger()
 	regCfg := &RegistryConfig{
 		DefaultTimeout: 10 * time.Second,
@@ -511,7 +518,9 @@ func TestLLMIntentClassifier_getClassificationProvider_EmptyRegistry(t *testing.
 	lic := NewLLMIntentClassifier(registry, logger)
 
 	provider, name, err := lic.getClassificationProvider()
-	assert.Error(t, err)
+	// require, not assert: see NilRegistry above — a nil err must fail this
+	// test cleanly, never panic the binary.
+	require.Error(t, err)
 	assert.Nil(t, provider)
 	assert.Empty(t, name)
 	assert.Contains(t, err.Error(), "no LLM providers available")

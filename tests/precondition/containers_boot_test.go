@@ -463,18 +463,25 @@ func detectMultipleServiceInstances(t *testing.T, rc *RemoteConfig) error {
 		"helixagent": 8100,
 	}
 
-	containerCmd, containerArgs := detectContainerRuntime()
-	if containerCmd != "" {
-		t.Log("Checking for duplicate container instances...")
+	// §11.4.174 / §11.4.201: ownership is established from the container runtime,
+	// never inferred from a port number. Containers belonging to other projects
+	// on a shared developer host are explicitly NOT ours and must not trip this
+	// gate.
+	//
+	// The previous implementation called findContainerInstances with the runtime's
+	// `compose` args, producing `docker compose ps --filter name=…` — not a
+	// container-listing command. It returned nothing, so this check silently never
+	// fired (a fail-open gate).
+	if running := listRunningContainers(); running != nil {
+		t.Log("Checking for duplicate container instances (this project only)...")
 
 		for svcName := range servicePorts {
-			instances := findContainerInstances(containerCmd, containerArgs, svcName)
-			if len(instances) > 1 {
-				return fmt.Errorf("MULTIPLE_INSTANCES: Found %d instances of '%s' service running locally: %v",
-					len(instances), svcName, instances)
+			ours := ourServiceInstances(running, svcName)
+			if err := portConflict(svcName, ours); err != nil {
+				return err
 			}
-			if len(instances) == 1 {
-				t.Logf("  ✓ Single instance of %s found: %s", svcName, instances[0])
+			if len(ours) == 1 {
+				t.Logf("  ✓ Single instance of %s owned by this project: %s", svcName, ours[0])
 			}
 		}
 	}
@@ -498,22 +505,13 @@ func detectMultipleServiceInstances(t *testing.T, rc *RemoteConfig) error {
 		t.Log("  ✓ No duplicate remote hosts configured")
 	}
 
-	t.Log("Checking for local port conflicts...")
-	for svcName, port := range servicePorts {
-		testPorts := []int{port, port + 10000}
-
-		var foundPorts []int
-		for _, p := range testPorts {
-			if checkTCPPort(p) {
-				foundPorts = append(foundPorts, p)
-			}
-		}
-
-		if len(foundPorts) > 1 {
-			return fmt.Errorf("PORT_CONFLICT: Service '%s' appears to be running on multiple ports: %v",
-				svcName, foundPorts)
-		}
-	}
+	// The former "local port conflicts" probe lived here. It dialled
+	// {port, port+10000} and declared PORT_CONFLICT whenever both answered — with
+	// no ownership check. Because this project's test stack publishes postgres on
+	// 15432 (= 5432 + 10000), ANY unrelated postgres on the standard port tripped
+	// a false failure on a shared host. Ownership is now established above from
+	// the container runtime (§11.4.174 / §11.4.201); a port number alone can never
+	// establish whose process it is.
 
 	t.Log("  ✓ No multiple service instance conflicts detected")
 	return nil
@@ -565,6 +563,65 @@ func findContainerInstances(cmd string, args []string, serviceName string) []str
 		}
 	}
 	return instances
+}
+
+// projectContainerPrefix identifies containers belonging to THIS project's test
+// stack (docker-compose.test.yml pins container_name: helixagent-<svc>).
+// Containers without this prefix belong to other projects sharing the developer
+// host and MUST NOT be attributed to us (§11.4.174).
+const projectContainerPrefix = "helixagent-"
+
+// listRunningContainers returns the names of every running container reported by
+// the host container runtime. It queries the runtime binary DIRECTLY — not its
+// `compose` subcommand, which does not accept `ps --filter name=` and silently
+// returns nothing, turning any check built on it into a fail-open gate
+// (§11.4.201).
+func listRunningContainers() []string {
+	for _, runtime := range []string{"podman", "docker"} {
+		if _, err := exec.LookPath(runtime); err != nil {
+			continue
+		}
+		output, err := exec.Command(runtime, "ps", "--format", "{{.Names}}").Output()
+		if err != nil {
+			continue
+		}
+		var names []string
+		for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+			if line != "" {
+				names = append(names, line)
+			}
+		}
+		return names
+	}
+	return nil
+}
+
+// ourServiceInstances returns the running containers that belong to THIS project
+// AND serve the named logical service. Foreign containers are filtered out
+// before any conclusion is drawn (§11.4.174).
+func ourServiceInstances(all []string, svcName string) []string {
+	var ours []string
+	for _, name := range all {
+		if !strings.HasPrefix(name, projectContainerPrefix) {
+			continue
+		}
+		if strings.Contains(strings.TrimPrefix(name, projectContainerPrefix), svcName) {
+			ours = append(ours, name)
+		}
+	}
+	return ours
+}
+
+// portConflict reports an error ONLY when this project runs more than one
+// instance of the same logical service. One instance is the expected state;
+// zero means the service is not up (reported by the required-services check, not
+// here); a foreign instance is never counted.
+func portConflict(svcName string, ourInstances []string) error {
+	if len(ourInstances) > 1 {
+		return fmt.Errorf("MULTIPLE_INSTANCES: this project runs %d instances of '%s': %v",
+			len(ourInstances), svcName, ourInstances)
+	}
+	return nil
 }
 
 type RemoteConfig struct {

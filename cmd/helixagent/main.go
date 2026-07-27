@@ -274,11 +274,32 @@ func DefaultContainerConfig() *ContainerConfig {
 	return &ContainerConfig{
 		ProjectDir:       projectDir,
 		RequiredServices: []string{"postgres", "redis", "cognee", "chromadb"},
-		CogneeURL:        "http://localhost:8000/",
-		ChromaDBURL:      "http://localhost:8001/api/v2/heartbeat",
+		CogneeURL:        dependencyURL("HELIXAGENT_PORT_COGNEE", "8000", "/"),
+		ChromaDBURL:      dependencyURL("HELIXAGENT_PORT_CHROMADB", "8001", "/api/v2/heartbeat"),
 		Executor:         &RealCommandExecutor{},
 		HealthChecker:    NewHTTPHealthChecker(10 * time.Second),
 	}
+}
+
+// dependencyURL builds the health-probe URL for an integration dependency,
+// resolving host and port from the environment rather than baking them in
+// (§11.4.111 — resolve by config, never by a hardcoded location).
+//
+// The compiled-in defaults previously pinned ChromaDB to :8001 and Cognee to
+// :8000 unconditionally, so on any host whose stack exposed those services on
+// different ports the mandatory startup dependency verification could never
+// pass and the binary refused to boot — with no configuration knob to correct
+// it. The port env-var names are the same ones declared in internal/ports.
+func dependencyURL(portEnv, defaultPort, path string) string {
+	host := os.Getenv("HELIXAGENT_DEP_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	port := os.Getenv(portEnv)
+	if port == "" {
+		port = defaultPort
+	}
+	return fmt.Sprintf("http://%s:%s%s", host, port, path)
 }
 
 // Global container config (can be overridden for testing)

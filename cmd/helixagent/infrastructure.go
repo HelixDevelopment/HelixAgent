@@ -191,11 +191,14 @@ func GetInfrastructureStatus(logger *logrus.Logger) *InfrastructureStatus {
 		status.ServiceCount = globalSvcOrchestrator.ServiceCount()
 	}
 
+	// Endpoints resolve from the environment (§11.4.111) so this status probe
+	// agrees with the boot-time dependency verification in main.go rather than
+	// reporting against a different, hardcoded pair of ports.
 	coreServices := map[string]string{
 		"postgres": "",
 		"redis":    "",
-		"chromadb": "http://localhost:8001/api/v2/heartbeat",
-		"cognee":   "http://localhost:8000/",
+		"chromadb": dependencyURL("HELIXAGENT_PORT_CHROMADB", "8001", "/api/v2/heartbeat"),
+		"cognee":   dependencyURL("HELIXAGENT_PORT_COGNEE", "8000", "/"),
 	}
 
 	for name, url := range coreServices {

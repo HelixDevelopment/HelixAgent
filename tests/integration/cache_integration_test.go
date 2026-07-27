@@ -37,7 +37,7 @@ func skipIfNoRedis(t *testing.T) {
 	}
 	conn, err := net.DialTimeout("tcp", host+":"+port, 2*time.Second)
 	if err != nil {
-		t.Skip("Redis not available -- start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Redis not available -- start with: make test-infra-start") // SKIP-OK: #legacy-untriaged
 	}
 	conn.Close()
 }
@@ -106,7 +106,7 @@ func TestIntegration_Cache_SetAndGet(t *testing.T) {
 
 func TestIntegration_Cache_TTLExpiry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping TTL expiry test in short mode (requires sleep)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping TTL expiry test in short mode (requires sleep)") // SKIP-OK: #short-mode
 	}
 
 	// Create L1-only cache with very short cleanup interval
@@ -197,7 +197,7 @@ func TestIntegration_Cache_InvalidatePrefix(t *testing.T) {
 
 func TestIntegration_Cache_ConcurrentReadWrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping concurrent cache test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping concurrent cache test in short mode") // SKIP-OK: #short-mode
 	}
 
 	tc := newL1OnlyCache(t)
@@ -493,7 +493,7 @@ func TestIntegration_Cache_Redis_SetAndGet(t *testing.T) {
 // TestIntegration_Cache_Redis_TTLExpiry tests TTL works through Redis
 func TestIntegration_Cache_Redis_TTLExpiry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping TTL expiry test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping TTL expiry test in short mode") // SKIP-OK: #short-mode
 	}
 
 	tc := newL2CacheWithRedis(t)

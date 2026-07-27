@@ -29,20 +29,20 @@ import (
 // Run with: go test -v ./tests/challenge -run TestAIDebateMaximalChallenge -timeout 5m
 func TestAIDebateMaximalChallenge(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping AI debate maximal challenge in short mode (requires live LLM providers, takes 5+ minutes)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping AI debate maximal challenge in short mode (requires live LLM providers, takes 5+ minutes)") // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	// Verify we have healthy providers
 	healthyProviders := getHealthyProviderCount(t, baseURL)
 	registeredProviders := len(getAvailableProviders(t, baseURL))
 	if healthyProviders == 0 && registeredProviders == 0 {
-		t.Skip("No providers available (none registered, none healthy)")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No providers available (none registered, none healthy)") // SKIP-OK: #legacy-untriaged
 	}
 	effectiveProviders := healthyProviders
 	if effectiveProviders == 0 {
@@ -351,7 +351,7 @@ func runCrossProviderDebateChallenge(t *testing.T, baseURL string, tracker *Chal
 	t.Logf("  Available providers: %v", providers)
 
 	if len(providers) < 2 {
-		t.Skip("Need at least 2 providers for cross-provider debate")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Need at least 2 providers for cross-provider debate") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -784,12 +784,12 @@ func reportChallengeResults(t *testing.T, tracker *ChallengeTracker) {
 // TestAIDebateStressChallenge tests the AI debate system under stress
 func TestAIDebateStressChallenge(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Log("Starting AI Debate Stress Challenge...")

@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	XiaomiAPIURL      = "https://api.xiaomimimo.com/v1/chat/completions"
-	XiaomiModelsURL   = "https://api.xiaomimimo.com/v1/models"
+	XiaomiAPIURL       = "https://api.xiaomimimo.com/v1/chat/completions"
+	XiaomiModelsURL    = "https://api.xiaomimimo.com/v1/models"
 	XiaomiDefaultModel = "mimo-v2.5-pro"
 )
 
@@ -39,27 +39,27 @@ type RetryConfig struct {
 }
 
 type XiaomiRequest struct {
-	Model       string            `json:"model"`
-	Messages    []XiaomiMessage   `json:"messages"`
-	Temperature float64           `json:"temperature,omitempty"`
-	MaxTokens   int               `json:"max_tokens,omitempty"`
-	TopP        float64           `json:"top_p,omitempty"`
-	Stream      bool              `json:"stream,omitempty"`
-	Stop        []string          `json:"stop,omitempty"`
-	Tools       []XiaomiTool      `json:"tools,omitempty"`
-	ToolChoice  interface{}       `json:"tool_choice,omitempty"`
+	Model       string          `json:"model"`
+	Messages    []XiaomiMessage `json:"messages"`
+	Temperature float64         `json:"temperature,omitempty"`
+	MaxTokens   int             `json:"max_tokens,omitempty"`
+	TopP        float64         `json:"top_p,omitempty"`
+	Stream      bool            `json:"stream,omitempty"`
+	Stop        []string        `json:"stop,omitempty"`
+	Tools       []XiaomiTool    `json:"tools,omitempty"`
+	ToolChoice  interface{}     `json:"tool_choice,omitempty"`
 }
 
 type XiaomiMessage struct {
-	Role       string             `json:"role"`
-	Content    string             `json:"content"`
-	ToolCalls  []XiaomiToolCall   `json:"tool_calls,omitempty"`
-	ToolCallID string             `json:"tool_call_id,omitempty"`
+	Role       string           `json:"role"`
+	Content    string           `json:"content"`
+	ToolCalls  []XiaomiToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string           `json:"tool_call_id,omitempty"`
 }
 
 type XiaomiTool struct {
-	Type     string           `json:"type"`
-	Function XiaomiToolFunc   `json:"function"`
+	Type     string         `json:"type"`
+	Function XiaomiToolFunc `json:"function"`
 }
 
 type XiaomiToolFunc struct {
@@ -69,9 +69,9 @@ type XiaomiToolFunc struct {
 }
 
 type XiaomiToolCall struct {
-	ID       string                   `json:"id"`
-	Type     string                   `json:"type"`
-	Function XiaomiToolCallFunction   `json:"function"`
+	ID       string                 `json:"id"`
+	Type     string                 `json:"type"`
+	Function XiaomiToolCallFunction `json:"function"`
 }
 
 type XiaomiToolCallFunction struct {
@@ -80,18 +80,18 @@ type XiaomiToolCallFunction struct {
 }
 
 type XiaomiResponse struct {
-	ID      string           `json:"id"`
-	Object  string           `json:"object"`
-	Created int64            `json:"created"`
-	Model   string           `json:"model"`
-	Choices []XiaomiChoice   `json:"choices"`
-	Usage   XiaomiUsage      `json:"usage"`
+	ID      string         `json:"id"`
+	Object  string         `json:"object"`
+	Created int64          `json:"created"`
+	Model   string         `json:"model"`
+	Choices []XiaomiChoice `json:"choices"`
+	Usage   XiaomiUsage    `json:"usage"`
 }
 
 type XiaomiChoice struct {
-	Index        int             `json:"index"`
-	Message      XiaomiMessage   `json:"message"`
-	FinishReason string          `json:"finish_reason"`
+	Index        int           `json:"index"`
+	Message      XiaomiMessage `json:"message"`
+	FinishReason string        `json:"finish_reason"`
 }
 
 type XiaomiUsage struct {
@@ -101,17 +101,17 @@ type XiaomiUsage struct {
 }
 
 type XiaomiStreamResponse struct {
-	ID      string                 `json:"id"`
-	Object  string                 `json:"object"`
-	Created int64                  `json:"created"`
-	Model   string                 `json:"model"`
-	Choices []XiaomiStreamChoice   `json:"choices"`
+	ID      string               `json:"id"`
+	Object  string               `json:"object"`
+	Created int64                `json:"created"`
+	Model   string               `json:"model"`
+	Choices []XiaomiStreamChoice `json:"choices"`
 }
 
 type XiaomiStreamChoice struct {
-	Index        int             `json:"index"`
-	Delta        XiaomiMessage   `json:"delta"`
-	FinishReason *string         `json:"finish_reason"`
+	Index        int           `json:"index"`
+	Delta        XiaomiMessage `json:"delta"`
+	FinishReason *string       `json:"finish_reason"`
 }
 
 // DefaultRetryConfig returns sensible defaults for Xiaomi API retry behavior

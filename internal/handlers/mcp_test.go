@@ -401,7 +401,7 @@ func TestMCPHandler_GetProviderTools(t *testing.T) {
 	// we'll skip this test as it causes a panic when accessing nil registry
 	// The function getProviderTools is private and only used internally
 	// We'll test the public API instead
-	t.Skip("Skipping test of private method getProviderTools due to nil registry access")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping test of private method getProviderTools due to nil registry access") // SKIP-OK: #legacy-untriaged
 }
 
 // TestMCPHandler_MCPToolsCall_WithUnifiedNamespace tests tool call with unified namespace

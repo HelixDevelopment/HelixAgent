@@ -21,7 +21,7 @@ import (
 // bus drains cleanly after close.
 func TestEventBus_HighThroughputPublish_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -122,7 +122,7 @@ func TestEventBus_HighThroughputPublish_Stress(t *testing.T) {
 // not cause data races or panics.
 func TestEventBus_ConcurrentSubscribeUnsubscribe_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -216,7 +216,7 @@ func TestEventBus_ConcurrentSubscribeUnsubscribe_Stress(t *testing.T) {
 // with no cross-contamination under concurrent load.
 func TestEventBus_MultipleEventTypes_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -306,7 +306,7 @@ func TestEventBus_MultipleEventTypes_Stress(t *testing.T) {
 // count returns to near-baseline after all buses are closed.
 func TestEventBus_NoGoroutineLeaks_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

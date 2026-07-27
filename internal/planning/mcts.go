@@ -48,7 +48,7 @@ type MCTSNode struct {
 
 	// Children and Metadata are concurrent-safe containers; internal code
 	// uses Append / Range / Snapshot instead of direct slice/map ops.
-	Children *safe.Slice[*MCTSNode]      `json:"-"`
+	Children *safe.Slice[*MCTSNode]           `json:"-"`
 	Metadata *safe.Store[string, interface{}] `json:"-"`
 }
 

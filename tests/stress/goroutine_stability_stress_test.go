@@ -22,7 +22,7 @@ import (
 // Goroutine count must return to within +10 of baseline after GC.
 func TestStress_GoroutineStability_HandlerLifecycle(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -69,7 +69,7 @@ func TestStress_GoroutineStability_HandlerLifecycle(t *testing.T) {
 // processing initialisation) does not produce goroutine leaks.
 func TestStress_GoroutineStability_ConcurrentHandlerCreation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -149,7 +149,7 @@ func TestStress_GoroutineStability_ConcurrentHandlerCreation(t *testing.T) {
 // or test isolation patterns) does not leave goroutines behind.
 func TestStress_GoroutineStability_RouterRecreation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -204,7 +204,7 @@ func TestStress_GoroutineStability_RouterRecreation(t *testing.T) {
 // accumulation over time.
 func TestStress_GoroutineStability_MultipleHandlerTypes(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

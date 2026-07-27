@@ -13,7 +13,7 @@ import (
 // (ProviderRegistry, DB, etc.) so we replicate its exact locking pattern directly.
 func TestDebateService_IntentCacheConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Replicate the DebateService intentCache structure exactly.
@@ -71,7 +71,7 @@ func TestDebateService_IntentCacheConcurrentAccess(t *testing.T) {
 // concurrent writes when the key space is large (many unique keys).
 func TestDebateService_ConcurrentMapGrow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	type entry struct{ value int }

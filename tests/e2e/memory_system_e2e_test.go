@@ -17,11 +17,11 @@ import (
 func skipIfNoServerMemory(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping memory E2E test in short mode (requires live server)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping memory E2E test in short mode (requires live server)") // SKIP-OK: #short-mode
 	}
 	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
-		t.Skip("HelixAgent server not running on :8100")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running on :8100") // SKIP-OK: #legacy-untriaged
 	}
 	conn.Close()
 }
@@ -70,7 +70,7 @@ func skipIfMemoryEndpointUnavailable(t *testing.T) {
 	defer resp.Body.Close()
 	// If the memory endpoint is not mounted we get 404.
 	if resp.StatusCode == http.StatusNotFound {
-		t.Skip("Memory endpoint /v1/memory not available on this server")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Memory endpoint /v1/memory not available on this server") // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -93,7 +93,7 @@ func TestE2E_Memory_StoreAndRetrieve(t *testing.T) {
 	require.NoError(t, err)
 
 	if storeResp.StatusCode == http.StatusNotFound {
-		t.Skip("Memory store endpoint not mounted")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Memory store endpoint not mounted") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Accept 200 or 201 for store operations.
@@ -176,7 +176,7 @@ func TestE2E_Memory_SemanticSearch(t *testing.T) {
 		io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Memory store endpoint not available")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Memory store endpoint not available") // SKIP-OK: #legacy-untriaged
 		}
 	}
 
@@ -238,7 +238,7 @@ func TestE2E_Memory_EntityGraph_Creation(t *testing.T) {
 		io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Memory store endpoint not available")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Memory store endpoint not available") // SKIP-OK: #legacy-untriaged
 		}
 	}
 
@@ -290,7 +290,7 @@ func TestE2E_Memory_Consolidation(t *testing.T) {
 		io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Memory store endpoint not available")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Memory store endpoint not available") // SKIP-OK: #legacy-untriaged
 		}
 	}
 
@@ -340,7 +340,7 @@ func TestE2E_Memory_ScopeIsolation(t *testing.T) {
 	io.ReadAll(respA.Body)
 	respA.Body.Close()
 	if respA.StatusCode == http.StatusNotFound {
-		t.Skip("Memory store endpoint not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Memory store endpoint not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Store a memory for user B.

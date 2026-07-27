@@ -64,7 +64,7 @@ func parseSkipFile(absPath, relPath string) ([]SkipEntry, error) {
 
 func extractSkipReason(line string) string {
 	trimmed := strings.TrimSpace(line)
-	for _, prefix := range []string{`t.Skip("`, `t.Skipf("`} {  // SKIP-OK: #legacy-untriaged
+	for _, prefix := range []string{`t.Skip("`, `t.Skipf("`} { // SKIP-OK: #legacy-untriaged
 		idx := strings.Index(trimmed, prefix)
 		if idx < 0 {
 			continue

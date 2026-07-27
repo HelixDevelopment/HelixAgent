@@ -62,11 +62,11 @@ type Challenge struct {
 
 // TestResult holds challenge results
 type TestResult struct {
-	Success   bool
-	Latency   time.Duration
-	Tokens    int
-	Error     error
-	Details   string
+	Success bool
+	Latency time.Duration
+	Tokens  int
+	Error   error
+	Details string
 }
 
 // ProviderChallengeRunner runs challenges against providers
@@ -78,11 +78,11 @@ type ProviderChallengeRunner struct {
 
 // ProviderConfig for challenge tests
 type ProviderConfig struct {
-	Name         string
-	EnvVar       string
-	Type         string
-	Model        string
-	SupportsTools bool
+	Name           string
+	EnvVar         string
+	Type           string
+	Model          string
+	SupportsTools  bool
 	SupportsVision bool
 }
 
@@ -147,10 +147,10 @@ func (r *ProviderChallengeRunner) challengeShortRequest(ctx context.Context) Tes
 
 func (r *ProviderChallengeRunner) challengeBigRequest(ctx context.Context, difficulty DifficultyLevel) TestResult {
 	tokenCounts := map[DifficultyLevel]int{
-		DifficultyEasy:     1000,
-		DifficultyMedium:   10000,
-		DifficultyHard:     50000,
-		DifficultyExtreme:  100000,
+		DifficultyEasy:       1000,
+		DifficultyMedium:     10000,
+		DifficultyHard:       50000,
+		DifficultyExtreme:    100000,
 		DifficultyImpossible: 200000,
 	}
 
@@ -432,7 +432,7 @@ func TestChallenges_ShortRequest(t *testing.T) {
 // TestChallenges_BigRequest runs big request challenges
 func TestChallenges_BigRequest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping big request in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping big request in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger, _ := zap.NewDevelopment()
@@ -472,7 +472,7 @@ func TestChallenges_BigRequest(t *testing.T) {
 // TestChallenges_AllCategories runs all challenge categories
 func TestChallenges_AllCategories(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping full challenge suite in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping full challenge suite in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger, _ := zap.NewDevelopment()

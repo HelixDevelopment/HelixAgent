@@ -14,7 +14,7 @@ import (
 
 func TestOptimization_E2E_FullWorkflow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping e2e test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping e2e test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Start all mock servers
@@ -124,7 +124,7 @@ func TestOptimization_E2E_FullWorkflow(t *testing.T) {
 
 func TestOptimization_E2E_ServiceRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping e2e test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping e2e test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -170,7 +170,7 @@ func TestOptimization_E2E_ServiceRecovery(t *testing.T) {
 
 func TestOptimization_E2E_ParallelRequests(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping e2e test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping e2e test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -231,7 +231,7 @@ func TestOptimization_E2E_ParallelRequests(t *testing.T) {
 
 func TestOptimization_E2E_ConfigDynamicUpdate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping e2e test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping e2e test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := optimization.DefaultConfig()

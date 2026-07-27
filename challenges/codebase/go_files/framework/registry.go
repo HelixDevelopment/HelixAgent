@@ -14,8 +14,8 @@ var DefaultRegistry = NewRegistry()
 
 // Registry implements ChallengeRegistry.
 type Registry struct {
-	mu         sync.RWMutex
-	challenges map[ChallengeID]Challenge
+	mu          sync.RWMutex
+	challenges  map[ChallengeID]Challenge
 	definitions map[ChallengeID]*ChallengeDefinition
 }
 
@@ -195,7 +195,7 @@ func (r *Registry) LoadDefinitionsFromFile(path string) error {
 	}
 
 	var bank struct {
-		Version    string               `json:"version"`
+		Version    string                `json:"version"`
 		Challenges []ChallengeDefinition `json:"challenges"`
 	}
 

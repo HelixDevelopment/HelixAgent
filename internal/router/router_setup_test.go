@@ -28,7 +28,7 @@ func skipIfNoDatabase(t *testing.T) {
 	// Check for database environment variables
 	dbHost := os.Getenv("DB_HOST")
 	if dbHost == "" {
-		t.Skip("Skipping integration test: DB_HOST not set")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: DB_HOST not set") // SKIP-OK: #integration-mode-only
 	}
 }
 

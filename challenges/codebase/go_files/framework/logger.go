@@ -39,14 +39,14 @@ func (l LogLevel) String() string {
 
 // JSONLogger implements Logger with JSON Lines output.
 type JSONLogger struct {
-	mu            sync.Mutex
-	output        io.Writer
-	apiRequestLog io.Writer
+	mu             sync.Mutex
+	output         io.Writer
+	apiRequestLog  io.Writer
 	apiResponseLog io.Writer
-	level         LogLevel
-	fields        map[string]any
-	verbose       bool
-	closed        bool
+	level          LogLevel
+	fields         map[string]any
+	verbose        bool
+	closed         bool
 }
 
 // LogEntry represents a single log entry.
@@ -459,14 +459,14 @@ func (c *ConsoleLogger) Close() error {
 // NullLogger discards all log output.
 type NullLogger struct{}
 
-func (NullLogger) Info(msg string, fields ...Field)           {}
-func (NullLogger) Warn(msg string, fields ...Field)           {}
-func (NullLogger) Error(msg string, fields ...Field)          {}
-func (NullLogger) Debug(msg string, fields ...Field)          {}
-func (NullLogger) WithFields(fields ...Field) Logger          { return NullLogger{} }
-func (NullLogger) LogAPIRequest(request APIRequestLog)        {}
-func (NullLogger) LogAPIResponse(response APIResponseLog)     {}
-func (NullLogger) Close() error                               { return nil }
+func (NullLogger) Info(msg string, fields ...Field)       {}
+func (NullLogger) Warn(msg string, fields ...Field)       {}
+func (NullLogger) Error(msg string, fields ...Field)      {}
+func (NullLogger) Debug(msg string, fields ...Field)      {}
+func (NullLogger) WithFields(fields ...Field) Logger      { return NullLogger{} }
+func (NullLogger) LogAPIRequest(request APIRequestLog)    {}
+func (NullLogger) LogAPIResponse(response APIResponseLog) {}
+func (NullLogger) Close() error                           { return nil }
 
 // SetupLogging creates a logging configuration for a challenge.
 func SetupLogging(logsDir string, verbose bool) (*JSONLogger, error) {

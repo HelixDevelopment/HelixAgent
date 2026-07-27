@@ -27,9 +27,9 @@ type MainChallengeConfig struct {
 	ResultsDir string `json:"results_dir"`
 
 	// Debate group configuration
-	DebateGroupSize       int `json:"debate_group_size"`
-	FallbacksPerMember    int `json:"fallbacks_per_member"`
-	MinimumModelScore     float64 `json:"minimum_model_score"`
+	DebateGroupSize    int     `json:"debate_group_size"`
+	FallbacksPerMember int     `json:"fallbacks_per_member"`
+	MinimumModelScore  float64 `json:"minimum_model_score"`
 
 	// Timeouts
 	ProviderVerificationTimeout time.Duration `json:"provider_verification_timeout"`
@@ -58,36 +58,36 @@ func DefaultMainChallengeConfig() *MainChallengeConfig {
 
 // ProviderResult holds verification results for a single provider
 type ProviderResult struct {
-	Name          string    `json:"name"`
-	Enabled       bool      `json:"enabled"`
-	APIKeySet     bool      `json:"api_key_set"`
-	Verified      bool      `json:"verified"`
-	Models        []string  `json:"models"`
-	ModelCount    int       `json:"model_count"`
-	ResponseTime  time.Duration `json:"response_time_ms"`
-	ErrorMessage  string    `json:"error_message,omitempty"`
-	VerifiedAt    time.Time `json:"verified_at"`
+	Name         string        `json:"name"`
+	Enabled      bool          `json:"enabled"`
+	APIKeySet    bool          `json:"api_key_set"`
+	Verified     bool          `json:"verified"`
+	Models       []string      `json:"models"`
+	ModelCount   int           `json:"model_count"`
+	ResponseTime time.Duration `json:"response_time_ms"`
+	ErrorMessage string        `json:"error_message,omitempty"`
+	VerifiedAt   time.Time     `json:"verified_at"`
 }
 
 // ModelScore holds scoring information for an LLM model
 type ModelScore struct {
-	Provider        string             `json:"provider"`
-	ModelID         string             `json:"model_id"`
-	DisplayName     string             `json:"display_name"`
-	TotalScore      float64            `json:"total_score"`
-	ScoreBreakdown  map[string]float64 `json:"score_breakdown"`
-	Capabilities    []string           `json:"capabilities"`
-	Verified        bool               `json:"verified"`
-	ResponseTimeMS  int64              `json:"response_time_ms"`
-	IsFree          bool               `json:"is_free"`
+	Provider       string             `json:"provider"`
+	ModelID        string             `json:"model_id"`
+	DisplayName    string             `json:"display_name"`
+	TotalScore     float64            `json:"total_score"`
+	ScoreBreakdown map[string]float64 `json:"score_breakdown"`
+	Capabilities   []string           `json:"capabilities"`
+	Verified       bool               `json:"verified"`
+	ResponseTimeMS int64              `json:"response_time_ms"`
+	IsFree         bool               `json:"is_free"`
 }
 
 // DebateGroupMember represents a member of the AI debate group
 type DebateGroupMember struct {
-	Position   int          `json:"position"`
-	Role       string       `json:"role"` // "primary" or "fallback_N"
-	Model      ModelScore   `json:"model"`
-	Fallbacks  []ModelScore `json:"fallbacks,omitempty"`
+	Position  int          `json:"position"`
+	Role      string       `json:"role"` // "primary" or "fallback_N"
+	Model     ModelScore   `json:"model"`
+	Fallbacks []ModelScore `json:"fallbacks,omitempty"`
 }
 
 // DebateGroup represents the complete AI debate group configuration
@@ -111,27 +111,27 @@ type DebateConfiguration struct {
 
 // MainChallengeResult holds the complete result of the Main challenge
 type MainChallengeResult struct {
-	ChallengeID     string              `json:"challenge_id"`
-	ChallengeName   string              `json:"challenge_name"`
-	StartTime       time.Time           `json:"start_time"`
-	EndTime         time.Time           `json:"end_time"`
-	Duration        time.Duration       `json:"duration"`
-	Status          string              `json:"status"` // "passed", "failed", "partial"
+	ChallengeID   string        `json:"challenge_id"`
+	ChallengeName string        `json:"challenge_name"`
+	StartTime     time.Time     `json:"start_time"`
+	EndTime       time.Time     `json:"end_time"`
+	Duration      time.Duration `json:"duration"`
+	Status        string        `json:"status"` // "passed", "failed", "partial"
 
 	// Phase results
 	ProviderVerification struct {
-		ProvidersTotal    int               `json:"providers_total"`
-		ProvidersVerified int               `json:"providers_verified"`
-		ProvidersFailed   int               `json:"providers_failed"`
-		Providers         []ProviderResult  `json:"providers"`
+		ProvidersTotal    int              `json:"providers_total"`
+		ProvidersVerified int              `json:"providers_verified"`
+		ProvidersFailed   int              `json:"providers_failed"`
+		Providers         []ProviderResult `json:"providers"`
 	} `json:"provider_verification"`
 
 	ModelBenchmark struct {
-		ModelsTotal      int          `json:"models_total"`
-		ModelsVerified   int          `json:"models_verified"`
-		ModelsFailed     int          `json:"models_failed"`
-		TopModels        []ModelScore `json:"top_models"`
-		AllScores        []ModelScore `json:"all_scores"`
+		ModelsTotal    int          `json:"models_total"`
+		ModelsVerified int          `json:"models_verified"`
+		ModelsFailed   int          `json:"models_failed"`
+		TopModels      []ModelScore `json:"top_models"`
+		AllScores      []ModelScore `json:"all_scores"`
 	} `json:"model_benchmark"`
 
 	DebateGroupFormation struct {
@@ -177,19 +177,19 @@ type OpenCodeFeatures struct {
 
 // MCPConfig represents MCP (Model Context Protocol) configuration
 type MCPConfig struct {
-	Enabled bool                   `json:"enabled"`
+	Enabled bool                     `json:"enabled"`
 	Servers []map[string]interface{} `json:"servers,omitempty"`
 }
 
 // ACPConfig represents ACP (Agent Context Protocol) configuration
 type ACPConfig struct {
-	Enabled bool                   `json:"enabled"`
+	Enabled bool                     `json:"enabled"`
 	Servers []map[string]interface{} `json:"servers,omitempty"`
 }
 
 // LSPConfig represents LSP (Language Server Protocol) configuration
 type LSPConfig struct {
-	Enabled bool                   `json:"enabled"`
+	Enabled bool                     `json:"enabled"`
 	Servers []map[string]interface{} `json:"servers,omitempty"`
 }
 
@@ -201,9 +201,9 @@ type EmbeddingsConfig struct {
 
 // OpenCodeDebateGroup represents debate group in OpenCode config
 type OpenCodeDebateGroup struct {
-	Members           int    `json:"members"`
-	FallbacksPerMember int   `json:"fallbacks_per_member"`
-	Strategy          string `json:"strategy"`
+	Members            int    `json:"members"`
+	FallbacksPerMember int    `json:"fallbacks_per_member"`
+	Strategy           string `json:"strategy"`
 }
 
 // MainChallenge implements the main challenge logic

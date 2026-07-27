@@ -26,10 +26,10 @@ const (
 
 // TOON delimiters
 const (
-	toonFieldSep  = '|'  // Field separator
-	toonValueSep  = ';'  // Value separator
-	toonPairSep   = ':'  // Key-value separator
-	toonArrayOpen = '['  // Array open
+	toonFieldSep   = '|' // Field separator
+	toonValueSep   = ';' // Value separator
+	toonPairSep    = ':' // Key-value separator
+	toonArrayOpen  = '[' // Array open
 	toonArrayClose = ']' // Array close
 )
 
@@ -425,10 +425,10 @@ func splitTOON(s string, sep byte) []string {
 
 // TOONStats provides compression statistics
 type TOONStats struct {
-	OriginalSize   int
-	CompressedSize int
+	OriginalSize     int
+	CompressedSize   int
 	CompressionRatio float64
-	TokenSavings   float64 // Estimated token savings (40-70%)
+	TokenSavings     float64 // Estimated token savings (40-70%)
 }
 
 // GetTOONStats calculates compression statistics

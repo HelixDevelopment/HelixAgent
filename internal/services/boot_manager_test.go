@@ -38,7 +38,7 @@ func TestNewBootManager(t *testing.T) {
 
 func TestBootAll_RemoteSkipsCompose(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping boot manager test in short mode (requires network health checks)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping boot manager test in short mode (requires network health checks)") // SKIP-OK: #short-mode
 	}
 	cfg := newTestServicesConfig()
 	logger := newTestLogger()
@@ -82,7 +82,7 @@ func TestBootAll_RemoteSkipsCompose(t *testing.T) {
 
 func TestBootAll_OptionalFailureContinues(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping boot manager test in short mode (requires network health checks)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping boot manager test in short mode (requires network health checks)") // SKIP-OK: #short-mode
 	}
 	cfg := newTestServicesConfig()
 	logger := newTestLogger()
@@ -127,7 +127,7 @@ func TestBootAll_OptionalFailureContinues(t *testing.T) {
 
 func TestBootAll_RequiredFailureAbortsBoot(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping boot manager test in short mode (requires network health checks)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping boot manager test in short mode (requires network health checks)") // SKIP-OK: #short-mode
 	}
 	cfg := newTestServicesConfig()
 	logger := newTestLogger()
@@ -163,7 +163,7 @@ func TestBootAll_RequiredFailureAbortsBoot(t *testing.T) {
 
 func TestBootAll_SkippedDisabledServices(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping boot manager test in short mode (requires network health checks)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping boot manager test in short mode (requires network health checks)") // SKIP-OK: #short-mode
 	}
 	cfg := newTestServicesConfig()
 	logger := newTestLogger()

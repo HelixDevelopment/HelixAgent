@@ -85,7 +85,7 @@ func TestBashTool_ToMCPTool(t *testing.T) {
 
 func TestRegistry_Execute(t *testing.T) {
 	t.Parallel()
-	t.Skip("Requires argc tool to be installed")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Requires argc tool to be installed") // SKIP-OK: #legacy-untriaged
 	// Create temp directory with executable test tool
 	tmpDir := t.TempDir()
 

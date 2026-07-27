@@ -65,7 +65,7 @@ func TestZenCLIProvider_GetProviderType(t *testing.T) {
 func TestZenCLIProvider_GetCapabilities(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping CLI availability test in short mode") // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("grok-code")
@@ -160,7 +160,7 @@ func TestZenCLIProvider_ValidateConfig(t *testing.T) {
 func TestZenCLIProvider_HealthCheck(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping CLI availability test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping CLI availability test in short mode") // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("grok-code")
@@ -207,7 +207,7 @@ func TestZenCLIProvider_CompleteStream_NotAvailable(t *testing.T) {
 func TestZenCLIProvider_GetAvailableModels(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping model discovery test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping model discovery test in short mode") // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("grok-code")
@@ -222,7 +222,7 @@ func TestZenCLIProvider_GetAvailableModels(t *testing.T) {
 func TestZenCLIProvider_IsModelAvailable(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping model discovery test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping model discovery test in short mode") // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("grok-code")
@@ -251,7 +251,7 @@ func TestZenCLIProvider_IsModelAvailable(t *testing.T) {
 func TestZenCLIProvider_GetBestAvailableModel(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping model discovery test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping model discovery test in short mode") // SKIP-OK: #short-mode
 	}
 
 	provider := NewZenCLIProviderWithModel("")
@@ -332,7 +332,7 @@ func TestParseZenModelsOutput(t *testing.T) {
 func TestDiscoverZenModels(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping model discovery test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping model discovery test in short mode") // SKIP-OK: #short-mode
 	}
 
 	models, err := DiscoverZenModels()
@@ -344,11 +344,11 @@ func TestDiscoverZenModels(t *testing.T) {
 func TestZenCLIProvider_Integration(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping model discovery test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping model discovery test in short mode") // SKIP-OK: #short-mode
 	}
 
 	if !IsOpenCodeInstalled() {
-		t.Skip("Skipping integration test - OpenCode CLI not installed")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test - OpenCode CLI not installed") // SKIP-OK: #integration-mode-only
 	}
 
 	provider := NewZenCLIProviderWithModel("grok-code")

@@ -19,7 +19,7 @@ import (
 // uses internal synchronisation — this test verifies no races surface.
 func TestInMemoryTaskQueue_ConcurrentEnqueue(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()
@@ -57,7 +57,7 @@ func TestInMemoryTaskQueue_ConcurrentEnqueue(t *testing.T) {
 // races inside the extracted module's dequeue implementation.
 func TestInMemoryTaskQueue_ConcurrentEnqueueAndCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()

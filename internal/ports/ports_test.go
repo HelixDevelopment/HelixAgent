@@ -148,10 +148,10 @@ func TestGet_InvalidEnvFallsBackToDefault(t *testing.T) {
 	setPrefix(t, "8")
 
 	cases := map[string]int{
-		"not-a-number":  8100,
-		"0":             8100, // reject 0
-		"65536":         8100, // out of 16-bit range
-		"-1":            8100,
+		"not-a-number": 8100,
+		"0":            8100, // reject 0
+		"65536":        8100, // out of 16-bit range
+		"-1":           8100,
 	}
 	for raw, want := range cases {
 		raw, want := raw, want
@@ -278,10 +278,10 @@ func TestOffsets_FitIn16BitAtBothPrefixes(t *testing.T) {
 // core ≤ 199, MCP = 200–281, observability = 300–312.
 func TestOffsets_WithinExpectedBands(t *testing.T) {
 	coreServices := map[Service]struct{}{
-		HelixAgentHTTP:  {}, PostgresPrimary: {}, RedisDefault: {},
-		MCPBridge:       {}, MCPRouterAlt: {}, HelixLLM: {},
-		MockLLM:         {}, PostgresReplica: {}, PostgresExtra: {},
-		PostgresTest:    {}, RedisMCP: {},
+		HelixAgentHTTP: {}, PostgresPrimary: {}, RedisDefault: {},
+		MCPBridge: {}, MCPRouterAlt: {}, HelixLLM: {},
+		MockLLM: {}, PostgresReplica: {}, PostgresExtra: {},
+		PostgresTest: {}, RedisMCP: {},
 		// HelixAgentLiveness — early-bind liveness probe (offset 111),
 		// added 2026-04-25 alongside the verification-window /health
 		// fix. Belongs in the core band, not MCP.

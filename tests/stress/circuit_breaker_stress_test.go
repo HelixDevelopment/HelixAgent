@@ -17,7 +17,7 @@ import (
 // TestCircuitBreakerCascadeStress tests circuit breaker behavior under cascading failures
 func TestCircuitBreakerCascadeStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("ConcurrentTrips", func(t *testing.T) {

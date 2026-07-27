@@ -21,7 +21,7 @@ import (
 // panics, and the pool remains stable after shutdown.
 func TestWorkerPoolOverload_10xCapacity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

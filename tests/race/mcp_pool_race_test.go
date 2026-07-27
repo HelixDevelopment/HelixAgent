@@ -18,7 +18,7 @@ import (
 // this test drives concurrent writes to the connections map.
 func TestMCPConnectionPool_ConcurrentRegisterServer(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()
@@ -53,7 +53,7 @@ func TestMCPConnectionPool_ConcurrentRegisterServer(t *testing.T) {
 // registration and status reads to exercise the RWMutex read/write split.
 func TestMCPConnectionPool_ConcurrentRegisterAndGetStatus(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()

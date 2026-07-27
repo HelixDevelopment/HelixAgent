@@ -53,11 +53,11 @@ type DebateGroup struct {
 
 // FormationConfig holds configuration for debate group formation.
 type FormationConfig struct {
-	PrimaryCount        int               `json:"primary_count"`
-	FallbacksPerPrimary int               `json:"fallbacks_per_primary"`
-	MinimumScore        float64           `json:"minimum_score"`
-	PreferDiversity     bool              `json:"prefer_diversity"`
-	SelectionWeights    SelectionWeights  `json:"selection_weights"`
+	PrimaryCount        int              `json:"primary_count"`
+	FallbacksPerPrimary int              `json:"fallbacks_per_primary"`
+	MinimumScore        float64          `json:"minimum_score"`
+	PreferDiversity     bool             `json:"prefer_diversity"`
+	SelectionWeights    SelectionWeights `json:"selection_weights"`
 }
 
 // SelectionWeights defines weights for model selection criteria.
@@ -90,13 +90,13 @@ type AssertionResult struct {
 
 // FormationMetrics holds metrics about the formation process.
 type FormationMetrics struct {
-	ModelsConsidered    int      `json:"models_considered"`
-	ModelsSelected      int      `json:"models_selected"`
-	ProvidersUsed       int      `json:"providers_used"`
-	AveragePrimaryScore float64  `json:"average_primary_score"`
+	ModelsConsidered     int     `json:"models_considered"`
+	ModelsSelected       int     `json:"models_selected"`
+	ProvidersUsed        int     `json:"providers_used"`
+	AveragePrimaryScore  float64 `json:"average_primary_score"`
 	AverageFallbackScore float64 `json:"average_fallback_score"`
-	CapabilityCoverage  float64  `json:"capability_coverage"`
-	ProviderDiversity   float64  `json:"provider_diversity"`
+	CapabilityCoverage   float64 `json:"capability_coverage"`
+	ProviderDiversity    float64 `json:"provider_diversity"`
 }
 
 // Default configuration

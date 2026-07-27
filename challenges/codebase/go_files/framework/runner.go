@@ -170,7 +170,7 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 
 	// Log start
 	r.logEvent("challenge_started", map[string]any{
-		"challenge_id": challenge.ID(),
+		"challenge_id":   challenge.ID(),
 		"challenge_name": challenge.Name(),
 	})
 
@@ -182,7 +182,7 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 		result.Duration = result.EndTime.Sub(result.StartTime)
 		r.logEvent("challenge_error", map[string]any{
 			"challenge_id": challenge.ID(),
-			"error": result.Error,
+			"error":        result.Error,
 		})
 		return result, nil
 	}
@@ -195,7 +195,7 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 		result.Duration = result.EndTime.Sub(result.StartTime)
 		r.logEvent("challenge_skipped", map[string]any{
 			"challenge_id": challenge.ID(),
-			"reason": result.Error,
+			"reason":       result.Error,
 		})
 		return result, nil
 	}
@@ -218,7 +218,7 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 		result.EndTime = time.Now()
 		result.Duration = result.EndTime.Sub(result.StartTime)
 		r.logEvent("challenge_timeout", map[string]any{
-			"challenge_id": challenge.ID(),
+			"challenge_id":    challenge.ID(),
 			"timeout_seconds": timeout.Seconds(),
 		})
 		_ = challenge.Cleanup(ctx)
@@ -233,7 +233,7 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 		result.Duration = result.EndTime.Sub(result.StartTime)
 		r.logEvent("challenge_error", map[string]any{
 			"challenge_id": challenge.ID(),
-			"error": result.Error,
+			"error":        result.Error,
 		})
 		_ = challenge.Cleanup(ctx)
 		return result, nil
@@ -260,8 +260,8 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 
 	// Log completion
 	r.logEvent("challenge_completed", map[string]any{
-		"challenge_id": challenge.ID(),
-		"status": result.Status,
+		"challenge_id":     challenge.ID(),
+		"status":           result.Status,
 		"duration_seconds": result.Duration.Seconds(),
 	})
 
@@ -269,7 +269,7 @@ func (r *Runner) executeChallenge(ctx context.Context, challenge Challenge, conf
 	if err := challenge.Cleanup(ctx); err != nil {
 		r.logEvent("cleanup_warning", map[string]any{
 			"challenge_id": challenge.ID(),
-			"warning": err.Error(),
+			"warning":      err.Error(),
 		})
 	}
 

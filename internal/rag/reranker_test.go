@@ -95,7 +95,7 @@ func TestCrossEncoderReranker_Rerank(t *testing.T) {
 	// These test the API integration which requires network stability
 	t.Run("with API endpoint", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("Skipping HTTP-based test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("Skipping HTTP-based test in short mode") // SKIP-OK: #short-mode
 		}
 
 		// Test with no API endpoint (will use fallback)

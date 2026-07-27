@@ -432,7 +432,7 @@ func TestPatternBasedScanner_ScanFile(t *testing.T) {
 		t.Parallel()
 		tempFile, err := createTempTestFile("password = \"secret123\"")
 		if err != nil {
-			t.Skip("Cannot create temp file for testing")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Cannot create temp file for testing") // SKIP-OK: #legacy-untriaged
 		}
 		defer removeTempTestFile(tempFile)
 

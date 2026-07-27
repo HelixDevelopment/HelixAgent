@@ -729,7 +729,7 @@ func TestAllMem0Endpoints(t *testing.T) {
 	}
 	if mem0HealthResp.StatusCode == 404 {
 		mem0HealthResp.Body.Close()
-		t.Skip("Mem0 Memory routes not registered in HelixAgent")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory routes not registered in HelixAgent") // SKIP-OK: #legacy-untriaged
 	}
 	mem0HealthResp.Body.Close()
 

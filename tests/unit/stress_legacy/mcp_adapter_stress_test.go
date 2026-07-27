@@ -20,7 +20,7 @@ import (
 // TestMCPAdapterStress tests MCP adapter registry under concurrent load
 func TestMCPAdapterStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("ConcurrentRegistration", func(t *testing.T) {

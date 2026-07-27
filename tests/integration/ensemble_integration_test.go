@@ -342,7 +342,7 @@ func (s *EnsembleIntegrationTestSuite) TestEventBusCommunication() {
 
 func TestEnsembleIntegration(t *testing.T) {
 	if os.Getenv("SKIP_INTEGRATION") != "" {
-		t.Skip("Skipping integration tests")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration tests") // SKIP-OK: #integration-mode-only
 	}
 	suite.Run(t, new(EnsembleIntegrationTestSuite))
 }
@@ -350,7 +350,7 @@ func TestEnsembleIntegration(t *testing.T) {
 // Concurrent Ensemble Test
 func TestConcurrentEnsembleSessions(t *testing.T) {
 	if os.Getenv("SKIP_INTEGRATION") != "" {
-		t.Skip("Skipping integration tests")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration tests") // SKIP-OK: #integration-mode-only
 	}
 
 	dbURL := os.Getenv("TEST_DATABASE_URL")
@@ -373,7 +373,7 @@ func TestConcurrentEnsembleSessions(t *testing.T) {
 		`SELECT EXISTS (SELECT 1 FROM information_schema.tables
 			WHERE table_name = 'agent_instances')`,
 	).Scan(&schemaExists); err != nil || !schemaExists {
-		t.Skip(  // SKIP-OK: #legacy-untriaged
+		t.Skip( // SKIP-OK: #legacy-untriaged
 			"skipping concurrent ensemble test: helixagent_test is missing " +
 				"agent_instances schema (apply sql/schema/*.sql to enable)",
 		)

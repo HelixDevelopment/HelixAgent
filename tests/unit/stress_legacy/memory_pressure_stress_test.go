@@ -33,7 +33,7 @@ func heapAllocMB() float64 {
 // reclaim short-lived objects before the final measurement.
 func TestStress_MemoryPressure_CacheWriteBurst(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -93,7 +93,7 @@ func TestStress_MemoryPressure_CacheWriteBurst(t *testing.T) {
 // Validates that concurrent access patterns do not cause runaway allocation.
 func TestStress_MemoryPressure_ConcurrentOperations(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -176,7 +176,7 @@ func TestStress_MemoryPressure_ConcurrentOperations(t *testing.T) {
 // temporary buffers, the heap should stay near baseline.
 func TestStress_MemoryPressure_AllocFreePattern(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -235,7 +235,7 @@ func TestStress_MemoryPressure_AllocFreePattern(t *testing.T) {
 // or expose use-after-free bugs (which would manifest as crashes or wrong values).
 func TestStress_MemoryPressure_MultipleGCCycles(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -319,7 +319,7 @@ func TestStress_MemoryPressure_MultipleGCCycles(t *testing.T) {
 // data races or abnormal blocking (ReadMemStats does a stop-the-world).
 func TestStress_MemoryPressure_MemStatsReadsDuringLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

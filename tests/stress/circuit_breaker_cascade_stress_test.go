@@ -23,7 +23,7 @@ import (
 //   - Successful probe calls close each breaker independently.
 func TestCircuitBreakerCascade(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

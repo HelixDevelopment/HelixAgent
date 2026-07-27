@@ -32,23 +32,23 @@ func NewEnvLoader() *EnvLoader {
 			"ollama":     "OLLAMA_BASE_URL",
 
 			// LLMsVerifier extended providers
-			"huggingface":  "HUGGINGFACE_API_KEY",
-			"nvidia":       "NVIDIA_API_KEY",
-			"chutes":       "CHUTES_API_KEY",
-			"siliconflow":  "SILICONFLOW_API_KEY",
-			"kimi":         "KIMI_API_KEY",
-			"mistral":      "MISTRAL_API_KEY",
-			"codestral":    "CODESTRAL_API_KEY",
-			"vercel":       "VERCEL_AI_API_KEY",
-			"cerebras":     "CEREBRAS_API_KEY",
-			"cloudflare":   "CLOUDFLARE_API_KEY",
-			"fireworks":    "FIREWORKS_API_KEY",
-			"baseten":      "BASETEN_API_KEY",
-			"novita":       "NOVITA_API_KEY",
-			"upstage":      "UPSTAGE_API_KEY",
-			"nlp_cloud":    "NLP_CLOUD_API_KEY",
-			"modal":        "MODAL_API_KEY",
-			"inference":    "INFERENCE_API_KEY",
+			"huggingface": "HUGGINGFACE_API_KEY",
+			"nvidia":      "NVIDIA_API_KEY",
+			"chutes":      "CHUTES_API_KEY",
+			"siliconflow": "SILICONFLOW_API_KEY",
+			"kimi":        "KIMI_API_KEY",
+			"mistral":     "MISTRAL_API_KEY",
+			"codestral":   "CODESTRAL_API_KEY",
+			"vercel":      "VERCEL_AI_API_KEY",
+			"cerebras":    "CEREBRAS_API_KEY",
+			"cloudflare":  "CLOUDFLARE_API_KEY",
+			"fireworks":   "FIREWORKS_API_KEY",
+			"baseten":     "BASETEN_API_KEY",
+			"novita":      "NOVITA_API_KEY",
+			"upstage":     "UPSTAGE_API_KEY",
+			"nlp_cloud":   "NLP_CLOUD_API_KEY",
+			"modal":       "MODAL_API_KEY",
+			"inference":   "INFERENCE_API_KEY",
 		},
 	}
 }
@@ -256,12 +256,12 @@ func RedactHeaders(headers map[string]string) map[string]string {
 	result := make(map[string]string)
 
 	sensitiveHeaders := map[string]bool{
-		"authorization":   true,
-		"x-api-key":       true,
-		"api-key":         true,
-		"x-auth-token":    true,
-		"x-access-token":  true,
-		"bearer":          true,
+		"authorization":  true,
+		"x-api-key":      true,
+		"api-key":        true,
+		"x-auth-token":   true,
+		"x-access-token": true,
+		"bearer":         true,
 	}
 
 	for k, v := range headers {
@@ -319,11 +319,11 @@ func ValidateAPIKeyFormat(provider, key string) error {
 
 	// Known prefixes for validation
 	prefixes := map[string][]string{
-		"anthropic":  {"sk-ant-"},
-		"openai":     {"sk-"},
-		"openrouter": {"sk-or-"},
-		"deepseek":   {"sk-"},
-		"nvidia":     {"nvapi-"},
+		"anthropic":   {"sk-ant-"},
+		"openai":      {"sk-"},
+		"openrouter":  {"sk-or-"},
+		"deepseek":    {"sk-"},
+		"nvidia":      {"nvapi-"},
 		"huggingface": {"hf_"},
 	}
 
@@ -345,11 +345,11 @@ func ValidateAPIKeyFormat(provider, key string) error {
 
 // ProviderConfig holds configuration for a provider.
 type ProviderConfig struct {
-	Name      string `json:"name"`
-	Enabled   bool   `json:"enabled"`
-	APIKey    string `json:"api_key"`    // Actual key (not stored in git-versioned files)
-	APIKeyVar string `json:"api_key_var"` // Environment variable name
-	BaseURL   string `json:"base_url,omitempty"`
+	Name      string   `json:"name"`
+	Enabled   bool     `json:"enabled"`
+	APIKey    string   `json:"api_key"`     // Actual key (not stored in git-versioned files)
+	APIKeyVar string   `json:"api_key_var"` // Environment variable name
+	BaseURL   string   `json:"base_url,omitempty"`
 	Models    []string `json:"models,omitempty"`
 }
 

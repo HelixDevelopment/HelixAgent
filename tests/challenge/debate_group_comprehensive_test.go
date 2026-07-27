@@ -18,12 +18,12 @@ import (
 // Run with: go test -v ./tests/challenge -run TestDebateGroupComprehensive
 func TestDebateGroupComprehensive(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping debate group comprehensive test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping debate group comprehensive test in short mode") // SKIP-OK: #short-mode
 	}
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	// Run all comprehensive tests
@@ -85,7 +85,7 @@ func testDebateGroupSizes(t *testing.T, baseURL string) {
 	t.Logf("  Healthy providers: %d", healthyCount)
 
 	if healthyCount == 0 {
-		t.Skip("No healthy providers available, skipping debate group size tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No healthy providers available, skipping debate group size tests") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -264,7 +264,7 @@ func testVotingStrategies(t *testing.T, baseURL string) {
 	}
 
 	if healthyCount == 0 {
-		t.Skip("No healthy providers available, skipping voting strategy tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No healthy providers available, skipping voting strategy tests") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -362,7 +362,7 @@ func testConcurrentDebates(t *testing.T, baseURL string) {
 	}
 
 	if healthyCount == 0 {
-		t.Skip("No healthy providers available, skipping concurrent debate tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No healthy providers available, skipping concurrent debate tests") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -455,7 +455,7 @@ func testDebateGroupFailover(t *testing.T, baseURL string) {
 			t.Errorf("  Failover test: FAILED - %s", result.Error)
 		}
 	} else {
-		t.Skip("  No healthy providers available for failover test")  // SKIP-OK: #legacy-untriaged
+		t.Skip("  No healthy providers available for failover test") // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -624,12 +624,12 @@ func truncate(s string, maxLen int) string {
 // This test uses the verification API to determine actual provider status
 func TestDebateGroupWithMockedProviders(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping debate group with mocked providers test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping debate group with mocked providers test in short mode") // SKIP-OK: #short-mode
 	}
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	// Get provider health first
@@ -642,7 +642,7 @@ func TestDebateGroupWithMockedProviders(t *testing.T) {
 	}
 
 	if healthyCount == 0 {
-		t.Skip("No healthy providers available, skipping mocked provider tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No healthy providers available, skipping mocked provider tests") // SKIP-OK: #legacy-untriaged
 		return
 	}
 
@@ -711,12 +711,12 @@ func TestDebateGroupWithMockedProviders(t *testing.T) {
 // TestDebateGroupEdgeCases tests edge cases and boundary conditions
 func TestDebateGroupEdgeCases(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping debate group edge cases test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping debate group edge cases test in short mode") // SKIP-OK: #short-mode
 	}
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("EmptyMessage", func(t *testing.T) {
@@ -800,12 +800,12 @@ func TestDebateGroupEdgeCases(t *testing.T) {
 // TestDebateGroupPerformance tests performance characteristics of debate groups
 func TestDebateGroupPerformance(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping debate group performance test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping debate group performance test in short mode") // SKIP-OK: #short-mode
 	}
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("ResponseLatency", func(t *testing.T) {
@@ -889,12 +889,12 @@ func TestDebateGroupPerformance(t *testing.T) {
 // TestDebateGroupRecovery tests recovery after failures
 func TestDebateGroupRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping debate group recovery test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping debate group recovery test in short mode") // SKIP-OK: #short-mode
 	}
 	baseURL := getBaseURL()
 
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	// Get provider health first
@@ -907,7 +907,7 @@ func TestDebateGroupRecovery(t *testing.T) {
 	}
 
 	if healthyCount == 0 {
-		t.Skip("No healthy providers available, skipping recovery tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No healthy providers available, skipping recovery tests") // SKIP-OK: #legacy-untriaged
 		return
 	}
 

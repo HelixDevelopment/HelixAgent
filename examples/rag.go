@@ -153,7 +153,7 @@ func main() {
 	fmt.Printf("Query: %s (streaming)\n", query)
 
 	stream, err := pipeline.QueryStream(ctx, query, &rag.QueryOptions{
-		TopK:        3,
+		TopK:         3,
 		GenerateText: true,
 	})
 	if err != nil {

@@ -320,14 +320,14 @@ func TestClassMatches(t *testing.T) {
 		want, have string
 		match      bool
 	}{
-		{"medium", "high", true},  // upgrade tolerated
+		{"medium", "high", true},   // upgrade tolerated
 		{"medium", "medium", true}, // exact match
-		{"high", "medium", false},   // downgrade rejected
+		{"high", "medium", false},  // downgrade rejected
 		{"fast", "fast", true},
 		{"fast", "slow", false},
-		{"slow", "fast", true},      // upgrade tolerated
-		{"", "high", false},          // empty want fails
-		{"high", "", false},          // empty have fails
+		{"slow", "fast", true}, // upgrade tolerated
+		{"", "high", false},    // empty want fails
+		{"high", "", false},    // empty have fails
 	}
 	for _, c := range cases {
 		got := classMatches(c.want, c.have)

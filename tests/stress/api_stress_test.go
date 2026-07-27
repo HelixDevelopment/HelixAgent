@@ -21,7 +21,7 @@ import (
 // valid JSON, and goroutine count remains stable afterward.
 func TestStress_APIHealthEndpoint_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -114,7 +114,7 @@ func TestStress_APIHealthEndpoint_ConcurrentAccess(t *testing.T) {
 // no data races in model serialization.
 func TestStress_APIModelsEndpoint_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -210,7 +210,7 @@ func TestStress_APIModelsEndpoint_ConcurrentAccess(t *testing.T) {
 // payloads without panics, returning valid JSON for every request.
 func TestStress_APIChatCompletions_ConcurrentJSON(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -313,7 +313,7 @@ func TestStress_APIChatCompletions_ConcurrentJSON(t *testing.T) {
 // router-level concurrency remains safe and response times stay bounded.
 func TestStress_APIMultiEndpoint_RapidAlternation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -431,7 +431,7 @@ func TestStress_APIMultiEndpoint_RapidAlternation(t *testing.T) {
 // without panics or goroutine leaks.
 func TestStress_APIErrorPaths_ConcurrentNotFound(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

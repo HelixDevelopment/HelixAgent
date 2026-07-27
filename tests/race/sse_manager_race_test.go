@@ -18,7 +18,7 @@ import (
 // globalClientsMu (RWMutex) are exercised simultaneously.
 func TestSSEManager_ConcurrentRegisterUnregister(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()
@@ -52,7 +52,7 @@ func TestSSEManager_ConcurrentRegisterUnregister(t *testing.T) {
 // register/unregister operations.
 func TestSSEManager_ConcurrentGlobalClients(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()
@@ -84,7 +84,7 @@ func TestSSEManager_ConcurrentGlobalClients(t *testing.T) {
 // calls, which exercise the ipConnsMu Mutex.
 func TestSSEManager_ConcurrentIPTracking(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := logrus.New()

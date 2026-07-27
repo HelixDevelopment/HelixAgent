@@ -31,7 +31,7 @@ import (
 
 func TestWorkerPool_Soak_Short(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping soak in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping soak in -short mode") // SKIP-OK: #short-mode
 	}
 	runSoak(t, 200*time.Millisecond, 4, 1)
 }
@@ -45,7 +45,7 @@ func TestWorkerPool_Soak_Short(t *testing.T) {
 // stays fast.
 func TestWorkerPool_Soak_Long(t *testing.T) {
 	if testing.Short() {
-		t.Skip("long soak is opt-in via -run TestWorkerPool_Soak_Long")  // SKIP-OK: #legacy-untriaged
+		t.Skip("long soak is opt-in via -run TestWorkerPool_Soak_Long") // SKIP-OK: #legacy-untriaged
 	}
 	runSoak(t, 2*time.Second, 8, 8)
 }

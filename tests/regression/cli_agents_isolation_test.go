@@ -9,11 +9,11 @@
 // dev.helix.agent. This test is BOTH the bug-catcher and the standing guard,
 // with a single RED_MODE polarity switch (§11.4.115):
 //
-//   RED_MODE=1 : reproduce the defect on the pre-fix artifact (move the marker
-//                aside, prove the module build breaks with the exact HXC-139
-//                signature). Proves the guard genuinely catches the defect.
-//   RED_MODE=0 : (default) standing GREEN guard — the marker is present and no
-//                cli_agents package is compiled into dev.helix.agent.
+//	RED_MODE=1 : reproduce the defect on the pre-fix artifact (move the marker
+//	             aside, prove the module build breaks with the exact HXC-139
+//	             signature). Proves the guard genuinely catches the defect.
+//	RED_MODE=0 : (default) standing GREEN guard — the marker is present and no
+//	             cli_agents package is compiled into dev.helix.agent.
 //
 // §1.1 anti-bluff pairing: if cli_agents/go.mod were reverted, the GREEN guard
 // FAILs (go list ./... would surface a cli_agents package / error on the

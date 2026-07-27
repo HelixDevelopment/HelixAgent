@@ -94,7 +94,7 @@ func (cb *mockCircuitBreaker) RecordFailure() {
 // provider failures gracefully without panics or goroutine leaks.
 func TestChaos_IntermittentFailures(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -153,7 +153,7 @@ func TestChaos_IntermittentFailures(t *testing.T) {
 // slow providers by respecting context deadlines.
 func TestChaos_TimeoutRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -216,7 +216,7 @@ func TestChaos_TimeoutRecovery(t *testing.T) {
 // trip after consecutive failures and recover after the reset timeout.
 func TestChaos_CircuitBreakerTripping(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -263,7 +263,7 @@ func TestChaos_CircuitBreakerTripping(t *testing.T) {
 // fails, requests are properly routed through the fallback chain.
 func TestChaos_ProviderFallbackChain(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -335,7 +335,7 @@ func TestChaos_ProviderFallbackChain(t *testing.T) {
 // reads and writes to a shared provider registry do not cause races.
 func TestChaos_ConcurrentProviderRegistration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 

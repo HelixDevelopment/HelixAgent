@@ -12,13 +12,13 @@ import (
 // TestChaos_ServiceUnavailable tests behavior when memory services fail
 func TestChaos_ServiceUnavailable(t *testing.T) {
 	if os.Getenv("CHAOS_TEST") != "true" {
-		t.Skip("Set CHAOS_TEST=true to run chaos tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Set CHAOS_TEST=true to run chaos tests") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()
 	adapter := memory.NewOptimalStoreAdapter()
 	if adapter == nil {
-		t.Skip("HelixMemory not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Test that operations fail gracefully when services are down
@@ -34,10 +34,10 @@ func TestChaos_ServiceUnavailable(t *testing.T) {
 // TestChaos_CircuitBreaker tests circuit breaker behavior
 func TestChaos_CircuitBreaker(t *testing.T) {
 	if os.Getenv("CHAOS_TEST") != "true" {
-		t.Skip("Set CHAOS_TEST=true to run chaos tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Set CHAOS_TEST=true to run chaos tests") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Circuit breaker should trip after consecutive failures
 	// and enter half-open state after timeout
-	t.Skip("Requires manual service manipulation - documented in runbook")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Requires manual service manipulation - documented in runbook") // SKIP-OK: #legacy-untriaged
 }

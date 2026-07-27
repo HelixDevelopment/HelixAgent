@@ -84,7 +84,7 @@ func newStressLogger() *logrus.Logger {
 // Get/Set on FormatterCache concurrently
 func TestFormatters_ConcurrentCacheAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := newStressLogger()
@@ -139,7 +139,7 @@ func TestFormatters_ConcurrentCacheAccess(t *testing.T) {
 // HealthCheckAll on a registry with mock formatters
 func TestFormatters_ConcurrentHealthChecks(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := newStressLogger()
@@ -196,7 +196,7 @@ func TestFormatters_ConcurrentHealthChecks(t *testing.T) {
 // format requests simultaneously
 func TestFormatters_ConcurrentExecution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := newStressLogger()
@@ -269,7 +269,7 @@ func TestFormatters_ConcurrentExecution(t *testing.T) {
 // setting/getting under pressure from 100 goroutines
 func TestFormatters_CachePressure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := newStressLogger()
@@ -348,7 +348,7 @@ func TestFormatters_CachePressure(t *testing.T) {
 // formatters simultaneously
 func TestFormatters_RegistryStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	logger := newStressLogger()

@@ -38,7 +38,7 @@ func (c *closeNotifierRecorder) CloseNotify() <-chan bool {
 
 func TestCompletionHandler_Complete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping handler test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping handler test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	// Create a mock request service
 	registryConfig := &services.RegistryConfig{
@@ -119,7 +119,7 @@ func TestCompletionHandler_Complete(t *testing.T) {
 
 func TestCompletionHandler_Complete_InvalidRequest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping handler test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping handler test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	// Create a mock request service
 	registryConfig := &services.RegistryConfig{
@@ -166,7 +166,7 @@ func TestCompletionHandler_Complete_InvalidRequest(t *testing.T) {
 
 func TestCompletionHandler_Chat(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping handler test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping handler test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	// Create a mock request service
 	registryConfig := &services.RegistryConfig{
@@ -235,7 +235,7 @@ func TestCompletionHandler_Chat(t *testing.T) {
 
 func TestCompletionHandler_Models(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping handler test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping handler test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	// Create a mock request service
 	registryConfig := &services.RegistryConfig{
@@ -277,7 +277,7 @@ func TestCompletionHandler_Models(t *testing.T) {
 
 func TestCompletionHandler_Stream(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping handler test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping handler test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	// Create a mock request service with a short timeout for unit testing
 	registryConfig := &services.RegistryConfig{
@@ -354,7 +354,7 @@ func TestCompletionHandler_Stream(t *testing.T) {
 
 func TestCompletionRequestValidation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping validation test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping validation test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	testCases := []struct {
 		name        string
@@ -456,7 +456,7 @@ func TestCompletionRequestValidation(t *testing.T) {
 
 func TestConvertToInternalRequest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping conversion test in short mode (requires provider connectivity)")  // SKIP-OK: #short-mode
+		t.Skip("skipping conversion test in short mode (requires provider connectivity)") // SKIP-OK: #short-mode
 	}
 	// This tests the conversion logic by creating a request through the handler
 	// and checking that it properly converts to internal format

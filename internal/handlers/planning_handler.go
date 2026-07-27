@@ -1124,9 +1124,9 @@ Goal: %s`, truncate(task, 500))
 	body = strings.TrimSpace(body)
 
 	type llmTask struct {
-		Description  string   `json:"description"`
-		CanParallel  bool     `json:"can_parallel"`
-		Dependencies []int    `json:"dependencies"`
+		Description  string `json:"description"`
+		CanParallel  bool   `json:"can_parallel"`
+		Dependencies []int  `json:"dependencies"`
 	}
 	var raw []llmTask
 	if err := json.Unmarshal([]byte(body), &raw); err != nil {

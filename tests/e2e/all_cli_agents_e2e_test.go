@@ -68,7 +68,7 @@ func TestCLIAgentRegistryComplete(t *testing.T) {
 
 	// Skip if binary not available
 	if _, err := exec.LookPath(config.HelixAgentBin); err != nil {
-		t.Skip("HelixAgent binary not found")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent binary not found") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("List_All_Agents", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestCLIAgentConfigGeneration(t *testing.T) {
 
 	// Skip if binary not available
 	if _, err := exec.LookPath(config.HelixAgentBin); err != nil {
-		t.Skip("HelixAgent binary not found")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent binary not found") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Test config generation for all agents
@@ -149,7 +149,7 @@ func TestFullInfrastructureE2E(t *testing.T) {
 	config := getE2EConfig()
 
 	if config.SkipLiveTests {
-		t.Skip("Live tests skipped")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Live tests skipped") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -262,11 +262,11 @@ func TestACPAgentsE2E(t *testing.T) {
 	// Verify ACP health first
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
-		t.Skip("ACP not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("ACP not available") // SKIP-OK: #legacy-untriaged
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Skip("ACP not healthy")  // SKIP-OK: #legacy-untriaged
+		t.Skip("ACP not healthy") // SKIP-OK: #legacy-untriaged
 	}
 
 	agents := []string{
@@ -320,11 +320,11 @@ func TestVisionCapabilitiesE2E(t *testing.T) {
 	// Verify Vision health first
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
-		t.Skip("Vision not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Vision not available") // SKIP-OK: #legacy-untriaged
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Skip("Vision not healthy")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Vision not healthy") // SKIP-OK: #legacy-untriaged
 	}
 
 	capabilities := []string{"analyze", "ocr", "detect", "caption", "describe", "classify"}

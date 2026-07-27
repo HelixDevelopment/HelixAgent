@@ -199,7 +199,7 @@ func TestBootChecker(t *testing.T) {
 
 func TestMainFlags(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Build the binary

@@ -299,14 +299,14 @@ func evaluateCodeValid(assertion AssertionDefinition, value any) (bool, string) 
 
 	// Check for common code patterns
 	codePatterns := []string{
-		`func\s+\w+`, // Go function
-		`def\s+\w+`,  // Python function
-		`class\s+\w+`, // Class definition
+		`func\s+\w+`,     // Go function
+		`def\s+\w+`,      // Python function
+		`class\s+\w+`,    // Class definition
 		`function\s+\w+`, // JavaScript function
-		`=>\s*{`, // Arrow function
-		`public\s+\w+`, // Java/C# access modifier
-		`import\s+`, // Import statement
-		`return\s+`, // Return statement
+		`=>\s*{`,         // Arrow function
+		`public\s+\w+`,   // Java/C# access modifier
+		`import\s+`,      // Import statement
+		`return\s+`,      // Return statement
 	}
 
 	for _, pattern := range codePatterns {

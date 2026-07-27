@@ -40,7 +40,7 @@ type promConfig struct {
 // present in the repository.
 func TestPrometheusConfig_FileExists(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)
@@ -52,7 +52,7 @@ func TestPrometheusConfig_FileExists(t *testing.T) {
 // well-formed YAML.
 func TestPrometheusConfig_ValidYAML(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)
@@ -68,7 +68,7 @@ func TestPrometheusConfig_ValidYAML(t *testing.T) {
 // contains the essential scrape jobs for HelixAgent monitoring.
 func TestPrometheusConfig_RequiredScrapeJobs(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)
@@ -106,7 +106,7 @@ func TestPrometheusConfig_RequiredScrapeJobs(t *testing.T) {
 // infrequent that monitoring loses resolution.
 func TestPrometheusConfig_ScrapeIntervals(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)
@@ -161,7 +161,7 @@ func TestPrometheusConfig_ScrapeIntervals(t *testing.T) {
 // and evaluation_interval are both set and within sensible bounds.
 func TestPrometheusConfig_GlobalInterval(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)
@@ -181,7 +181,7 @@ func TestPrometheusConfig_GlobalInterval(t *testing.T) {
 // defines at least one target, preventing silent no-op scrape configurations.
 func TestPrometheusConfig_ScrapeJobsHaveTargets(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)
@@ -205,7 +205,7 @@ func TestPrometheusConfig_ScrapeJobsHaveTargets(t *testing.T) {
 // the same job_name, which would cause Prometheus to merge or drop one.
 func TestPrometheusConfig_JobNamesUnique(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	path := prometheusConfigPath(t)

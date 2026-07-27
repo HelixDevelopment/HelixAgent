@@ -209,10 +209,10 @@ type MockTool struct {
 	source      string
 }
 
-func (m *MockTool) Name() string                          { return m.name }
-func (m *MockTool) Description() string                   { return m.description }
-func (m *MockTool) Parameters() map[string]interface{}    { return m.parameters }
-func (m *MockTool) Source() string                        { return m.source }
+func (m *MockTool) Name() string                       { return m.name }
+func (m *MockTool) Description() string                { return m.description }
+func (m *MockTool) Parameters() map[string]interface{} { return m.parameters }
+func (m *MockTool) Source() string                     { return m.source }
 func (m *MockTool) Execute(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	time.Sleep(10 * time.Millisecond)
 	result := map[string]interface{}{

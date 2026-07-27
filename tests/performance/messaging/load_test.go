@@ -43,7 +43,7 @@ type LoadTestResult struct {
 // TestLoadHighThroughput tests high message throughput scenarios
 func TestLoadHighThroughput(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := LoadTestConfig{
@@ -80,7 +80,7 @@ func TestLoadHighThroughput(t *testing.T) {
 // TestLoadMultiTopic tests message routing across multiple topics
 func TestLoadMultiTopic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := LoadTestConfig{
@@ -104,7 +104,7 @@ func TestLoadMultiTopic(t *testing.T) {
 // TestLoadLargeMessages tests handling of large message payloads
 func TestLoadLargeMessages(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := LoadTestConfig{
@@ -128,7 +128,7 @@ func TestLoadLargeMessages(t *testing.T) {
 // TestLoadBurstTraffic tests handling of traffic bursts
 func TestLoadBurstTraffic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	broker := inmemory.NewBroker(nil)
@@ -185,7 +185,7 @@ func TestLoadBurstTraffic(t *testing.T) {
 // TestLoadSustainedTraffic tests sustained traffic over extended period
 func TestLoadSustainedTraffic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := LoadTestConfig{
@@ -214,7 +214,7 @@ func TestLoadSustainedTraffic(t *testing.T) {
 // TestLoadGracefulDegradation tests system behavior under overload
 func TestLoadGracefulDegradation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	broker := inmemory.NewBroker(nil)

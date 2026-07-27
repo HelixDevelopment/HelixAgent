@@ -23,7 +23,7 @@ import (
 // asserts no panics, near-zero error rate, and no goroutine leaks.
 func TestPool_ConcurrentAcquireRelease_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -117,7 +117,7 @@ func TestPool_ConcurrentAcquireRelease_Stress(t *testing.T) {
 // in a permanently locked state.
 func TestPool_AcquireRelease_NoDeadlock_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -193,7 +193,7 @@ func TestPool_AcquireRelease_NoDeadlock_Stress(t *testing.T) {
 // available weight stays consistent throughout.
 func TestPool_TryAcquire_Contention_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -262,7 +262,7 @@ func TestPool_TryAcquire_Contention_Stress(t *testing.T) {
 // ctx.Err(), no leaks, and correct semaphore state afterwards.
 func TestPool_ContextCancellation_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -346,7 +346,7 @@ func TestPool_ContextCancellation_Stress(t *testing.T) {
 // remain consistent (Current + Available == maxWeight) under concurrent load.
 func TestPool_Metrics_ConsistencyUnderStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

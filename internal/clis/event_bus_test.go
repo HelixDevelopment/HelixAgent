@@ -403,7 +403,7 @@ func TestEventBus_HighThroughput(t *testing.T) {
 func TestEventBus_ConcurrentPublishSubscribe(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping concurrent test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping concurrent test in short mode") // SKIP-OK: #short-mode
 	}
 
 	eb := NewEventBus()

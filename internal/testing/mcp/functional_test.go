@@ -133,7 +133,7 @@ func (c *MCPClient) CallTool(name string, arguments map[string]interface{}) (*MC
 // TestMCPTimeServerFunctional tests the time MCP server with real tool calls
 func TestMCPTimeServerFunctional(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP functional test in short mode") // SKIP-OK: #short-mode
 	}
 	client, err := NewMCPClient("localhost:9103", 10*time.Second)
 	if err != nil {
@@ -197,7 +197,7 @@ func TestMCPTimeServerFunctional(t *testing.T) {
 // TestMCPMemoryServerFunctional tests the memory MCP server (knowledge graph) with real tool calls
 func TestMCPMemoryServerFunctional(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP functional test in short mode") // SKIP-OK: #short-mode
 	}
 	client, err := NewMCPClient("localhost:9105", 10*time.Second)
 	if err != nil {
@@ -248,7 +248,7 @@ func TestMCPMemoryServerFunctional(t *testing.T) {
 // TestMCPFilesystemServerFunctional tests filesystem MCP server
 func TestMCPFilesystemServerFunctional(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP functional test in short mode") // SKIP-OK: #short-mode
 	}
 	client, err := NewMCPClient("localhost:9104", 10*time.Second)
 	if err != nil {
@@ -281,7 +281,7 @@ func TestMCPFilesystemServerFunctional(t *testing.T) {
 // TestMCPFetchServerFunctional tests fetch MCP server
 func TestMCPFetchServerFunctional(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP functional test in short mode") // SKIP-OK: #short-mode
 	}
 	client, err := NewMCPClient("localhost:9101", 30*time.Second)
 	if err != nil {
@@ -315,7 +315,7 @@ func TestMCPFetchServerFunctional(t *testing.T) {
 // TestMCPGitServerFunctional tests git MCP server
 func TestMCPGitServerFunctional(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping MCP functional test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping MCP functional test in short mode") // SKIP-OK: #short-mode
 	}
 	client, err := NewMCPClient("localhost:9102", 10*time.Second)
 	if err != nil {

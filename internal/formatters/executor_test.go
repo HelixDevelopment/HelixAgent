@@ -321,7 +321,7 @@ func TestRetryMiddleware_Success(t *testing.T) {
 func TestRetryMiddleware_EventualSuccess(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping retry test with sleep in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping retry test with sleep in short mode") // SKIP-OK: #short-mode
 	}
 	attempts := 0
 	mw := RetryMiddleware(3)

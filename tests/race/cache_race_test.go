@@ -17,7 +17,7 @@ import (
 // internal locking — this test verifies that protection is effective.
 func TestMemoryCacheAdapter_ConcurrentReadWrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter := cachepkg.NewMemoryCacheAdapter(1000, 5*time.Minute)
@@ -50,7 +50,7 @@ func TestMemoryCacheAdapter_ConcurrentReadWrite(t *testing.T) {
 // shared and unique keys to exercise both hot-path and cold-path code.
 func TestMemoryCacheAdapter_ConcurrentMixedKeys(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter := cachepkg.NewMemoryCacheAdapter(500, time.Minute)

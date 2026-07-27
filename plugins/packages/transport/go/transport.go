@@ -124,9 +124,9 @@ type Transport struct {
 	contentType ContentType
 	compression Compression
 
-	http3Client *http.Client
-	http2Client *http.Client
-	http1Client *http.Client
+	http3Client  *http.Client
+	http2Client  *http.Client
+	http1Client  *http.Client
 	activeClient *http.Client
 
 	mu     sync.RWMutex
@@ -194,7 +194,7 @@ func (t *Transport) initClients() {
 	// HTTP/2 client
 	t.http2Client = &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
+			TLSClientConfig:   tlsConfig,
 			ForceAttemptHTTP2: true,
 		},
 		Timeout: t.opts.Timeout,
@@ -203,7 +203,7 @@ func (t *Transport) initClients() {
 	// HTTP/1.1 client
 	t.http1Client = &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
+			TLSClientConfig:   tlsConfig,
 			ForceAttemptHTTP2: false,
 		},
 		Timeout: t.opts.Timeout,

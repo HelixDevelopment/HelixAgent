@@ -94,7 +94,7 @@ func (p *providerStressMock) CompleteStream(
 // get, list, and update operations on the provider registry.
 func TestStress_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -216,7 +216,7 @@ func TestStress_ProviderRegistry_ConcurrentAccess(t *testing.T) {
 // with multiple providers and voting strategies to verify thread safety.
 func TestStress_EnsembleVoting_HighLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -304,7 +304,7 @@ func TestStress_EnsembleVoting_HighLoad(t *testing.T) {
 // to verify no OOM or excessive memory growth occurs.
 func TestStress_LargePayload_Handling(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -386,7 +386,7 @@ func TestStress_LargePayload_Handling(t *testing.T) {
 // through the ensemble to verify stream channels are properly managed.
 func TestStress_StreamingUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -487,7 +487,7 @@ func TestStress_StreamingUnderLoad(t *testing.T) {
 // cleanly without panics or resource leaks.
 func TestStress_GracefulShutdown_UnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

@@ -15,12 +15,12 @@ import (
 // TestStress_ConcurrentUsers simulates multiple concurrent users
 func TestStress_ConcurrentUsers(t *testing.T) {
 	if os.Getenv("STRESS_TEST") != "true" {
-		t.Skip("Set STRESS_TEST=true to run stress tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Set STRESS_TEST=true to run stress tests") // SKIP-OK: #legacy-untriaged
 	}
 
 	adapter := memory.NewOptimalStoreAdapter()
 	if adapter == nil {
-		t.Skip("HelixMemory not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()
@@ -58,12 +58,12 @@ func TestStress_ConcurrentUsers(t *testing.T) {
 // TestStress_MemoryVolume tests with large memory volumes
 func TestStress_MemoryVolume(t *testing.T) {
 	if os.Getenv("STRESS_TEST") != "true" {
-		t.Skip("Set STRESS_TEST=true to run stress tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Set STRESS_TEST=true to run stress tests") // SKIP-OK: #legacy-untriaged
 	}
 
 	adapter := memory.NewOptimalStoreAdapter()
 	if adapter == nil {
-		t.Skip("HelixMemory not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()

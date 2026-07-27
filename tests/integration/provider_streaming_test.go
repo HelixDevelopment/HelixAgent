@@ -538,7 +538,7 @@ func testGeminiStreaming(t *testing.T, apiKey, model string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
-		t.Skip("Gemini rate limited")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Gemini rate limited") // SKIP-OK: #legacy-untriaged
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		t.Skipf("Gemini returned %d - credentials invalid or expired (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
@@ -627,7 +627,7 @@ func testGeminiNonStreaming(t *testing.T, apiKey, model string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
-		t.Skip("Gemini rate limited")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Gemini rate limited") // SKIP-OK: #legacy-untriaged
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		t.Skipf("Gemini returned %d - credentials invalid or expired (SKIP-OK: #unmarked-skip-needs-ticket)", resp.StatusCode)
@@ -702,7 +702,7 @@ func testHelixAgentStreaming(t *testing.T) {
 
 	// Skip on auth errors or server errors
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		t.Skip("Auth error - API key may be missing or invalid")  // SKIP-OK: #requires-upstream-key
+		t.Skip("Auth error - API key may be missing or invalid") // SKIP-OK: #requires-upstream-key
 	}
 	if resp.StatusCode >= 500 {
 		body, _ := io.ReadAll(resp.Body)
@@ -786,7 +786,7 @@ func testHelixAgentNonStreaming(t *testing.T) {
 
 	// Skip on auth errors or server errors
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		t.Skip("Auth error - API key may be missing or invalid")  // SKIP-OK: #requires-upstream-key
+		t.Skip("Auth error - API key may be missing or invalid") // SKIP-OK: #requires-upstream-key
 	}
 
 	body, err := io.ReadAll(resp.Body)

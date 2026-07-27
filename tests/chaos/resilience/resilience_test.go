@@ -189,7 +189,7 @@ func (p *reliableProvider) CompleteStream(
 // fail, the ensemble returns a graceful error rather than panicking.
 func TestChaos_AllProviders_Unavailable(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -253,7 +253,7 @@ func TestChaos_AllProviders_Unavailable(t *testing.T) {
 // is configured.
 func TestChaos_CacheMiss_Degradation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -333,7 +333,7 @@ func TestChaos_CacheMiss_Degradation(t *testing.T) {
 // deadlock or panic occurs.
 func TestChaos_ConcurrentErrors_NoDeadlock(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -417,7 +417,7 @@ func TestChaos_ConcurrentErrors_NoDeadlock(t *testing.T) {
 // recovers is correctly re-used by the ensemble.
 func TestChaos_RecoveryAfterFailure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -496,7 +496,7 @@ func TestChaos_RecoveryAfterFailure(t *testing.T) {
 // are properly bounded by context timeouts, preventing resource starvation.
 func TestChaos_HighLatency_Timeout(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

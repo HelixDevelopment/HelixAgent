@@ -97,7 +97,7 @@ func TestChromaStore_BuildFilter_Multiple(t *testing.T) {
 
 func TestChromaStore_CreateCollection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -121,7 +121,7 @@ func TestChromaStore_CreateCollection(t *testing.T) {
 
 func TestChromaStore_CreateCollection_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -138,7 +138,7 @@ func TestChromaStore_CreateCollection_Error(t *testing.T) {
 
 func TestChromaStore_DeleteCollection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -156,7 +156,7 @@ func TestChromaStore_DeleteCollection(t *testing.T) {
 
 func TestChromaStore_DeleteCollection_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -172,7 +172,7 @@ func TestChromaStore_DeleteCollection_Error(t *testing.T) {
 
 func TestChromaStore_Upsert(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -210,7 +210,7 @@ func TestChromaStore_Upsert_EmptyDocs(t *testing.T) {
 
 func TestChromaStore_Upsert_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -228,7 +228,7 @@ func TestChromaStore_Upsert_Error(t *testing.T) {
 
 func TestChromaStore_Delete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -260,7 +260,7 @@ func TestChromaStore_Delete_EmptyIDs(t *testing.T) {
 
 func TestChromaStore_Search(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -295,7 +295,7 @@ func TestChromaStore_Search(t *testing.T) {
 
 func TestChromaStore_Search_WithMinScore(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -325,7 +325,7 @@ func TestChromaStore_Search_WithMinScore(t *testing.T) {
 
 func TestChromaStore_Search_DefaultTopK(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -352,7 +352,7 @@ func TestChromaStore_Search_DefaultTopK(t *testing.T) {
 
 func TestChromaStore_Search_WithFilters(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -382,7 +382,7 @@ func TestChromaStore_Search_WithFilters(t *testing.T) {
 
 func TestChromaStore_Search_Error(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -410,7 +410,7 @@ func TestChromaStore_SearchByText(t *testing.T) {
 
 func TestChromaStore_GetCollectionStats(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -435,7 +435,7 @@ func TestChromaStore_GetCollectionStats(t *testing.T) {
 
 func TestChromaStore_GetCollectionStats_NotFound(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 

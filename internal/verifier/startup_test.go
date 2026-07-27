@@ -624,7 +624,7 @@ func TestStartupVerifier_ReEvaluation_ProvidersReSorted(t *testing.T) {
 
 	ranked := sv.GetRankedProviders()
 	if len(ranked) < 2 {
-		t.Skip("Need at least 2 providers to test sorting")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Need at least 2 providers to test sorting") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Verify sorted order (descending by score ONLY - NO OAuth priority)
@@ -651,7 +651,7 @@ func TestStartupVerifier_ReEvaluation_DebateTeamReselected(t *testing.T) {
 	require.NoError(t, err)
 
 	if result1.DebateTeam == nil {
-		t.Skip("No debate team configured (need verified providers)")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No debate team configured (need verified providers)") // SKIP-OK: #legacy-untriaged
 	}
 
 	firstSelectedAt := result1.DebateTeam.SelectedAt
@@ -748,7 +748,7 @@ func TestDebateTeamSelection_AllPositionsFilled(t *testing.T) {
 	require.NotNil(t, result)
 
 	if result.DebateTeam == nil {
-		t.Skip("No debate team available (need at least 1 verified provider)")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No debate team available (need at least 1 verified provider)") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Must have exactly 5 positions

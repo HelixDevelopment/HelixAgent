@@ -225,12 +225,12 @@ func aggregateRequirements(
 // fed into capability.ScoreHost. Labels are unioned across members
 // using "strictest wins" semantics:
 //
-//  - require.gpu / require.runtime / require.arch — any member's hard
-//    constraint propagates to the whole group (placing on a host that
-//    fails any member's constraint would break that member).
-//  - prefer.* — strictest preference wins (e.g. one member preferring
-//    "high" memory pulls the group toward high-memory hosts even if
-//    others ask "medium").
+//   - require.gpu / require.runtime / require.arch — any member's hard
+//     constraint propagates to the whole group (placing on a host that
+//     fails any member's constraint would break that member).
+//   - prefer.* — strictest preference wins (e.g. one member preferring
+//     "high" memory pulls the group toward high-memory hosts even if
+//     others ask "medium").
 func aggregateRequirementsForCapability(
 	gid string, members []scheduler.ContainerRequirements,
 ) Requirement {

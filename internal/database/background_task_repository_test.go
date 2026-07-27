@@ -20,7 +20,7 @@ import (
 
 func setupBackgroundTaskTestDB(t *testing.T) (*pgxpool.Pool, *BackgroundTaskRepository) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in -short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in -short mode") // SKIP-OK: #short-mode
 		return nil, nil
 	}
 

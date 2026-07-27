@@ -164,7 +164,7 @@ func TestResourceLimitsEnforcement(t *testing.T) {
 func TestAuthenticationSecurity(t *testing.T) {
 	t.Parallel()
 	// Skip test - requires actual remote configuration
-	t.Skip("Remote authentication test requires SSH configuration")  // SKIP-OK: #requires-ssh
+	t.Skip("Remote authentication test requires SSH configuration") // SKIP-OK: #requires-ssh
 }
 
 // TestContextPropagation validates that container operations

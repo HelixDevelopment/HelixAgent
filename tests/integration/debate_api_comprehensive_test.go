@@ -170,7 +170,7 @@ func healthyParticipants(n int) []debateParticipantReq {
 // CONST-026 requires both debate flavors with 5 positions.
 func TestDebateAPI_5PositionDebate(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -212,7 +212,7 @@ func TestDebateAPI_5PositionDebate(t *testing.T) {
 // CONST-026 requires both debate flavors with 8+ positions.
 func TestDebateAPI_8PositionDebate(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -253,7 +253,7 @@ func TestDebateAPI_8PositionDebate(t *testing.T) {
 // TestDebateAPI_10PositionDebate tests a 10-position large-scale debate.
 func TestDebateAPI_10PositionDebate(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -294,7 +294,7 @@ func TestDebateAPI_10PositionDebate(t *testing.T) {
 // TestDebateAPI_ErrorHandling_MissingTopic tests error response for missing topic.
 func TestDebateAPI_ErrorHandling_MissingTopic(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -316,7 +316,7 @@ func TestDebateAPI_ErrorHandling_MissingTopic(t *testing.T) {
 // TestDebateAPI_ErrorHandling_SingleParticipant tests error for single participant.
 func TestDebateAPI_ErrorHandling_SingleParticipant(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -338,7 +338,7 @@ func TestDebateAPI_ErrorHandling_SingleParticipant(t *testing.T) {
 // TestDebateAPI_ErrorHandling_NonexistentDebate tests GET for non-existent debate.
 func TestDebateAPI_ErrorHandling_NonexistentDebate(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -352,7 +352,7 @@ func TestDebateAPI_ErrorHandling_NonexistentDebate(t *testing.T) {
 // TestDebateAPI_ConcurrentDebates tests 3 simultaneous debates.
 func TestDebateAPI_ConcurrentDebates(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()
@@ -430,7 +430,7 @@ func TestDebateAPI_ConcurrentDebates(t *testing.T) {
 // TestDebateAPI_VotingMethods tests different voting strategies.
 func TestDebateAPI_VotingMethods(t *testing.T) {
 	if !isDebateServerAvailable() {
-		t.Skip("HelixAgent server not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	baseURL := debateBaseURL()

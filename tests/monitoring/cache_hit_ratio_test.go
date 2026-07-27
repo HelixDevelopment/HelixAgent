@@ -12,7 +12,7 @@ import (
 // accurately reflect the expected hit ratio when operations are simulated.
 func TestMonitoring_CacheHitRatio(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -65,7 +65,7 @@ func TestMonitoring_CacheHitRatio(t *testing.T) {
 // metrics are correctly tracked as items are evicted from the cache.
 func TestMonitoring_CacheEvictions(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -112,7 +112,7 @@ func TestMonitoring_CacheEvictions(t *testing.T) {
 // accurately track the byte-level memory consumption of cached data.
 func TestMonitoring_CacheMemoryUsage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -159,7 +159,7 @@ func TestMonitoring_CacheMemoryUsage(t *testing.T) {
 // counters are tracked per cache region (in-memory vs distributed).
 func TestMonitoring_CacheTTLExpiration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()

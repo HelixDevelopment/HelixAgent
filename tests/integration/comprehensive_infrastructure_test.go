@@ -668,7 +668,7 @@ func TestAIDebate(t *testing.T) {
 		defer resp.Body.Close()
 		// Accept 200, 401 (auth required), or 404 (endpoint might not exist)
 		if resp.StatusCode == 404 {
-			t.Skip("Debate health endpoint not implemented")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Debate health endpoint not implemented") // SKIP-OK: #legacy-untriaged
 		}
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			t.Log("Debate health requires authentication - endpoint exists and responds correctly")
@@ -707,7 +707,7 @@ func TestAIDebate(t *testing.T) {
 		defer resp.Body.Close()
 		// Accept 200, 201, 202, 401 (auth required), or 404
 		if resp.StatusCode == 404 {
-			t.Skip("Debate create endpoint not implemented")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Debate create endpoint not implemented") // SKIP-OK: #legacy-untriaged
 		}
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			t.Log("Debate create requires authentication - endpoint exists and responds correctly")

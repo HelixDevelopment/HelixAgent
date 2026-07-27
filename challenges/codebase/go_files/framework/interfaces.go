@@ -98,13 +98,13 @@ type Field struct {
 
 // APIRequestLog captures API request details.
 type APIRequestLog struct {
-	Timestamp   string            `json:"timestamp"`
-	RequestID   string            `json:"request_id"`
-	Method      string            `json:"method"`
-	URL         string            `json:"url"`
-	Headers     map[string]string `json:"headers"` // Already redacted
-	Body        string            `json:"body,omitempty"`
-	BodyLength  int               `json:"body_length"`
+	Timestamp  string            `json:"timestamp"`
+	RequestID  string            `json:"request_id"`
+	Method     string            `json:"method"`
+	URL        string            `json:"url"`
+	Headers    map[string]string `json:"headers"` // Already redacted
+	Body       string            `json:"body,omitempty"`
+	BodyLength int               `json:"body_length"`
 }
 
 // APIResponseLog captures API response details.
@@ -183,13 +183,13 @@ type ProviderVerifier interface {
 
 // ProviderVerificationResult holds the result of verifying a provider.
 type ProviderVerificationResult struct {
-	Provider      string        `json:"provider"`
-	Connected     bool          `json:"connected"`
-	Authenticated bool          `json:"authenticated"`
-	Capabilities  []string      `json:"capabilities"`
-	Models        []ModelScore  `json:"models"`
-	ResponseTime  int64         `json:"response_time_ms"`
-	Error         string        `json:"error,omitempty"`
+	Provider      string       `json:"provider"`
+	Connected     bool         `json:"connected"`
+	Authenticated bool         `json:"authenticated"`
+	Capabilities  []string     `json:"capabilities"`
+	Models        []ModelScore `json:"models"`
+	ResponseTime  int64        `json:"response_time_ms"`
+	Error         string       `json:"error,omitempty"`
 }
 
 // DebateGroupFormation handles AI debate group creation.
@@ -209,19 +209,19 @@ type DebateGroupFormation interface {
 
 // DebateGroupConfig holds configuration for debate group formation.
 type DebateGroupConfig struct {
-	PrimaryCount        int                `json:"primary_count"`
-	FallbacksPerPrimary int                `json:"fallbacks_per_primary"`
-	MinimumScore        float64            `json:"minimum_score"`
-	PreferDiversity     bool               `json:"prefer_diversity"`
-	SelectionWeights    SelectionWeights   `json:"selection_weights"`
+	PrimaryCount        int              `json:"primary_count"`
+	FallbacksPerPrimary int              `json:"fallbacks_per_primary"`
+	MinimumScore        float64          `json:"minimum_score"`
+	PreferDiversity     bool             `json:"prefer_diversity"`
+	SelectionWeights    SelectionWeights `json:"selection_weights"`
 }
 
 // SelectionWeights defines weights for model selection criteria.
 type SelectionWeights struct {
-	VerificationScore   float64 `json:"verification_score"`
-	CapabilityCoverage  float64 `json:"capability_coverage"`
-	ResponseSpeed       float64 `json:"response_speed"`
-	ProviderDiversity   float64 `json:"provider_diversity"`
+	VerificationScore  float64 `json:"verification_score"`
+	CapabilityCoverage float64 `json:"capability_coverage"`
+	ResponseSpeed      float64 `json:"response_speed"`
+	ProviderDiversity  float64 `json:"provider_diversity"`
 }
 
 // APITester tests the HelixAgent API with quality assertions.
@@ -265,12 +265,12 @@ type Message struct {
 
 // ChatCompletionResponse represents an OpenAI-compatible chat completion response.
 type ChatCompletionResponse struct {
-	ID      string   `json:"id"`
-	Object  string   `json:"object"`
-	Created int64    `json:"created"`
-	Model   string   `json:"model"`
-	Choices []Choice `json:"choices"`
-	Usage   Usage    `json:"usage"`
+	ID             string          `json:"id"`
+	Object         string          `json:"object"`
+	Created        int64           `json:"created"`
+	Model          string          `json:"model"`
+	Choices        []Choice        `json:"choices"`
+	Usage          Usage           `json:"usage"`
 	DebateMetadata *DebateMetadata `json:"debate_metadata,omitempty"`
 }
 

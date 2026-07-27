@@ -84,7 +84,7 @@ func (p *ensembleStressMockProvider) CompleteStream(
 // without panics or data corruption.
 func TestEnsemble_ConcurrentProviderCalls(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -186,7 +186,7 @@ func TestEnsemble_ConcurrentProviderCalls(t *testing.T) {
 // run many callers to ensure the system doesn't spawn unbounded goroutines.
 func TestEnsemble_SemaphoreLimitsUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -254,7 +254,7 @@ func TestEnsemble_SemaphoreLimitsUnderLoad(t *testing.T) {
 // bounded even under high concurrency by measuring P99 latency.
 func TestEnsemble_ResponseTimeBounded(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -334,7 +334,7 @@ func TestEnsemble_ResponseTimeBounded(t *testing.T) {
 // many ensemble calls, then checks goroutine count.
 func TestEnsemble_NoGoroutineLeaks(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -391,7 +391,7 @@ func TestEnsemble_NoGoroutineLeaks(t *testing.T) {
 // cause panics or deadlocks.
 func TestEnsemble_ConcurrentRegisterAndRun(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -487,7 +487,7 @@ func TestEnsemble_ConcurrentRegisterAndRun(t *testing.T) {
 // concurrent load to verify thread safety of the voting codepath.
 func TestEnsemble_VotingStrategiesUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

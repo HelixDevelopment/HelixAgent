@@ -38,7 +38,7 @@ func TestAPIServerLifecycle(t *testing.T) {
 
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built, run 'make build' first")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Binary not built, run 'make build' first") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Use a unique port to avoid conflicts
@@ -159,12 +159,12 @@ func TestServerRestart(t *testing.T) {
 	skipIfCannotSpawnSecondHelixagent(t)
 
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping restart test in CI")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping restart test in CI") // SKIP-OK: #legacy-untriaged
 	}
 
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Binary not built") // SKIP-OK: #legacy-untriaged
 	}
 
 	port := "17062"
@@ -235,12 +235,12 @@ func TestServerSignalHandling(t *testing.T) {
 	skipIfCannotSpawnSecondHelixagent(t)
 
 	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping signal test in CI")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping signal test in CI") // SKIP-OK: #legacy-untriaged
 	}
 
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Binary not built") // SKIP-OK: #legacy-untriaged
 	}
 
 	tests := []struct {

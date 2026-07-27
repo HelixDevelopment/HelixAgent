@@ -25,11 +25,11 @@ func cloudflareCredentials(t *testing.T) (string, string) {
 	t.Helper()
 	apiKey := os.Getenv("CLOUDFLARE_API_KEY")
 	if apiKey == "" {
-		t.Skip("CLOUDFLARE_API_KEY not set")  // SKIP-OK: #requires-upstream-key
+		t.Skip("CLOUDFLARE_API_KEY not set") // SKIP-OK: #requires-upstream-key
 	}
 	accountID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
 	if accountID == "" {
-		t.Skip("CLOUDFLARE_ACCOUNT_ID not set")  // SKIP-OK: #legacy-untriaged
+		t.Skip("CLOUDFLARE_ACCOUNT_ID not set") // SKIP-OK: #legacy-untriaged
 	}
 	return apiKey, accountID
 }

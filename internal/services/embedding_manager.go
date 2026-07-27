@@ -60,7 +60,7 @@ type VectorSearchRequest struct {
 
 // VectorSearchResponse represents the response from vector search
 type VectorSearchResponse struct {
-	Success bool                 `json:"success"`
+	Success bool `json:"success"`
 	// Results is intentionally NOT omitempty: when no documents match,
 	// callers expect `results: []` to appear in JSON so they can iterate
 	// without testing for field presence first. CONST-035 §c (no

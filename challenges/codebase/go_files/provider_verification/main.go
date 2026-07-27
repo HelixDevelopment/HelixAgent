@@ -18,53 +18,53 @@ import (
 
 // ProviderConfig holds configuration for an LLM provider.
 type ProviderConfig struct {
-	Name     string `json:"name"`
-	APIKey   string `json:"-"` // Never serialize
-	BaseURL  string `json:"base_url,omitempty"`
-	Enabled  bool   `json:"enabled"`
+	Name    string `json:"name"`
+	APIKey  string `json:"-"` // Never serialize
+	BaseURL string `json:"base_url,omitempty"`
+	Enabled bool   `json:"enabled"`
 }
 
 // VerificationResult holds the result of verifying a provider.
 type VerificationResult struct {
-	Provider       string        `json:"provider"`
-	Connected      bool          `json:"connected"`
-	Authenticated  bool          `json:"authenticated"`
-	CodeVisibility bool          `json:"code_visibility"`
-	Models         []ModelInfo   `json:"models,omitempty"`
-	ResponseTimeMs int64         `json:"response_time_ms"`
-	Error          string        `json:"error,omitempty"`
-	Timestamp      time.Time     `json:"timestamp"`
+	Provider       string      `json:"provider"`
+	Connected      bool        `json:"connected"`
+	Authenticated  bool        `json:"authenticated"`
+	CodeVisibility bool        `json:"code_visibility"`
+	Models         []ModelInfo `json:"models,omitempty"`
+	ResponseTimeMs int64       `json:"response_time_ms"`
+	Error          string      `json:"error,omitempty"`
+	Timestamp      time.Time   `json:"timestamp"`
 }
 
 // ModelInfo holds information about a model.
 type ModelInfo struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	Provider     string            `json:"provider"`
-	Score        float64           `json:"score"`
-	Capabilities []string          `json:"capabilities,omitempty"`
+	ID             string             `json:"id"`
+	Name           string             `json:"name"`
+	Provider       string             `json:"provider"`
+	Score          float64            `json:"score"`
+	Capabilities   []string           `json:"capabilities,omitempty"`
 	ScoreBreakdown map[string]float64 `json:"score_breakdown,omitempty"`
 }
 
 // ScoringWeights defines the weights for scoring criteria.
 type ScoringWeights struct {
-	ResponseSpeed   float64 `json:"response_speed"`
-	ModelEfficiency float64 `json:"model_efficiency"`
+	ResponseSpeed     float64 `json:"response_speed"`
+	ModelEfficiency   float64 `json:"model_efficiency"`
 	CostEffectiveness float64 `json:"cost_effectiveness"`
-	Capability      float64 `json:"capability"`
-	Recency         float64 `json:"recency"`
+	Capability        float64 `json:"capability"`
+	Recency           float64 `json:"recency"`
 }
 
 // ChallengeResult holds the complete challenge output.
 type ChallengeResult struct {
-	ChallengeID    string               `json:"challenge_id"`
-	ChallengeName  string               `json:"challenge_name"`
-	Timestamp      time.Time            `json:"timestamp"`
-	Duration       time.Duration        `json:"duration"`
-	Status         string               `json:"status"`
-	Providers      []VerificationResult `json:"providers"`
-	Models         []ModelInfo          `json:"models"`
-	Summary        ChallengeSummary     `json:"summary"`
+	ChallengeID   string               `json:"challenge_id"`
+	ChallengeName string               `json:"challenge_name"`
+	Timestamp     time.Time            `json:"timestamp"`
+	Duration      time.Duration        `json:"duration"`
+	Status        string               `json:"status"`
+	Providers     []VerificationResult `json:"providers"`
+	Models        []ModelInfo          `json:"models"`
+	Summary       ChallengeSummary     `json:"summary"`
 }
 
 // ChallengeSummary provides aggregated statistics.
@@ -356,11 +356,11 @@ func discoverModels(ctx context.Context, config ProviderConfig) []ModelInfo {
 func calculateScoreBreakdown(model ModelInfo) map[string]float64 {
 	// Simplified scoring based on capabilities
 	breakdown := map[string]float64{
-		"response_speed":    7.0,
-		"model_efficiency":  7.0,
+		"response_speed":     7.0,
+		"model_efficiency":   7.0,
 		"cost_effectiveness": 7.0,
-		"capability":        7.0,
-		"recency":           7.0,
+		"capability":         7.0,
+		"recency":            7.0,
 	}
 
 	// Adjust based on capabilities

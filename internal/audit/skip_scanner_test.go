@@ -8,7 +8,7 @@ import (
 
 func TestScanSkippedTests(t *testing.T) {
 	tmpDir := t.TempDir()
-	content := "package main\n\nimport \"testing\"\n\nfunc TestSomething(t *testing.T) {\n\tt.Skip(\"Docker not available\")\n}\n\nfunc TestOther(t *testing.T) {\n\tt.Skipf(\"Skipping: PostgreSQL not accessible: %v\", err)\n}\n\nfunc TestFlaky(t *testing.T) {\n\tt.Skip(\"Skipping test that involves sleep in short mode\")\n}\n"  // SKIP-OK: #short-mode
+	content := "package main\n\nimport \"testing\"\n\nfunc TestSomething(t *testing.T) {\n\tt.Skip(\"Docker not available\")\n}\n\nfunc TestOther(t *testing.T) {\n\tt.Skipf(\"Skipping: PostgreSQL not accessible: %v\", err)\n}\n\nfunc TestFlaky(t *testing.T) {\n\tt.Skip(\"Skipping test that involves sleep in short mode\")\n}\n" // SKIP-OK: #short-mode
 	if err := os.WriteFile(filepath.Join(tmpDir, "main_test.go"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestScanSkippedTests(t *testing.T) {
 
 func TestScanSkippedTestsNonTestIgnored(t *testing.T) {
 	tmpDir := t.TempDir()
-	content := "package main\n\nfunc skipMe() {\n\tt.Skip(\"should not be found\")\n}\n"  // SKIP-OK: #legacy-untriaged
+	content := "package main\n\nfunc skipMe() {\n\tt.Skip(\"should not be found\")\n}\n" // SKIP-OK: #legacy-untriaged
 	if err := os.WriteFile(filepath.Join(tmpDir, "service.go"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestScanSkippedTestsExcludesVendor(t *testing.T) {
 	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	content := "package pkg\n\nimport \"testing\"\n\nfunc TestVendor(t *testing.T) {\n\tt.Skip(\"Docker not available\")\n}\n"  // SKIP-OK: #requires-docker
+	content := "package pkg\n\nimport \"testing\"\n\nfunc TestVendor(t *testing.T) {\n\tt.Skip(\"Docker not available\")\n}\n" // SKIP-OK: #requires-docker
 	if err := os.WriteFile(filepath.Join(vendorDir, "pkg_test.go"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}

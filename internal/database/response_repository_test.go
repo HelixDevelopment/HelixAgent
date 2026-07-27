@@ -422,11 +422,11 @@ func TestResponseRepository_DeleteByRequestID(t *testing.T) {
 func TestResponseRepository_GetByProviderID(t *testing.T) {
 	// Skip tests that require foreign key references (provider_id -> llm_providers)
 	t.Run("Success", func(t *testing.T) {
-		t.Skip("Skipping: requires valid provider record due to foreign key constraint")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping: requires valid provider record due to foreign key constraint") // SKIP-OK: #legacy-untriaged
 	})
 
 	t.Run("Pagination", func(t *testing.T) {
-		t.Skip("Skipping: requires valid provider record due to foreign key constraint")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping: requires valid provider record due to foreign key constraint") // SKIP-OK: #legacy-untriaged
 	})
 }
 

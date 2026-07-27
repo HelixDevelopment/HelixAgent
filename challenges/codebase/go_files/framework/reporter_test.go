@@ -436,12 +436,12 @@ func TestSaveMasterSummary(t *testing.T) {
 		TotalDuration:    5 * time.Minute,
 		Challenges: []ChallengeSummary{
 			{
-				ChallengeID:     "ch1",
-				ChallengeName:   "Challenge One",
-				Status:          StatusPassed,
-				Duration:        3 * time.Minute,
+				ChallengeID:      "ch1",
+				ChallengeName:    "Challenge One",
+				Status:           StatusPassed,
+				Duration:         3 * time.Minute,
 				AssertionsPassed: 5,
-				AssertionsTotal: 5,
+				AssertionsTotal:  5,
 			},
 		},
 	}

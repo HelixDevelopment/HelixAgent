@@ -97,7 +97,7 @@ func TestRealCommandExecutor_LookPath(t *testing.T) {
 	// Test with a command that should exist on most systems
 	path, err := executor.LookPath("ls")
 	if err != nil {
-		t.Skip("ls command not found, skipping test")  // SKIP-OK: #legacy-untriaged
+		t.Skip("ls command not found, skipping test") // SKIP-OK: #legacy-untriaged
 	}
 	assert.NotEmpty(t, path)
 }
@@ -194,7 +194,7 @@ func TestEnsureRequiredContainersWithConfig_DockerNotFound(t *testing.T) {
 	// when no runtime is available, but DetectContainerRuntime() uses real system calls
 	runtime, _, err := DetectContainerRuntime()
 	if err == nil && runtime != RuntimeNone {
-		t.Skip("Skipping - real container runtime available; function uses real runtime detection")  // SKIP-OK: #runtime-mock-only
+		t.Skip("Skipping - real container runtime available; function uses real runtime detection") // SKIP-OK: #runtime-mock-only
 	}
 
 	executor := &MockCommandExecutor{
@@ -218,10 +218,10 @@ func TestEnsureRequiredContainersWithConfig_AllServicesRunning(t *testing.T) {
 	// Also skip when container adapter is not initialized (unit test context)
 	runtime, _, err := DetectContainerRuntime()
 	if err == nil && runtime != RuntimeNone {
-		t.Skip("Skipping - real container runtime available; function uses real runtime detection")  // SKIP-OK: #runtime-mock-only
+		t.Skip("Skipping - real container runtime available; function uses real runtime detection") // SKIP-OK: #runtime-mock-only
 	}
 	if globalContainerAdapter == nil {
-		t.Skip("Skipping - container adapter not initialized in unit test context")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping - container adapter not initialized in unit test context") // SKIP-OK: #legacy-untriaged
 	}
 
 	executor := &MockCommandExecutor{
@@ -245,7 +245,7 @@ func TestEnsureRequiredContainersWithConfig_SomeServicesNeedStart(t *testing.T) 
 	// This is an integration test - requires real services running
 	runtime, _, err := DetectContainerRuntime()
 	if err != nil || runtime == RuntimeNone {
-		t.Skip("Skipping - no container runtime available")  // SKIP-OK: #runtime-mock-only
+		t.Skip("Skipping - no container runtime available") // SKIP-OK: #runtime-mock-only
 	}
 
 	startCalled := false
@@ -284,7 +284,7 @@ func TestEnsureRequiredContainersWithConfig_SomeServicesNeedStart(t *testing.T) 
 	// Note: This test will be slow due to time.Sleep in the function
 	// In a real scenario, we'd want to make the sleep configurable
 	if testing.Short() {
-		t.Skip("Skipping test that involves sleep in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping test that involves sleep in short mode") // SKIP-OK: #short-mode
 	}
 
 	err = ensureRequiredContainersWithConfig(logger, cfg)
@@ -300,10 +300,10 @@ func TestEnsureRequiredContainersWithConfig_StartFails(t *testing.T) {
 	// Skip mock-based test when real runtime is available
 	runtime, _, err := DetectContainerRuntime()
 	if err == nil && runtime != RuntimeNone {
-		t.Skip("Skipping - real container runtime available; function uses real runtime detection")  // SKIP-OK: #runtime-mock-only
+		t.Skip("Skipping - real container runtime available; function uses real runtime detection") // SKIP-OK: #runtime-mock-only
 	}
 	if globalContainerAdapter == nil {
-		t.Skip("Skipping - container adapter not initialized in unit test context")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping - container adapter not initialized in unit test context") // SKIP-OK: #legacy-untriaged
 	}
 
 	executor := &MockCommandExecutor{
@@ -338,7 +338,7 @@ func TestEnsureRequiredContainersWithConfig_DockerComposeSuccess(t *testing.T) {
 	// Integration test - requires container runtime
 	runtime, _, err := DetectContainerRuntime()
 	if err != nil || runtime == RuntimeNone {
-		t.Skip("Skipping - no container runtime available")  // SKIP-OK: #runtime-mock-only
+		t.Skip("Skipping - no container runtime available") // SKIP-OK: #runtime-mock-only
 	}
 
 	dockerComposeUsed := false
@@ -387,7 +387,7 @@ func TestEnsureRequiredContainersWithConfig_GetRunningServicesFails(t *testing.T
 	// Integration test - requires container runtime
 	runtime, _, err := DetectContainerRuntime()
 	if err != nil || runtime == RuntimeNone {
-		t.Skip("Skipping - no container runtime available")  // SKIP-OK: #runtime-mock-only
+		t.Skip("Skipping - no container runtime available") // SKIP-OK: #runtime-mock-only
 	}
 
 	getServicesCalled := false
@@ -422,7 +422,7 @@ func TestEnsureRequiredContainersWithConfig_GetRunningServicesFails(t *testing.T
 	logger := createTestLogger()
 
 	if testing.Short() {
-		t.Skip("Skipping test that involves sleep in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping test that involves sleep in short mode") // SKIP-OK: #short-mode
 	}
 
 	err = ensureRequiredContainersWithConfig(logger, cfg)
@@ -546,7 +546,7 @@ func TestGetRunningServicesWithConfig_FallbackToDockerCompose(t *testing.T) {
 
 func TestVerifyServicesHealthWithConfig_AllHealthy(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping test with sleeps in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping test with sleeps in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Mock postgres and redis health checkers so we don't need real infra
@@ -1057,12 +1057,12 @@ func TestRun_PortInUse(t *testing.T) {
 func TestEnsureRequiredContainers(t *testing.T) {
 	// This test is skipped in CI environments where docker is not available
 	if testing.Short() {
-		t.Skip("Skipping container startup test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping container startup test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Check if docker is available
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available, skipping container startup test")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available, skipping container startup test") // SKIP-OK: #requires-docker
 	}
 
 	logger := logrus.New()
@@ -1083,7 +1083,7 @@ func TestEnsureRequiredContainers(t *testing.T) {
 
 func TestGetRunningServices(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available") // SKIP-OK: #requires-docker
 	}
 
 	services, err := getRunningServices()
@@ -1283,7 +1283,7 @@ func TestVerifyServicesHealth_SingleService(t *testing.T) {
 
 	t.Run("Cognee", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 		err := verifyServicesHealth([]string{"cognee"}, logger)
 		// Service may or may not be running - just verify function doesn't panic
@@ -1292,7 +1292,7 @@ func TestVerifyServicesHealth_SingleService(t *testing.T) {
 
 	t.Run("ChromaDB", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 		err := verifyServicesHealth([]string{"chromadb"}, logger)
 		// Service may or may not be running - just verify function doesn't panic
@@ -1321,10 +1321,10 @@ func TestLoggerSetup(t *testing.T) {
 func TestEnsureRequiredContainers_DockerNotAvailable(t *testing.T) {
 	// Skip if any container runtime is available
 	if _, err := exec.LookPath("docker"); err == nil {
-		t.Skip("Docker is available, skipping no-container-runtime test")  // SKIP-OK: #runtime-real-only
+		t.Skip("Docker is available, skipping no-container-runtime test") // SKIP-OK: #runtime-real-only
 	}
 	if _, err := exec.LookPath("podman"); err == nil {
-		t.Skip("Podman is available, skipping no-container-runtime test")  // SKIP-OK: #runtime-real-only
+		t.Skip("Podman is available, skipping no-container-runtime test") // SKIP-OK: #runtime-real-only
 	}
 
 	logger := logrus.New()
@@ -1339,7 +1339,7 @@ func TestEnsureRequiredContainers_DockerNotAvailable(t *testing.T) {
 // TestGetRunningServices_EmptyResult tests parsing empty output
 func TestGetRunningServices_EmptyResult(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available") // SKIP-OK: #requires-docker
 	}
 
 	services, err := getRunningServices()
@@ -1381,7 +1381,7 @@ func TestCheckHealthFunctions(t *testing.T) {
 
 	t.Run("CogneeHealth_NoServer", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 		// Service may or may not be running - verify function doesn't panic
 		err := checkCogneeHealth()
@@ -1395,7 +1395,7 @@ func TestCheckHealthFunctions(t *testing.T) {
 
 	t.Run("ChromaDBHealth_NoServer", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 		// Service may or may not be running - verify function doesn't panic
 		err := checkChromaDBHealth()
@@ -1442,7 +1442,7 @@ func TestRequiredServicesList(t *testing.T) {
 // TestEnsureRequiredContainers_AllRunning tests when all services are already running
 func TestEnsureRequiredContainers_AllRunning(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available") // SKIP-OK: #requires-docker
 	}
 
 	logger := logrus.New()
@@ -1563,7 +1563,7 @@ func TestCheckChromaDBHealth_ErrorMessage(t *testing.T) {
 // TestEnsureRequiredContainers_WithLogger tests with valid logger
 func TestEnsureRequiredContainers_WithLogger(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available") // SKIP-OK: #requires-docker
 	}
 
 	logger := logrus.New()
@@ -1582,7 +1582,7 @@ func TestEnsureRequiredContainers_WithLogger(t *testing.T) {
 // TestGetRunningServices_WithDocker tests with docker available
 func TestGetRunningServices_WithDocker(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available") // SKIP-OK: #requires-docker
 	}
 
 	services, err := getRunningServices()
@@ -1693,7 +1693,7 @@ func TestVerifyServicesHealth_ErrorFormat(t *testing.T) {
 // TestHealthCheckTimeouts tests that health checks complete in reasonable time
 func TestHealthCheckTimeouts(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping timeout test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping timeout test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Postgres and Redis placeholders should complete quickly
@@ -1733,10 +1733,10 @@ func TestFlagPointers(t *testing.T) {
 func TestEnsureRequiredContainers_NoDocker(t *testing.T) {
 	// This test only runs when NO container runtime is available
 	if _, err := exec.LookPath("docker"); err == nil {
-		t.Skip("Docker is available, skipping no-container-runtime test")  // SKIP-OK: #runtime-real-only
+		t.Skip("Docker is available, skipping no-container-runtime test") // SKIP-OK: #runtime-real-only
 	}
 	if _, err := exec.LookPath("podman"); err == nil {
-		t.Skip("Podman is available, skipping no-container-runtime test")  // SKIP-OK: #runtime-real-only
+		t.Skip("Podman is available, skipping no-container-runtime test") // SKIP-OK: #runtime-real-only
 	}
 
 	logger := logrus.New()
@@ -1754,7 +1754,7 @@ func TestGetRunningServices_ComposeNotFound(t *testing.T) {
 	// or falls back to sh -c "docker compose ps ... || true" which doesn't fail.
 	// This test verifies the function doesn't panic and returns a map.
 	if globalContainerAdapter != nil {
-		t.Skip("Skipping - container adapter initialized, function uses adapter path")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping - container adapter initialized, function uses adapter path") // SKIP-OK: #legacy-untriaged
 	}
 
 	services, err := getRunningServices()
@@ -1850,7 +1850,7 @@ func TestCheckChromaDBHealthWithConfig_ServerError(t *testing.T) {
 
 func TestFullWorkflow_AllServicesHealthy(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Mock postgres and redis health checkers so we don't need real infra
@@ -2698,12 +2698,12 @@ func TestValidateOpenCodeConfig_RealDownloadsConfig(t *testing.T) {
 	// Get home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		t.Skip("Could not get home directory")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Could not get home directory") // SKIP-OK: #legacy-untriaged
 	}
 
 	configPath := homeDir + "/Downloads/opencode-helix-agent.json"
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Skip("Downloads config file does not exist: " + configPath)  // SKIP-OK: #legacy-untriaged
+		t.Skip("Downloads config file does not exist: " + configPath) // SKIP-OK: #legacy-untriaged
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -2724,12 +2724,12 @@ func TestValidateOpenCodeConfig_RealOpenCodeConfig(t *testing.T) {
 	// Get home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		t.Skip("Could not get home directory")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Could not get home directory") // SKIP-OK: #legacy-untriaged
 	}
 
 	configPath := homeDir + "/.config/opencode/opencode.json"
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Skip("User opencode config file does not exist: " + configPath)  // SKIP-OK: #legacy-untriaged
+		t.Skip("User opencode config file does not exist: " + configPath) // SKIP-OK: #legacy-untriaged
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -3424,7 +3424,7 @@ func TestRun_ValidateOpenCode_FromRun(t *testing.T) {
 func TestDetectComposeCommand_Docker(t *testing.T) {
 	// Skip if docker is not available
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker not available")  // SKIP-OK: #requires-docker
+		t.Skip("Docker not available") // SKIP-OK: #requires-docker
 	}
 
 	cmd, args, err := DetectComposeCommand(RuntimeDocker)
@@ -3443,7 +3443,7 @@ func TestDetectComposeCommand_Docker(t *testing.T) {
 func TestDetectComposeCommand_Podman(t *testing.T) {
 	// Skip if podman is not available
 	if _, err := exec.LookPath("podman"); err != nil {
-		t.Skip("Podman not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Podman not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	cmd, args, err := DetectComposeCommand(RuntimePodman)

@@ -14,7 +14,7 @@ import (
 // TestDeadlockDetectionStress tests common deadlock patterns under stress
 func TestDeadlockDetectionStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("MutexOrderingStress", func(t *testing.T) {

@@ -209,7 +209,7 @@ func (p *recoveringProvider) CompleteStream(
 // during streaming, verifying the ensemble handles the timeout gracefully.
 func TestChaos_ProviderTimeout_MidStream(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -275,7 +275,7 @@ func TestChaos_ProviderTimeout_MidStream(t *testing.T) {
 // returning corrupted/malformed responses without panicking.
 func TestChaos_CorruptedResponse_Handling(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -341,7 +341,7 @@ func TestChaos_CorruptedResponse_Handling(t *testing.T) {
 // responses then failing, verifying ensemble recovery.
 func TestChaos_PartialResponse_Recovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -402,7 +402,7 @@ func TestChaos_PartialResponse_Recovery(t *testing.T) {
 // to trigger circuit breaker protection, then verifies state transitions.
 func TestChaos_RapidProviderFailure_CircuitBreaker(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -473,7 +473,7 @@ func TestChaos_RapidProviderFailure_CircuitBreaker(t *testing.T) {
 // ensemble operations and verifies all goroutines clean up properly.
 func TestChaos_ContextCancellation_Cleanup(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

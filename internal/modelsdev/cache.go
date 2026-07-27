@@ -82,9 +82,9 @@ func (c *Cache) withState(fn func(*cacheState)) {
 // GetModel retrieves a model from cache
 func (c *Cache) GetModel(ctx context.Context, modelID string) (*Model, bool) {
 	var (
-		result      *Model
-		found       bool
-		expiredID   string
+		result    *Model
+		found     bool
+		expiredID string
 	)
 	c.withState(func(s *cacheState) {
 		cached, exists := s.models[modelID]
@@ -170,9 +170,9 @@ func (c *Cache) SetModels(ctx context.Context, models []Model) {
 // GetProvider retrieves a provider from cache
 func (c *Cache) GetProvider(ctx context.Context, providerID string) (*Provider, bool) {
 	var (
-		result      *Provider
-		found       bool
-		expiredID   string
+		result    *Provider
+		found     bool
+		expiredID string
 	)
 	c.withState(func(s *cacheState) {
 		cached, exists := s.providers[providerID]

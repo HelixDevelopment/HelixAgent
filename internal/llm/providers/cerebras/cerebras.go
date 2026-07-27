@@ -52,17 +52,17 @@ type CerebrasRequest struct {
 }
 
 type CerebrasMessage struct {
-	Role       string              `json:"role"`
-	Content    string              `json:"content"`
+	Role    string `json:"role"`
+	Content string `json:"content"`
 	// ToolCallID is required when role="tool" — Cerebras rejects
 	// follow-up messages without it (CONST-032 reproduction:
 	// challenges/scripts/opencode_tool_result_followup_challenge.sh).
-	ToolCallID string              `json:"tool_call_id,omitempty"`
+	ToolCallID string `json:"tool_call_id,omitempty"`
 	// ToolCalls on an assistant message — required so the following
 	// tool message satisfies "must be a response to a preceding
 	// message with 'tool_calls'" (CONST-032 reproduction:
 	// challenges/scripts/opencode_parallel_tool_calls_challenge.sh).
-	ToolCalls  []CerebrasToolCall  `json:"tool_calls,omitempty"`
+	ToolCalls []CerebrasToolCall `json:"tool_calls,omitempty"`
 }
 
 // CerebrasToolCall mirrors the OpenAI tool_call shape on an assistant

@@ -25,7 +25,7 @@ import (
 //   - No panics during concurrent registration / broadcast / deregistration.
 func TestSSE_100ConcurrentClients_ConnectDisconnect(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -158,7 +158,7 @@ func TestSSE_100ConcurrentClients_ConnectDisconnect(t *testing.T) {
 // broadcasts are in flight.
 func TestSSE_GlobalClients_Storm(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -252,7 +252,7 @@ func TestSSE_GlobalClients_Storm(t *testing.T) {
 // broadcast storm is in progress does not panic or deadlock.
 func TestSSE_BroadcastWhileStopping(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

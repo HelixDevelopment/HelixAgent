@@ -13,7 +13,7 @@ import (
 // appropriate bucket boundaries.
 func TestMonitoring_DatabaseQueryDuration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -55,7 +55,7 @@ func TestMonitoring_DatabaseQueryDuration(t *testing.T) {
 // pool metrics (active, idle, max) are correctly tracked and consistent.
 func TestMonitoring_DatabaseConnectionPool(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -106,7 +106,7 @@ func TestMonitoring_DatabaseConnectionPool(t *testing.T) {
 // separately with a counter and that the threshold-based classification works.
 func TestMonitoring_DatabaseSlowQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -174,7 +174,7 @@ func TestMonitoring_DatabaseSlowQueries(t *testing.T) {
 // transaction commit/rollback counters and duration histograms work correctly.
 func TestMonitoring_DatabaseTransactionMetrics(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()

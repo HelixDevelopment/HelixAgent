@@ -33,7 +33,7 @@ func setupPprofRouter() *gin.Engine {
 // and returns a 200 response when pprof endpoints are enabled.
 func TestPprofEndpoint_IndexRegistered(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := setupPprofRouter()
@@ -52,7 +52,7 @@ func TestPprofEndpoint_IndexRegistered(t *testing.T) {
 // all registered (i.e. the router does not return 404 for them).
 func TestPprofEndpoint_ProfileRoutes(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := setupPprofRouter()
@@ -87,7 +87,7 @@ func TestPprofEndpoint_ProfileRoutes(t *testing.T) {
 // environment-variable gating in production code works correctly.
 func TestPprofEndpoint_NotRegisteredWhenDisabled(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Router without pprof routes registered — simulates ENABLE_PPROF unset.
@@ -108,7 +108,7 @@ func TestPprofEndpoint_NotRegisteredWhenDisabled(t *testing.T) {
 // returns a valid response (not 404, not 500) when pprof is enabled.
 func TestPprofEndpoint_HeapProfile(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := setupPprofRouter()
@@ -128,7 +128,7 @@ func TestPprofEndpoint_HeapProfile(t *testing.T) {
 // endpoint responds with a non-empty body containing goroutine stack data.
 func TestPprofEndpoint_GoroutineProfile(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := setupPprofRouter()
@@ -148,7 +148,7 @@ func TestPprofEndpoint_GoroutineProfile(t *testing.T) {
 // without returning a server error.
 func TestPprofEndpoint_SymbolLookup(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := gin.New()
@@ -174,7 +174,7 @@ func TestPprofEndpoint_SymbolLookup(t *testing.T) {
 // production. This test verifies the gate logic at the router level.
 func TestPprofEndpoint_RequireGate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Simulate ENABLE_PPROF="" (disabled): router has no pprof routes.

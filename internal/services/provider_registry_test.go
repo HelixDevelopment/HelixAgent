@@ -302,7 +302,7 @@ func TestProviderRegistry_ListProvidersOrderedByScore(t *testing.T) {
 		// Set scores via score adapter
 		adapter := registry2.GetScoreAdapter()
 		if adapter == nil {
-			t.Skip("Score adapter not available - skipping ordering test")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Score adapter not available - skipping ordering test") // SKIP-OK: #legacy-untriaged
 			return
 		}
 
@@ -1543,7 +1543,7 @@ func TestProviderRegistry_UpdateProviderScore(t *testing.T) {
 		// Get the score adapter
 		adapter := registry.GetScoreAdapter()
 		if adapter == nil {
-			t.Skip("Score adapter not initialized (no auto-discovery)")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Score adapter not initialized (no auto-discovery)") // SKIP-OK: #legacy-untriaged
 		}
 
 		// Update a provider score

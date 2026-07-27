@@ -22,12 +22,12 @@ func newMockChallenge(id ChallengeID, name string, deps []ChallengeID) *mockChal
 	}
 }
 
-func (m *mockChallenge) ID() ChallengeID          { return m.id }
-func (m *mockChallenge) Name() string             { return m.name }
-func (m *mockChallenge) Description() string      { return m.description }
-func (m *mockChallenge) Dependencies() []ChallengeID { return m.dependencies }
+func (m *mockChallenge) ID() ChallengeID                         { return m.id }
+func (m *mockChallenge) Name() string                            { return m.name }
+func (m *mockChallenge) Description() string                     { return m.description }
+func (m *mockChallenge) Dependencies() []ChallengeID             { return m.dependencies }
 func (m *mockChallenge) Configure(config *ChallengeConfig) error { return nil }
-func (m *mockChallenge) Validate(ctx context.Context) error     { return nil }
+func (m *mockChallenge) Validate(ctx context.Context) error      { return nil }
 func (m *mockChallenge) Execute(ctx context.Context) (*ChallengeResult, error) {
 	if m.executeFunc != nil {
 		return m.executeFunc(ctx)

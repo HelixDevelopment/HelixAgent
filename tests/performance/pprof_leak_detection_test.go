@@ -16,7 +16,7 @@ import (
 // goroutines in waves does not leave leaked goroutines behind.
 func TestMemoryLeak_GoroutineCount(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping profiling test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping profiling test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -56,7 +56,7 @@ func TestMemoryLeak_GoroutineCount(t *testing.T) {
 // unbounded heap growth.
 func TestMemoryLeak_HeapGrowth(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping profiling test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping profiling test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -98,7 +98,7 @@ func TestMemoryLeak_HeapGrowth(t *testing.T) {
 // with proper synchronization do not leak goroutines or memory.
 func TestMemoryLeak_ConcurrentMapAccess(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping profiling test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping profiling test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -156,7 +156,7 @@ func TestMemoryLeak_ConcurrentMapAccess(t *testing.T) {
 // and closed, preventing goroutine leaks from blocked channel operations.
 func TestMemoryLeak_ChannelDraining(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping profiling test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping profiling test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -204,7 +204,7 @@ func TestMemoryLeak_ChannelDraining(t *testing.T) {
 // context references are properly cleaned up when the context is cancelled.
 func TestMemoryLeak_ContextCancellation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping profiling test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping profiling test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 

@@ -51,11 +51,11 @@ type InfraConfig struct {
 func DefaultInfraConfig() InfraConfig {
 	return InfraConfig{
 		PostgresHost: envOr("DB_HOST", "localhost"),
-		PostgresPort: envOr("DB_PORT", "8109"),        // HELIXAGENT_PORT_POSTGRES_TEST
+		PostgresPort: envOr("DB_PORT", "8109"), // HELIXAGENT_PORT_POSTGRES_TEST
 		RedisHost:    envOr("REDIS_HOST", "localhost"),
-		RedisPort:    envOr("REDIS_PORT", "8110"),     // HELIXAGENT_PORT_REDIS_MCP
+		RedisPort:    envOr("REDIS_PORT", "8110"), // HELIXAGENT_PORT_REDIS_MCP
 		MockLLMHost:  envOr("MOCK_LLM_HOST", "localhost"),
-		MockLLMPort:  envOr("MOCK_LLM_PORT", "8106"),  // HELIXAGENT_PORT_MOCK_LLM
+		MockLLMPort:  envOr("MOCK_LLM_PORT", "8106"), // HELIXAGENT_PORT_MOCK_LLM
 		ServerHost:   envOr("HELIXAGENT_HOST", "localhost"),
 		ServerPort:   envOr("HELIXAGENT_PORT", "8100"), // HELIXAGENT_PORT_HTTP
 	}
@@ -146,7 +146,7 @@ func ServerAvailable() bool {
 func RequirePostgres(t *testing.T) {
 	t.Helper()
 	if !PostgresAvailable() {
-		t.Skip("PostgreSQL not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
+		t.Skip("PostgreSQL not available — start with: make test-infra-start") // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -154,7 +154,7 @@ func RequirePostgres(t *testing.T) {
 func RequireRedis(t *testing.T) {
 	t.Helper()
 	if !RedisAvailable() {
-		t.Skip("Redis not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Redis not available — start with: make test-infra-start") // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -162,7 +162,7 @@ func RequireRedis(t *testing.T) {
 func RequireMockLLM(t *testing.T) {
 	t.Helper()
 	if !MockLLMAvailable() {
-		t.Skip("Mock LLM not available — start with: make test-infra-start")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mock LLM not available — start with: make test-infra-start") // SKIP-OK: #legacy-untriaged
 	}
 }
 
@@ -172,10 +172,10 @@ func RequireMockLLM(t *testing.T) {
 func RequireServer(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("Skipping server-dependent test in short mode (requires live HelixAgent server with LLM providers)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping server-dependent test in short mode (requires live HelixAgent server with LLM providers)") // SKIP-OK: #short-mode
 	}
 	if !ServerAvailable() {
-		t.Skip("HelixAgent server not available — start with: make run")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not available — start with: make run") // SKIP-OK: #legacy-untriaged
 	}
 }
 

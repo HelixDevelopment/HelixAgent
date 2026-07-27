@@ -18,7 +18,7 @@ import (
 // concurrent operations does not cause goroutine count to grow unboundedly.
 func TestMonitoring_GoroutineCount_Bounded(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping resource monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping resource monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Take baseline goroutine count
@@ -59,7 +59,7 @@ func TestMonitoring_GoroutineCount_Bounded(t *testing.T) {
 // operations do not cause unbounded memory growth.
 func TestMonitoring_MemoryUsage_Bounded(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping resource monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping resource monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	metrics, err := observability.NewLLMMetrics("test-memory-monitoring")
@@ -110,7 +110,7 @@ func TestMonitoring_MemoryUsage_Bounded(t *testing.T) {
 // goroutines with channels does not leak resources.
 func TestMonitoring_FileDescriptor_NoLeak(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping resource monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping resource monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Use goroutine count as a proxy for resource leaks since

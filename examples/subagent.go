@@ -94,7 +94,7 @@ func main() {
 	}
 
 	planInput := subagent.PlanInput{
-		Objective:  "Implement a robust error handling system for a Go web service",
+		Objective:   "Implement a robust error handling system for a Go web service",
 		Discoveries: exploreResult.Discoveries,
 		Constraints: []string{
 			"Must use structured logging",

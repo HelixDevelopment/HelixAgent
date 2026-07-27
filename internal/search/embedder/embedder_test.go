@@ -233,7 +233,7 @@ func TestOpenAIEmbedder_HashText(t *testing.T) {
 
 func TestOpenAIEmbedder_Embed_Success(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -269,7 +269,7 @@ func TestOpenAIEmbedder_Embed_Success(t *testing.T) {
 
 func TestOpenAIEmbedder_Embed_Caching(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -306,7 +306,7 @@ func TestOpenAIEmbedder_Embed_Caching(t *testing.T) {
 
 func TestOpenAIEmbedder_Embed_APIError(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -328,7 +328,7 @@ func TestOpenAIEmbedder_Embed_APIError(t *testing.T) {
 
 func TestOpenAIEmbedder_Embed_InvalidJSON(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -351,7 +351,7 @@ func TestOpenAIEmbedder_Embed_InvalidJSON(t *testing.T) {
 
 func TestOpenAIEmbedder_EmbedQuery_Success(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -386,7 +386,7 @@ func TestOpenAIEmbedder_ImplementsEmbedder(t *testing.T) {
 
 func TestOpenAIEmbedder_Embed_CancelledContext(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -410,7 +410,7 @@ func TestOpenAIEmbedder_Embed_CancelledContext(t *testing.T) {
 
 func TestOpenAIEmbedder_Embed_PartialCache(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 

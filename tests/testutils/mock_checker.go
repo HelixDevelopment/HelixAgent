@@ -164,7 +164,7 @@ func SkipIfNoInfrastructure(t interface{ Skip(args ...interface{}) }, needs ...s
 
 	// In local development, skip if infrastructure is not available
 	if msg := RequireInfrastructure(needs...); msg != "" {
-		t.Skip(msg)  // SKIP-OK: #legacy-untriaged
+		t.Skip(msg) // SKIP-OK: #legacy-untriaged
 	}
 }
 

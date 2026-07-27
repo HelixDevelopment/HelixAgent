@@ -442,7 +442,7 @@ func TestQwenACPProvider_MultipleContentBlocks(t *testing.T) {
 func TestQwenACPProvider_HealthCheck_Unavailable(t *testing.T) {
 	t.Parallel()
 	if IsQwenCodeInstalled() {
-		t.Skip("Skipping - Qwen CLI is installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping - Qwen CLI is installed") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewQwenACPProviderWithModel("qwen-plus")
@@ -456,16 +456,16 @@ func TestQwenACPProvider_HealthCheck_Unavailable(t *testing.T) {
 func TestQwenACPProvider_Integration_Complete(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	if !IsQwenCodeInstalled() {
-		t.Skip("Qwen Code CLI not installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen Code CLI not installed") // SKIP-OK: #legacy-untriaged
 	}
 	if !IsQwenCodeAuthenticated() {
-		t.Skip("Qwen Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen Code CLI not authenticated") // SKIP-OK: #legacy-untriaged
 	}
 	if !CanUseQwenACP() {
-		t.Skip("Qwen ACP not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen ACP not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewQwenACPProviderWithModel("qwen-turbo")
@@ -479,7 +479,7 @@ func TestQwenACPProvider_Integration_Complete(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Integration test failed (may be expected if ACP not fully supported): %v", err)
-		t.Skip("ACP integration test skipped due to error")  // SKIP-OK: #integration-mode-only
+		t.Skip("ACP integration test skipped due to error") // SKIP-OK: #integration-mode-only
 	}
 
 	assert.NotNil(t, resp)
@@ -493,16 +493,16 @@ func TestQwenACPProvider_Integration_Complete(t *testing.T) {
 func TestQwenACPProvider_Integration_HealthCheck(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	if !IsQwenCodeInstalled() {
-		t.Skip("Qwen Code CLI not installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen Code CLI not installed") // SKIP-OK: #legacy-untriaged
 	}
 	if !IsQwenCodeAuthenticated() {
-		t.Skip("Qwen Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen Code CLI not authenticated") // SKIP-OK: #legacy-untriaged
 	}
 	if !CanUseQwenACP() {
-		t.Skip("Qwen ACP not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen ACP not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewQwenACPProviderWithModel("qwen-turbo")
@@ -511,7 +511,7 @@ func TestQwenACPProvider_Integration_HealthCheck(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Health check failed (may be expected): %v", err)
-		t.Skip("Skipping due to health check failure")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Skipping due to health check failure") // SKIP-OK: #legacy-untriaged
 	}
 
 	assert.NoError(t, err)
@@ -521,13 +521,13 @@ func TestQwenACPProvider_Integration_HealthCheck(t *testing.T) {
 func TestQwenACPProvider_CompleteStream(t *testing.T) {
 	t.Parallel()
 	if !IsQwenCodeInstalled() {
-		t.Skip("Qwen Code CLI not installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen Code CLI not installed") // SKIP-OK: #legacy-untriaged
 	}
 	if !IsQwenCodeAuthenticated() {
-		t.Skip("Qwen Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen Code CLI not authenticated") // SKIP-OK: #legacy-untriaged
 	}
 	if !CanUseQwenACP() {
-		t.Skip("Qwen ACP not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Qwen ACP not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewQwenACPProviderWithModel("qwen-turbo")
@@ -541,7 +541,7 @@ func TestQwenACPProvider_CompleteStream(t *testing.T) {
 
 	if err != nil {
 		t.Logf("Stream test skipped: %v", err)
-		t.Skip("Streaming test skipped")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Streaming test skipped") // SKIP-OK: #legacy-untriaged
 	}
 
 	assert.NotNil(t, ch)

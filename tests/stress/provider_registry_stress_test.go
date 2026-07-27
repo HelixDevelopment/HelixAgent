@@ -19,7 +19,7 @@ import (
 // verify no data races or deadlocks occur on the registry's RWMutex.
 func TestProviderRegistry_ConcurrentReads(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Honour resource limits: max 2 OS threads (CLAUDE.md §15)
@@ -108,7 +108,7 @@ func TestProviderRegistry_ConcurrentReads(t *testing.T) {
 // UpdateProviderScore, verifying RWMutex correctness.
 func TestProviderRegistry_ConcurrentReadWrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -206,7 +206,7 @@ func TestProviderRegistry_ConcurrentReadWrite(t *testing.T) {
 // GetBestProvidersForDebate is race-free under concurrent access.
 func TestProviderRegistry_GetBestProviders_Concurrent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

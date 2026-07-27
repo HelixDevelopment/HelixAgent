@@ -104,15 +104,15 @@ type HostCapabilities struct {
 // parser maps `service.labels.helixagent.placement.X` into the
 // ContainerRequirements.Labels map; the scorer here reads them back.
 const (
-	LabelRequireGPU         = "helixagent.placement.require.gpu"
-	LabelRequireRuntime     = "helixagent.placement.require.runtime"
-	LabelRequireArch        = "helixagent.placement.require.arch"
-	LabelPreferStorage      = "helixagent.placement.prefer.storage"
-	LabelPreferStorageType  = "helixagent.placement.prefer.storage_type"
-	LabelPreferMemory       = "helixagent.placement.prefer.memory"
-	LabelPreferNetwork      = "helixagent.placement.prefer.network"
-	LabelPreferCPU          = "helixagent.placement.prefer.cpu"
-	LabelPreferDiskSpace    = "helixagent.placement.prefer.disk_space"
+	LabelRequireGPU        = "helixagent.placement.require.gpu"
+	LabelRequireRuntime    = "helixagent.placement.require.runtime"
+	LabelRequireArch       = "helixagent.placement.require.arch"
+	LabelPreferStorage     = "helixagent.placement.prefer.storage"
+	LabelPreferStorageType = "helixagent.placement.prefer.storage_type"
+	LabelPreferMemory      = "helixagent.placement.prefer.memory"
+	LabelPreferNetwork     = "helixagent.placement.prefer.network"
+	LabelPreferCPU         = "helixagent.placement.prefer.cpu"
+	LabelPreferDiskSpace   = "helixagent.placement.prefer.disk_space"
 )
 
 // ScoringWeights exposes the soft-preference weights. Made package-level
@@ -128,7 +128,7 @@ var ScoringWeights = struct {
 	LoadPenalty      float64
 }{
 	StorageMatch:     10,
-	StorageTypeMatch: 9,  // slightly less than Storage so explicit prefer.storage still dominates
+	StorageTypeMatch: 9, // slightly less than Storage so explicit prefer.storage still dominates
 	MemoryMatch:      8,
 	CPUMatch:         7,
 	DiskSpaceMatch:   6,
@@ -348,7 +348,7 @@ func classMatches(want, have string) bool {
 	rank := map[string]int{
 		"low": 1, "slow": 1,
 		"medium": 2,
-		"high": 3, "fast": 3,
+		"high":   3, "fast": 3,
 	}
 	return rank[have] >= rank[want] && rank[want] > 0
 }

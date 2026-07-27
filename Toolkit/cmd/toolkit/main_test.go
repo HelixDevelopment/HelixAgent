@@ -20,19 +20,19 @@ import (
 
 // MockProvider implements toolkit.Provider for testing
 type MockProvider struct {
-	name             string
-	chatResponse     toolkit.ChatResponse
-	chatError        error
-	embedResponse    toolkit.EmbeddingResponse
-	embedError       error
-	rerankResponse   toolkit.RerankResponse
-	rerankError      error
-	modelsResponse   []toolkit.ModelInfo
-	modelsError      error
-	validateError    error
-	chatCallCount    int
-	embedCallCount   int
-	rerankCallCount  int
+	name              string
+	chatResponse      toolkit.ChatResponse
+	chatError         error
+	embedResponse     toolkit.EmbeddingResponse
+	embedError        error
+	rerankResponse    toolkit.RerankResponse
+	rerankError       error
+	modelsResponse    []toolkit.ModelInfo
+	modelsError       error
+	validateError     error
+	chatCallCount     int
+	embedCallCount    int
+	rerankCallCount   int
 	discoverCallCount int
 }
 
@@ -159,44 +159,44 @@ func TestRootCommandHelp(t *testing.T) {
 // TestChatCommandFlags tests chat command flag parsing
 func TestChatCommandFlags(t *testing.T) {
 	tests := []struct {
-		name         string
-		args         []string
-		expectError  bool
+		name          string
+		args          []string
+		expectError   bool
 		checkProvider string
 		checkAPIKey   string
 		checkModel    string
 	}{
 		{
-			name:         "default provider",
-			args:         []string{"chat"},
-			expectError:  false,
+			name:          "default provider",
+			args:          []string{"chat"},
+			expectError:   false,
 			checkProvider: "siliconflow",
 		},
 		{
-			name:         "custom provider",
-			args:         []string{"chat", "--provider", "chutes"},
-			expectError:  false,
+			name:          "custom provider",
+			args:          []string{"chat", "--provider", "chutes"},
+			expectError:   false,
 			checkProvider: "chutes",
 		},
 		{
-			name:         "with api key",
-			args:         []string{"chat", "--api-key", "test-key-123"},
-			expectError:  false,
-			checkAPIKey:  "test-key-123",
+			name:        "with api key",
+			args:        []string{"chat", "--api-key", "test-key-123"},
+			expectError: false,
+			checkAPIKey: "test-key-123",
 		},
 		{
-			name:         "with model",
-			args:         []string{"chat", "--model", "gpt-4"},
-			expectError:  false,
-			checkModel:   "gpt-4",
+			name:        "with model",
+			args:        []string{"chat", "--model", "gpt-4"},
+			expectError: false,
+			checkModel:  "gpt-4",
 		},
 		{
-			name:         "all flags",
-			args:         []string{"chat", "-p", "openai", "-k", "key123", "-m", "gpt-4", "-u", "https://api.example.com"},
-			expectError:  false,
+			name:          "all flags",
+			args:          []string{"chat", "-p", "openai", "-k", "key123", "-m", "gpt-4", "-u", "https://api.example.com"},
+			expectError:   false,
 			checkProvider: "openai",
-			checkAPIKey:  "key123",
-			checkModel:   "gpt-4",
+			checkAPIKey:   "key123",
+			checkModel:    "gpt-4",
 		},
 	}
 

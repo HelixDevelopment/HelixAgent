@@ -74,7 +74,7 @@ func fireWorkflowRequest(r *gin.Engine, body interface{}) int {
 // and verifies no panics occur and the handler remains responsive.
 func TestAgenticEnsemble_ConcurrentRequests(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := newStressAgenticRouter()
@@ -117,7 +117,7 @@ func TestAgenticEnsemble_ConcurrentRequests(t *testing.T) {
 // beyond the default semaphore/pool limit without deadlocking.
 func TestAgenticEnsemble_AgentPoolSaturation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	cfg := services.DefaultAgenticEnsembleConfig()
@@ -163,7 +163,7 @@ func TestAgenticEnsemble_AgentPoolSaturation(t *testing.T) {
 // races occur in the tool execution path.
 func TestAgenticEnsemble_ToolContention(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	r := newStressAgenticRouter()

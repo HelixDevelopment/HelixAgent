@@ -58,15 +58,15 @@ type Usage struct {
 
 // TestPrompt defines a test case.
 type TestPrompt struct {
-	ID               string   `json:"id"`
-	Category         string   `json:"category"`
-	Prompt           string   `json:"prompt"`
-	ExpectedElements []string `json:"expected_elements,omitempty"`
-	ExpectedMentions []string `json:"expected_mentions,omitempty"`
-	ExpectedAnswer   string   `json:"expected_answer,omitempty"`
-	MinLength        int      `json:"min_response_length,omitempty"`
-	QualityThreshold float64  `json:"quality_threshold,omitempty"`
-	RequiresReasoning bool    `json:"requires_reasoning,omitempty"`
+	ID                string   `json:"id"`
+	Category          string   `json:"category"`
+	Prompt            string   `json:"prompt"`
+	ExpectedElements  []string `json:"expected_elements,omitempty"`
+	ExpectedMentions  []string `json:"expected_mentions,omitempty"`
+	ExpectedAnswer    string   `json:"expected_answer,omitempty"`
+	MinLength         int      `json:"min_response_length,omitempty"`
+	QualityThreshold  float64  `json:"quality_threshold,omitempty"`
+	RequiresReasoning bool     `json:"requires_reasoning,omitempty"`
 }
 
 // TestResult holds the result of a single test.
@@ -94,14 +94,14 @@ type AssertionResult struct {
 
 // ChallengeResult holds the complete challenge output.
 type ChallengeResult struct {
-	ChallengeID    string         `json:"challenge_id"`
-	ChallengeName  string         `json:"challenge_name"`
-	Timestamp      time.Time      `json:"timestamp"`
-	Duration       time.Duration  `json:"duration"`
-	Status         string         `json:"status"`
-	TestResults    []TestResult   `json:"test_results"`
-	Summary        TestSummary    `json:"summary"`
-	APILogs        APILogSummary  `json:"api_logs"`
+	ChallengeID   string        `json:"challenge_id"`
+	ChallengeName string        `json:"challenge_name"`
+	Timestamp     time.Time     `json:"timestamp"`
+	Duration      time.Duration `json:"duration"`
+	Status        string        `json:"status"`
+	TestResults   []TestResult  `json:"test_results"`
+	Summary       TestSummary   `json:"summary"`
+	APILogs       APILogSummary `json:"api_logs"`
 }
 
 // TestSummary provides aggregated test statistics.
@@ -117,18 +117,18 @@ type TestSummary struct {
 
 // APILogSummary provides API logging summary.
 type APILogSummary struct {
-	TotalRequests      int    `json:"total_requests"`
-	TotalResponses     int    `json:"total_responses"`
-	RequestLogFile     string `json:"request_log_file"`
-	ResponseLogFile    string `json:"response_log_file"`
+	TotalRequests   int    `json:"total_requests"`
+	TotalResponses  int    `json:"total_responses"`
+	RequestLogFile  string `json:"request_log_file"`
+	ResponseLogFile string `json:"response_log_file"`
 }
 
 // APIClient handles HTTP requests to the API.
 type APIClient struct {
-	BaseURL    string
-	APIKey     string
-	HTTPClient *http.Client
-	RequestLog *os.File
+	BaseURL     string
+	APIKey      string
+	HTTPClient  *http.Client
+	RequestLog  *os.File
 	ResponseLog *os.File
 }
 
@@ -215,10 +215,10 @@ func (c *APIClient) logResponse(statusCode int, body []byte, duration time.Durat
 		bodyPreview = bodyPreview[:1000] + "..."
 	}
 	entry := map[string]interface{}{
-		"timestamp":       time.Now().Format(time.RFC3339),
-		"status_code":     statusCode,
-		"body_length":     len(body),
-		"body_preview":    bodyPreview,
+		"timestamp":        time.Now().Format(time.RFC3339),
+		"status_code":      statusCode,
+		"body_length":      len(body),
+		"body_preview":     bodyPreview,
 		"response_time_ms": duration.Milliseconds(),
 	}
 	data, _ := json.Marshal(entry)
@@ -285,10 +285,10 @@ func getTestPrompts() []TestPrompt {
 
 		// Quality tests
 		{
-			ID:       "rest_practices",
-			Category: "quality",
-			Prompt:   "List 3 REST API best practices with brief examples. Be concise.",
-			MinLength: 100,
+			ID:               "rest_practices",
+			Category:         "quality",
+			Prompt:           "List 3 REST API best practices with brief examples. Be concise.",
+			MinLength:        100,
 			ExpectedMentions: []string{"GET", "POST"},
 		},
 		{

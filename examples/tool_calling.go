@@ -194,15 +194,15 @@ func main() {
 
 			var result float64
 			switch call.Name {
-				case "add":
-					result = add(args.A, args.B)
-				case "subtract":
-					result = sub(args.A, args.B)
-				case "multiply":
-					result = mul(args.A, args.B)
-				case "divide":
-					result, _ = div(args.A, args.B)
-				}
+			case "add":
+				result = add(args.A, args.B)
+			case "subtract":
+				result = sub(args.A, args.B)
+			case "multiply":
+				result = mul(args.A, args.B)
+			case "divide":
+				result, _ = div(args.A, args.B)
+			}
 
 			// Add result to conversation
 			resultMsg := fmt.Sprintf("%.0f %s %.0f = %.0f", args.A, call.Name, args.B, result)

@@ -14,7 +14,7 @@ import (
 // both the fast read path and the slow initialization path simultaneously.
 func TestProviderRegistry_ConcurrentGetProvider(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	cfg := &services.RegistryConfig{
@@ -43,7 +43,7 @@ func TestProviderRegistry_ConcurrentGetProvider(t *testing.T) {
 // TestProviderRegistry_ConcurrentListAndGet tests concurrent list + get operations.
 func TestProviderRegistry_ConcurrentListAndGet(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping race test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping race test in short mode") // SKIP-OK: #short-mode
 	}
 
 	cfg := &services.RegistryConfig{

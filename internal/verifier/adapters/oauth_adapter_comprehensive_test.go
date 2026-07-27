@@ -348,7 +348,7 @@ func TestOAuthAdapter_RefreshTokenIfNeeded_Qwen(t *testing.T) {
 		credReader := oauth_credentials.NewOAuthCredentialReader()
 		_, err := credReader.ReadQwenCredentials()
 		if err != nil {
-			t.Skip("Qwen credentials not available - skipping refresh test")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Qwen credentials not available - skipping refresh test") // SKIP-OK: #legacy-untriaged
 		}
 
 		adapter := NewOAuthAdapter(nil, nil)

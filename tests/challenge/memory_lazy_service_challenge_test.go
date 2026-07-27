@@ -14,12 +14,12 @@ import (
 
 func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping memory lazy-service challenge in short mode (requires live server and lazy services)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping memory lazy-service challenge in short mode (requires live server and lazy services)") // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("BigDataSubsystemHealth", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("BigData subsystem not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("BigData subsystem not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -53,7 +53,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Memory sync endpoint not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Memory sync endpoint not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -75,7 +75,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Memory sync endpoint not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Memory sync endpoint not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -103,7 +103,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Knowledge graph endpoint not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Knowledge graph endpoint not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -129,7 +129,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Context replay endpoint not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Context replay endpoint not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -149,7 +149,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Learning subsystem not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Learning subsystem not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		assert.Contains(t, []int{http.StatusOK, http.StatusAccepted}, resp.StatusCode,
@@ -194,7 +194,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 			}
 
 			if !booted {
-				t.Skip("Cognee did not lazy-boot within 60 seconds (may require docker-compose.memory.yml)")  // SKIP-OK: #legacy-untriaged
+				t.Skip("Cognee did not lazy-boot within 60 seconds (may require docker-compose.memory.yml)") // SKIP-OK: #legacy-untriaged
 			}
 		} else {
 			resp.Body.Close()
@@ -212,7 +212,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 			if resp != nil {
 				resp.Body.Close()
 			}
-			t.Skip("Cognee not available for data pipeline test")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Cognee not available for data pipeline test") // SKIP-OK: #legacy-untriaged
 		}
 		resp.Body.Close()
 
@@ -243,7 +243,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Analytics endpoint not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Analytics endpoint not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		assert.Contains(t, []int{http.StatusOK, http.StatusNotFound, http.StatusNoContent}, resp.StatusCode)
@@ -259,7 +259,7 @@ func TestHelixMemoryLazyServiceChallenge(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNotFound {
-			t.Skip("Deate analytics endpoint not mounted on this server")  // SKIP-OK: #legacy-untriaged
+			t.Skip("Deate analytics endpoint not mounted on this server") // SKIP-OK: #legacy-untriaged
 		}
 
 		assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, resp.StatusCode)

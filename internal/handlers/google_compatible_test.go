@@ -12,11 +12,11 @@ import (
 // model + method from a Google-style `<MODEL>:<METHOD>` path segment.
 func TestSplitGoogleModelAction(t *testing.T) {
 	cases := []struct {
-		name           string
-		param          string
-		fullPath       string
-		wantModel      string
-		wantMethod     string
+		name       string
+		param      string
+		fullPath   string
+		wantModel  string
+		wantMethod string
 	}{
 		{
 			name:       "model:generateContent in single segment",

@@ -156,7 +156,7 @@ func TestSecurity_RequestSizeLimit(t *testing.T) {
 func TestSecurity_TimeoutHandling(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping timeout test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping timeout test in short mode") // SKIP-OK: #short-mode
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)

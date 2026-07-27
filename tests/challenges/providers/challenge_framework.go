@@ -64,14 +64,14 @@ const (
 
 // ExpectedResult defines what we expect from the model
 type ExpectedResult struct {
-	Contains     []string        `json:"contains,omitempty"`
-	NotContains  []string        `json:"not_contains,omitempty"`
-	JSONSchema   json.RawMessage `json:"json_schema,omitempty"`
-	MinLength    int             `json:"min_length,omitempty"`
-	MaxLength    int             `json:"max_length,omitempty"`
-	ToolCalls    []string        `json:"tool_calls,omitempty"`
-	CodeValid    bool            `json:"code_valid,omitempty"`
-	AnswerCorrect string         `json:"answer_correct,omitempty"`
+	Contains      []string        `json:"contains,omitempty"`
+	NotContains   []string        `json:"not_contains,omitempty"`
+	JSONSchema    json.RawMessage `json:"json_schema,omitempty"`
+	MinLength     int             `json:"min_length,omitempty"`
+	MaxLength     int             `json:"max_length,omitempty"`
+	ToolCalls     []string        `json:"tool_calls,omitempty"`
+	CodeValid     bool            `json:"code_valid,omitempty"`
+	AnswerCorrect string          `json:"answer_correct,omitempty"`
 }
 
 // Validator validates challenge results
@@ -94,13 +94,13 @@ func NewChallengeRunner(logger *zap.Logger, client llm.Client) *ChallengeRunner 
 // RunChallenge runs a single challenge
 func (r *ChallengeRunner) RunChallenge(ctx context.Context, challenge Challenge, model string) (*ChallengeResult, error) {
 	start := time.Now()
-	
+
 	request := llm.ChatRequest{
 		Model:     model,
 		Messages:  []llm.Message{{Role: "user", Content: challenge.Prompt}},
 		MaxTokens: challenge.MaxTokens,
 	}
-	
+
 	response, err := r.client.Chat(ctx, request)
 	if err != nil {
 		return &ChallengeResult{
@@ -111,19 +111,19 @@ func (r *ChallengeRunner) RunChallenge(ctx context.Context, challenge Challenge,
 			Duration:    time.Since(start),
 		}, nil
 	}
-	
+
 	// Validate response
 	passed, reason := r.validate(response.Content, challenge.Expected)
-	
+
 	return &ChallengeResult{
-		ChallengeID:   challenge.ID,
-		Model:         model,
-		Passed:        passed,
-		Response:      response.Content,
-		Reason:        reason,
-		Duration:      time.Since(start),
-		TokensUsed:    response.Usage.TotalTokens,
-		TokensPerSec:  float64(response.Usage.TotalTokens) / time.Since(start).Seconds(),
+		ChallengeID:  challenge.ID,
+		Model:        model,
+		Passed:       passed,
+		Response:     response.Content,
+		Reason:       reason,
+		Duration:     time.Since(start),
+		TokensUsed:   response.Usage.TotalTokens,
+		TokensPerSec: float64(response.Usage.TotalTokens) / time.Since(start).Seconds(),
 	}, nil
 }
 
@@ -135,37 +135,37 @@ func (r *ChallengeRunner) validate(response string, expected ExpectedResult) (bo
 			return false, fmt.Sprintf("Response missing expected content: %s", s)
 		}
 	}
-	
+
 	// Check not contains
 	for _, s := range expected.NotContains {
 		if strings.Contains(strings.ToLower(response), strings.ToLower(s)) {
 			return false, fmt.Sprintf("Response contains forbidden content: %s", s)
 		}
 	}
-	
+
 	// Check length
 	if expected.MinLength > 0 && len(response) < expected.MinLength {
 		return false, fmt.Sprintf("Response too short: %d < %d", len(response), expected.MinLength)
 	}
-	
+
 	if expected.MaxLength > 0 && len(response) > expected.MaxLength {
 		return false, fmt.Sprintf("Response too long: %d > %d", len(response), expected.MaxLength)
 	}
-	
+
 	return true, "All validations passed"
 }
 
 // ChallengeResult holds the result of running a challenge
 type ChallengeResult struct {
-	ChallengeID   string        `json:"challenge_id"`
-	Model         string        `json:"model"`
-	Passed        bool          `json:"passed"`
-	Response      string        `json:"response,omitempty"`
-	Reason        string        `json:"reason"`
-	Error         string        `json:"error,omitempty"`
-	Duration      time.Duration `json:"duration"`
-	TokensUsed    int           `json:"tokens_used"`
-	TokensPerSec  float64       `json:"tokens_per_sec"`
+	ChallengeID  string        `json:"challenge_id"`
+	Model        string        `json:"model"`
+	Passed       bool          `json:"passed"`
+	Response     string        `json:"response,omitempty"`
+	Reason       string        `json:"reason"`
+	Error        string        `json:"error,omitempty"`
+	Duration     time.Duration `json:"duration"`
+	TokensUsed   int           `json:"tokens_used"`
+	TokensPerSec float64       `json:"tokens_per_sec"`
 }
 
 // GetAllChallenges returns all available challenges
@@ -194,7 +194,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     15 * time.Second,
 			MaxTokens:   200,
 		},
-		
+
 		// REASONING CHALLENGES
 		{
 			ID:          "reasoning-math",
@@ -218,7 +218,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     30 * time.Second,
 			MaxTokens:   300,
 		},
-		
+
 		// CODING CHALLENGES
 		{
 			ID:          "coding-fibonacci",
@@ -242,7 +242,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     30 * time.Second,
 			MaxTokens:   300,
 		},
-		
+
 		// CONTEXT CHALLENGES
 		{
 			ID:          "context-1k",
@@ -277,7 +277,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     120 * time.Second,
 			MaxTokens:   1000,
 		},
-		
+
 		// TOOL CHALLENGES
 		{
 			ID:          "tool-single",
@@ -301,7 +301,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     30 * time.Second,
 			MaxTokens:   800,
 		},
-		
+
 		// INSTRUCTION FOLLOWING
 		{
 			ID:          "instruction-format",
@@ -325,7 +325,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     30 * time.Second,
 			MaxTokens:   200,
 		},
-		
+
 		// CREATIVITY
 		{
 			ID:          "creative-story",
@@ -338,7 +338,7 @@ func GetAllChallenges() []Challenge {
 			Timeout:     30 * time.Second,
 			MaxTokens:   500,
 		},
-		
+
 		// MATH
 		{
 			ID:          "math-calculus",
@@ -358,27 +358,27 @@ func GetAllChallenges() []Challenge {
 func generateContextPrompt(tokens int) string {
 	words := tokens / 0.75 // Approximate words per token
 	paragraphs := []string{}
-	
+
 	topics := []string{
 		"artificial intelligence", "machine learning", "neural networks",
 		"deep learning", "natural language processing", "computer vision",
 		"robotics", "automation", "data science", "big data",
 	}
-	
+
 	for i := 0; i < words/100; i++ {
 		topic := topics[i%len(topics)]
 		paragraphs = append(paragraphs, fmt.Sprintf(
 			"This is a detailed paragraph about %s. "+
-			"%s is a fascinating field that has seen tremendous growth in recent years. "+
-			"Researchers and practitioners in %s work on solving complex problems. "+
-			"The applications of %s range from healthcare to finance to entertainment. "+
-			"As technology advances, %s continues to evolve and improve. "+
-			"New techniques and methodologies are constantly being developed in %s. "+
-			"The future of %s looks very promising with many exciting developments ahead. ",
+				"%s is a fascinating field that has seen tremendous growth in recent years. "+
+				"Researchers and practitioners in %s work on solving complex problems. "+
+				"The applications of %s range from healthcare to finance to entertainment. "+
+				"As technology advances, %s continues to evolve and improve. "+
+				"New techniques and methodologies are constantly being developed in %s. "+
+				"The future of %s looks very promising with many exciting developments ahead. ",
 			topic, topic, topic, topic, topic, topic, topic,
 		))
 	}
-	
+
 	return strings.Join(paragraphs, "\n\n")
 }
 
@@ -386,26 +386,26 @@ func generateContextPrompt(tokens int) string {
 func RunAllChallenges(t *testing.T, logger *zap.Logger) {
 	challenges := GetAllChallenges()
 	providers := GetTestProviders()
-	
+
 	results := make(map[string][]ChallengeResult)
-	
+
 	for _, provider := range providers {
 		apiKey := os.Getenv(provider.APIKeyEnv)
 		if apiKey == "" {
 			t.Logf("Skipping %s: %s not set", provider.Name, provider.APIKeyEnv)
 			continue
 		}
-		
+
 		for _, model := range provider.Models {
 			modelKey := fmt.Sprintf("%s/%s", provider.Name, model.Name)
 			results[modelKey] = []ChallengeResult{}
-			
+
 			for _, challenge := range challenges {
 				t.Run(fmt.Sprintf("%s/%s", modelKey, challenge.ID), func(t *testing.T) {
 					// Run challenge
 					ctx, cancel := context.WithTimeout(context.Background(), challenge.Timeout)
 					defer cancel()
-					
+
 					// Implementation would run actual challenge
 					t.Logf("Running challenge: %s", challenge.Name)
 				})
@@ -418,10 +418,10 @@ func RunAllChallenges(t *testing.T, logger *zap.Logger) {
 func GenerateChallengeReport(results map[string][]ChallengeResult) string {
 	report := "# Provider Challenge Report\n\n"
 	report += "## Summary\n\n"
-	
+
 	totalPassed := 0
 	totalFailed := 0
-	
+
 	for model, modelResults := range results {
 		passed := 0
 		for _, r := range modelResults {
@@ -431,18 +431,18 @@ func GenerateChallengeReport(results map[string][]ChallengeResult) string {
 		}
 		totalPassed += passed
 		totalFailed += len(modelResults) - passed
-		
+
 		percentage := float64(passed) / float64(len(modelResults)) * 100
 		report += fmt.Sprintf("- **%s**: %d/%d (%.1f%%)\n", model, passed, len(modelResults), percentage)
 	}
-	
+
 	report += "\n## Details\n\n"
-	
+
 	for model, modelResults := range results {
 		report += fmt.Sprintf("### %s\n\n", model)
 		report += "| Challenge | Status | Duration | Tokens |\n"
 		report += "|-----------|--------|----------|--------|\n"
-		
+
 		for _, r := range modelResults {
 			status := "✅ PASS"
 			if !r.Passed {
@@ -453,7 +453,7 @@ func GenerateChallengeReport(results map[string][]ChallengeResult) string {
 		}
 		report += "\n"
 	}
-	
+
 	return report
 }
 
@@ -466,6 +466,6 @@ func SaveChallengeReport(report string, filename string) error {
 func TestChallenges(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
-	
+
 	RunAllChallenges(t, logger)
 }

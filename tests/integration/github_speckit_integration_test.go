@@ -115,7 +115,7 @@ func TestGitHubSpecKitInstallation(t *testing.T) {
 	require.NoError(t, err, "Failed to change to project root")
 
 	if testing.Short() {
-		t.Skip("Skipping installation test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping installation test in short mode") // SKIP-OK: #short-mode
 	}
 
 	tests := []struct {
@@ -128,7 +128,7 @@ func TestGitHubSpecKitInstallation(t *testing.T) {
 				cmd := exec.Command("which", "uv")
 				err := cmd.Run()
 				if err != nil {
-					t.Skip("UV not installed - install with: curl -LsSf https://astral.sh/uv/install.sh | sh")  // SKIP-OK: #legacy-untriaged
+					t.Skip("UV not installed - install with: curl -LsSf https://astral.sh/uv/install.sh | sh") // SKIP-OK: #legacy-untriaged
 				}
 			},
 		},
@@ -138,7 +138,7 @@ func TestGitHubSpecKitInstallation(t *testing.T) {
 				cmd := exec.Command("specify", "--version")
 				output, err := cmd.CombinedOutput()
 				if err != nil {
-					t.Skip("Specify CLI not installed - run: uv tool install specify-cli --from git+https://github.com/github/spec-kit.git")  // SKIP-OK: #legacy-untriaged
+					t.Skip("Specify CLI not installed - run: uv tool install specify-cli --from git+https://github.com/github/spec-kit.git") // SKIP-OK: #legacy-untriaged
 					return
 				}
 
@@ -153,7 +153,7 @@ func TestGitHubSpecKitInstallation(t *testing.T) {
 				cmd := exec.Command("specify", "check")
 				output, err := cmd.CombinedOutput()
 				if err != nil {
-					t.Skip("Specify CLI not installed")  // SKIP-OK: #legacy-untriaged
+					t.Skip("Specify CLI not installed") // SKIP-OK: #legacy-untriaged
 					return
 				}
 
@@ -272,7 +272,7 @@ func TestGitHubSpecKitSubmoduleUpdate(t *testing.T) {
 	require.NoError(t, err, "Failed to change to project root")
 
 	if testing.Short() {
-		t.Skip("Skipping submodule update test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping submodule update test in short mode") // SKIP-OK: #short-mode
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

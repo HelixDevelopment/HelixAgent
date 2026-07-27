@@ -18,7 +18,7 @@ import (
 // TestWorkerPool_NoDeadlock tests that the worker pool doesn't deadlock under stress
 func TestWorkerPool_NoDeadlock(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	pool := concurrency.NewWorkerPool(&concurrency.PoolConfig{
@@ -66,7 +66,7 @@ func TestWorkerPool_NoDeadlock(t *testing.T) {
 // TestEventBus_NoDeadlock tests that the event bus doesn't deadlock
 func TestEventBus_NoDeadlock(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	bus := events.NewEventBus(&events.BusConfig{
@@ -129,7 +129,7 @@ func TestEventBus_NoDeadlock(t *testing.T) {
 // TestTieredCache_NoDeadlock tests that the cache doesn't deadlock
 func TestTieredCache_NoDeadlock(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := &cache.TieredCacheConfig{
@@ -267,7 +267,7 @@ func TestEventBus_NoRaceConditions(t *testing.T) {
 // TestMemoryLeak_WorkerPool tests for goroutine/memory leaks
 func TestMemoryLeak_WorkerPool(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping memory leak test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping memory leak test in short mode") // SKIP-OK: #short-mode
 	}
 
 	initialGoroutines := runtime.NumGoroutine()
@@ -309,7 +309,7 @@ func TestMemoryLeak_WorkerPool(t *testing.T) {
 // TestMemoryLeak_EventBus tests for goroutine/memory leaks
 func TestMemoryLeak_EventBus(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping memory leak test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping memory leak test in short mode") // SKIP-OK: #short-mode
 	}
 
 	initialGoroutines := runtime.NumGoroutine()
@@ -348,7 +348,7 @@ func TestMemoryLeak_EventBus(t *testing.T) {
 // TestMemoryLeak_Cache tests for memory leaks in cache
 func TestMemoryLeak_Cache(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping memory leak test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping memory leak test in short mode") // SKIP-OK: #short-mode
 	}
 
 	initialGoroutines := runtime.NumGoroutine()
@@ -436,7 +436,7 @@ func TestTimeout_EventBusWait(t *testing.T) {
 // TestHighLoad_Combined tests all components under high load
 func TestHighLoad_Combined(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping high load test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping high load test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Setup all components
@@ -518,7 +518,7 @@ func TestHighLoad_Combined(t *testing.T) {
 // TestConcurrentCacheTagInvalidation tests concurrent tag-based invalidation
 func TestConcurrentCacheTagInvalidation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := &cache.TieredCacheConfig{
@@ -568,7 +568,7 @@ func TestConcurrentCacheTagInvalidation(t *testing.T) {
 // TestWorkerPoolStress_RapidSubmit tests rapid task submission
 func TestWorkerPoolStress_RapidSubmit(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	pool := concurrency.NewWorkerPool(&concurrency.PoolConfig{

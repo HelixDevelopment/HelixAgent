@@ -16,7 +16,7 @@ import (
 
 func TestOptimization_Chaos_RandomServiceFailures(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -83,7 +83,7 @@ func TestOptimization_Chaos_RandomServiceFailures(t *testing.T) {
 
 func TestOptimization_Chaos_ServiceFlapping(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -141,7 +141,7 @@ func TestOptimization_Chaos_ServiceFlapping(t *testing.T) {
 
 func TestOptimization_Chaos_VariableLatency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -210,7 +210,7 @@ func TestOptimization_Chaos_VariableLatency(t *testing.T) {
 
 func TestOptimization_Chaos_ConcurrentConfigChanges(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := optimization.DefaultConfig()
@@ -285,7 +285,7 @@ func TestOptimization_Chaos_ConcurrentConfigChanges(t *testing.T) {
 
 func TestOptimization_Chaos_AllServicesDown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -339,7 +339,7 @@ func TestOptimization_Chaos_AllServicesDown(t *testing.T) {
 
 func TestOptimization_Chaos_ContextCancellation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()

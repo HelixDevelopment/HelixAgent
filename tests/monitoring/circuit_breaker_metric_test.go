@@ -101,7 +101,7 @@ func gatherFamily(t *testing.T, reg *prometheus.Registry, name string) *dto.Metr
 // circuit breaker emits a state gauge of 0 (closed) before any failures.
 func TestCircuitBreakerMetric_InitialStateClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -124,7 +124,7 @@ func TestCircuitBreakerMetric_InitialStateClosed(t *testing.T) {
 // 0 (closed) to 1 (open) and the open-count gauge increments.
 func TestCircuitBreakerMetric_OpensAfterFailureThreshold(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -164,7 +164,7 @@ func TestCircuitBreakerMetric_OpensAfterFailureThreshold(t *testing.T) {
 // open to half-open updates the state gauge to 2.
 func TestCircuitBreakerMetric_HalfOpenTransition(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -193,7 +193,7 @@ func TestCircuitBreakerMetric_HalfOpenTransition(t *testing.T) {
 // stage.
 func TestCircuitBreakerMetric_FullCycle(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -244,7 +244,7 @@ func TestCircuitBreakerMetric_FullCycle(t *testing.T) {
 // provider must not affect another.
 func TestCircuitBreakerMetric_MultiProviderIsolation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()
@@ -281,7 +281,7 @@ func TestCircuitBreakerMetric_MultiProviderIsolation(t *testing.T) {
 // success counters only increase — they must never decrease.
 func TestCircuitBreakerMetric_CounterMonotonicity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping monitoring test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping monitoring test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := prometheus.NewRegistry()

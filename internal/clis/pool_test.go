@@ -39,7 +39,7 @@ func TestNewInstancePool(t *testing.T) {
 func TestInstancePool_AcquireFromEmpty(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     0,
@@ -71,7 +71,7 @@ func TestInstancePool_AcquireFromEmpty(t *testing.T) {
 func TestInstancePool_AcquireFromPool(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     1,
@@ -105,7 +105,7 @@ func TestInstancePool_AcquireFromPool(t *testing.T) {
 func TestInstancePool_Release(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     0,
@@ -141,7 +141,7 @@ func TestInstancePool_Release(t *testing.T) {
 func TestInstancePool_MaxIdleLimit(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     0,
@@ -188,7 +188,7 @@ func TestInstancePool_MaxIdleLimit(t *testing.T) {
 func TestInstancePool_MaxActiveLimit(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     0,
@@ -237,7 +237,7 @@ func TestInstancePool_MaxActiveLimit(t *testing.T) {
 func TestInstancePool_Invalidate(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := DefaultPoolConfig()
 	factory := func() (*AgentInstance, error) {
@@ -267,7 +267,7 @@ func TestInstancePool_Invalidate(t *testing.T) {
 func TestInstancePool_CleanupExpired(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     0,
@@ -305,7 +305,7 @@ func TestInstancePool_CleanupExpired(t *testing.T) {
 func TestInstancePool_ConcurrentAcquireRelease(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := PoolConfig{
 		MinIdle:     0,
@@ -357,7 +357,7 @@ func TestInstancePool_ConcurrentAcquireRelease(t *testing.T) {
 func TestInstancePool_Stats(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := DefaultPoolConfig()
 	var statsCounter int64
@@ -396,7 +396,7 @@ func TestInstancePool_Stats(t *testing.T) {
 func TestInstancePool_Close(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 	config := DefaultPoolConfig()
 	var closeCounter int64
@@ -427,7 +427,7 @@ func TestInstancePool_Close(t *testing.T) {
 func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping pool test in short mode - requires database setup")  // SKIP-OK: #short-mode
+		t.Skip("Skipping pool test in short mode - requires database setup") // SKIP-OK: #short-mode
 	}
 
 	// This test targets the RLock-to-Lock gap in Acquire().
@@ -521,7 +521,7 @@ func TestInstancePool_Acquire_ConcurrentRace(t *testing.T) {
 func TestInstancePool_CleanupExpired_NoGoroutineLeak(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping goroutine leak test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping goroutine leak test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Force GC and let background goroutines from previous tests settle.
@@ -586,7 +586,7 @@ func TestInstancePool_CleanupExpired_NoGoroutineLeak(t *testing.T) {
 func TestInstancePool_EnsureMinIdle_NoDeadlock(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping deadlock test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping deadlock test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Create a pool with a slow factory (100ms per instance).

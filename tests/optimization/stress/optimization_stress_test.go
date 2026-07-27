@@ -15,7 +15,7 @@ import (
 
 func TestOptimization_Stress_HighConcurrency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -74,7 +74,7 @@ func TestOptimization_Stress_HighConcurrency(t *testing.T) {
 
 func TestOptimization_Stress_SustainedLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -152,7 +152,7 @@ func TestOptimization_Stress_SustainedLoad(t *testing.T) {
 
 func TestOptimization_Stress_CachePerformance(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := optimization.DefaultConfig()
@@ -213,7 +213,7 @@ func TestOptimization_Stress_CachePerformance(t *testing.T) {
 
 func TestOptimization_Stress_PipelineStages(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	mockServers := mocks.NewOptimizationMockServers()
@@ -272,7 +272,7 @@ func TestOptimization_Stress_PipelineStages(t *testing.T) {
 
 func TestOptimization_Stress_MemoryStability(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := optimization.DefaultConfig()

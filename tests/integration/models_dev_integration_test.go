@@ -177,7 +177,7 @@ func TestModelsDevIntegration_ModelMetadataEndpoints(t *testing.T) {
 
 	// Check if Models.dev routes are available (feature may be disabled)
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("ListModelsEndpoint", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestModelsDevIntegration_ModelComparison(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("CompareModelsSuccess", func(t *testing.T) {
@@ -286,7 +286,7 @@ func TestModelsDevIntegration_CapabilityEndpoints(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	capabilities := []string{"vision", "function_calling", "streaming", "json_mode", "image_generation", "audio", "code_generation", "reasoning"}
@@ -329,7 +329,7 @@ func TestModelsDevIntegration_ProviderEndpoints(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("GetProviderModels", func(t *testing.T) {
@@ -369,7 +369,7 @@ func TestModelsDevIntegration_BenchmarkEndpoints(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("GetModelBenchmarks", func(t *testing.T) {
@@ -408,7 +408,7 @@ func TestModelsDevIntegration_AdminEndpoints(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("RefreshModels_AuthRequired", func(t *testing.T) {
@@ -435,7 +435,7 @@ func TestModelsDevIntegration_CacheBehavior(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	modelID := "cache-test-model"
@@ -470,7 +470,7 @@ func TestModelsDevIntegration_ResponseFormats(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("JSONContentType", func(t *testing.T) {
@@ -502,7 +502,7 @@ func TestModelsDevIntegration_ErrorHandling(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("InvalidModelID", func(t *testing.T) {
@@ -542,7 +542,7 @@ func TestModelsDevIntegration_EndToEndWorkflow(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("CompleteWorkflow", func(t *testing.T) {
@@ -601,7 +601,7 @@ func TestModelsDevIntegration_Performance(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("ResponseTime", func(t *testing.T) {
@@ -652,7 +652,7 @@ func TestModelsDevIntegration_ConcurrentRequests(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("ConcurrentReads", func(t *testing.T) {
@@ -704,7 +704,7 @@ func TestModelsDevIntegration_DataIntegrity(t *testing.T) {
 	defer cleanup()
 
 	if !checkModelsDevRoutesAvailable(r) {
-		t.Skip("Models.dev routes not available - feature is disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Models.dev routes not available - feature is disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Run("ConsistentResponses", func(t *testing.T) {

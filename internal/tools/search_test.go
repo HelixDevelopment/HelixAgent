@@ -184,7 +184,7 @@ func TestSearchByKeywords_WithCategory(t *testing.T) {
 
 func TestGetToolSuggestions(t *testing.T) {
 	t.Parallel()
-	t.Skip("Skipping flaky test - non-deterministic map iteration order")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping flaky test - non-deterministic map iteration order") // SKIP-OK: #legacy-untriaged
 	suggestions := GetToolSuggestions("Re", 5)
 
 	require.NotEmpty(t, suggestions)

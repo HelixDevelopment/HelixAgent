@@ -83,7 +83,7 @@ func (m *semSaturateMockInvoker) Invoke(
 // that no deadlock occurs and that sessions complete without panics.
 func TestDebate_Concurrency_SemaphoreSaturation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -175,7 +175,7 @@ func TestDebate_Concurrency_SemaphoreSaturation(t *testing.T) {
 // verifying there are no data races or deadlocks.
 func TestDebate_Concurrency_VotingUnderSaturation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -263,7 +263,7 @@ func TestDebate_Concurrency_VotingUnderSaturation(t *testing.T) {
 // occurs under saturation conditions.
 func TestDebate_Concurrency_NoDeadlockOnTopologyReadWrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

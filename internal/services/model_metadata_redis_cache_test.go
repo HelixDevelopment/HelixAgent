@@ -25,7 +25,7 @@ import (
 // skipIfNoRedisEnv skips test if Redis environment is not configured
 func skipIfNoRedisEnv(t *testing.T) {
 	if os.Getenv("REDIS_HOST") == "" {
-		t.Skip("Skipping: REDIS_HOST not set. Run with make test-with-infra for integration tests.")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping: REDIS_HOST not set. Run with make test-with-infra for integration tests.") // SKIP-OK: #integration-mode-only
 	}
 }
 

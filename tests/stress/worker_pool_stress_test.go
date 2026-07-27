@@ -22,7 +22,7 @@ import (
 // goroutine leaks after the pool shuts down cleanly.
 func TestWorkerPool_TaskSaturation_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -112,7 +112,7 @@ func TestWorkerPool_TaskSaturation_Stress(t *testing.T) {
 // tasks execute exactly once and the pool cleans up without leaks.
 func TestWorkerPool_200Goroutines_ConcurrentSubmit_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -184,7 +184,7 @@ func TestWorkerPool_200Goroutines_ConcurrentSubmit_Stress(t *testing.T) {
 // goroutine count returns to near-baseline after shutdown.
 func TestWorkerPool_ShutdownUnderLoad_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -250,7 +250,7 @@ func TestWorkerPool_ShutdownUnderLoad_Stress(t *testing.T) {
 // concurrently under stress.
 func TestWorkerPool_MetricsIntegrity_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -307,7 +307,7 @@ func TestWorkerPool_MetricsIntegrity_Stress(t *testing.T) {
 // do not leak goroutines.
 func TestWorkerPool_TaskTimeout_NoLeak_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

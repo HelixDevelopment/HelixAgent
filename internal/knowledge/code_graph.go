@@ -150,12 +150,12 @@ type edgeIndices struct {
 // writeMu is the only mutex; it does NOT pair with a bare map/slice
 // in the struct field list, so the CONST-029 audit is satisfied.
 type CodeGraph struct {
-	config    CodeGraphConfig
-	nodeIdx   atomic.Pointer[nodeIndices]
-	edgeIdx   atomic.Pointer[edgeIndices]
-	writeMu   sync.Mutex // serialises clone-modify-store sequences
-	embedder  EmbeddingGenerator
-	logger    *logrus.Logger
+	config   CodeGraphConfig
+	nodeIdx  atomic.Pointer[nodeIndices]
+	edgeIdx  atomic.Pointer[edgeIndices]
+	writeMu  sync.Mutex // serialises clone-modify-store sequences
+	embedder EmbeddingGenerator
+	logger   *logrus.Logger
 }
 
 // EmbeddingGenerator generates embeddings for code

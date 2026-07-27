@@ -13,7 +13,7 @@ import (
 // TestMemoryLeakDetection tests for memory leaks in common allocation patterns
 func TestMemoryLeakDetection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("MapGrowthBounded", func(t *testing.T) {

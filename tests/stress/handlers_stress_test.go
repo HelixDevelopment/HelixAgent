@@ -15,7 +15,7 @@ import (
 
 func TestStress_ConcurrentRequests(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -48,7 +48,7 @@ func TestStress_ConcurrentRequests(t *testing.T) {
 
 func TestStress_SustainedLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -95,7 +95,7 @@ func TestStress_SustainedLoad(t *testing.T) {
 
 func TestStress_MemoryStability(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -116,7 +116,7 @@ func TestStress_MemoryStability(t *testing.T) {
 
 func TestStress_ResponseTimeUnderLoad(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	gin.SetMode(gin.TestMode)

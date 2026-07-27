@@ -24,7 +24,7 @@ import (
 // limit × window factor and that no goroutines leak after completion.
 func TestRateLimiter_100Goroutines_100Requests_Each(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -126,7 +126,7 @@ func TestRateLimiter_100Goroutines_100Requests_Each(t *testing.T) {
 // has its own independent token bucket under concurrent load.
 func TestRateLimiter_PerClientIsolation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

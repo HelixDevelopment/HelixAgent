@@ -260,7 +260,7 @@ func TestD11_IsAgentTypeAvailable_RealLookPath(t *testing.T) {
 	// (a) With a fake binary injected for a real-CLI agent type, it is available.
 	t.Setenv("HELIX_AGENT_BIN_AIDER", bin)
 	if !mgr.IsAgentTypeAvailable(TypeAider) {
-		t.Fatalf("D11 REGRESSION: TypeAider reported unavailable with a real binary injected — "+
+		t.Fatalf("D11 REGRESSION: TypeAider reported unavailable with a real binary injected — " +
 			"IsAgentTypeAvailable is not performing a real exec.LookPath check.")
 	}
 

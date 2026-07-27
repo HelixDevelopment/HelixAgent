@@ -217,7 +217,7 @@ func TestProviderHealthAlert_Fields(t *testing.T) {
 //   - "verified":   has a recorded LastSuccess
 //   - "configured": registered but not yet probed (or transient down)
 //   - "dead":       terminal auth signal in LastError, or 5+ failures
-//                   with no prior success
+//     with no prior success
 func TestDeriveTier(t *testing.T) {
 	t.Parallel()
 	now := time.Now()

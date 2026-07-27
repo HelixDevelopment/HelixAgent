@@ -162,7 +162,7 @@ func TestChutesAutoRegistration(t *testing.T) {
 	if err != nil {
 		// This is expected since init() runs at package import time
 		// and we set the registry after import
-		t.Skip("Auto-registration test requires registry to be set before package import")  // SKIP-OK: #test-case-guard
+		t.Skip("Auto-registration test requires registry to be set before package import") // SKIP-OK: #test-case-guard
 	}
 
 	if provider.Name() != "chutes" {

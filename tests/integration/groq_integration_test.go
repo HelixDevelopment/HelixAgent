@@ -23,7 +23,7 @@ func groqAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("GROQ_API_KEY")
 	if key == "" {
-		t.Skip("GROQ_API_KEY not set")  // SKIP-OK: #requires-upstream-key
+		t.Skip("GROQ_API_KEY not set") // SKIP-OK: #requires-upstream-key
 	}
 	return key
 }

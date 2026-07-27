@@ -22,7 +22,7 @@ import (
 
 func TestNewCacheService_WithRedisConnectionFailure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Redis connection test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping Redis connection test in short mode") // SKIP-OK: #short-mode
 	}
 	// Test that cache service handles Redis connection failures gracefully
 	cfg := &config.Config{

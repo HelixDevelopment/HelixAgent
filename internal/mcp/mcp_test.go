@@ -659,7 +659,7 @@ func TestPreinstaller_PreInstallAll(t *testing.T) {
 
 		// Make sure npm is available for this test
 		if preinstaller.npmPath == "" {
-			t.Skip("npm not available")  // SKIP-OK: #legacy-untriaged
+			t.Skip("npm not available") // SKIP-OK: #legacy-untriaged
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())

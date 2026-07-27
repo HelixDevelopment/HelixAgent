@@ -14,7 +14,7 @@ import (
 // TestProviderFailoverStress tests provider failover under high concurrent load
 func TestProviderFailoverStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("ConcurrentFailoverChain", func(t *testing.T) {

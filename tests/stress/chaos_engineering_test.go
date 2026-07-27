@@ -22,7 +22,7 @@ import (
 // dependencies fail mid-operation via context cancellation.
 func TestChaosServiceFailureRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -136,7 +136,7 @@ func TestChaosServiceFailureRecovery(t *testing.T) {
 // goroutine explosion even when many goroutines attempt to spawn concurrently.
 func TestChaosConcurrentGoroutineBomb(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -222,7 +222,7 @@ func TestChaosConcurrentGoroutineBomb(t *testing.T) {
 // context.DeadlineExceeded errors gracefully, without panics or leaks.
 func TestChaosTimeoutCascade(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -300,7 +300,7 @@ func TestChaosTimeoutCascade(t *testing.T) {
 // when the underlying service alternates rapidly between healthy and failed states.
 func TestChaosCircuitBreakerUnderChaos(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -398,7 +398,7 @@ func TestChaosCircuitBreakerUnderChaos(t *testing.T) {
 // are recovered and do not bring down the server.
 func TestChaosHTTPHandlerPanicRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 
@@ -489,7 +489,7 @@ func TestChaosHTTPHandlerPanicRecovery(t *testing.T) {
 // exhaustion (many goroutines, memory pressure), the system returns to normal.
 func TestChaosResourceExhaustionRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping chaos test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping chaos test in short mode") // SKIP-OK: #short-mode
 	}
 	runtime.GOMAXPROCS(2)
 

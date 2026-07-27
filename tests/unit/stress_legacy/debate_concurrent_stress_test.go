@@ -26,7 +26,7 @@ import (
 // remains stable afterward.
 func TestStress_DebateSessions_ConcurrentExecution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -151,7 +151,7 @@ func TestStress_DebateSessions_ConcurrentExecution(t *testing.T) {
 // and querying results, verifying thread safety and correctness.
 func TestStress_DebateVoting_HighConcurrency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -268,7 +268,7 @@ func TestStress_DebateVoting_HighConcurrency(t *testing.T) {
 // in the topology's internal locking.
 func TestStress_DebateTopology_ConcurrentReadWrite(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)
@@ -394,7 +394,7 @@ func TestStress_DebateTopology_ConcurrentReadWrite(t *testing.T) {
 // progressive leak from accumulated session state.
 func TestStress_DebateMemory_NoLeaksAfterSessions(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

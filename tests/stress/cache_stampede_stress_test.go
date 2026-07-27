@@ -39,7 +39,7 @@ func (b *stampedBackend) Fetch(key string) (string, error) {
 // test accepts multiple fetches but still verifies correctness and no panics.
 func TestCache_Stampede_ColdCache_ConcurrentRequests(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.
@@ -193,7 +193,7 @@ func TestCache_Stampede_ColdCache_ConcurrentRequests(t *testing.T) {
 // in exactly one backend fetch even under concurrent access.
 func TestCache_Stampede_MultipleKeys(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	runtime.GOMAXPROCS(2)

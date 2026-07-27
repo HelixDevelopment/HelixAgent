@@ -74,11 +74,11 @@ type ProtocolServer struct {
 	LastCheck    time.Time         `json:"last_check"`
 	Metadata     map[string]string `json:"metadata,omitempty"`
 	// MCP Tool Search fields
-	Category     string   `json:"category,omitempty"`
-	Aliases      []string `json:"aliases,omitempty"`
-	AuthType     string   `json:"auth_type,omitempty"`
-	Official     bool     `json:"official,omitempty"`
-	Supported    bool     `json:"supported,omitempty"`
+	Category  string   `json:"category,omitempty"`
+	Aliases   []string `json:"aliases,omitempty"`
+	AuthType  string   `json:"auth_type,omitempty"`
+	Official  bool     `json:"official,omitempty"`
+	Supported bool     `json:"supported,omitempty"`
 }
 
 // ServerSearchResult represents a server search result using MCP Tool Search
@@ -331,7 +331,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "helixagent-mcp", Type: "mcp", URL: "http://helixagent-mcp:9100",
 		Description: "HelixAgent MCP Server - Central access to all HelixAgent features",
-		Category: "core", Official: true, Supported: true,
+		Category:    "core", Official: true, Supported: true,
 		Capabilities: []string{"debate", "ensemble", "task", "rag", "memory", "providers"},
 		Tools: []*ToolSchema{
 			{Name: "helix_debate", Description: "Start AI debate with ensemble", Category: "ai", RequiredFields: []string{"topic"}},
@@ -344,7 +344,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-manager", Type: "mcp", URL: "http://mcp-manager:9000",
 		Description: "MCP Server Manager - Orchestrates all MCP servers",
-		Category: "core", Official: true, Supported: true,
+		Category:    "core", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "list_servers", Description: "List all MCP servers", Category: "management"},
 			{Name: "server_status", Description: "Get server status", Category: "management", RequiredFields: []string{"server_name"}},
@@ -354,7 +354,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-filesystem", Type: "mcp", URL: "http://mcp-filesystem:3000",
 		Description: "Secure file operations",
-		Category: "filesystem", Official: true, Supported: true,
+		Category:    "filesystem", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "read_file", Description: "Read contents of a file", Category: "filesystem", RequiredFields: []string{"path"}, Aliases: []string{"read"}},
 			{Name: "write_file", Description: "Write content to a file", Category: "filesystem", RequiredFields: []string{"path", "content"}, Aliases: []string{"write"}},
@@ -366,7 +366,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-git", Type: "mcp", URL: "http://mcp-git:3000",
 		Description: "Git repository operations",
-		Category: "version_control", Official: true, Supported: true,
+		Category:    "version_control", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "git_clone", Description: "Clone a repository", Category: "version_control", RequiredFields: []string{"url"}},
 			{Name: "git_commit", Description: "Commit changes", Category: "version_control", RequiredFields: []string{"message"}},
@@ -381,7 +381,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-memory", Type: "mcp", URL: "http://mcp-memory:3000",
 		Description: "Knowledge graph memory with persistent storage",
-		Category: "memory", Official: true, Supported: true,
+		Category:    "memory", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "store_memory", Description: "Store information in memory", Category: "memory", RequiredFields: []string{"key", "value"}},
 			{Name: "retrieve_memory", Description: "Retrieve information from memory", Category: "memory", RequiredFields: []string{"key"}},
@@ -393,7 +393,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-fetch-server", Type: "mcp", URL: "http://mcp-fetch-server:3000",
 		Description: "Web content fetching and processing",
-		Category: "web", Official: true, Supported: true,
+		Category:    "web", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "fetch_url", Description: "Fetch content from URL", Category: "web", RequiredFields: []string{"url"}},
 			{Name: "extract_text", Description: "Extract text from HTML", Category: "web", RequiredFields: []string{"url"}},
@@ -404,7 +404,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-time", Type: "mcp", URL: "http://mcp-time:3000",
 		Description: "Timezone and time operations",
-		Category: "utility", Official: true, Supported: true,
+		Category:    "utility", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "get_time", Description: "Get current time", Category: "utility"},
 			{Name: "convert_timezone", Description: "Convert time between timezones", Category: "utility", RequiredFields: []string{"time", "from_tz", "to_tz"}},
@@ -415,7 +415,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-sqlite", Type: "mcp", URL: "http://mcp-sqlite:3000",
 		Description: "SQLite database operations",
-		Category: "database", Official: true, Supported: true,
+		Category:    "database", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "query", Description: "Execute SQL query", Category: "database", RequiredFields: []string{"sql"}},
 			{Name: "execute", Description: "Execute SQL statement", Category: "database", RequiredFields: []string{"sql"}},
@@ -427,7 +427,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-postgres", Type: "mcp", URL: "http://mcp-postgres:3000",
 		Description: "PostgreSQL database operations",
-		Category: "database", Official: true, Supported: true,
+		Category:    "database", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "pg_query", Description: "Execute PostgreSQL query", Category: "database", RequiredFields: []string{"sql"}},
 			{Name: "pg_execute", Description: "Execute PostgreSQL statement", Category: "database", RequiredFields: []string{"sql"}},
@@ -438,7 +438,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-puppeteer", Type: "mcp", URL: "http://mcp-puppeteer:3000",
 		Description: "Browser automation with Puppeteer",
-		Category: "automation", Official: true, Supported: true,
+		Category:    "automation", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "navigate", Description: "Navigate to URL", Category: "automation", RequiredFields: []string{"url"}},
 			{Name: "click", Description: "Click element", Category: "automation", RequiredFields: []string{"selector"}},
@@ -451,7 +451,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-sequential-thinking", Type: "mcp", URL: "http://mcp-sequential-thinking:3000",
 		Description: "Step-by-step reasoning and problem solving",
-		Category: "reasoning", Official: true, Supported: true,
+		Category:    "reasoning", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "think_step", Description: "Process one reasoning step", Category: "reasoning", RequiredFields: []string{"thought"}},
 			{Name: "analyze_problem", Description: "Analyze a problem", Category: "reasoning", RequiredFields: []string{"problem"}},
@@ -462,7 +462,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-ai-experiment-logger", Type: "mcp", URL: "http://mcp-ai-experiment-logger:3000",
 		Description: "AI experiment logging and tracking",
-		Category: "ai", Supported: true,
+		Category:    "ai", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "log_experiment", Description: "Log an AI experiment", Category: "ai", RequiredFields: []string{"name", "parameters"}},
 			{Name: "search_experiments", Description: "Search past experiments", Category: "ai", RequiredFields: []string{"query"}},
@@ -473,7 +473,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-api-debugger", Type: "mcp", URL: "http://mcp-api-debugger:3000",
 		Description: "API debugging and testing",
-		Category: "development", Supported: true,
+		Category:    "development", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "debug_request", Description: "Debug HTTP request", Category: "development", RequiredFields: []string{"url", "method"}},
 			{Name: "analyze_response", Description: "Analyze HTTP response", Category: "development", RequiredFields: []string{"response"}},
@@ -484,7 +484,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-workflow", Type: "mcp", URL: "http://mcp-workflow:3000",
 		Description: "Workflow orchestration",
-		Category: "workflow", Supported: true,
+		Category:    "workflow", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "create_workflow", Description: "Create new workflow", Category: "workflow", RequiredFields: []string{"name", "steps"}},
 			{Name: "execute_workflow", Description: "Execute workflow", Category: "workflow", RequiredFields: []string{"workflow_id"}},
@@ -496,7 +496,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-slack", Type: "mcp", URL: "http://mcp-slack:3000",
 		Description: "Slack workspace messaging",
-		Category: "communication", AuthType: "token", Supported: true,
+		Category:    "communication", AuthType: "token", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "send_message", Description: "Send Slack message", Category: "communication", RequiredFields: []string{"channel", "text"}},
 			{Name: "list_channels", Description: "List Slack channels", Category: "communication"},
@@ -507,7 +507,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-github", Type: "mcp", URL: "http://mcp-github:3000",
 		Description: "GitHub repositories and issues",
-		Category: "version_control", AuthType: "token", Official: true, Supported: true,
+		Category:    "version_control", AuthType: "token", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "create_issue", Description: "Create GitHub issue", Category: "version_control", RequiredFields: []string{"repo", "title"}},
 			{Name: "create_pr", Description: "Create pull request", Category: "version_control", RequiredFields: []string{"repo", "title", "head", "base"}},
@@ -519,7 +519,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-linear", Type: "mcp", URL: "http://mcp-linear:3000",
 		Description: "Linear issue tracking",
-		Category: "productivity", AuthType: "api_key", Supported: true,
+		Category:    "productivity", AuthType: "api_key", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "create_issue", Description: "Create Linear issue", Category: "productivity", RequiredFields: []string{"title", "team_id"}},
 			{Name: "update_issue", Description: "Update Linear issue", Category: "productivity", RequiredFields: []string{"issue_id"}},
@@ -530,7 +530,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-notion", Type: "mcp", URL: "http://mcp-notion:3000",
 		Description: "Notion workspace management",
-		Category: "productivity", AuthType: "api_key", Supported: true,
+		Category:    "productivity", AuthType: "api_key", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "create_page", Description: "Create Notion page", Category: "productivity", RequiredFields: []string{"parent_id", "title"}},
 			{Name: "update_page", Description: "Update Notion page", Category: "productivity", RequiredFields: []string{"page_id"}},
@@ -541,7 +541,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-brave-search", Type: "mcp", URL: "http://mcp-brave-search:3000",
 		Description: "Brave Search web search",
-		Category: "search", AuthType: "api_key", Official: true, Supported: true,
+		Category:    "search", AuthType: "api_key", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "web_search", Description: "Search the web", Category: "search", RequiredFields: []string{"query"}},
 			{Name: "local_search", Description: "Search local businesses", Category: "search", RequiredFields: []string{"query", "location"}},
@@ -552,7 +552,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-sentry", Type: "mcp", URL: "http://mcp-sentry:3000",
 		Description: "Sentry error tracking",
-		Category: "analytics", AuthType: "api_key", Official: true, Supported: true,
+		Category:    "analytics", AuthType: "api_key", Official: true, Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "list_issues", Description: "List Sentry issues", Category: "analytics", RequiredFields: []string{"project"}},
 			{Name: "get_issue", Description: "Get issue details", Category: "analytics", RequiredFields: []string{"issue_id"}},
@@ -564,7 +564,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-chroma", Type: "mcp", URL: "http://mcp-chroma:3000",
 		Description: "ChromaDB vector operations",
-		Category: "vector", Supported: true,
+		Category:    "vector", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "add", Description: "Add vectors to collection", Category: "vector", RequiredFields: []string{"collection", "documents"}},
 			{Name: "query", Description: "Query vectors", Category: "vector", RequiredFields: []string{"collection", "query_text"}},
@@ -575,7 +575,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-qdrant", Type: "mcp", URL: "http://mcp-qdrant:3000",
 		Description: "Qdrant vector operations",
-		Category: "vector", Supported: true,
+		Category:    "vector", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "upsert", Description: "Upsert vectors", Category: "vector", RequiredFields: []string{"collection", "points"}},
 			{Name: "search", Description: "Search vectors", Category: "vector", RequiredFields: []string{"collection", "vector"}},
@@ -586,7 +586,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-huggingface", Type: "mcp", URL: "http://mcp-huggingface:3000",
 		Description: "HuggingFace models and datasets",
-		Category: "ai", AuthType: "api_key", Supported: true,
+		Category:    "ai", AuthType: "api_key", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "list_models", Description: "List HuggingFace models", Category: "ai"},
 			{Name: "inference", Description: "Run model inference", Category: "ai", RequiredFields: []string{"model", "inputs"}},
@@ -597,7 +597,7 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "mcp-replicate", Type: "mcp", URL: "http://mcp-replicate:3000",
 		Description: "Replicate ML model hosting",
-		Category: "ai", AuthType: "api_key", Supported: true,
+		Category:    "ai", AuthType: "api_key", Supported: true,
 		Tools: []*ToolSchema{
 			{Name: "run_model", Description: "Run a model", Category: "ai", RequiredFields: []string{"model", "input"}},
 			{Name: "list_models", Description: "List available models", Category: "ai"},
@@ -608,57 +608,57 @@ var predefinedServers = []ProtocolServer{
 	{
 		Name: "lsp-ai", Type: "lsp", URL: "http://lsp-ai:5000",
 		Description: "AI-powered language server",
-		Category: "code_intelligence", Supported: true,
+		Category:    "code_intelligence", Supported: true,
 		Capabilities: []string{"completion", "chat", "code_actions", "diagnostics"},
 	},
 	{
 		Name: "lsp-multi", Type: "lsp", URL: "http://lsp-multi:5001",
 		Description: "Multi-language LSP (Go, Rust, Python, TypeScript, C++, Java)",
-		Category: "code_intelligence", Supported: true,
+		Category:    "code_intelligence", Supported: true,
 		Capabilities: []string{"completion", "diagnostics", "formatting", "references", "hover"},
 	},
 	{
 		Name: "lsp-manager", Type: "lsp", URL: "http://lsp-manager:5100",
 		Description: "LSP Server Manager",
-		Category: "code_intelligence", Supported: true,
+		Category:    "code_intelligence", Supported: true,
 	},
 	// ACP Servers
 	{
 		Name: "acp-manager", Type: "acp", URL: "http://acp-manager:9200",
 		Description: "Agent Communication Protocol manager",
-		Category: "agent", Supported: true,
+		Category:    "agent", Supported: true,
 		Capabilities: []string{"agent_discovery", "agent_routing", "message_passing"},
 	},
 	// Embedding Servers
 	{
 		Name: "embedding-sentence-transformers", Type: "embedding", URL: "http://embedding-sentence-transformers:8016",
 		Description: "Sentence Transformers embeddings",
-		Category: "embedding", Supported: true,
+		Category:    "embedding", Supported: true,
 		Capabilities: []string{"encode", "batch_encode"},
 	},
 	{
 		Name: "embedding-bge-m3", Type: "embedding", URL: "http://embedding-bge-m3:8017",
 		Description: "BGE-M3 multilingual embeddings",
-		Category: "embedding", Supported: true,
+		Category:    "embedding", Supported: true,
 		Capabilities: []string{"encode", "batch_encode", "multilingual"},
 	},
 	// RAG Servers
 	{
 		Name: "rag-manager", Type: "rag", URL: "http://rag-manager:8030",
 		Description: "RAG Pipeline Manager",
-		Category: "rag", Supported: true,
+		Category:    "rag", Supported: true,
 		Capabilities: []string{"retrieve", "rerank", "generate"},
 	},
 	{
 		Name: "rag-reranker", Type: "rag", URL: "http://rag-reranker:8021",
 		Description: "Cross-encoder reranking",
-		Category: "rag", Supported: true,
+		Category:    "rag", Supported: true,
 		Capabilities: []string{"rerank", "score"},
 	},
 	{
 		Name: "qdrant", Type: "rag", URL: "http://qdrant:6333",
 		Description: "Qdrant vector database",
-		Category: "vector", Supported: true,
+		Category:    "vector", Supported: true,
 		Capabilities: []string{"upsert", "search", "filter"},
 	},
 }
@@ -813,11 +813,11 @@ func handleToolSearch(w http.ResponseWriter, r *http.Request) {
 	defer registry.mu.RUnlock()
 
 	type ToolResult struct {
-		ServerName  string      `json:"server_name"`
-		ServerURL   string      `json:"server_url"`
-		Tool        *ToolSchema `json:"tool"`
-		Score       float64     `json:"score"`
-		MatchType   string      `json:"match_type"`
+		ServerName string      `json:"server_name"`
+		ServerURL  string      `json:"server_url"`
+		Tool       *ToolSchema `json:"tool"`
+		Score      float64     `json:"score"`
+		MatchType  string      `json:"match_type"`
 	}
 
 	var results []ToolResult

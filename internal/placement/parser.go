@@ -30,18 +30,18 @@ const ComposeFileLabel = "helixagent.placement.compose"
 
 // composeService is the subset of compose schema we read.
 type composeService struct {
-	Image     string                 `yaml:"image"`
-	Profiles  []string               `yaml:"profiles"`
-	DependsOn interface{}            `yaml:"depends_on"`
-	Deploy    composeDeploy          `yaml:"deploy"`
-	Build     interface{}            `yaml:"build"`
-	Ports     []interface{}          `yaml:"ports"`
+	Image     string        `yaml:"image"`
+	Profiles  []string      `yaml:"profiles"`
+	DependsOn interface{}   `yaml:"depends_on"`
+	Deploy    composeDeploy `yaml:"deploy"`
+	Build     interface{}   `yaml:"build"`
+	Ports     []interface{} `yaml:"ports"`
 	// Labels is the standard Compose service labels block. The
 	// placement layer reads `helixagent.placement.{require,prefer}.X`
 	// keys here as capability hints (capability.go LabelXxx
 	// constants). Other label keys are ignored by placement.
-	Labels    map[string]string      `yaml:"labels"`
-	Extras    map[string]interface{} `yaml:",inline"`
+	Labels map[string]string      `yaml:"labels"`
+	Extras map[string]interface{} `yaml:",inline"`
 }
 
 type composeDeploy struct {
@@ -59,9 +59,9 @@ type composeLimits struct {
 }
 
 type composeReservations struct {
-	Memory  string                       `yaml:"memory"`
-	CPUs    string                       `yaml:"cpus"`
-	Devices []composeReservationDevice   `yaml:"devices"`
+	Memory  string                     `yaml:"memory"`
+	CPUs    string                     `yaml:"cpus"`
+	Devices []composeReservationDevice `yaml:"devices"`
 }
 
 type composeReservationDevice struct {

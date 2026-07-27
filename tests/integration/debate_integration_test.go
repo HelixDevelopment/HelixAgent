@@ -19,7 +19,7 @@ func skipIfNoInfra(t *testing.T) {
 	t.Helper()
 	testutil.RequireInfra(t)
 	if os.Getenv("SKIP_INTEGRATION") == "true" {
-		t.Skip("Skipping integration test (SKIP_INTEGRATION=true)")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test (SKIP_INTEGRATION=true)") // SKIP-OK: #integration-mode-only
 	}
 }
 

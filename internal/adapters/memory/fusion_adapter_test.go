@@ -86,7 +86,7 @@ func TestHelixMemoryFusionAdapter_CRUD(t *testing.T) {
 
 	// Without services running, adapter is nil
 	if adapter == nil {
-		t.Skip("HelixMemory services not available, skipping integration tests")  // SKIP-OK: #integration-mode-only
+		t.Skip("HelixMemory services not available, skipping integration tests") // SKIP-OK: #integration-mode-only
 	}
 
 	// Test Add
@@ -131,7 +131,7 @@ func TestHelixMemoryFusionAdapter_AgentMemory(t *testing.T) {
 	adapter := memory.NewOptimalStoreAdapter()
 
 	if adapter == nil {
-		t.Skip("HelixMemory services not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory services not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Store with agent
@@ -157,7 +157,7 @@ func TestHelixMemoryFusionAdapter_KnowledgeGraph(t *testing.T) {
 	adapter := memory.NewOptimalStoreAdapter()
 
 	if adapter == nil {
-		t.Skip("HelixMemory services not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory services not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Add entity
@@ -187,7 +187,7 @@ func TestHelixMemoryFusionAdapter_Health(t *testing.T) {
 	adapter := memory.NewOptimalStoreAdapter()
 
 	if adapter == nil {
-		t.Skip("HelixMemory services not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory services not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()
@@ -201,7 +201,7 @@ func TestHelixMemoryFusionAdapter_Stats(t *testing.T) {
 	adapter := memory.NewOptimalStoreAdapter()
 
 	if adapter == nil {
-		t.Skip("HelixMemory services not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixMemory services not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	stats := adapter.GetStats()

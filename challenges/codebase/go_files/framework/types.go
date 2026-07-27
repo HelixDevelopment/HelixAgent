@@ -18,28 +18,28 @@ const (
 
 // Challenge status values.
 const (
-	StatusPending    = "pending"
-	StatusRunning    = "running"
-	StatusPassed     = "passed"
-	StatusFailed     = "failed"
-	StatusSkipped    = "skipped"
-	StatusTimedOut   = "timed_out"
-	StatusError      = "error"
+	StatusPending  = "pending"
+	StatusRunning  = "running"
+	StatusPassed   = "passed"
+	StatusFailed   = "failed"
+	StatusSkipped  = "skipped"
+	StatusTimedOut = "timed_out"
+	StatusError    = "error"
 )
 
 // ChallengeDefinition defines a challenge's metadata and configuration.
 type ChallengeDefinition struct {
-	ID               ChallengeID           `json:"id"`
-	Name             string                `json:"name"`
-	Description      string                `json:"description"`
-	Category         string                `json:"category"`
-	Dependencies     []ChallengeID         `json:"dependencies"`
-	EstimatedDuration string               `json:"estimated_duration"`
-	Inputs           []ChallengeInput      `json:"inputs"`
-	Outputs          []ChallengeOutput     `json:"outputs"`
-	Assertions       []AssertionDefinition `json:"assertions"`
-	Metrics          []string              `json:"metrics"`
-	Configuration    json.RawMessage       `json:"configuration,omitempty"`
+	ID                ChallengeID           `json:"id"`
+	Name              string                `json:"name"`
+	Description       string                `json:"description"`
+	Category          string                `json:"category"`
+	Dependencies      []ChallengeID         `json:"dependencies"`
+	EstimatedDuration string                `json:"estimated_duration"`
+	Inputs            []ChallengeInput      `json:"inputs"`
+	Outputs           []ChallengeOutput     `json:"outputs"`
+	Assertions        []AssertionDefinition `json:"assertions"`
+	Metrics           []string              `json:"metrics"`
+	Configuration     json.RawMessage       `json:"configuration,omitempty"`
 }
 
 // ChallengeInput defines an input requirement for a challenge.
@@ -58,22 +58,22 @@ type ChallengeOutput struct {
 
 // AssertionDefinition defines an assertion to validate challenge results.
 type AssertionDefinition struct {
-	Type    string  `json:"type"`
-	Target  string  `json:"target"`
-	Value   any     `json:"value,omitempty"`
-	Values  []any   `json:"values,omitempty"`
-	Message string  `json:"message"`
+	Type    string `json:"type"`
+	Target  string `json:"target"`
+	Value   any    `json:"value,omitempty"`
+	Values  []any  `json:"values,omitempty"`
+	Message string `json:"message"`
 }
 
 // ChallengeConfig holds runtime configuration for a challenge execution.
 type ChallengeConfig struct {
-	ChallengeID   ChallengeID       `json:"challenge_id"`
-	ResultsDir    string            `json:"results_dir"`
-	LogsDir       string            `json:"logs_dir"`
-	Timeout       time.Duration     `json:"timeout"`
-	Verbose       bool              `json:"verbose"`
-	Environment   map[string]string `json:"environment"`
-	Dependencies  map[ChallengeID]string `json:"dependencies"` // ID -> results path
+	ChallengeID  ChallengeID            `json:"challenge_id"`
+	ResultsDir   string                 `json:"results_dir"`
+	LogsDir      string                 `json:"logs_dir"`
+	Timeout      time.Duration          `json:"timeout"`
+	Verbose      bool                   `json:"verbose"`
+	Environment  map[string]string      `json:"environment"`
+	Dependencies map[ChallengeID]string `json:"dependencies"` // ID -> results path
 }
 
 // ChallengeResult holds the outcome of a challenge execution.
@@ -118,43 +118,43 @@ type LogPaths struct {
 
 // ProviderInfo holds information about an LLM provider.
 type ProviderInfo struct {
-	Name        string   `json:"name"`
-	Enabled     bool     `json:"enabled"`
-	APIKeySet   bool     `json:"api_key_set"`
-	APIKeyMask  string   `json:"api_key_mask,omitempty"` // Redacted key for display
-	BaseURL     string   `json:"base_url,omitempty"`
-	Models      []string `json:"models,omitempty"`
+	Name       string   `json:"name"`
+	Enabled    bool     `json:"enabled"`
+	APIKeySet  bool     `json:"api_key_set"`
+	APIKeyMask string   `json:"api_key_mask,omitempty"` // Redacted key for display
+	BaseURL    string   `json:"base_url,omitempty"`
+	Models     []string `json:"models,omitempty"`
 }
 
 // ModelScore holds scoring information for an LLM model.
 type ModelScore struct {
-	Provider     string             `json:"provider"`
-	ModelID      string             `json:"model_id"`
-	DisplayName  string             `json:"display_name"`
-	TotalScore   float64            `json:"total_score"`
+	Provider       string             `json:"provider"`
+	ModelID        string             `json:"model_id"`
+	DisplayName    string             `json:"display_name"`
+	TotalScore     float64            `json:"total_score"`
 	ScoreBreakdown map[string]float64 `json:"score_breakdown"`
-	Capabilities []string           `json:"capabilities"`
-	Verified     bool               `json:"verified"`
-	ResponseTime time.Duration      `json:"response_time"`
+	Capabilities   []string           `json:"capabilities"`
+	Verified       bool               `json:"verified"`
+	ResponseTime   time.Duration      `json:"response_time"`
 }
 
 // DebateGroupMember represents a member of the AI debate group.
 type DebateGroupMember struct {
-	Position   int          `json:"position"`
-	Role       string       `json:"role"` // "primary" or "fallback_N"
-	Model      ModelScore   `json:"model"`
-	Fallbacks  []ModelScore `json:"fallbacks,omitempty"`
+	Position  int          `json:"position"`
+	Role      string       `json:"role"` // "primary" or "fallback_N"
+	Model     ModelScore   `json:"model"`
+	Fallbacks []ModelScore `json:"fallbacks,omitempty"`
 }
 
 // DebateGroup represents the complete AI debate group configuration.
 type DebateGroup struct {
-	ID            string               `json:"id"`
-	Name          string               `json:"name"`
-	CreatedAt     time.Time            `json:"created_at"`
-	Members       []DebateGroupMember  `json:"members"`
-	TotalModels   int                  `json:"total_models"`
-	AverageScore  float64              `json:"average_score"`
-	Configuration DebateConfiguration  `json:"configuration"`
+	ID            string              `json:"id"`
+	Name          string              `json:"name"`
+	CreatedAt     time.Time           `json:"created_at"`
+	Members       []DebateGroupMember `json:"members"`
+	TotalModels   int                 `json:"total_models"`
+	AverageScore  float64             `json:"average_score"`
+	Configuration DebateConfiguration `json:"configuration"`
 }
 
 // DebateConfiguration holds debate-specific settings.
@@ -167,15 +167,15 @@ type DebateConfiguration struct {
 
 // TestPrompt defines a test prompt for API quality testing.
 type TestPrompt struct {
-	ID              string   `json:"id"`
-	Category        string   `json:"category"`
-	Prompt          string   `json:"prompt"`
-	ExpectedElements []string `json:"expected_elements,omitempty"`
-	ExpectedMentions []string `json:"expected_mentions,omitempty"`
-	ExpectedAnswer   string   `json:"expected_answer,omitempty"`
-	MinLength        int      `json:"min_response_length,omitempty"`
-	QualityThreshold float64  `json:"quality_threshold,omitempty"`
-	RequiresReasoning bool    `json:"requires_reasoning,omitempty"`
+	ID                string   `json:"id"`
+	Category          string   `json:"category"`
+	Prompt            string   `json:"prompt"`
+	ExpectedElements  []string `json:"expected_elements,omitempty"`
+	ExpectedMentions  []string `json:"expected_mentions,omitempty"`
+	ExpectedAnswer    string   `json:"expected_answer,omitempty"`
+	MinLength         int      `json:"min_response_length,omitempty"`
+	QualityThreshold  float64  `json:"quality_threshold,omitempty"`
+	RequiresReasoning bool     `json:"requires_reasoning,omitempty"`
 }
 
 // APITestResult holds the result of a single API test.

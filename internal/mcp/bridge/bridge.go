@@ -47,14 +47,14 @@ func DefaultConfig() *Config {
 
 // Bridge wraps an MCP server and exposes it over HTTP/SSE
 type Bridge struct {
-	config   *Config
-	cmd      *exec.Cmd
-	stdin    io.WriteCloser
-	stdout   io.ReadCloser
-	stderr   io.ReadCloser
-	stdinMu  sync.Mutex // serialises writes to stdin only
-	clients  *safe.Store[string, chan []byte]
-	done     chan struct{}
+	config  *Config
+	cmd     *exec.Cmd
+	stdin   io.WriteCloser
+	stdout  io.ReadCloser
+	stderr  io.ReadCloser
+	stdinMu sync.Mutex // serialises writes to stdin only
+	clients *safe.Store[string, chan []byte]
+	done    chan struct{}
 }
 
 // New creates a new Bridge instance

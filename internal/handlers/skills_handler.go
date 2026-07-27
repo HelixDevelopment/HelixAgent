@@ -121,8 +121,8 @@ func (h *SkillsHandler) GetSkillsByCategory(c *gin.Context) {
 	}
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error":      "category not found: " + category,
-			"category":   category,
+			"error":       "category not found: " + category,
+			"category":    category,
 			"known_count": len(known),
 		})
 		return

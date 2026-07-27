@@ -1139,7 +1139,7 @@ func TestOpenAIEmbeddingModel_HTTPErrors(t *testing.T) {
 func TestLocalHashModel_StressTest(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	config := EmbeddingModelConfig{
@@ -1177,7 +1177,7 @@ func TestLocalHashModel_StressTest(t *testing.T) {
 func TestEmbeddingModelRegistry_StressTest(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	registry := NewEmbeddingModelRegistry(RegistryConfig{

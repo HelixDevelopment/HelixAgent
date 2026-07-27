@@ -139,7 +139,7 @@ func TestExternalMCPServerSourcesExist(t *testing.T) {
 // TestExternalMCPContainerBuild verifies that the MCP servers container can be built
 func TestExternalMCPContainerBuild(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping container build test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping container build test in short mode") // SKIP-OK: #short-mode
 	}
 
 	projectRoot := getExternalMCPProjectRoot()
@@ -148,7 +148,7 @@ func TestExternalMCPContainerBuild(t *testing.T) {
 	// Check if Docker/Podman is available
 	runtime := detectContainerRuntime()
 	if runtime == "" {
-		t.Skip("No container runtime (Docker/Podman) available")  // SKIP-OK: #runtime-mock-only
+		t.Skip("No container runtime (Docker/Podman) available") // SKIP-OK: #runtime-mock-only
 	}
 
 	// Build the container
@@ -167,17 +167,17 @@ func TestExternalMCPContainerHealth(t *testing.T) {
 	// Check if container is running
 	runtime := detectContainerRuntime()
 	if runtime == "" {
-		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
+		t.Skip("No container runtime available") // SKIP-OK: #runtime-mock-only
 	}
 
 	cmd := exec.Command(runtime, "ps", "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
-		t.Skip("Could not check running containers")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Could not check running containers") // SKIP-OK: #legacy-untriaged
 	}
 
 	if !strings.Contains(string(output), "helixagent-mcp-servers") {
-		t.Skip("MCP servers container not running")  // SKIP-OK: #legacy-untriaged
+		t.Skip("MCP servers container not running") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Check health
@@ -455,7 +455,7 @@ func TestMCPContainerNetworkDNSResolution(t *testing.T) {
 
 	runtime := detectContainerRuntime()
 	if runtime == "" {
-		t.Skip("No container runtime available")  // SKIP-OK: #runtime-mock-only
+		t.Skip("No container runtime available") // SKIP-OK: #runtime-mock-only
 	}
 
 	// Test DNS resolution inside a container using --network=host

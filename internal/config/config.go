@@ -520,8 +520,8 @@ func DefaultServicesConfig() ServicesConfig {
 			// Env-resolved for the same reason as ChromaDB below (§11.4.111).
 			Host:        getEnv("HELIXAGENT_DEP_HOST", "localhost"),
 			Port:        getEnv("HELIXAGENT_PORT_COGNEE", "8000"),
-			Enabled:     false, // DISABLED - Replaced by Mem0 memory system
-			Required:    false, // NOT REQUIRED - Mem0 is now primary memory provider
+			Enabled:     false,         // DISABLED - Replaced by Mem0 memory system
+			Required:    false,         // NOT REQUIRED - Mem0 is now primary memory provider
 			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED
 			HealthPath:  "/",
 			HealthType:  "http",

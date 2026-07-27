@@ -372,7 +372,7 @@ func SkipIfContainersUnavailable(t *testing.T) {
 	})
 
 	if !runtimeAvailableCached {
-		t.Skip("Container runtime not available (docker/podman required, or probe timed out)")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Container runtime not available (docker/podman required, or probe timed out)") // SKIP-OK: #legacy-untriaged
 	}
 }
 

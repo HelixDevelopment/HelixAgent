@@ -487,7 +487,7 @@ func TestPhase3_IntegrationTests(t *testing.T) {
 
 func TestPhase4_APIEndpoints(t *testing.T) {
 	if suite.testServer == nil {
-		t.Skip("Test server not initialized")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Test server not initialized") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -874,7 +874,7 @@ func TestPhase5_ToolExecution(t *testing.T) {
 
 func TestPhase6_EndToEndFlows(t *testing.T) {
 	if suite.testServer == nil {
-		t.Skip("Test server not initialized")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Test server not initialized") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
@@ -1034,7 +1034,7 @@ func TestPhase6_EndToEndFlows(t *testing.T) {
 
 func TestPhase7_Performance(t *testing.T) {
 	if suite.testServer == nil {
-		t.Skip("Test server not initialized")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Test server not initialized") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -1568,7 +1568,7 @@ func TestExternalServer_IfRunning(t *testing.T) {
 	// Check if server is running
 	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
-		t.Skip("External HelixAgent server not running - skipping external tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("External HelixAgent server not running - skipping external tests") // SKIP-OK: #legacy-untriaged
 		return
 	}
 	conn.Close()
@@ -1612,7 +1612,7 @@ func TestExternalServer_IfRunning(t *testing.T) {
 
 func TestRunUnitTests_Optional(t *testing.T) {
 	if os.Getenv("RUN_EXTERNAL_TESTS") != "true" {
-		t.Skip("Set RUN_EXTERNAL_TESTS=true to run external Go tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Set RUN_EXTERNAL_TESTS=true to run external Go tests") // SKIP-OK: #legacy-untriaged
 	}
 
 	start := time.Now()

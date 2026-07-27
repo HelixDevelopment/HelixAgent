@@ -12,7 +12,7 @@ import (
 // TestGoroutineLeakDetection tests for goroutine leaks in common patterns
 func TestGoroutineLeakDetection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("ChannelCleanup", func(t *testing.T) {

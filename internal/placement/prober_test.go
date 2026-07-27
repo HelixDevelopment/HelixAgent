@@ -28,8 +28,8 @@ func (*fakeExec) ExecuteStream(context.Context, remote.RemoteHost, string) (io.R
 }
 func (*fakeExec) CopyFile(context.Context, remote.RemoteHost, string, string) error { return nil }
 func (*fakeExec) CopyDir(context.Context, remote.RemoteHost, string, string) error  { return nil }
-func (*fakeExec) IsReachable(context.Context, remote.RemoteHost) bool                { return true }
-func (*fakeExec) Close() error                                                       { return nil }
+func (*fakeExec) IsReachable(context.Context, remote.RemoteHost) bool               { return true }
+func (*fakeExec) Close() error                                                      { return nil }
 
 // TestProbe_DockerHostWithNvidia exercises the happy path: an x86_64
 // Linux box running docker with one nvidia GPU, NVMe SSD, fast CPU,
@@ -44,16 +44,16 @@ func TestProbe_DockerHostWithNvidia(t *testing.T) {
 		"1",
 		"nvidia",
 		"---SECTION-4---",
-		"33554432",  // MemTotal kB ≈ 32 GiB
-		"16777216",  // MemAvailable kB ≈ 16 GiB
-		"600000",    // disk free MB (≥500 GB → large)
-		"1000000",   // disk total MB
-		"8",         // nproc
-		"3500",      // CPU max MHz (3.5 GHz → fast)
+		"33554432", // MemTotal kB ≈ 32 GiB
+		"16777216", // MemAvailable kB ≈ 16 GiB
+		"600000",   // disk free MB (≥500 GB → large)
+		"1000000",  // disk total MB
+		"8",        // nproc
+		"3500",     // CPU max MHz (3.5 GHz → fast)
 		"---SECTION-5---",
-		"nvme",      // storage type
+		"nvme", // storage type
 		"---SECTION-6---",
-		"10000",     // network speed Mbps (10 GbE → high)
+		"10000", // network speed Mbps (10 GbE → high)
 	}, "\n")
 
 	prober := NewCapabilityProber(&fakeExec{stdout: canned})
@@ -127,16 +127,16 @@ func TestProbe_PodmanHostNoGPU(t *testing.T) {
 		"0",
 		"none",
 		"---SECTION-4---",
-		"8388608",  // MemTotal kB ≈ 8 GiB
+		"8388608", // MemTotal kB ≈ 8 GiB
 		"4194304",
-		"80000",    // disk free MB (<100 GB → small)
-		"500000",   // disk total MB
-		"4",        // nproc
-		"2400",     // CPU MHz (2.4 GHz → medium)
+		"80000",  // disk free MB (<100 GB → small)
+		"500000", // disk total MB
+		"4",      // nproc
+		"2400",   // CPU MHz (2.4 GHz → medium)
 		"---SECTION-5---",
-		"hdd",      // rotational only
+		"hdd", // rotational only
 		"---SECTION-6---",
-		"1000",     // 1 GbE → medium network class
+		"1000", // 1 GbE → medium network class
 	}, "\n")
 
 	prober := NewCapabilityProber(&fakeExec{stdout: canned})
@@ -189,14 +189,14 @@ func TestProbe_HostLabelOverride(t *testing.T) {
 		"---SECTION-4---",
 		"33554432",
 		"16777216",
-		"50000",   // small disk per probe
+		"50000", // small disk per probe
 		"500000",
 		"8",
-		"1500",    // slow CPU per probe
+		"1500", // slow CPU per probe
 		"---SECTION-5---",
-		"hdd",     // probe says rotational
+		"hdd", // probe says rotational
 		"---SECTION-6---",
-		"100",     // probe says 100 Mbps
+		"100", // probe says 100 Mbps
 	}, "\n")
 
 	prober := NewCapabilityProber(&fakeExec{stdout: canned})

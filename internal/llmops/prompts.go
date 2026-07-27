@@ -126,8 +126,8 @@ func (r *InMemoryPromptRegistry) Create(ctx context.Context, prompt *PromptVersi
 // Get retrieves a specific version
 func (r *InMemoryPromptRegistry) Get(ctx context.Context, name, version string) (*PromptVersion, error) {
 	var (
-		result  *PromptVersion
-		outErr  error
+		result *PromptVersion
+		outErr error
 	)
 	r.withState(func(s *promptState) {
 		versions, ok := s.prompts[name]

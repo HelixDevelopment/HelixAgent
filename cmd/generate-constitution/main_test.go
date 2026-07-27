@@ -12,7 +12,7 @@ import (
 
 func TestMain_BinaryBuilds(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping binary build test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping binary build test in short mode") // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -31,7 +31,7 @@ func TestMain_BinaryBuilds(t *testing.T) {
 
 func TestMain_GeneratesConstitution(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping constitution generation in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping constitution generation in short mode") // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -49,7 +49,7 @@ func TestMain_GeneratesConstitution(t *testing.T) {
 
 func TestMain_InvalidProjectRoot(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping invalid path test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping invalid path test in short mode") // SKIP-OK: #short-mode
 	}
 
 	cmd := exec.Command("go", "run", ".")
@@ -71,7 +71,7 @@ func TestMain_ConstitutionManagerImport(t *testing.T) {
 
 func TestMain_ConstitutionFormat(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping format validation in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping format validation in short mode") // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()
@@ -92,7 +92,7 @@ func TestMain_ConstitutionFormat(t *testing.T) {
 
 func TestMain_ConstitutionSync(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping sync test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping sync test in short mode") // SKIP-OK: #short-mode
 	}
 
 	tmpDir := t.TempDir()

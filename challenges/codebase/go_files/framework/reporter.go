@@ -319,29 +319,29 @@ func (r *JSONReporter) SaveReport(result *ChallengeResult, filename string) erro
 
 // MasterSummary represents an aggregated summary of all challenge runs.
 type MasterSummary struct {
-	ID                 string            `json:"id"`
-	GeneratedAt        time.Time         `json:"generated_at"`
-	Challenges         []ChallengeSummary `json:"challenges"`
-	TotalChallenges    int               `json:"total_challenges"`
-	PassedChallenges   int               `json:"passed_challenges"`
-	FailedChallenges   int               `json:"failed_challenges"`
-	TotalDuration      time.Duration     `json:"total_duration"`
-	AveragePassRate    float64           `json:"average_pass_rate"`
-	TopModels          []string          `json:"top_models,omitempty"`
-	DebateGroupID      string            `json:"debate_group_id,omitempty"`
-	APITestsRun        int               `json:"api_tests_run,omitempty"`
-	APITestsPassed     int               `json:"api_tests_passed,omitempty"`
+	ID               string             `json:"id"`
+	GeneratedAt      time.Time          `json:"generated_at"`
+	Challenges       []ChallengeSummary `json:"challenges"`
+	TotalChallenges  int                `json:"total_challenges"`
+	PassedChallenges int                `json:"passed_challenges"`
+	FailedChallenges int                `json:"failed_challenges"`
+	TotalDuration    time.Duration      `json:"total_duration"`
+	AveragePassRate  float64            `json:"average_pass_rate"`
+	TopModels        []string           `json:"top_models,omitempty"`
+	DebateGroupID    string             `json:"debate_group_id,omitempty"`
+	APITestsRun      int                `json:"api_tests_run,omitempty"`
+	APITestsPassed   int                `json:"api_tests_passed,omitempty"`
 }
 
 // ChallengeSummary represents a summary of a single challenge.
 type ChallengeSummary struct {
-	ChallengeID   ChallengeID   `json:"challenge_id"`
-	ChallengeName string        `json:"challenge_name"`
-	Status        string        `json:"status"`
-	Duration      time.Duration `json:"duration"`
-	AssertionsPassed int        `json:"assertions_passed"`
-	AssertionsTotal  int        `json:"assertions_total"`
-	ResultsPath   string        `json:"results_path"`
+	ChallengeID      ChallengeID   `json:"challenge_id"`
+	ChallengeName    string        `json:"challenge_name"`
+	Status           string        `json:"status"`
+	Duration         time.Duration `json:"duration"`
+	AssertionsPassed int           `json:"assertions_passed"`
+	AssertionsTotal  int           `json:"assertions_total"`
+	ResultsPath      string        `json:"results_path"`
 }
 
 // BuildMasterSummary creates a master summary from challenge results.
@@ -361,12 +361,12 @@ func BuildMasterSummary(results []*ChallengeResult) *MasterSummary {
 		}
 
 		cs := ChallengeSummary{
-			ChallengeID:     r.ChallengeID,
-			ChallengeName:   r.ChallengeName,
-			Status:          r.Status,
-			Duration:        r.Duration,
+			ChallengeID:      r.ChallengeID,
+			ChallengeName:    r.ChallengeName,
+			Status:           r.Status,
+			Duration:         r.Duration,
 			AssertionsPassed: assertionsPassed,
-			AssertionsTotal: len(r.Assertions),
+			AssertionsTotal:  len(r.Assertions),
 		}
 
 		summary.Challenges = append(summary.Challenges, cs)
@@ -474,13 +474,13 @@ func generateMasterSummaryMarkdown(summary *MasterSummary) string {
 
 // HistoricalEntry represents a single challenge run in history.
 type HistoricalEntry struct {
-	Timestamp       time.Time `json:"timestamp"`
-	ChallengeID     string    `json:"challenge_id"`
-	Status          string    `json:"status"`
-	Duration        string    `json:"duration"`
-	AssertionsPassed int      `json:"assertions_passed"`
-	AssertionsTotal  int      `json:"assertions_total"`
-	ResultsPath     string    `json:"results_path"`
+	Timestamp        time.Time `json:"timestamp"`
+	ChallengeID      string    `json:"challenge_id"`
+	Status           string    `json:"status"`
+	Duration         string    `json:"duration"`
+	AssertionsPassed int       `json:"assertions_passed"`
+	AssertionsTotal  int       `json:"assertions_total"`
+	ResultsPath      string    `json:"results_path"`
 }
 
 // AppendToHistory adds an entry to the historical log.
@@ -493,13 +493,13 @@ func AppendToHistory(historyPath string, result *ChallengeResult, resultsPath st
 	}
 
 	entry := HistoricalEntry{
-		Timestamp:       result.EndTime,
-		ChallengeID:     string(result.ChallengeID),
-		Status:          result.Status,
-		Duration:        result.Duration.String(),
+		Timestamp:        result.EndTime,
+		ChallengeID:      string(result.ChallengeID),
+		Status:           result.Status,
+		Duration:         result.Duration.String(),
 		AssertionsPassed: assertionsPassed,
-		AssertionsTotal: len(result.Assertions),
-		ResultsPath:     resultsPath,
+		AssertionsTotal:  len(result.Assertions),
+		ResultsPath:      resultsPath,
 	}
 
 	data, err := json.Marshal(entry)

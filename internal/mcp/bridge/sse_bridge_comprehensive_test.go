@@ -335,7 +335,7 @@ func TestSSEBridge_AccessorMethods(t *testing.T) {
 func TestSSEBridge_HandleHealth_EdgeCases(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("Returns unhealthy when not started", func(t *testing.T) {
@@ -389,7 +389,7 @@ func TestSSEBridge_HandleHealth_EdgeCases(t *testing.T) {
 func TestSSEBridge_HandleMessage_EdgeCases(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("Rejects request with wrong content type", func(t *testing.T) {
@@ -563,7 +563,7 @@ func TestSSEBridge_HandleSSE_EdgeCases(t *testing.T) {
 	t.Run("Sends endpoint event with correct host", func(t *testing.T) {
 		t.Parallel()
 		if testing.Short() {
-			t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 
 		dir := createTempDir(t)
@@ -643,7 +643,7 @@ func TestSSEBridge_SendNotification_EdgeCases(t *testing.T) {
 	t.Parallel()
 	t.Run("Returns error with complex params", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 
 		dir := createTempDir(t)
@@ -681,7 +681,7 @@ func TestSSEBridge_SendNotification_EdgeCases(t *testing.T) {
 	t.Run("Returns error with unmarshalable params", func(t *testing.T) {
 		t.Parallel()
 		if testing.Short() {
-			t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 
 		dir := createTempDir(t)
@@ -718,7 +718,7 @@ func TestSSEBridge_SendRequest_EdgeCases(t *testing.T) {
 	t.Parallel()
 	t.Run("Returns error with context cancellation", func(t *testing.T) {
 		if testing.Short() {
-			t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+			t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 		}
 
 		dir := createTempDir(t)
@@ -801,7 +801,7 @@ done`
 func TestSSEBridge_ConcurrentSSEConnections(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	dir := createTempDir(t)
@@ -888,7 +888,7 @@ func TestSSEBridge_ConcurrentSSEConnections(t *testing.T) {
 func TestSSEBridge_GracefulShutdown_WithActiveConnections(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	dir := createTempDir(t)
@@ -952,7 +952,7 @@ func TestSSEBridge_GracefulShutdown_WithActiveConnections(t *testing.T) {
 func TestSSEBridge_ProcessMonitoring(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("Calls OnProcessExit when process exits unexpectedly", func(t *testing.T) {
@@ -1018,7 +1018,7 @@ done`
 func TestSSEBridge_ErrorResponses(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	dir := createTempDir(t)
@@ -1487,7 +1487,7 @@ func TestBufioScanner_EmptyLines(t *testing.T) {
 func TestSSEBridge_ConcurrentRequestIDGeneration(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	dir := createTempDir(t)
@@ -1555,7 +1555,7 @@ func TestSSEBridge_ConcurrentRequestIDGeneration(t *testing.T) {
 func TestSSEBridge_PendingRequestCleanup(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	dir := createTempDir(t)

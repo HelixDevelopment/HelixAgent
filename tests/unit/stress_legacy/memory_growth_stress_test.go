@@ -65,7 +65,7 @@ func (p *growthMockProvider) CompleteStream(
 // accumulating goroutine stacks.
 func TestMemoryGrowth_10KOperations(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

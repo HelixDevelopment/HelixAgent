@@ -30,9 +30,9 @@ func TestD17_CodeiumWindsurf_NoFabrication(t *testing.T) {
 	ctx := context.Background()
 
 	cases := []struct {
-		cmd     string
-		params  map[string]interface{}
-		banned  []string
+		cmd    string
+		params map[string]interface{}
+		banned []string
 	}{
 		{"complete", map[string]interface{}{"prefix": "func main"}, []string{"// Codeium completion"}},
 		{"chat", map[string]interface{}{"message": "Hello"}, []string{"Codeium: Hello"}},

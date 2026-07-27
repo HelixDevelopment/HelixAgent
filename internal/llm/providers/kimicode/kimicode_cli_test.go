@@ -194,15 +194,15 @@ func TestGetKnownKimiCodeModels(t *testing.T) {
 
 func TestKimiCodeCLIProvider_Complete_Integration(t *testing.T) {
 	if os.Getenv("KIMI_CODE_USE_OAUTH_CREDENTIALS") != "true" {
-		t.Skip("Skipping integration test: KIMI_CODE_USE_OAUTH_CREDENTIALS not set")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: KIMI_CODE_USE_OAUTH_CREDENTIALS not set") // SKIP-OK: #integration-mode-only
 	}
 
 	if !IsKimiCodeInstalled() {
-		t.Skip("Skipping integration test: kimi CLI not installed")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: kimi CLI not installed") // SKIP-OK: #integration-mode-only
 	}
 
 	if !IsKimiCodeAuthenticated() {
-		t.Skip("Skipping integration test: kimi CLI not authenticated")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: kimi CLI not authenticated") // SKIP-OK: #integration-mode-only
 	}
 
 	provider := NewKimiCodeCLIProvider(DefaultKimiCodeCLIConfig())
@@ -231,15 +231,15 @@ func TestKimiCodeCLIProvider_Complete_Integration(t *testing.T) {
 
 func TestKimiCodeCLIProvider_HealthCheck_Integration(t *testing.T) {
 	if os.Getenv("KIMI_CODE_USE_OAUTH_CREDENTIALS") != "true" {
-		t.Skip("Skipping integration test: KIMI_CODE_USE_OAUTH_CREDENTIALS not set")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: KIMI_CODE_USE_OAUTH_CREDENTIALS not set") // SKIP-OK: #integration-mode-only
 	}
 
 	if !IsKimiCodeInstalled() {
-		t.Skip("Skipping integration test: kimi CLI not installed")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: kimi CLI not installed") // SKIP-OK: #integration-mode-only
 	}
 
 	if !IsKimiCodeAuthenticated() {
-		t.Skip("Skipping integration test: kimi CLI not authenticated")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: kimi CLI not authenticated") // SKIP-OK: #integration-mode-only
 	}
 
 	provider := NewKimiCodeCLIProvider(DefaultKimiCodeCLIConfig())
@@ -273,15 +273,15 @@ func TestCanUseKimiCodeCLI(t *testing.T) {
 
 func TestKimiCodeCLIProvider_CompleteStream_Integration(t *testing.T) {
 	if os.Getenv("KIMI_CODE_USE_OAUTH_CREDENTIALS") != "true" {
-		t.Skip("Skipping integration test: KIMI_CODE_USE_OAUTH_CREDENTIALS not set")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: KIMI_CODE_USE_OAUTH_CREDENTIALS not set") // SKIP-OK: #integration-mode-only
 	}
 
 	if !IsKimiCodeInstalled() {
-		t.Skip("Skipping integration test: kimi CLI not installed")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: kimi CLI not installed") // SKIP-OK: #integration-mode-only
 	}
 
 	if !IsKimiCodeAuthenticated() {
-		t.Skip("Skipping integration test: kimi CLI not authenticated")  // SKIP-OK: #integration-mode-only
+		t.Skip("Skipping integration test: kimi CLI not authenticated") // SKIP-OK: #integration-mode-only
 	}
 
 	provider := NewKimiCodeCLIProvider(DefaultKimiCodeCLIConfig())

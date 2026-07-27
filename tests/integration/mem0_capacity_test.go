@@ -31,7 +31,7 @@ import (
 func TestMem0FullCapacity_InfrastructureRunning(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled via SKIP_MEM0_TESTS")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled via SKIP_MEM0_TESTS") // SKIP-OK: #legacy-untriaged
 	}
 
 	requiredContainers := []string{
@@ -56,7 +56,7 @@ func TestMem0FullCapacity_InfrastructureRunning(t *testing.T) {
 func TestMem0FullCapacity_ServiceHealthy(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Use longer timeout for Mem0 Memory health (it tests embeddings which can be slow)
@@ -91,7 +91,7 @@ func TestMem0FullCapacity_ServiceHealthy(t *testing.T) {
 func TestMem0FullCapacity_AllFeaturesEnabled(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -150,7 +150,7 @@ func TestMem0FullCapacity_AllFeaturesEnabled(t *testing.T) {
 func TestMem0FullCapacity_RelationalDatabaseConnected(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Check PostgreSQL via HelixAgent health (which tests DB connection)
@@ -172,7 +172,7 @@ func TestMem0FullCapacity_RelationalDatabaseConnected(t *testing.T) {
 func TestMem0FullCapacity_CacheConnected(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Check Redis via container status with authentication
@@ -191,7 +191,7 @@ func TestMem0FullCapacity_CacheConnected(t *testing.T) {
 func TestMem0FullCapacity_MemoryOperations(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Use longer timeout for memory operations (Mem0 may be slow)
@@ -275,7 +275,7 @@ func TestMem0FullCapacity_MemoryOperations(t *testing.T) {
 func TestMem0FullCapacity_DatasetOperations(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -306,7 +306,7 @@ func TestMem0FullCapacity_DatasetOperations(t *testing.T) {
 func TestMem0FullCapacity_MemorizeOperation(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Use longer timeout for memorize (can be very slow with LLM calls)
@@ -348,7 +348,7 @@ func TestMem0FullCapacity_MemorizeOperation(t *testing.T) {
 func TestMem0FullCapacity_StatsEndpoint(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -379,7 +379,7 @@ func TestMem0FullCapacity_StatsEndpoint(t *testing.T) {
 func TestMem0FullCapacity_AllEndpointsAccessible(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -425,7 +425,7 @@ func TestMem0FullCapacity_AllEndpointsAccessible(t *testing.T) {
 func TestMem0FullCapacity_LLMProviderConfigured(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Check GEMINI_API_KEY is set in environment
@@ -466,7 +466,7 @@ func TestMem0FullCapacity_LLMProviderConfigured(t *testing.T) {
 func TestMem0FullCapacity_EmbeddingProviderConfigured(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Mem0 uses HelixAgent's embedding providers - check via HelixAgent health
@@ -491,7 +491,7 @@ func TestMem0FullCapacity_EmbeddingProviderConfigured(t *testing.T) {
 func TestMem0FullCapacity_NoErrorsInLogs(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Get recent logs from PostgreSQL container (Mem0 backend)
@@ -528,7 +528,7 @@ func TestMem0FullCapacity_NoErrorsInLogs(t *testing.T) {
 func TestMem0FullCapacity_ResponseTime(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -557,7 +557,7 @@ func TestMem0FullCapacity_ResponseTime(t *testing.T) {
 func TestMem0FullCapacity_Summary(t *testing.T) {
 	testutil.RequireServer(t)
 	if os.Getenv("SKIP_MEM0_TESTS") == "true" {
-		t.Skip("Mem0 Memory capacity tests disabled")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Mem0 Memory capacity tests disabled") // SKIP-OK: #legacy-untriaged
 	}
 
 	t.Log("=== MEM0 MEMORY FULL CAPACITY TEST SUMMARY ===")

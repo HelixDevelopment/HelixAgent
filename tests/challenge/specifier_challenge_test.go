@@ -14,17 +14,17 @@ import (
 
 func TestHelixSpecifierChallenge(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping specifier challenge in short mode (requires live LLM providers)")  // SKIP-OK: #short-mode
+		t.Skip("Skipping specifier challenge in short mode (requires live LLM providers)") // SKIP-OK: #short-mode
 	}
 
 	baseURL := getBaseURL()
 	if !serverHealthy(baseURL) {
-		t.Skip("HelixAgent server not running at " + baseURL)  // SKIP-OK: #legacy-untriaged
+		t.Skip("HelixAgent server not running at " + baseURL) // SKIP-OK: #legacy-untriaged
 	}
 
 	providers := getAvailableProviders(t, baseURL)
 	if len(providers) == 0 {
-		t.Skip("No providers available for specifier challenge")  // SKIP-OK: #legacy-untriaged
+		t.Skip("No providers available for specifier challenge") // SKIP-OK: #legacy-untriaged
 	}
 	t.Logf("Running specifier challenge with %d providers", len(providers))
 

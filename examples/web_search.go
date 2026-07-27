@@ -87,10 +87,10 @@ func main() {
 
 		start := time.Now()
 		answer, err := manager.SearchWithAI(ctx, query, &search.AIOptions{
-			NumResults:      5,
-			IncludeSources:  true,
-			Model:           "sonar",
-			MaxTokens:       500,
+			NumResults:     5,
+			IncludeSources: true,
+			Model:          "sonar",
+			MaxTokens:      500,
 		})
 		if err != nil {
 			fmt.Printf("  Error: %v\n", err)

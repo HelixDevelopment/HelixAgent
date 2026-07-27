@@ -28,7 +28,7 @@ func skipIfNoRuntime(t *testing.T) {
 	defer cancel()
 	_, err := runtime.AutoDetect(ctx)
 	if err != nil {
-		t.Skip("no container runtime available: ", err)  // SKIP-OK: #runtime-mock-only
+		t.Skip("no container runtime available: ", err) // SKIP-OK: #runtime-mock-only
 	}
 }
 
@@ -36,7 +36,7 @@ func TestIntegration_NewAdapterFromConfig_RealRuntimeDetection(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	skipIfNoRuntime(t)
 
@@ -64,7 +64,7 @@ func TestIntegration_DetectRuntime_ActualContainerRuntime(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	skipIfNoRuntime(t)
 
@@ -92,7 +92,7 @@ func TestIntegration_DetectRuntime_ActualContainerRuntime(
 func TestIntegration_RuntimeAvailable_RealSystem(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	skipIfNoRuntime(t)
 
@@ -112,7 +112,7 @@ func TestIntegration_HealthCheckHTTP_KnownEndpoint(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Start a local HTTP test server to provide a known
@@ -135,7 +135,7 @@ func TestIntegration_HealthCheckHTTP_KnownEndpoint(
 func TestIntegration_HealthCheckHTTP_NonOKStatus(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(
@@ -156,7 +156,7 @@ func TestIntegration_HealthCheckHTTP_NonOKStatus(t *testing.T) {
 func TestIntegration_HealthCheckHTTP_Unreachable(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter, err := NewAdapter()
@@ -173,13 +173,13 @@ func TestIntegration_HealthCheckHTTP_Unreachable(t *testing.T) {
 func TestIntegration_HealthCheckTCP_KnownPort(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Start a TCP listener on an ephemeral port.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Skip("cannot start TCP listener: ", err)  // SKIP-OK: #legacy-untriaged
+		t.Skip("cannot start TCP listener: ", err) // SKIP-OK: #legacy-untriaged
 	}
 	defer func() { _ = ln.Close() }()
 
@@ -207,7 +207,7 @@ func TestIntegration_HealthCheckTCP_KnownPort(t *testing.T) {
 func TestIntegration_HealthCheckTCP_ClosedPort(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter, err := NewAdapter()
@@ -223,7 +223,7 @@ func TestIntegration_ComposeStatus_NonExistentFile(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	skipIfNoRuntime(t)
 
@@ -232,7 +232,7 @@ func TestIntegration_ComposeStatus_NonExistentFile(
 	require.NoError(t, err)
 
 	if adapter.Orchestrator() == nil {
-		t.Skip("compose orchestrator not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("compose orchestrator not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx, cancel := context.WithTimeout(
@@ -254,7 +254,7 @@ func TestIntegration_ComposeStatus_NonExistentFile(
 func TestIntegration_Shutdown_FreshAdapter(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// A fresh adapter has no distributor, tunnel manager, or
@@ -276,7 +276,7 @@ func TestIntegration_RemoteEnabled_NoRemoteConfig(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter, err := NewAdapter()
@@ -291,7 +291,7 @@ func TestIntegration_ListHosts_NoHostsConfigured(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter, err := NewAdapter()
@@ -306,7 +306,7 @@ func TestIntegration_DistributionStatus_NoDistributor(
 	t *testing.T,
 ) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 
 	adapter, err := NewAdapter()

@@ -70,7 +70,7 @@ func (p *loadProvider) CompleteStream(
 // per-request but never properly terminated.
 func TestGoroutineLeak_LoadThenStop(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	// Enforce resource limits per CLAUDE.md rule 15.

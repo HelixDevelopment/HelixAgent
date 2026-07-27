@@ -14,7 +14,7 @@ import (
 // TestStreamingBackpressureStress tests streaming with slow consumers and fast producers
 func TestStreamingBackpressureStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("Skipping stress test in short mode") // SKIP-OK: #short-mode
 	}
 
 	t.Run("SlowConsumerFastProducer", func(t *testing.T) {

@@ -785,7 +785,7 @@ func TestIntegrationOrchestrator_executeLSPStep_NilClient(t *testing.T) {
 	_, err := io.executeLSPStep(ctx, step)
 	// If we get here without panic, check error
 	if err == nil {
-		t.Skip("LSP client is nil - operation would fail")  // SKIP-OK: #legacy-untriaged
+		t.Skip("LSP client is nil - operation would fail") // SKIP-OK: #legacy-untriaged
 	}
 }
 

@@ -37,7 +37,7 @@ type windowState struct {
 // windowState; reads are a single Load. No bare mutex to forget.
 type ContextWindow struct {
 	state        atomic.Pointer[windowState]
-	config       *WindowConfig                          // constructor-set, read-only
+	config       *WindowConfig                      // constructor-set, read-only
 	eventHandler atomic.Pointer[WindowEventHandler] // cold-path swap
 }
 

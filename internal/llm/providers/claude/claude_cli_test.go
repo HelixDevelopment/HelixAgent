@@ -174,7 +174,7 @@ func TestClaudeCLIProvider_Complete_NoPrompt(t *testing.T) {
 
 	// Skip if CLI not available
 	if !provider.IsCLIAvailable() {
-		t.Skip("Claude CLI not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude CLI not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()
@@ -227,16 +227,16 @@ func TestClaudeCLIProvider_HealthCheck_CLIUnavailable(t *testing.T) {
 func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	if !IsClaudeCodeInstalled() {
-		t.Skip("Claude Code CLI not installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude Code CLI not installed") // SKIP-OK: #legacy-untriaged
 	}
 	if IsInsideClaudeCodeSession() {
-		t.Skip("Cannot launch Claude Code inside another Claude Code session")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Cannot launch Claude Code inside another Claude Code session") // SKIP-OK: #legacy-untriaged
 	}
 	if !IsClaudeCodeAuthenticated() {
-		t.Skip("Claude Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude Code CLI not authenticated") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
@@ -270,16 +270,16 @@ func TestClaudeCLIProvider_Integration_Complete(t *testing.T) {
 func TestClaudeCLIProvider_Integration_HealthCheck(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
 	if !IsClaudeCodeInstalled() {
-		t.Skip("Claude Code CLI not installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude Code CLI not installed") // SKIP-OK: #legacy-untriaged
 	}
 	if IsInsideClaudeCodeSession() {
-		t.Skip("Cannot launch Claude Code inside another Claude Code session")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Cannot launch Claude Code inside another Claude Code session") // SKIP-OK: #legacy-untriaged
 	}
 	if !IsClaudeCodeAuthenticated() {
-		t.Skip("Claude Code CLI not authenticated")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude Code CLI not authenticated") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
@@ -457,7 +457,7 @@ func TestClaudeCLIProvider_TokenEstimation(t *testing.T) {
 func TestClaudeCLIProvider_ModelDiscovery(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping CLI model discovery in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping CLI model discovery in short mode") // SKIP-OK: #short-mode
 	}
 	provider := NewClaudeCLIProviderWithModel("")
 
@@ -571,7 +571,7 @@ func TestGetKnownClaudeModels(t *testing.T) {
 func TestDiscoverClaudeModels(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
-		t.Skip("skipping CLI model discovery in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping CLI model discovery in short mode") // SKIP-OK: #short-mode
 	}
 	models, err := DiscoverClaudeModels()
 	assert.NotEmpty(t, models)
@@ -610,12 +610,12 @@ func TestClaudeCLIProvider_CompleteStream_NotAvailable(t *testing.T) {
 func TestClaudeCLIProvider_CompleteStream_NoPrompt(t *testing.T) {
 	t.Parallel()
 	if !IsClaudeCodeInstalled() {
-		t.Skip("Claude CLI not installed")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude CLI not installed") // SKIP-OK: #legacy-untriaged
 	}
 
 	provider := NewClaudeCLIProviderWithModel("claude-sonnet-4-20250514")
 	if !provider.IsCLIAvailable() {
-		t.Skip("Claude CLI not available")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Claude CLI not available") // SKIP-OK: #legacy-untriaged
 	}
 
 	ctx := context.Background()

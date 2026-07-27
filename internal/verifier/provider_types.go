@@ -720,8 +720,8 @@ var SupportedProviders = map[string]*ProviderTypeInfo{
 		Priority:    5,
 		EnvVars:     []string{"CHUTES_API_KEY", "ApiKey_Chutes"},
 		BaseURL:     "https://llm.chutes.ai/v1/chat/completions",
-		Models: []string{"Qwen/Qwen3-32B-TEE", "moonshotai/Kimi-K2.5-TEE", "deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1"},
-		Free:   false,
+		Models:      []string{"Qwen/Qwen3-32B-TEE", "moonshotai/Kimi-K2.5-TEE", "deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1"},
+		Free:        false,
 	},
 	"siliconflow": {
 		Type:        "siliconflow",

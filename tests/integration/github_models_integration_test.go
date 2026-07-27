@@ -24,7 +24,7 @@ func githubModelsAPIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("GITHUB_MODELS_API_KEY")
 	if key == "" {
-		t.Skip("GITHUB_MODELS_API_KEY not set")  // SKIP-OK: #requires-upstream-key
+		t.Skip("GITHUB_MODELS_API_KEY not set") // SKIP-OK: #requires-upstream-key
 	}
 	// Catch unsubstituted placeholders like "$ApiKey_GitHub_Models" or
 	// "<YOUR_KEY>" leaking out of .env files. Without this guard the

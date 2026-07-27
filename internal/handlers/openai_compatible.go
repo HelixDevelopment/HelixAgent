@@ -861,10 +861,10 @@ func (h *UnifiedHandler) handleStreamingChatCompletions(c *gin.Context, req *Ope
 		}
 	}
 	logrus.WithFields(logrus.Fields{
-		"use_debate":           useDebate,
-		"explicit_debate_req":  requestedDebateExplicitly,
-		"requested_model":      req.Model,
-		"message":              lastUserMsg[:min(50, len(lastUserMsg))],
+		"use_debate":          useDebate,
+		"explicit_debate_req": requestedDebateExplicitly,
+		"requested_model":     req.Model,
+		"message":             lastUserMsg[:min(50, len(lastUserMsg))],
 	}).Info("[STREAMING] Final routing decision")
 
 	// For SIMPLE messages: use strongest single provider for fast, direct response
@@ -2148,7 +2148,7 @@ func (h *UnifiedHandler) ChatCompletionsStream(c *gin.Context) {
 
 	// Track streaming state for OpenCode/Crush/HelixCode compatibility
 	isFirstChunk := false
-	sentFinalChunk := false                                       // Track if we've already sent a finish_reason chunk
+	sentFinalChunk := false                      // Track if we've already sent a finish_reason chunk
 	streamID := utils.SecureRandomID("chatcmpl") // D-20: crypto-random, collision-free. Consistent ID across all chunks
 
 	// Client disconnect detection via request context cancellation.
@@ -2694,7 +2694,7 @@ func (h *UnifiedHandler) processWithDirectProvider(
 					VotingMethod: "direct_provider",
 					Scores:       map[string]float64{response.ID: 1.0},
 					Metadata: map[string]any{
-						"provider": PrimaryProviderName,
+						"provider":    PrimaryProviderName,
 						"route":       "direct",
 						"tools_count": len(req.Tools),
 					},
@@ -2942,11 +2942,11 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 // the OpenAI spec (clients accumulate fields across chunks rather than
 // expecting both on every chunk).
 type sseChunkEnvelope struct {
-	ID      string             `json:"id"`
-	Object  string             `json:"object"`
-	Created int64              `json:"created"`
-	Model   string             `json:"model"`
-	Choices []sseChunkChoice   `json:"choices"`
+	ID      string           `json:"id"`
+	Object  string           `json:"object"`
+	Created int64            `json:"created"`
+	Model   string           `json:"model"`
+	Choices []sseChunkChoice `json:"choices"`
 }
 type sseChunkChoice struct {
 	Index        int           `json:"index"`

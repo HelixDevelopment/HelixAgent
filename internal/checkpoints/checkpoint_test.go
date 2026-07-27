@@ -117,7 +117,7 @@ func TestManager_Create(t *testing.T) {
 }
 
 func TestManager_Create_SkipsIgnoredFiles(t *testing.T) {
-	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs fixing") // SKIP-OK: #legacy-untriaged
 	// Create a temporary directory with files that should be skipped
 	tempDir := t.TempDir()
 
@@ -265,7 +265,7 @@ func TestManager_Delete(t *testing.T) {
 }
 
 func TestManager_Delete_NonExistent(t *testing.T) {
-	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs fixing") // SKIP-OK: #legacy-untriaged
 	tempDir := t.TempDir()
 
 	manager, err := NewManager(tempDir)
@@ -362,7 +362,7 @@ func TestShouldSkipDir(t *testing.T) {
 }
 
 func TestShouldSkipFile(t *testing.T) {
-	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs fixing") // SKIP-OK: #legacy-untriaged
 	tests := []struct {
 		name string
 		path string

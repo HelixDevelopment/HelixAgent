@@ -16,7 +16,7 @@ func TestHelixAgentCLI(t *testing.T) {
 	// Build binary if not exists
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built, skipping E2E tests. Run 'make build' first.")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Binary not built, skipping E2E tests. Run 'make build' first.") // SKIP-OK: #legacy-untriaged
 	}
 
 	tests := []struct {
@@ -81,7 +81,7 @@ func TestHelixAgentCLI(t *testing.T) {
 func TestHelixAgentConfigGeneration(t *testing.T) {
 	binPath := filepath.Join("..", "..", "bin", "helixagent")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Skip("Binary not built, skipping E2E tests")  // SKIP-OK: #legacy-untriaged
+		t.Skip("Binary not built, skipping E2E tests") // SKIP-OK: #legacy-untriaged
 	}
 
 	// Create temp directory for output

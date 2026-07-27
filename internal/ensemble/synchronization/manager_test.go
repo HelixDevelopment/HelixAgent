@@ -92,7 +92,7 @@ func SKIP_TestSyncManager_IsLocked_NotHeld(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_AcquireLock_NoDB(t *testing.T) {
-	t.Skip("Skipping test - needs database setup")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping test - needs database setup") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()
@@ -129,7 +129,7 @@ func SKIP_TestSyncManager_ReleaseLock_NotHeld(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_ReleaseLock_Manual(t *testing.T) {
-	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs fixing") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 
@@ -153,7 +153,7 @@ func SKIP_TestSyncManager_ReleaseLock_Manual(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_GetLockInfo_NoDB(t *testing.T) {
-	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs fixing") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()
@@ -167,7 +167,7 @@ func SKIP_TestSyncManager_GetLockInfo_NoDB(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_ListLocks_NoDB(t *testing.T) {
-	t.Skip("Skipping - test needs fixing")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs fixing") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()
@@ -181,7 +181,7 @@ func SKIP_TestSyncManager_ListLocks_NoDB(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_Close(t *testing.T) {
-	t.Skip("Skipping - test needs database")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs database") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 
@@ -526,7 +526,7 @@ func TestLWWRegister_JSON(t *testing.T) {
 // SyncManager CRDT operations without DB
 
 func SKIP_TestSyncManager_GetCRDT_NoDB(t *testing.T) {
-	t.Skip("Skipping - test needs database")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs database") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()
@@ -547,7 +547,7 @@ func SKIP_TestSyncManager_GetCRDT_NoDB(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_GetCRDT_UnsupportedType(t *testing.T) {
-	t.Skip("Skipping - test needs database")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs database") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()
@@ -561,7 +561,7 @@ func SKIP_TestSyncManager_GetCRDT_UnsupportedType(t *testing.T) {
 }
 
 func SKIP_TestSyncManager_GetCRDT_AllTypes(t *testing.T) {
-	t.Skip("Skipping - test needs database")  // SKIP-OK: #legacy-untriaged
+	t.Skip("Skipping - test needs database") // SKIP-OK: #legacy-untriaged
 	logger := log.New(os.Stdout, "", 0)
 	sm := NewSyncManager(nil, logger, "test-node")
 	defer sm.Close()

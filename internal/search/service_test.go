@@ -2,6 +2,8 @@ package search
 
 import (
 	"context"
+	"net"
+	"strconv"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -49,7 +51,7 @@ func TestNewService_Disabled(t *testing.T) {
 
 func TestNewService_UnknownEmbedderType(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -73,7 +75,7 @@ func TestNewService_UnknownEmbedderType(t *testing.T) {
 
 func TestNewService_OpenAI_NoKey(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -98,7 +100,7 @@ func TestNewService_OpenAI_NoKey(t *testing.T) {
 
 func TestNewService_UnknownVectorStoreType(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping in short mode") // SKIP-OK: #short-mode
 	}
 	t.Parallel()
 
@@ -247,9 +249,6 @@ func TestEnsureVectorStoreContainer_UnknownType(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.ErrorLevel)
 
-	// We can't easily mock the real container adapter without importing
-	// the full Containers module. We test the nil path and the unknown type path
-	// by checking the function directly.
 	cfg := ServiceConfig{
 		VectorStoreType:  "unknown",
 		ContainerAdapter: nil,
@@ -257,7 +256,65 @@ func TestEnsureVectorStoreContainer_UnknownType(t *testing.T) {
 
 	err := ensureVectorStoreContainer(context.Background(), cfg, logger)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "container adapter not available")
+	// Reconciled: this asserted "container adapter not available".
+	//
+	// That was never this test's stated subject -- it is named _UnknownType and
+	// passes VectorStoreType "unknown" -- but the old ordering checked the
+	// adapter before the type, so an unknown type with a nil adapter reported
+	// the adapter error and the type switch was unreachable. The old assertion
+	// therefore described a code path this test was not written to exercise
+	// (its own comment conceded it was testing "the nil path and the unknown
+	// type path" at once, which the ordering made impossible).
+	//
+	// The type is now resolved first, because the reachability short-circuit
+	// needs the host/port that the type selects. An unknown vector store type
+	// is a configuration error no container adapter can resolve, so reporting
+	// it as such is the accurate diagnostic. TestEnsureVectorStoreContainer_
+	// NilAdapter still covers the adapter-nil path with a known type.
+	assert.Contains(t, err.Error(), "unknown vector store type")
+}
+
+// TestEnsureVectorStoreContainer_ReachableStoreSkipsOrchestration covers the
+// short-circuit added alongside the reordering: when the vector store already
+// answers at its configured endpoint, the function must return without
+// touching container orchestration.
+//
+// ContainerAdapter is deliberately nil. Under the old code that guaranteed an
+// error; here it is the assertion mechanism -- reaching the orchestration path
+// at all would surface "container adapter not available", so a nil error
+// proves the reachability check returned first. A real listener is used rather
+// than a stub, because the behaviour under test is an actual TCP dial.
+func TestEnsureVectorStoreContainer_ReachableStoreSkipsOrchestration(t *testing.T) {
+	t.Parallel()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("open probe listener: %v", err)
+	}
+	defer ln.Close()
+
+	host, portStr, err := net.SplitHostPort(ln.Addr().String())
+	if err != nil {
+		t.Fatalf("split listener address %q: %v", ln.Addr(), err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatalf("parse listener port %q: %v", portStr, err)
+	}
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	cfg := ServiceConfig{
+		VectorStoreType:  "chroma",
+		ChromaHost:       host,
+		ChromaPort:       port,
+		ContainerAdapter: nil,
+	}
+
+	if err := ensureVectorStoreContainer(context.Background(), cfg, logger); err != nil {
+		t.Fatalf("reachable store must skip orchestration and return nil, got: %v", err)
+	}
 }
 
 func TestServiceConfig_Defaults_IndexerConfig(t *testing.T) {

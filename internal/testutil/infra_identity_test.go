@@ -68,6 +68,25 @@ func TestCheckHelixAgentHealth_RejectsForeignOccupant(t *testing.T) {
 			wantOK:  true,
 			because: "preferred stronger identity, honoured when the server provides it",
 		},
+		{
+			// Locks in the exact payload router.go's GET /health and
+			// GET /v1/health now emit (§11.4.111 identity-binding fix). Before
+			// this fix, router.go's /health answered bare {"status":"healthy"}
+			// — byte-identical to this repo's OWN mock LLM server
+			// (challenges/codebase/mock_server/main.go healthHandler), which
+			// also implements /v1/chat/completions with fabricated replies.
+			// A HELIXAGENT_HOST/PORT pointed at the mock would have opened
+			// this gate and let downstream tests PASS AGAINST THE MOCK — a
+			// false-GREEN strictly worse than the wrong-service false-RED this
+			// batch fixed elsewhere. This case pins router.go's richer
+			// /v1/health shape (service field alongside the pre-existing
+			// providers/timestamp fields) so a future edit that drops the
+			// field is caught here, not discovered live against a mock.
+			name: "real_helixagent_v1_health_payload_with_providers_and_timestamp", status: http.StatusOK,
+			body: `{"service":"helixagent","status":"healthy","providers":{"total":2,"healthy":2,"unhealthy":0},"timestamp":1793270400}`, ctype: "application/json",
+			wantOK:  true,
+			because: "the exact /v1/health shape router.go emits post-fix: the service identity field alongside its pre-existing provider-stats/timestamp fields must still identify as helixagent",
+		},
 	}
 
 	for _, tc := range cases {

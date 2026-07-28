@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,11 +12,50 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"dev.helix.agent/internal/handlers"
 	"dev.helix.agent/internal/models"
 	"dev.helix.agent/internal/services"
 )
+
+// fakeModelSourceProvider is a deterministic, in-package fake LLMProvider used
+// ONLY to make TestCompletionHandler_Models hermetic (§11.4.50). tests/unit
+// is the unit-test tree, where mocks/fakes ARE permitted (CONST-050(A) /
+// §11.4.27) — every other test type must exercise the real system.
+//
+// Before this fake existed, the test wired a *services.ProviderRegistry that
+// discovers providers by SCANNING HOST API KEYS (see
+// internal/services/provider_discovery.go). On a host with zero configured
+// provider keys, registry.ListProviders() is legitimately empty,
+// handlers.CompletionHandler.Models correctly returns an HONEST EMPTY list
+// by design (§11.4 anti-bluff — never fabricate a "working" list), and
+// `assert.NotEmpty(t, response["data"])` then failed on CORRECT product
+// behaviour rather than on a defect, gated only by -short mode. Registering
+// this fake as an additional provider removes that host-credential
+// dependency: the test's outcome no longer depends on which, if any, real
+// provider credentials happen to be present in the executing environment.
+type fakeModelSourceProvider struct{}
+
+func (fakeModelSourceProvider) Complete(_ context.Context, _ *models.LLMRequest) (*models.LLMResponse, error) {
+	return nil, errors.New("fakeModelSourceProvider does not serve completions")
+}
+
+func (fakeModelSourceProvider) CompleteStream(_ context.Context, _ *models.LLMRequest) (<-chan *models.LLMResponse, error) {
+	return nil, errors.New("fakeModelSourceProvider does not serve streaming completions")
+}
+
+func (fakeModelSourceProvider) HealthCheck() error { return nil }
+
+func (fakeModelSourceProvider) GetCapabilities() *models.ProviderCapabilities {
+	return &models.ProviderCapabilities{
+		SupportedModels: []string{"fake-test-model-1"},
+	}
+}
+
+func (fakeModelSourceProvider) ValidateConfig(_ map[string]interface{}) (bool, []string) {
+	return true, nil
+}
 
 // closeNotifierRecorder wraps httptest.ResponseRecorder to implement http.CloseNotifier
 // This is needed for testing SSE/streaming handlers
@@ -247,6 +287,13 @@ func TestCompletionHandler_Models(t *testing.T) {
 
 	// Create completion handler
 	handler := handlers.NewCompletionHandler(requestService)
+
+	// Register a deterministic, in-package fake provider (see
+	// fakeModelSourceProvider's doc-comment) so this test is hermetic
+	// (§11.4.50) and no longer depends on registry.ListProviders() being
+	// non-empty on the host running it — that depends entirely on which, if
+	// any, real LLM provider API keys are configured in the environment.
+	require.NoError(t, registry.RegisterProvider("fake-test-provider", fakeModelSourceProvider{}))
 
 	// Wire the registry as the handler's model source.
 	//

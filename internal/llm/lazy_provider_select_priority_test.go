@@ -42,6 +42,19 @@ import (
 //     iteration correctly returns the timeout error, because the fix's
 //     non-blocking priority pre-check on ctx.Done() makes cancellation win
 //     unconditionally, regardless of the underlying channel race.
+//
+// Attribution note: this test pre-cancels ctx BEFORE calling
+// createProviderWithContext, so ctx.Done() is guaranteed ready from the very
+// first instruction — that is precisely the scenario the FIRST, non-blocking
+// priority pre-check (checked before either select even parks) is
+// responsible for, and crediting it here is accurate FOR THIS TEST. It is
+// NOT the general case: when cancellation instead races the SECOND, blocking
+// select while it is already parked (ctx cancelled AFTER the call begins,
+// concurrently with the factory goroutine), the pre-check has already run
+// and passed — it is the immediate re-check inside the `case r := <-done:`
+// branch that supplies the guarantee there. See
+// TestDebateLogRepository_StartCleanupWorker_SelectPriorityRace for the
+// sibling guard covering that general (cancel-while-parked) case.
 func TestLazyProvider_CreateProviderWithContext_CancellationAlwaysWins(t *testing.T) {
 	redMode := os.Getenv("RED_MODE") == "1"
 

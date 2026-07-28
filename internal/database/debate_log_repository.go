@@ -64,6 +64,20 @@ type DebateLogRepository struct {
 	retentionPolicy LogRetentionPolicy
 	cleanupWg       sync.WaitGroup
 	cleanupRunning  atomic.Bool
+
+	// cleanupCalledOnCancelledCtx is the §11.4.108 runtime signature for the
+	// StartCleanupWorker select-priority invariant: it is incremented at the
+	// TOP of CleanupExpiredLogs every time that method observes an already
+	// -cancelled ctx (ctx.Err() != nil), regardless of whether r.pool is nil.
+	// This directly observes "was CleanupExpiredLogs ever invoked on an
+	// already-cancelled context" instead of inferring it from a downstream
+	// crash — see TestDebateLogRepository_StartCleanupWorker_SelectPriorityRace
+	// for why a crash-based oracle for this invariant is a bluff (the guard
+	// below converts what used to be a nil-pointer panic into an ordinary
+	// returned error, so "did the process crash" can no longer distinguish
+	// fixed code from a regression that reintroduces the exact defect this
+	// counter exists to catch).
+	cleanupCalledOnCancelledCtx atomic.Int64
 }
 
 // NewDebateLogRepository creates a new debate log repository
@@ -249,6 +263,14 @@ func (r *DebateLogRepository) GetExpiredLogs(ctx context.Context) ([]DebateLogEn
 // logs a returned error) closes that crash vector without masking any real
 // failure — the worker still reports it via r.log.WithError(err).Error(...).
 func (r *DebateLogRepository) CleanupExpiredLogs(ctx context.Context) (int64, error) {
+	// §11.4.108 runtime signature: record every entry made with an already
+	// -cancelled context, independent of r.pool's nil-ness. See the field
+	// doc comment on cleanupCalledOnCancelledCtx for why this is the guard's
+	// oracle instead of the pool-nil-panic this method used to rely on.
+	if ctx.Err() != nil {
+		r.cleanupCalledOnCancelledCtx.Add(1)
+	}
+
 	if r.pool == nil {
 		return 0, fmt.Errorf("cannot cleanup expired debate logs: repository pool is nil")
 	}
@@ -476,10 +498,24 @@ func (r *DebateLogRepository) StartCleanupWorker(ctx context.Context, interval t
 				// either channel), so ctx can be cancelled and a new tick
 				// can arrive together WHILE it is parked, letting the
 				// random pick land on ticker.C anyway. Re-checking ctx.Done()
-				// here, with no further yield point in between, closes that
-				// window: a closed Done channel stays ready forever, so any
-				// cancellation that raced the select above is still visible
-				// here, right before the side-effecting DB call is made.
+				// here narrows that window to a benign, unobservable race:
+				// under Go's async goroutine preemption (>=1.14) this
+				// goroutine can still be preempted between this re-check and
+				// the CleanupExpiredLogs call below while a cancellation
+				// lands, so no select-based implementation can make the
+				// window provably zero-width. What this re-check DOES
+				// deliver: cancellation observed at this final decision
+				// point always wins (the goroutine returns instead of
+				// calling CleanupExpiredLogs); any cancellation landing
+				// strictly AFTER this check is, to every caller, indistinguishable
+				// from a cancellation that lands immediately after
+				// CleanupExpiredLogs already returned — a race the fix does
+				// not need to close because it is not observable as a defect.
+				// It is THIS re-check, not the priority pre-check above (which
+				// only helps when ctx is already cancelled BEFORE the loop
+				// iteration begins), that provides the guarantee in the
+				// general case where ctx is cancelled WHILE the select is
+				// parked.
 				select {
 				case <-ctx.Done():
 					r.log.Info("Stopping debate log cleanup worker")

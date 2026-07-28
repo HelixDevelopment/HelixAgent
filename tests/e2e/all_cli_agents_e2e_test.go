@@ -45,7 +45,22 @@ type E2ETestConfig struct {
 
 func getE2EConfig() E2ETestConfig {
 	return E2ETestConfig{
-		HelixAgentURL:   getEnvOrDefault("HELIXAGENT_URL", "http://localhost:8100"),
+		// HelixAgentURL used to default from a SEPARATE env var (HELIXAGENT_URL,
+		// hardcoded fallback "http://localhost:8100") while the availability
+		// gate every subtest below relies on — testutil.RequireServer, via
+		// testutil.ServerAvailable — probes HELIXAGENT_HOST/HELIXAGENT_PORT
+		// (testutil.ServerURL()). On a host where HelixAgent runs on a
+		// non-default port (e.g. :7061 here) with only HELIXAGENT_PORT set,
+		// the gate PASSED (it checked the right port) while every subtest
+		// still fired requests at the stale default (:8100), reproducing the
+		// exact wrong-service failure this file's own package-level comments
+		// (see TestFullInfrastructureE2E's testutil.RequireServer call site)
+		// were written to fix. Deriving the default from testutil.ServerURL()
+		// — the SAME resolution the gate uses — closes that gap; see commit
+		// 3268fd73's tests/e2e/provider_failover_e2e_test.go
+		// (`failoverBaseURL()` -> `testutil.ServerURL()`) for the identical
+		// fix already landed for this package's sibling suite.
+		HelixAgentURL:   testutil.ServerURL(),
 		HelixAgentBin:   getEnvOrDefault("HELIXAGENT_BIN", "./bin/helixagent"),
 		SkipLiveTests:   os.Getenv("SKIP_LIVE_TESTS") == "true",
 		TimeoutPerAgent: 30 * time.Second,

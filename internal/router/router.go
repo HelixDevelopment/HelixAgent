@@ -469,8 +469,19 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 	}
 
 	// Health endpoints
+	//
+	// Both include an explicit "service":"helixagent" identity field (§11.4.111
+	// resolve-by-stable-identity, not by port/ordinal). testutil.ServerAvailable
+	// already PREFERS this field when present (internal/testutil/infra.go)
+	// because a bare {"status":"healthy"} payload is generic: this repo's own
+	// mock LLM server (challenges/codebase/mock_server/main.go) answers 200
+	// with EXACTLY that shape on /health while also serving /v1/chat/completions
+	// with fabricated replies, so a HELIXAGENT_HOST/PORT pointed at the mock
+	// would otherwise satisfy the availability gate and let tests run — and
+	// PASS — against the mock instead of the real server. Emitting the
+	// identity field here closes that false-GREEN vector at the source.
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "healthy"})
+		c.JSON(200, gin.H{"status": "healthy", "service": "helixagent"})
 	})
 
 	r.GET("/v1/health", func(c *gin.Context) {
@@ -484,7 +495,8 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		}
 
 		c.JSON(200, gin.H{
-			"status": "healthy",
+			"status":  "healthy",
+			"service": "helixagent",
 			"providers": map[string]any{
 				"total":     len(health),
 				"healthy":   healthyCount,

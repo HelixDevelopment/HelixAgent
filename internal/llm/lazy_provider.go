@@ -214,10 +214,22 @@ func (p *LazyProvider) createProviderWithContext(ctx context.Context) (LLMProvid
 		// scheduling/yield point (it can park waiting for either channel),
 		// so ctx can be cancelled/expire and the factory result can arrive
 		// together WHILE it is parked, letting the random pick land on
-		// `done` anyway. Re-checking ctx.Done() here, with no further yield
-		// point in between, closes that window: a closed Done channel stays
-		// ready forever, so any cancellation that raced the select above is
-		// still visible here, right before the stale result is returned.
+		// `done` anyway. Re-checking ctx.Done() here narrows that window to
+		// a benign, unobservable race: under Go's async goroutine preemption
+		// (>=1.14) this goroutine can still be preempted between this
+		// re-check and the `return r.provider, r.err` below while a
+		// cancellation lands, so no select-based implementation can make the
+		// window provably zero-width. What this re-check DOES deliver:
+		// cancellation observed at this final decision point always wins
+		// (the stale result is discarded); any cancellation landing strictly
+		// AFTER this check is, to every caller, indistinguishable from a
+		// cancellation that lands immediately after this function already
+		// returned the (valid, non-stale) result — a race that does not need
+		// closing because it is not observable as a defect. It is THIS
+		// re-check, not the priority pre-check above (which only helps when
+		// ctx is already cancelled/expired BEFORE the select below is
+		// entered), that provides the guarantee in the general case where
+		// ctx is cancelled WHILE the select is parked.
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("initialization timed out: %w", ctx.Err())

@@ -245,7 +245,14 @@ func TestStress_WebSocket_RapidConnectDisconnect(t *testing.T) {
 	var memAfter runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&memAfter)
-	heapGrowthMB := float64(memAfter.HeapInuse-memBefore.HeapInuse) / 1024 / 1024
+	// heapGrowthMB (the package-level helper defined in
+	// heap_growth_helper_test.go, deliberately shadowed here by a
+	// same-named local variable holding its result) converts each operand
+	// to float64 BEFORE subtracting so a shrinking heap yields a small
+	// negative number instead of wrapping a uint64 subtraction into an
+	// absurd multi-terabyte artifact. See TestHeapGrowthMB_NoUint64Underflow
+	// for the regression guard.
+	heapGrowthMB := heapGrowthMB(memBefore.HeapInuse, memAfter.HeapInuse)
 
 	// After all connect/disconnect cycles, total count should be 0
 	totalCount := server.GetTotalClientCount()

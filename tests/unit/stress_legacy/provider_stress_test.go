@@ -370,7 +370,15 @@ func TestStress_LargePayload_Handling(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&afterMem)
 
-	heapGrowthMB := float64(afterMem.HeapInuse-baseline.HeapInuse) / 1024 / 1024
+	// heapGrowthMB (the package-level helper defined in
+	// heap_growth_helper_test.go, deliberately shadowed here by a
+	// same-named local variable holding its result) converts each operand
+	// to float64 BEFORE subtracting so a shrinking heap (the normal,
+	// desirable outcome once GC reclaims the ten 1MB payloads) yields a
+	// small negative number instead of wrapping a uint64 subtraction into
+	// an absurd multi-terabyte artifact. See TestHeapGrowthMB_NoUint64Underflow
+	// for the regression guard.
+	heapGrowthMB := heapGrowthMB(baseline.HeapInuse, afterMem.HeapInuse)
 
 	t.Logf("Large payload: %d successes, %d failures, heap growth: %.2f MB",
 		successes, failures, heapGrowthMB)

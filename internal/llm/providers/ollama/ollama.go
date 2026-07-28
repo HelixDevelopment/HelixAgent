@@ -151,7 +151,8 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 
 		httpReq, err := http.NewRequestWithContext(ctx, "POST", o.baseURL+"/api/generate", nil)
 		if err != nil {
-			ch <- &models.LLMResponse{
+			select {
+			case ch <- &models.LLMResponse{
 				RequestID:    req.ID,
 				ProviderID:   "ollama",
 				ProviderName: "Ollama",
@@ -159,13 +160,16 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 				Confidence:   0.0,
 				FinishReason: "error",
 				CreatedAt:    time.Now(),
+			}:
+			case <-ctx.Done():
 			}
 			return
 		}
 
 		jsonData, err := json.Marshal(ollamaReq)
 		if err != nil {
-			ch <- &models.LLMResponse{
+			select {
+			case ch <- &models.LLMResponse{
 				RequestID:    req.ID,
 				ProviderID:   "ollama",
 				ProviderName: "Ollama",
@@ -173,6 +177,8 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 				Confidence:   0.0,
 				FinishReason: "error",
 				CreatedAt:    time.Now(),
+			}:
+			case <-ctx.Done():
 			}
 			return
 		}
@@ -182,7 +188,8 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 
 		response, err := o.httpClient.Do(httpReq)
 		if err != nil {
-			ch <- &models.LLMResponse{
+			select {
+			case ch <- &models.LLMResponse{
 				RequestID:    req.ID,
 				ProviderID:   "ollama",
 				ProviderName: "Ollama",
@@ -190,6 +197,8 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 				Confidence:   0.0,
 				FinishReason: "error",
 				CreatedAt:    time.Now(),
+			}:
+			case <-ctx.Done():
 			}
 			return
 		}
@@ -257,7 +266,11 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 					SelectionScore: 0.0,
 					CreatedAt:      time.Now(),
 				}
-				ch <- finalResp
+				select {
+				case ch <- finalResp:
+				case <-ctx.Done():
+					return
+				}
 				break
 			}
 		}

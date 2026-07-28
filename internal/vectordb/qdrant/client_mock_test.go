@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -22,17 +24,52 @@ type mockServer struct {
 	config *Config
 }
 
+// parseServerURL splits an httptest server URL into its host and port.
+//
+// It is a pure function so the parsing can be regression-tested against
+// literal URLs with no listener and no network (see hostport_ipv6_test.go).
+//
+// This MUST NOT be done with strings.Split(authority, ":"). httptest's
+// newLocalListener falls back to the IPv6 loopback when it cannot bind IPv4
+// loopback (i.e. under port pressure), producing "http://[::1]:PORT". Naive
+// splitting of that bracketed authority yields host "[" and an empty second
+// field, and — in the code this replaced — a discarded fmt.Sscanf error left
+// the port silently defaulting to 80, so the client was built for
+// "http://[:80" and every request went nowhere near the mock server.
+//
+// net.SplitHostPort understands bracketed IPv6 authorities and returns the
+// host UNBRACKETED ("::1"); Config.GetHTTPURL re-brackets it via hostPort.
+// Every error is returned, never discarded.
+func parseServerURL(rawURL string) (string, int, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", 0, fmt.Errorf("parsing server URL %q: %w", rawURL, err)
+	}
+
+	host, portStr, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return "", 0, fmt.Errorf("splitting authority %q: %w", u.Host, err)
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", 0, fmt.Errorf("parsing port %q from %q: %w", portStr, rawURL, err)
+	}
+
+	return host, port, nil
+}
+
 // newMockServer creates a new mock server and returns it along with a configured client
 func newMockServer(handler http.HandlerFunc) *mockServer {
 	server := httptest.NewServer(handler)
 
-	// Parse host and port from server URL
-	urlParts := strings.TrimPrefix(server.URL, "http://")
-	parts := strings.Split(urlParts, ":")
-	host := parts[0]
-	port := 80
-	if len(parts) > 1 {
-		_, _ = fmt.Sscanf(parts[1], "%d", &port)
+	host, port, err := parseServerURL(server.URL)
+	if err != nil {
+		// Unrecoverable test-harness setup failure. newMockServer has no
+		// *testing.T to report through, and silently defaulting the port is
+		// exactly the defect this replaced (see parseServerURL).
+		server.Close()
+		panic(fmt.Sprintf("newMockServer: %v", err))
 	}
 
 	config := &Config{

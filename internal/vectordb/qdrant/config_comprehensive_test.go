@@ -153,10 +153,23 @@ func TestConfig_GetHTTPURL_Variations(t *testing.T) {
 			expected: "http://192.168.1.100:6333",
 		},
 		{
+			// Reconciled: this case previously asserted "http://::1:6333",
+			// which net/url rejects with `invalid port "::1:6333" after
+			// host`. The assertion pinned a defect, so it was rewritten to
+			// the bracketed authority GetHTTPURL now emits rather than
+			// reverting the fix.
 			name:     "IPv6 address",
 			host:     "::1",
 			port:     6333,
-			expected: "http://::1:6333",
+			expected: "http://[::1]:6333",
+		},
+		{
+			// An operator may already write the address in bracketed form;
+			// it must NOT be double-bracketed into "http://[[::1]]:6333".
+			name:     "IPv6 address already bracketed",
+			host:     "[::1]",
+			port:     6333,
+			expected: "http://[::1]:6333",
 		},
 		{
 			name:     "domain name",

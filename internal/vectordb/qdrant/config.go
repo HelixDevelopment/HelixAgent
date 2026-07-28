@@ -2,6 +2,8 @@ package qdrant
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 )
 
@@ -67,14 +69,36 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// hostPort joins a host and a port into a valid network authority.
+//
+// It MUST be used instead of fmt.Sprintf("%s:%d", host, port): a bare IPv6
+// literal such as "::1" formatted that way yields "::1:6333", which
+// net/url rejects with `invalid port "::1:6333" after host`, so every request
+// built from it fails.
+//
+// net.JoinHostPort brackets any host containing a ":", so a host that the
+// operator already supplied in bracketed form ("[::1]") would be
+// double-bracketed into "[[::1]]:6333". The surrounding brackets are
+// therefore stripped first, making the function correct for BOTH the
+// bracketed and the unbracketed spelling of the same address.
+//
+// Hostnames and IPv4 literals contain no ":" and are returned byte-identical
+// to the previous fmt.Sprintf behaviour.
+func hostPort(host string, port int) string {
+	if len(host) >= 2 && host[0] == '[' && host[len(host)-1] == ']' {
+		host = host[1 : len(host)-1]
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port))
+}
+
 // GetHTTPURL returns the HTTP API URL
 func (c *Config) GetHTTPURL() string {
-	return fmt.Sprintf("http://%s:%d", c.Host, c.HTTPPort)
+	return "http://" + hostPort(c.Host, c.HTTPPort)
 }
 
 // GetGRPCAddress returns the gRPC address
 func (c *Config) GetGRPCAddress() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.GRPCPort)
+	return hostPort(c.Host, c.GRPCPort)
 }
 
 // Distance represents the distance metric for vectors

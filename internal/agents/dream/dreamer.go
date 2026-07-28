@@ -170,6 +170,16 @@ type SignalGatherer interface {
 //   - mu (RWMutex) survives Pattern-Zeta: guards the DreamTrigger
 //     compound (LastDreamTime/SessionCount/Locked), the *d.current
 //     pointer, and per-session Phases appends during executePhase.
+//   - memoryMu (Mutex) serializes every write to the on-disk memory
+//     store (the per-entry JSON files AND MEMORY.md) so saveMemories()
+//     can never be invoked by two goroutines concurrently — closing a
+//     data-corruption race in which run()'s select (see run()'s doc
+//     comment) could randomly pick a pending tick and launch a full
+//     Dream() session — which itself calls saveMemories() on
+//     completion — at the same moment an external Stop() call is also
+//     directly invoking saveMemories(). See saveMemories()'s doc
+//     comment for the exact invariant this delivers and its honestly
+//     -scoped limits.
 type Dreamer struct {
 	config   DreamerConfig
 	logger   *logrus.Logger
@@ -178,8 +188,25 @@ type Dreamer struct {
 	memories *safe.Store[string, MemoryEntry]
 	current  *DreamSession
 	mu       sync.RWMutex
+	memoryMu sync.Mutex
 	running  atomic.Bool
 	stopCh   chan struct{}
+
+	// memoryWritersInFlight / memoryWritersPeak are the §11.4.108
+	// runtime signature for the Defect 1 (data corruption) invariant:
+	// they directly OBSERVE how many goroutines are simultaneously
+	// inside saveMemories()'s file-writing critical section, rather
+	// than inferring safety from the absence of an observed file tear
+	// (which is filesystem- and timing-dependent and unreliable to
+	// force on demand). memoryWritersInFlight is incremented on entry
+	// to that critical section and decremented on exit; a
+	// compare-and-swap loop tracks the highest value it has ever
+	// reached in memoryWritersPeak. With memoryMu held around the same
+	// section, the peak is provably never > 1 — a direct,
+	// deterministic proof of "no concurrent writers, ever" — see
+	// TestDreamer_SaveMemories_ConcurrentWriteCorruption.
+	memoryWritersInFlight atomic.Int32
+	memoryWritersPeak     atomic.Int32
 
 	// gatherers is the round-29 anti-bluff injection point for
 	// phase 2. Empty / nil = gatherPhase returns
@@ -287,25 +314,107 @@ func (d *Dreamer) IsRunning() bool {
 	return d.running.Load()
 }
 
-// run is the main dream loop
+// checkStop performs a non-blocking check for a requested shutdown. It
+// is called both at the top of run()'s loop (priority pre-check) and
+// immediately before launching a Dream() session (re-check) so that a
+// pending stop always wins over starting a new dream cycle — see
+// run()'s doc comment for why this narrows, but per Go's async
+// goroutine preemption (>=1.14) cannot provably close to zero-width,
+// the window in which Dream() is launched after shutdown was
+// requested. Reports whether run() should return immediately.
+// Cancellation via ctx (as opposed to an explicit Stop() call, which
+// already performs its own shutdown+save) additionally invokes
+// d.Stop() synchronously — safe here because Dreamer.Stop() does not
+// join against run()'s own goroutine (see memoryMu's doc comment for
+// why a mutex, not a join, was chosen to close Defect 1).
+func (d *Dreamer) checkStop(ctx context.Context) bool {
+	select {
+	case <-d.stopCh:
+		return true
+	case <-ctx.Done():
+		d.Stop()
+		return true
+	default:
+		return false
+	}
+}
+
+// runOnce executes a single iteration of the dream loop's select
+// statement. It is extracted from run() and parameterized by the tick
+// channel — rather than reading a *time.Ticker directly — specifically
+// so tests can force the exact race this fix addresses
+// deterministically: a freshly-created time.Ticker's channel is
+// guaranteed EMPTY until its interval has genuinely elapsed, so there
+// is no way to make a real ticker.C provably ready at the SAME instant
+// d.stopCh closes without depending on real wall-clock scheduling and
+// accepting non-determinism. Passing a synthetic, pre-populated `tick`
+// channel (a buffered chan time.Time with one value already sent)
+// alongside an already-closed d.stopCh lets a test observe Go's real
+// select semantics acting on this REAL production select statement —
+// not a replica of it — with both cases provably ready before the
+// select is evaluated. Reports whether run() should return.
+//
+// Forensic anchor (Defect 1 — data corruption): Go's select chooses
+// UNIFORMLY AT RANDOM among all ready cases. If a tick is ALSO pending
+// at the instant Stop() closes d.stopCh (or the caller cancels ctx),
+// the naked select below could pick the tick branch and launch a full
+// Dream() session — which itself calls saveMemories() on completion —
+// even though shutdown has already been requested, racing Stop()'s own
+// direct saveMemories() call. The priority pre-check + re-check below
+// (both via checkStop) narrow that window so a pending stop always
+// wins wherever it is observed; they do NOT by themselves prevent the
+// corruption, because a stop landing WHILE either select is parked can
+// still let the random pick land on the tick case. What actually
+// closes the corruption is memoryMu inside saveMemories() — see its
+// doc comment for the exact, honestly-scoped guarantee.
+func (d *Dreamer) runOnce(ctx context.Context, tick <-chan time.Time) bool {
+	// Priority pre-check: ensures a pending stop always wins once it
+	// has fired, so Dream() is never launched after shutdown was
+	// observed here.
+	if d.checkStop(ctx) {
+		return true
+	}
+
+	select {
+	case <-d.stopCh:
+		return true
+	case <-ctx.Done():
+		d.Stop()
+		return true
+	case <-tick:
+		// Second, immediate re-check: the blocking select above is
+		// itself a scheduling/yield point (it can park waiting on any
+		// of the three channels), so a stop can be requested WHILE it
+		// is parked and a tick can arrive at the same instant, letting
+		// the random pick land on the tick case anyway. Re-checking
+		// here narrows, but cannot provably close to zero-width, the
+		// window in which a Dream() session is launched after
+		// shutdown was requested. What this re-check DOES deliver: a
+		// stop observed AT THIS CHECK always wins (Dream() is never
+		// called).
+		if d.checkStop(ctx) {
+			return true
+		}
+
+		if d.ShouldDream() {
+			d.logger.Info("Triggering dream session")
+			if _, err := d.Dream(ctx); err != nil {
+				d.logger.WithError(err).Error("Dream session failed")
+			}
+		}
+	}
+	return false
+}
+
+// run is the main dream loop. See runOnce for the per-iteration logic
+// and the Defect 1 forensic anchor.
 func (d *Dreamer) run(ctx context.Context) {
 	ticker := time.NewTicker(d.config.ConsolidationInterval)
 	defer ticker.Stop()
 
 	for {
-		select {
-		case <-d.stopCh:
+		if d.runOnce(ctx, ticker.C) {
 			return
-		case <-ctx.Done():
-			d.Stop()
-			return
-		case <-ticker.C:
-			if d.ShouldDream() {
-				d.logger.Info("Triggering dream session")
-				if _, err := d.Dream(ctx); err != nil {
-					d.logger.WithError(err).Error("Dream session failed")
-				}
-			}
 		}
 	}
 }
@@ -661,8 +770,62 @@ func (d *Dreamer) loadMemories() {
 	d.logger.Infof("Loaded %d memories", d.memories.Len())
 }
 
-// saveMemories saves memories to disk
+// saveMemories saves memories to disk.
+//
+// Defect 1 (data corruption) fix: memoryMu serializes every write this
+// function performs (the per-entry JSON files below AND, transitively,
+// MEMORY.md via updateMemoryIndex()) so that a Dream() session's own
+// completion save (see Dream()) and Stop()'s directly-invoked save can
+// never write those files concurrently. The mutex is the chosen
+// mechanism — deliberately, not a join on run()'s goroutine — because
+// Dream() is a publicly exported method any caller may invoke
+// directly, independent of run()'s background loop; a
+// sync.WaitGroup/done-channel join scoped only to run()'s goroutine
+// lifetime would synchronize Stop() against dream sessions the
+// background loop itself launched, but would do nothing to prevent
+// Stop()'s saveMemories() from racing a Dream() call made by some
+// OTHER caller — a gap that would leave two goroutines writing
+// MEMORY.md concurrently. A mutex around the actual write path closes
+// that unconditionally, regardless of who called Dream().
+//
+// Honest scope of the guarantee actually delivered: memoryMu
+// guarantees the files are NEVER written by two goroutines at once
+// (no torn/interleaved write is possible) — it does NOT guarantee that
+// no write happens strictly AFTER Stop() has already returned to its
+// caller. If a Dream() session was already racing in via run()'s
+// ticker branch when Stop() was called, Stop() may win memoryMu first
+// and return while that Dream() session is still mid-flight; it will
+// subsequently acquire memoryMu and write safely (serialized, never
+// interleaved with Stop()'s write) — just after Stop() already
+// returned. Closing that residual fully would require Stop() to block
+// (via a join) until run()'s goroutine has provably exited, which
+// risks turning Stop() into a call whose latency is bounded only by
+// however long an entire in-flight Dream() cycle (all four phases,
+// including consolidation) takes. That cost was judged disproportionate
+// to the corruption defect this fix actually closes: corruption
+// (concurrent/torn writes) is what was reported and is what memoryMu
+// eliminates; "a write can still land a moment after Stop() returns"
+// is a lesser, non-corrupting, and explicitly accepted trade-off.
 func (d *Dreamer) saveMemories() {
+	d.memoryMu.Lock()
+	defer d.memoryMu.Unlock()
+
+	// §11.4.108 runtime signature: see memoryWritersInFlight's doc
+	// comment on the Dreamer struct. Bracketing this INSIDE the
+	// memoryMu-protected section (rather than at function entry, which
+	// would race the counter itself before either caller acquires the
+	// lock) is deliberate: it observes exactly the invariant under
+	// test — concurrency inside the file-writing critical section
+	// itself — not mere concurrent entry into saveMemories().
+	inFlight := d.memoryWritersInFlight.Add(1)
+	defer d.memoryWritersInFlight.Add(-1)
+	for {
+		peak := d.memoryWritersPeak.Load()
+		if inFlight <= peak || d.memoryWritersPeak.CompareAndSwap(peak, inFlight) {
+			break
+		}
+	}
+
 	for id, memory := range d.memories.Snapshot() {
 		path := filepath.Join(d.config.MemoryDir, fmt.Sprintf("%s.json", id))
 

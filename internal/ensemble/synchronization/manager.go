@@ -243,6 +243,30 @@ func (sm *SyncManager) ListLocks(ctx context.Context) ([]*LockInfo, error) {
 
 // CRDT operations
 
+// newCRDTByType constructs the concrete CRDT implementation registered for the
+// given crdt_type discriminator, keyed by key.
+//
+// This is the SINGLE construction point for CRDTs loaded or created by
+// GetCRDT. Both GetCRDT paths — row-absent (create fresh) and row-present
+// (hydrate from persisted state) — MUST obtain their value here, so neither
+// can ever operate on a nil CRDT interface. An unrecognised crdtType is
+// reported as an error; it is never returned as a nil CRDT for a caller to
+// dereference.
+func newCRDTByType(crdtType, key string) (CRDT, error) {
+	switch crdtType {
+	case "g_counter":
+		return NewGCounter(key), nil
+	case "pn_counter":
+		return NewPNCounter(key), nil
+	case "g_set":
+		return NewGSet(key), nil
+	case "lww_register":
+		return NewLWWRegister(key), nil
+	default:
+		return nil, fmt.Errorf("unknown CRDT type: %s", crdtType)
+	}
+}
+
 // GetCRDT retrieves a CRDT by key.
 func (sm *SyncManager) GetCRDT(ctx context.Context, crdtType, key string) (CRDT, error) {
 	// Check local cache
@@ -250,7 +274,6 @@ func (sm *SyncManager) GetCRDT(ctx context.Context, crdtType, key string) (CRDT,
 	if crdt, ok := sm.crdts.Get(cacheKey); ok {
 		return crdt, nil
 	}
-	var crdt CRDT
 
 	// Load from database
 	var stateJSON, vectorClockJSON []byte
@@ -260,26 +283,24 @@ func (sm *SyncManager) GetCRDT(ctx context.Context, crdtType, key string) (CRDT,
 		crdtType, key,
 	).Scan(&stateJSON, &vectorClockJSON)
 
-	if err == sql.ErrNoRows {
-		// Create new CRDT
-		switch crdtType {
-		case "g_counter":
-			crdt = NewGCounter(key)
-		case "pn_counter":
-			crdt = NewPNCounter(key)
-		case "g_set":
-			crdt = NewGSet(key)
-		case "lww_register":
-			crdt = NewLWWRegister(key)
-		default:
-			return nil, fmt.Errorf("unknown CRDT type: %s", crdtType)
-		}
-	} else if err != nil {
+	// A genuine query failure is terminal; a missing row is not — it simply
+	// means this CRDT has never been persisted and starts from its zero value.
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
-	} else {
-		// Parse existing CRDT
+	}
+
+	// Construct the concrete CRDT BEFORE any method call on it. Doing this
+	// ahead of the row-present branch is what keeps FromJSON from being
+	// invoked on a nil interface.
+	crdt, buildErr := newCRDTByType(crdtType, key)
+	if buildErr != nil {
+		return nil, buildErr
+	}
+
+	if err == nil {
+		// Row exists: hydrate the freshly constructed CRDT from persisted state.
 		if err := crdt.FromJSON(stateJSON); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode persisted %s state for key %q: %w", crdtType, key, err)
 		}
 	}
 

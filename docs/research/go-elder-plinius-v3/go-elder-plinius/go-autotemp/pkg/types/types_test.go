@@ -8,7 +8,7 @@ import (
 
 func TestRunOptionsValidateValid(t *testing.T) {
 	opts := RunOptions{
-		Prompt: "test prompt",
+		Prompt:       "test prompt",
 		ModelVersion: "gpt-4",
 	}
 	assert.NoError(t, opts.Validate())
@@ -28,8 +28,8 @@ func TestRunOptionsDefaults(t *testing.T) {
 
 func TestEvaluateOptionsValidateValid(t *testing.T) {
 	opts := EvaluateOptions{
-		Prompt: "test prompt",
-		Output: "test",
+		Prompt:       "test prompt",
+		Output:       "test",
 		ModelVersion: "gpt-4",
 	}
 	assert.NoError(t, opts.Validate())
@@ -55,7 +55,7 @@ func TestBenchmarkOptionsDefaults(t *testing.T) {
 
 func TestBenchmarkItemValidateValid(t *testing.T) {
 	opts := BenchmarkItem{
-		Prompt: "test prompt",
+		Prompt:    "test prompt",
 		Reference: "test",
 	}
 	assert.NoError(t, opts.Validate())

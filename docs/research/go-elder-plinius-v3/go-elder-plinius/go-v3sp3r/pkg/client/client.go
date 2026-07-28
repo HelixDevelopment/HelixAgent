@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -100,4 +102,3 @@ func (c *Client) ValidateCommand(ctx context.Context, command string) (*CommandR
 	return nil, errors.New(errors.ErrCodeUnimplemented, "v3sp3r",
 		"ValidateCommand requires backend service integration")
 }
-

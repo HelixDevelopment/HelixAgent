@@ -9,8 +9,8 @@ import (
 
 // CommandRequest represents commandrequest data.
 type CommandRequest struct {
-	Context string
-	SafetyLevel string
+	Context         string
+	SafetyLevel     string
 	ConfirmRequired bool
 	NaturalLanguage string
 }
@@ -25,10 +25,10 @@ func (o *CommandRequest) Validate() error {
 
 // CommandResult represents commandresult data.
 type CommandResult struct {
-	SafetyWarning string
-	Description string
-	Command string
-	SubCommands []SubCommand
+	SafetyWarning        string
+	Description          string
+	Command              string
+	SubCommands          []SubCommand
 	RequiresConfirmation bool
 }
 
@@ -42,33 +42,32 @@ func (o *CommandResult) Validate() error {
 
 // SubCommand represents subcommand data.
 type SubCommand struct {
-	Action string
+	Action     string
 	Parameters map[string]string
-	Target string
+	Target     string
 }
 
 // DeviceStatus represents devicestatus data.
 type DeviceStatus struct {
-	StorageUsed float64
-	BatteryLevel int
+	StorageUsed     float64
+	BatteryLevel    int
 	FirmwareVersion string
-	Connected bool
-	CurrentApp string
+	Connected       bool
+	CurrentApp      string
 }
 
 // BLEConfig represents bleconfig data.
 type BLEConfig struct {
 	CharacteristicUUID string
-	Timeout int
-	DeviceAddress string
-	ServiceUUID string
+	Timeout            int
+	DeviceAddress      string
+	ServiceUUID        string
 }
 
 // HistoryEntry represents historyentry data.
 type HistoryEntry struct {
-	Command string
-	Request string
+	Command   string
+	Request   string
 	Timestamp string
-	Success bool
+	Success   bool
 }
-

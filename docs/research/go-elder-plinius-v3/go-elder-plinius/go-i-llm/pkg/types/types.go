@@ -10,12 +10,12 @@ import (
 // ConversationPattern represents conversationpattern data.
 type ConversationPattern struct {
 	Description string
-	Category string
-	Template string
-	ID string
-	Variables []string
-	Example string
-	Name string
+	Category    string
+	Template    string
+	ID          string
+	Variables   []string
+	Example     string
+	Name        string
 }
 
 // Validate checks that the ConversationPattern is valid.
@@ -34,21 +34,21 @@ func (o *ConversationPattern) Validate() error {
 
 // ReActStep represents reactstep data.
 type ReActStep struct {
-	Action string
-	StepNum int
+	Action      string
+	StepNum     int
 	ActionInput string
 	Observation string
-	Thought string
+	Thought     string
 }
 
 // AgentConfig represents agentconfig data.
 type AgentConfig struct {
-	Model string
-	Tools []Tool
-	Name string
+	Model         string
+	Tools         []Tool
+	Name          string
 	MaxIterations int
-	Temperature float64
-	SystemPrompt string
+	Temperature   float64
+	SystemPrompt  string
 }
 
 // Validate checks that the AgentConfig is valid.
@@ -64,14 +64,16 @@ func (o *AgentConfig) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *AgentConfig) Defaults() {
-	if o.Temperature == 0 { o.Temperature = 0.7 }
+	if o.Temperature == 0 {
+		o.Temperature = 0.7
+	}
 }
 
 // Tool represents tool data.
 type Tool struct {
-	Parameters map[string]string
+	Parameters  map[string]string
 	Description string
-	Name string
+	Name        string
 }
 
 // Validate checks that the Tool is valid.
@@ -87,20 +89,20 @@ func (o *Tool) Validate() error {
 
 // ChainResult represents chainresult data.
 type ChainResult struct {
-	Steps []ReActStep
+	Steps       []ReActStep
 	FinalOutput string
-	Iterations int
-	TokenUsage int
-	Success bool
+	Iterations  int
+	TokenUsage  int
+	Success     bool
 }
 
 // PromptChain represents promptchain data.
 type PromptChain struct {
 	Description string
-	Category string
-	Steps []ChainStep
-	ID string
-	Name string
+	Category    string
+	Steps       []ChainStep
+	ID          string
+	Name        string
 }
 
 // Validate checks that the PromptChain is valid.
@@ -135,9 +137,9 @@ type TreeResult struct {
 // ChainStep represents chainstep data.
 type ChainStep struct {
 	PromptTemplate string
-	Condition string
-	OutputKey string
-	Name string
+	Condition      string
+	OutputKey      string
+	Name           string
 }
 
 // Validate checks that the ChainStep is valid.
@@ -147,4 +149,3 @@ func (o *ChainStep) Validate() error {
 	}
 	return nil
 }
-

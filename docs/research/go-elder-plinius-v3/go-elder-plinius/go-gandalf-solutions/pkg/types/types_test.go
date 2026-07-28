@@ -8,13 +8,13 @@ import (
 
 func TestLevelSolutionValidateValid(t *testing.T) {
 	opts := LevelSolution{
-		Techniques: "test",
-		Category: "test",
-		Description: "test description",
-		Difficulty: "test",
+		Techniques:       "test",
+		Category:         "test",
+		Description:      "test description",
+		Difficulty:       "test",
 		SystemPromptLeak: "test systempromptleak",
-		Solutions: "test",
-		Name: "Test Name",
+		Solutions:        "test",
+		Name:             "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -28,10 +28,10 @@ func TestLevelSolutionValidateEmpty(t *testing.T) {
 func TestAdventureSolutionValidateValid(t *testing.T) {
 	opts := AdventureSolution{
 		Description: "test description",
-		Adventure: "test",
-		Difficulty: "test",
-		Solutions: "test",
-		Name: "Test Name",
+		Adventure:   "test",
+		Difficulty:  "test",
+		Solutions:   "test",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -44,13 +44,13 @@ func TestAdventureSolutionValidateEmpty(t *testing.T) {
 
 func TestPromptLeakValidateValid(t *testing.T) {
 	opts := PromptLeak{
-		Model: "gpt-4",
-		Date: "test",
-		LeakedContent: "test",
-		ID: "test-id-123",
+		Model:            "gpt-4",
+		Date:             "test",
+		LeakedContent:    "test",
+		ID:               "test-id-123",
 		ExtractionMethod: "test",
-		Source: "test",
-		Confidence: 0.95,
+		Source:           "test",
+		Confidence:       0.95,
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -63,10 +63,10 @@ func TestPromptLeakValidateEmpty(t *testing.T) {
 
 func TestSearchOptionsValidateValid(t *testing.T) {
 	opts := SearchOptions{
-		Query: "test query",
+		Query:      "test query",
 		Techniques: "test",
 		Difficulty: "test",
-		Limit: 10,
+		Limit:      10,
 		Categories: "test",
 	}
 	assert.NoError(t, opts.Validate())

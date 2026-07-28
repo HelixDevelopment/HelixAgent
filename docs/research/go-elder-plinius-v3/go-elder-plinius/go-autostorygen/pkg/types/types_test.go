@@ -8,12 +8,12 @@ import (
 
 func TestStoryConfigValidateValid(t *testing.T) {
 	opts := StoryConfig{
-		Setting: "test",
-		Theme: "test",
-		Genre: "test",
-		Title: "Test Title",
-		Tone: "test",
-		PlotPoints: "test",
+		Setting:        "test",
+		Theme:          "test",
+		Genre:          "test",
+		Title:          "Test Title",
+		Tone:           "test",
+		PlotPoints:     "test",
 		TargetAudience: "test",
 	}
 	assert.NoError(t, opts.Validate())
@@ -27,12 +27,12 @@ func TestStoryConfigValidateEmpty(t *testing.T) {
 
 func TestCharacterConfigValidateValid(t *testing.T) {
 	opts := CharacterConfig{
-		Role: "test",
-		Arc: "test",
-		Motivation: "test",
+		Role:        "test",
+		Arc:         "test",
+		Motivation:  "test",
 		Description: "test description",
-		Name: "Test Name",
-		Traits: "test",
+		Name:        "Test Name",
+		Traits:      "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -60,7 +60,7 @@ func TestChapterValidateValid(t *testing.T) {
 	opts := Chapter{
 		Summary: "test",
 		Content: "test",
-		Title: "Test Title",
+		Title:   "Test Title",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -73,11 +73,11 @@ func TestChapterValidateEmpty(t *testing.T) {
 
 func TestCharacterValidateValid(t *testing.T) {
 	opts := Character{
-		Role: "test",
+		Role:        "test",
 		Description: "test description",
-		Traits: "test",
+		Traits:      "test",
 		Development: "test",
-		Name: "Test Name",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }

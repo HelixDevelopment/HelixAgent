@@ -9,14 +9,14 @@ import (
 
 // LeakEntry represents leakentry data.
 type LeakEntry struct {
-	Model string
-	ID string
-	Confidence float64
-	Date string
+	Model         string
+	ID            string
+	Confidence    float64
+	Date          string
 	LeakedContent string
-	LeakType string
-	Source string
-	Tags []string
+	LeakType      string
+	Source        string
+	Tags          []string
 }
 
 // Validate checks that the LeakEntry is valid.
@@ -32,9 +32,9 @@ func (o *LeakEntry) Validate() error {
 
 // DetectionOptions represents detectionoptions data.
 type DetectionOptions struct {
-	Response string
-	Model string
-	Sensitivity float64
+	Response        string
+	Model           string
+	Sensitivity     float64
 	KnownSignatures []string
 }
 
@@ -55,25 +55,24 @@ func (o *DetectionOptions) Defaults() {
 
 // DetectionResult represents detectionresult data.
 type DetectionResult struct {
-	Leaked bool
-	Confidence float64
-	Matches []LeakMatch
+	Leaked              bool
+	Confidence          float64
+	Matches             []LeakMatch
 	SuggestedMitigation string
 }
 
 // LeakMatch represents leakmatch data.
 type LeakMatch struct {
-	Pattern string
-	Position int
-	Confidence float64
+	Pattern     string
+	Position    int
+	Confidence  float64
 	MatchedText string
 }
 
 // ArchiveStats represents archivestats data.
 type ArchiveStats struct {
-	ByType map[string]int
-	ByModel map[string]int
-	TotalLeaks int
+	ByType        map[string]int
+	ByModel       map[string]int
+	TotalLeaks    int
 	AvgConfidence float64
 }
-

@@ -13,9 +13,9 @@ package client
 import (
 	"context"
 
+	. "github.com/elder-plinius/go-gitgpt/pkg/types"
 	"github.com/elder-plinius/go-plinius-common/pkg/config"
 	"github.com/elder-plinius/go-plinius-common/pkg/errors"
-	. "github.com/elder-plinius/go-gitgpt/pkg/types"
 )
 
 // Client is the Go client for the GitGPT service.
@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -90,4 +92,3 @@ func (c *Client) AnalyzeRepo(ctx context.Context, repoPath string) (*RepoStats, 
 	return nil, errors.New(errors.ErrCodeUnimplemented, "gitgpt",
 		"AnalyzeRepo requires backend service integration")
 }
-

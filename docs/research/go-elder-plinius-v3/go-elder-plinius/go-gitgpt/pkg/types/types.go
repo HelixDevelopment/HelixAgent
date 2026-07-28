@@ -9,12 +9,12 @@ import (
 
 // CommitOptions represents commitoptions data.
 type CommitOptions struct {
-	Files []string
-	Language string
-	Context string
+	Files     []string
+	Language  string
+	Context   string
 	MaxLength int
-	Style string
-	Diff string
+	Style     string
+	Diff      string
 }
 
 // Validate checks that the CommitOptions is valid.
@@ -27,19 +27,19 @@ func (o *CommitOptions) Validate() error {
 
 // CommitMessage represents commitmessage data.
 type CommitMessage struct {
-	Subject string
-	Body string
+	Subject  string
+	Body     string
 	Breaking bool
-	Scope string
-	Type string
+	Scope    string
+	Type     string
 }
 
 // ReviewOptions represents reviewoptions data.
 type ReviewOptions struct {
 	FocusAreas []string
-	Language string
-	Diff string
-	Files []string
+	Language   string
+	Diff       string
+	Files      []string
 }
 
 // Validate checks that the ReviewOptions is valid.
@@ -52,18 +52,18 @@ func (o *ReviewOptions) Validate() error {
 
 // ReviewResult represents reviewresult data.
 type ReviewResult struct {
-	Issues []Issue
-	RiskLevel string
+	Issues      []Issue
+	RiskLevel   string
 	Suggestions []string
-	Summary string
+	Summary     string
 }
 
 // Issue represents issue data.
 type Issue struct {
-	Line int
-	Message string
-	Severity string
-	File string
+	Line       int
+	Message    string
+	Severity   string
+	File       string
 	Suggestion string
 }
 
@@ -75,9 +75,8 @@ func (o *ReviewOptions) Defaults() {}
 
 // RepoStats represents aggregate stats about a repository.
 type RepoStats struct {
-	Commits int
+	Commits      int
 	Contributors int
-	Languages map[string]int
-	LastCommit string
+	Languages    map[string]int
+	LastCommit   string
 }
-

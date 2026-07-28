@@ -18,26 +18,26 @@ import (
 
 // Config holds the common configuration for any Plinius gRPC service client.
 type Config struct {
-	ServiceName       string            `yaml:"service_name"`
-	Address           string            `yaml:"address"`
-	Timeout           time.Duration     `yaml:"timeout"`
-	ConnectionTimeout time.Duration     `yaml:"connection_timeout"`
-	MaxRetries        int               `yaml:"max_retries"`
-	RetryBackoff      time.Duration     `yaml:"retry_backoff"`
-	MaxRetryBackoff   time.Duration     `yaml:"max_retry_backoff"`
-	EnableTLS         bool              `yaml:"enable_tls"`
-	TLSCertPath       string            `yaml:"tls_cert_path"`
-	TLSKeyPath        string            `yaml:"tls_key_path"`
-	TLSCAPath         string            `yaml:"tls_ca_path"`
-	TLSServerName     string            `yaml:"tls_server_name"`
-	InsecureSkipVerify bool             `yaml:"insecure_skip_verify"`
-	KeepaliveTime     time.Duration     `yaml:"keepalive_time"`
-	KeepaliveTimeout  time.Duration     `yaml:"keepalive_timeout"`
-	MaxRecvMsgSize    int               `yaml:"max_recv_msg_size"`
-	MaxSendMsgSize    int               `yaml:"max_send_msg_size"`
-	AuthToken         string            `yaml:"auth_token"`
-	Compression       string            `yaml:"compression"`
-	Metadata          map[string]string `yaml:"metadata"`
+	ServiceName        string            `yaml:"service_name"`
+	Address            string            `yaml:"address"`
+	Timeout            time.Duration     `yaml:"timeout"`
+	ConnectionTimeout  time.Duration     `yaml:"connection_timeout"`
+	MaxRetries         int               `yaml:"max_retries"`
+	RetryBackoff       time.Duration     `yaml:"retry_backoff"`
+	MaxRetryBackoff    time.Duration     `yaml:"max_retry_backoff"`
+	EnableTLS          bool              `yaml:"enable_tls"`
+	TLSCertPath        string            `yaml:"tls_cert_path"`
+	TLSKeyPath         string            `yaml:"tls_key_path"`
+	TLSCAPath          string            `yaml:"tls_ca_path"`
+	TLSServerName      string            `yaml:"tls_server_name"`
+	InsecureSkipVerify bool              `yaml:"insecure_skip_verify"`
+	KeepaliveTime      time.Duration     `yaml:"keepalive_time"`
+	KeepaliveTimeout   time.Duration     `yaml:"keepalive_timeout"`
+	MaxRecvMsgSize     int               `yaml:"max_recv_msg_size"`
+	MaxSendMsgSize     int               `yaml:"max_send_msg_size"`
+	AuthToken          string            `yaml:"auth_token"`
+	Compression        string            `yaml:"compression"`
+	Metadata           map[string]string `yaml:"metadata"`
 }
 
 // Option is a functional option for configuring a Config.
@@ -46,20 +46,20 @@ type Option func(*Config)
 // New creates a new Config with the given service name and options.
 func New(serviceName string, opts ...Option) *Config {
 	cfg := &Config{
-		ServiceName:        serviceName,
-		Address:            "localhost:50051",
-		Timeout:            30 * time.Second,
-		ConnectionTimeout:  10 * time.Second,
-		MaxRetries:         3,
-		RetryBackoff:       1 * time.Second,
-		MaxRetryBackoff:    30 * time.Second,
-		EnableTLS:          false,
-		KeepaliveTime:      10 * time.Second,
-		KeepaliveTimeout:   5 * time.Second,
-		MaxRecvMsgSize:     64 * 1024 * 1024,
-		MaxSendMsgSize:     16 * 1024 * 1024,
-		Compression:        "",
-		Metadata:           make(map[string]string),
+		ServiceName:       serviceName,
+		Address:           "localhost:50051",
+		Timeout:           30 * time.Second,
+		ConnectionTimeout: 10 * time.Second,
+		MaxRetries:        3,
+		RetryBackoff:      1 * time.Second,
+		MaxRetryBackoff:   30 * time.Second,
+		EnableTLS:         false,
+		KeepaliveTime:     10 * time.Second,
+		KeepaliveTimeout:  5 * time.Second,
+		MaxRecvMsgSize:    64 * 1024 * 1024,
+		MaxSendMsgSize:    16 * 1024 * 1024,
+		Compression:       "",
+		Metadata:          make(map[string]string),
 	}
 	for _, opt := range opts {
 		opt(cfg)

@@ -9,42 +9,44 @@ import (
 
 // WeatherData represents weatherdata data.
 type WeatherData struct {
-	Humidity float64
-	Location string
-	Timestamp string
-	Conditions string
-	WindSpeed float64
+	Humidity    float64
+	Location    string
+	Timestamp   string
+	Conditions  string
+	WindSpeed   float64
 	Temperature float64
 }
 
 // Defaults applies default values for unset fields.
 func (o *WeatherData) Defaults() {
-	if o.Temperature == 0 { o.Temperature = 0.7 }
+	if o.Temperature == 0 {
+		o.Temperature = 0.7
+	}
 }
 
 // ContextConfig represents contextconfig data.
 type ContextConfig struct {
-	Location string
-	IncludeSeason bool
+	Location       string
+	IncludeSeason  bool
 	IncludeWeather bool
-	IncludeTime bool
-	CustomFactors map[string]string
+	IncludeTime    bool
+	CustomFactors  map[string]string
 }
 
 // ContextResult represents contextresult data.
 type ContextResult struct {
-	Weather *WeatherData
+	Weather       *WeatherData
 	ContextString string
-	Season string
+	Season        string
 	SuggestedMood string
-	TimeOfDay string
+	TimeOfDay     string
 }
 
 // AugmentOptions represents augmentoptions data.
 type AugmentOptions struct {
 	AugmentationType string
-	Context ContextConfig
-	Prompt string
+	Context          ContextConfig
+	Prompt           string
 }
 
 // Validate checks that the AugmentOptions is valid.
@@ -57,4 +59,3 @@ func (o *AugmentOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *AugmentOptions) Defaults() {}
-

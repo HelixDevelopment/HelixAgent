@@ -9,11 +9,11 @@ import (
 
 // EmbedOptions represents embedoptions data.
 type EmbedOptions struct {
-	Quality int
-	Method string
-	Secret []byte
+	Quality  int
+	Method   string
+	Secret   []byte
 	Password string
-	Carrier []byte
+	Carrier  []byte
 }
 
 // Validate checks that the EmbedOptions is valid.
@@ -29,9 +29,9 @@ func (o *EmbedOptions) Validate() error {
 
 // ExtractOptions represents extractoptions data.
 type ExtractOptions struct {
-	Carrier []byte
+	Carrier  []byte
 	Password string
-	Method string
+	Method   string
 }
 
 // Validate checks that the ExtractOptions is valid.
@@ -44,13 +44,13 @@ func (o *ExtractOptions) Validate() error {
 
 // StegoMethod represents stegomethod data.
 type StegoMethod struct {
-	Description string
+	Description   string
 	Detectability float64
-	Category string
-	Name string
-	Robustness float64
-	Capacity float64
-	Reversible bool
+	Category      string
+	Name          string
+	Robustness    float64
+	Capacity      float64
+	Reversible    bool
 }
 
 // Validate checks that the StegoMethod is valid.
@@ -66,19 +66,19 @@ func (o *StegoMethod) Validate() error {
 
 // EmbedResult represents embedresult data.
 type EmbedResult struct {
-	Method string
-	PSNR float64
+	Method        string
+	PSNR          float64
 	EmbeddingTime int64
-	CapacityUsed float64
-	Output []byte
+	CapacityUsed  float64
+	Output        []byte
 }
 
 // ExtractResult represents extractresult data.
 type ExtractResult struct {
-	Secret []byte
+	Secret         []byte
 	ExtractionTime int64
-	Confidence float64
-	Method string
+	Confidence     float64
+	Method         string
 }
 
 // Validate checks that the ExtractResult is valid.
@@ -91,9 +91,9 @@ func (o *ExtractResult) Validate() error {
 
 // AnalyzeResult represents analyzeresult data.
 type AnalyzeResult struct {
-	Confidence float64
-	Suspicious bool
-	Details map[string]float64
+	Confidence      float64
+	Suspicious      bool
+	Details         map[string]float64
 	DetectedMethods []string
 }
 
@@ -110,9 +110,8 @@ func (o *ExtractOptions) Defaults() {}
 
 // MethodComparison represents a comparison between steganography methods.
 type MethodComparison struct {
-	Method string
-	Capacity int64
-	Quality float64
+	Method        string
+	Capacity      int64
+	Quality       float64
 	Detectability float64
 }
-

@@ -9,14 +9,14 @@ import (
 
 // LeakEntry represents leakentry data.
 type LeakEntry struct {
-	ID string
-	Confidence float64
-	Date string
-	Version string
-	LeakedContent string
+	ID               string
+	Confidence       float64
+	Date             string
+	Version          string
+	LeakedContent    string
 	ExtractionMethod string
-	Source string
-	Tags []string
+	Source           string
+	Tags             []string
 }
 
 // Validate checks that the LeakEntry is valid.
@@ -29,12 +29,12 @@ func (o *LeakEntry) Validate() error {
 
 // TechniqueEntry represents techniqueentry data.
 type TechniqueEntry struct {
-	ModelTarget string
-	Steps []string
+	ModelTarget   string
+	Steps         []string
 	Effectiveness float64
-	Description string
-	Category string
-	Name string
+	Description   string
+	Category      string
+	Name          string
 }
 
 // Validate checks that the TechniqueEntry is valid.
@@ -51,10 +51,10 @@ func (o *TechniqueEntry) Validate() error {
 // SearchOptions represents searchoptions data.
 type SearchOptions struct {
 	Versions []string
-	Limit int
-	Query string
-	Methods []string
-	Tags []string
+	Limit    int
+	Query    string
+	Methods  []string
+	Tags     []string
 }
 
 // Validate checks that the SearchOptions is valid.
@@ -70,6 +70,7 @@ func (o *SearchOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *SearchOptions) Defaults() {
-	if o.Limit == 0 { o.Limit = 50 }
+	if o.Limit == 0 {
+		o.Limit = 50
+	}
 }
-

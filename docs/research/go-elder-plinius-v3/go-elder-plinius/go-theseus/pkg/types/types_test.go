@@ -8,12 +8,12 @@ import (
 
 func TestAgentConfigValidateValid(t *testing.T) {
 	opts := AgentConfig{
-		Model: "gpt-4",
-		MemoryType: "test",
-		Tools: "test",
-		Goals: "test",
+		Model:       "gpt-4",
+		MemoryType:  "test",
+		Tools:       "test",
+		Goals:       "test",
 		Description: "test description",
-		Name: "Test Name",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -26,9 +26,9 @@ func TestAgentConfigValidateEmpty(t *testing.T) {
 
 func TestAgentValidateValid(t *testing.T) {
 	opts := Agent{
-		Status: "test",
+		Status:      "test",
 		CurrentTask: "test",
-		ID: "test-id-123",
+		ID:          "test-id-123",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -41,10 +41,10 @@ func TestAgentValidateEmpty(t *testing.T) {
 
 func TestTaskEntryValidateValid(t *testing.T) {
 	opts := TaskEntry{
-		Result: "test",
-		Status: "test",
+		Result:    "test",
+		Status:    "test",
 		Timestamp: "test",
-		Task: "test",
+		Task:      "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

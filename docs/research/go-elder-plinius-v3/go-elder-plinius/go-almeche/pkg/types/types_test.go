@@ -8,11 +8,11 @@ import (
 
 func TestProcessSpeechOptionsValidateValid(t *testing.T) {
 	opts := ProcessSpeechOptions{
-		AudioData: []byte{1, 2, 3},
-		AudioFormat: "test",
-		SampleRate: 16000,
+		AudioData:    []byte{1, 2, 3},
+		AudioFormat:  "test",
+		SampleRate:   16000,
 		TargetFormat: "test",
-		Material: "PLA",
+		Material:     "PLA",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -34,10 +34,10 @@ func TestProcessSpeechOptionsDefaults(t *testing.T) {
 
 func TestGenerateCADOptionsValidateValid(t *testing.T) {
 	opts := GenerateCADOptions{
-		Description: "test description",
+		Description:  "test description",
 		TargetFormat: "test",
-		Complexity: "test",
-		Material: "PLA",
+		Complexity:   "test",
+		Material:     "PLA",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -64,7 +64,7 @@ func TestExportOptionsDefaults(t *testing.T) {
 
 func TestTextToSpeechOptionsValidateValid(t *testing.T) {
 	opts := TextToSpeechOptions{
-		Text: "test text",
+		Text:    "test text",
 		VoiceID: "test-voiceid-123",
 	}
 	assert.NoError(t, opts.Validate())
@@ -91,10 +91,10 @@ func TestTextToSpeechResultValidateEmpty(t *testing.T) {
 
 func TestMaterialValidateValid(t *testing.T) {
 	opts := Material{
-		Name: "Test Name",
-		Type: "test",
+		Name:         "Test Name",
+		Type:         "test",
 		ColorOptions: "test",
-		Description: "test description",
+		Description:  "test description",
 	}
 	assert.NoError(t, opts.Validate())
 }

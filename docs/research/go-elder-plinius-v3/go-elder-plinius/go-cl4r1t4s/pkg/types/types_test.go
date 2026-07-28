@@ -8,16 +8,16 @@ import (
 
 func TestSystemPromptValidateValid(t *testing.T) {
 	opts := SystemPrompt{
-		Model: "gpt-4",
+		Model:       "gpt-4",
 		ExtractedAt: "test",
-		Category: "test",
-		Company: "OpenAI",
-		ID: "test-id-123",
-		Confidence: 0.95,
-		PromptText: "test prompttext",
-		Product: "ChatGPT",
-		Source: "test",
-		Tags: "test",
+		Category:    "test",
+		Company:     "OpenAI",
+		ID:          "test-id-123",
+		Confidence:  0.95,
+		PromptText:  "test prompttext",
+		Product:     "ChatGPT",
+		Source:      "test",
+		Tags:        "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -30,15 +30,15 @@ func TestSystemPromptValidateEmpty(t *testing.T) {
 
 func TestPromptEntryValidateValid(t *testing.T) {
 	opts := PromptEntry{
-		Category: "test",
-		Company: "OpenAI",
-		ID: "test-id-123",
-		Prompt: "test prompt",
+		Category:   "test",
+		Company:    "OpenAI",
+		ID:         "test-id-123",
+		Prompt:     "test prompt",
 		Confidence: 0.95,
-		Product: "ChatGPT",
-		Date: "test",
-		Source: "test",
-		Tags: "test",
+		Product:    "ChatGPT",
+		Date:       "test",
+		Source:     "test",
+		Tags:       "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -51,11 +51,11 @@ func TestPromptEntryValidateEmpty(t *testing.T) {
 
 func TestSearchOptionsValidateValid(t *testing.T) {
 	opts := SearchOptions{
-		Limit: 10,
-		Categories: "test",
-		Query: "test query",
-		Tags: "test",
-		Companies: "test",
+		Limit:         10,
+		Categories:    "test",
+		Query:         "test query",
+		Tags:          "test",
+		Companies:     "test",
 		MinConfidence: 0.95,
 	}
 	assert.NoError(t, opts.Validate())

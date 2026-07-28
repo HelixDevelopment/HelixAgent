@@ -8,10 +8,10 @@ import (
 
 func TestEmbedOptionsValidateValid(t *testing.T) {
 	opts := EmbedOptions{
-		Method: "test",
-		Secret: []byte{1, 2, 3},
+		Method:   "test",
+		Secret:   []byte{1, 2, 3},
 		Password: "test",
-		Carrier: []byte{1, 2, 3},
+		Carrier:  []byte{1, 2, 3},
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -24,9 +24,9 @@ func TestEmbedOptionsValidateEmpty(t *testing.T) {
 
 func TestExtractOptionsValidateValid(t *testing.T) {
 	opts := ExtractOptions{
-		Carrier: []byte{1, 2, 3},
+		Carrier:  []byte{1, 2, 3},
 		Password: "test",
-		Method: "test",
+		Method:   "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -40,8 +40,8 @@ func TestExtractOptionsValidateEmpty(t *testing.T) {
 func TestStegoMethodValidateValid(t *testing.T) {
 	opts := StegoMethod{
 		Description: "test description",
-		Category: "test",
-		Name: "Test Name",
+		Category:    "test",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -54,9 +54,9 @@ func TestStegoMethodValidateEmpty(t *testing.T) {
 
 func TestExtractResultValidateValid(t *testing.T) {
 	opts := ExtractResult{
-		Secret: []byte{1, 2, 3},
+		Secret:     []byte{1, 2, 3},
 		Confidence: 0.95,
-		Method: "test",
+		Method:     "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

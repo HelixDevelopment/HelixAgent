@@ -8,16 +8,16 @@ import (
 
 func TestUserProfileValidateValid(t *testing.T) {
 	opts := UserProfile{
-		UserID: "test-userid-123",
+		UserID:          "test-userid-123",
 		DiscordUsername: "test",
-		DisplayName: "Test DisplayName",
-		Skills: "test",
-		Languages: "test",
+		DisplayName:     "Test DisplayName",
+		Skills:          "test",
+		Languages:       "test",
 		ExperienceLevel: "test",
-		Bio: "test",
-		GitHubUsername: "test",
-		Availability: "test",
-		Interests: "test",
+		Bio:             "test",
+		GitHubUsername:  "test",
+		Availability:    "test",
+		Interests:       "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -30,14 +30,14 @@ func TestUserProfileValidateEmpty(t *testing.T) {
 
 func TestProjectValidateValid(t *testing.T) {
 	opts := Project{
-		ProjectID: "test-projectid-123",
-		Name: "Test Name",
-		Description: "test description",
-		Status: "test",
-		TechStack: "test",
+		ProjectID:      "test-projectid-123",
+		Name:           "Test Name",
+		Description:    "test description",
+		Status:         "test",
+		TechStack:      "test",
 		RequiredSkills: "test",
-		Difficulty: "test",
-		RepositoryURL: "test",
+		Difficulty:     "test",
+		RepositoryURL:  "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -51,7 +51,7 @@ func TestProjectValidateEmpty(t *testing.T) {
 func TestAuthenticateOptionsValidateValid(t *testing.T) {
 	opts := AuthenticateOptions{
 		DiscordToken: "test",
-		GuildID: "test-guildid-123",
+		GuildID:      "test-guildid-123",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -64,7 +64,7 @@ func TestAuthenticateOptionsValidateEmpty(t *testing.T) {
 
 func TestMatchSkillsOptionsValidateValid(t *testing.T) {
 	opts := MatchSkillsOptions{
-		UserID: "test-userid-123",
+		UserID:       "test-userid-123",
 		SkillFilters: "test",
 	}
 	assert.NoError(t, opts.Validate())
@@ -90,10 +90,10 @@ func TestDiscoverOptionsDefaults(t *testing.T) {
 
 func TestJoinProjectOptionsValidateValid(t *testing.T) {
 	opts := JoinProjectOptions{
-		UserID: "test-userid-123",
+		UserID:    "test-userid-123",
 		ProjectID: "test-projectid-123",
-		Role: "test",
-		Message: "test",
+		Role:      "test",
+		Message:   "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -106,14 +106,14 @@ func TestJoinProjectOptionsValidateEmpty(t *testing.T) {
 
 func TestOnboardOptionsValidateValid(t *testing.T) {
 	opts := OnboardOptions{
-		UserID: "test-userid-123",
-		Skills: "test",
-		Languages: "test",
+		UserID:          "test-userid-123",
+		Skills:          "test",
+		Languages:       "test",
 		ExperienceLevel: "test",
-		Bio: "test",
-		GitHubUsername: "test",
-		Availability: "test",
-		Interests: "test",
+		Bio:             "test",
+		GitHubUsername:  "test",
+		Availability:    "test",
+		Interests:       "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

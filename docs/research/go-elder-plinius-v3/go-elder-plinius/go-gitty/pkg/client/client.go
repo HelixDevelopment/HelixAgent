@@ -13,9 +13,9 @@ package client
 import (
 	"context"
 
+	. "github.com/elder-plinius/go-gitty/pkg/types"
 	"github.com/elder-plinius/go-plinius-common/pkg/config"
 	"github.com/elder-plinius/go-plinius-common/pkg/errors"
-	. "github.com/elder-plinius/go-gitty/pkg/types"
 )
 
 // Client is the Go client for the Gitty service.
@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -96,4 +98,3 @@ func (c *Client) GenerateChangelog(ctx context.Context, commits []string, style 
 	return "", errors.New(errors.ErrCodeUnimplemented, "gitty",
 		"GenerateChangelog requires backend service integration")
 }
-

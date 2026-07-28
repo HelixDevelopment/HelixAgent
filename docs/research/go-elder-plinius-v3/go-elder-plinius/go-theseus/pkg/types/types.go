@@ -9,14 +9,14 @@ import (
 
 // AgentConfig represents agentconfig data.
 type AgentConfig struct {
-	Model string
-	MemoryType string
-	Tools []string
+	Model         string
+	MemoryType    string
+	Tools         []string
 	MaxIterations int
-	Goals []string
-	Description string
-	Budget float64
-	Name string
+	Goals         []string
+	Description   string
+	Budget        float64
+	Name          string
 }
 
 // Validate checks that the AgentConfig is valid.
@@ -35,11 +35,11 @@ func (o *AgentConfig) Validate() error {
 
 // Agent represents agent data.
 type Agent struct {
-	Status string
+	Status      string
 	CurrentTask string
 	TaskHistory []TaskEntry
-	ID string
-	Config AgentConfig
+	ID          string
+	Config      AgentConfig
 }
 
 // Validate checks that the Agent is valid.
@@ -52,11 +52,11 @@ func (o *Agent) Validate() error {
 
 // TaskEntry represents taskentry data.
 type TaskEntry struct {
-	Result string
-	Status string
-	Timestamp string
+	Result     string
+	Status     string
+	Timestamp  string
 	DurationMs int64
-	Task string
+	Task       string
 }
 
 // Validate checks that the TaskEntry is valid.
@@ -69,26 +69,25 @@ func (o *TaskEntry) Validate() error {
 
 // BenchmarkConfig represents benchmarkconfig data.
 type BenchmarkConfig struct {
-	Timeout int
-	Iterations int
+	Timeout      int
+	Iterations   int
 	ChallengeSet string
-	AgentID string
+	AgentID      string
 }
 
 // BenchmarkResult represents benchmarkresult data.
 type BenchmarkResult struct {
-	AvgDurationMs int64
-	Score float64
-	Details []TaskEntry
-	TasksFailed int
+	AvgDurationMs  int64
+	Score          float64
+	Details        []TaskEntry
+	TasksFailed    int
 	TasksCompleted int
-	AgentID string
+	AgentID        string
 }
 
 // ArenaResult represents the result of an arena competition.
 type ArenaResult struct {
 	WinnerID string
-	Scores map[string]float64
-	Details string
+	Scores   map[string]float64
+	Details  string
 }
-

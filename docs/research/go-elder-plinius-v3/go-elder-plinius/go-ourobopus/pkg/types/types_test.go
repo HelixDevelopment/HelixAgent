@@ -9,11 +9,11 @@ import (
 func TestMetaPromptValidateValid(t *testing.T) {
 	opts := MetaPrompt{
 		ReflectionQuestions: "test",
-		Description: "test description",
-		Category: "test",
-		ID: "test-id-123",
-		BasePrompt: "test baseprompt",
-		Name: "Test Name",
+		Description:         "test description",
+		Category:            "test",
+		ID:                  "test-id-123",
+		BasePrompt:          "test baseprompt",
+		Name:                "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -26,9 +26,9 @@ func TestMetaPromptValidateEmpty(t *testing.T) {
 
 func TestIterationResultValidateValid(t *testing.T) {
 	opts := IterationResult{
-		Output: "test",
+		Output:       "test",
 		Improvements: "test",
-		Prompt: "test prompt",
+		Prompt:       "test prompt",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -41,9 +41,9 @@ func TestIterationResultValidateEmpty(t *testing.T) {
 
 func TestRefinementConfigValidateValid(t *testing.T) {
 	opts := RefinementConfig{
-		Model: "gpt-4",
+		Model:              "gpt-4",
 		EvaluationCriteria: "test",
-		InitialPrompt: "test initialprompt",
+		InitialPrompt:      "test initialprompt",
 	}
 	assert.NoError(t, opts.Validate())
 }

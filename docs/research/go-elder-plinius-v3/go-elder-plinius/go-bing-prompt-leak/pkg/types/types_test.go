@@ -8,14 +8,14 @@ import (
 
 func TestLeakEntryValidateValid(t *testing.T) {
 	opts := LeakEntry{
-		ID: "test-id-123",
-		Confidence: 0.95,
-		Date: "test",
-		Version: "test",
-		LeakedContent: "test",
+		ID:               "test-id-123",
+		Confidence:       0.95,
+		Date:             "test",
+		Version:          "test",
+		LeakedContent:    "test",
 		ExtractionMethod: "test",
-		Source: "test",
-		Tags: "test",
+		Source:           "test",
+		Tags:             "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -29,10 +29,10 @@ func TestLeakEntryValidateEmpty(t *testing.T) {
 func TestTechniqueEntryValidateValid(t *testing.T) {
 	opts := TechniqueEntry{
 		ModelTarget: "gpt-4",
-		Steps: "test",
+		Steps:       "test",
 		Description: "test description",
-		Category: "test",
-		Name: "Test Name",
+		Category:    "test",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -46,10 +46,10 @@ func TestTechniqueEntryValidateEmpty(t *testing.T) {
 func TestSearchOptionsValidateValid(t *testing.T) {
 	opts := SearchOptions{
 		Versions: "test",
-		Limit: 10,
-		Query: "test query",
-		Methods: "test",
-		Tags: "test",
+		Limit:    10,
+		Query:    "test query",
+		Methods:  "test",
+		Tags:     "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

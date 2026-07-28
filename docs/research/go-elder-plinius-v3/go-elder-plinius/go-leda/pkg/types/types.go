@@ -9,15 +9,15 @@ import (
 
 // AgentConfig represents agentconfig data.
 type AgentConfig struct {
-	Role string
-	Model string
+	Role         string
+	Model        string
 	Dependencies []string
-	Temperature float64
+	Temperature  float64
 	SystemPrompt string
-	Outputs []string
-	Description string
-	Inputs []string
-	Name string
+	Outputs      []string
+	Description  string
+	Inputs       []string
+	Name         string
 }
 
 // Validate checks that the AgentConfig is valid.
@@ -36,16 +36,18 @@ func (o *AgentConfig) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *AgentConfig) Defaults() {
-	if o.Temperature == 0 { o.Temperature = 0.7 }
+	if o.Temperature == 0 {
+		o.Temperature = 0.7
+	}
 }
 
 // TeamConfig represents teamconfig data.
 type TeamConfig struct {
-	Model string
-	TeamName string
+	Model         string
+	TeamName      string
 	ExecutionMode string
-	Idea string
-	AgentCount int
+	Idea          string
+	AgentCount    int
 }
 
 // Validate checks that the TeamConfig is valid.
@@ -59,27 +61,26 @@ func (o *TeamConfig) Validate() error {
 // GeneratedTeam represents generatedteam data.
 type GeneratedTeam struct {
 	GeneratedScript string
-	TeamName string
-	Timestamp string
-	ExecutionChain []string
-	Agents []AgentConfig
+	TeamName        string
+	Timestamp       string
+	ExecutionChain  []string
+	Agents          []AgentConfig
 }
 
 // ExecutionResult represents executionresult data.
 type ExecutionResult struct {
-	Output string
-	Input string
-	AgentName string
+	Output     string
+	Input      string
+	AgentName  string
 	DurationMs int64
-	Error string
-	Success bool
+	Error      string
+	Success    bool
 }
 
 // ChainResult represents chainresult data.
 type ChainResult struct {
 	TotalDurationMs int64
-	FinalOutput string
-	Results []ExecutionResult
-	Team GeneratedTeam
+	FinalOutput     string
+	Results         []ExecutionResult
+	Team            GeneratedTeam
 }
-

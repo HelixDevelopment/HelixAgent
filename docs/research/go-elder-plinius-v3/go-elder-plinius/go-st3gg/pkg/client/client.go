@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -102,4 +104,3 @@ func (c *Client) CompareMethods(ctx context.Context, carrier []byte, secret []by
 	return nil, errors.New(errors.ErrCodeUnimplemented, "st3gg",
 		"CompareMethods requires backend service integration")
 }
-

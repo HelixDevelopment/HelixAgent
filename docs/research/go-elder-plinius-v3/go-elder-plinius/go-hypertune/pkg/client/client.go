@@ -13,9 +13,9 @@ package client
 import (
 	"context"
 
+	. "github.com/elder-plinius/go-hypertune/pkg/types"
 	"github.com/elder-plinius/go-plinius-common/pkg/config"
 	"github.com/elder-plinius/go-plinius-common/pkg/errors"
-	. "github.com/elder-plinius/go-hypertune/pkg/types"
 )
 
 // Client is the Go client for the HyperTune service.
@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -88,4 +90,3 @@ func (c *Client) SuggestParameters(ctx context.Context, space ParameterSpace, hi
 	return nil, errors.New(errors.ErrCodeUnimplemented, "hypertune",
 		"SuggestParameters requires backend service integration")
 }
-

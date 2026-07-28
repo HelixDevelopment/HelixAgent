@@ -9,10 +9,10 @@ import (
 func TestVerifyRequestValidateValid(t *testing.T) {
 	opts := VerifyRequest{
 		ReferenceSources: "test",
-		Claim: "test",
-		Context: "test",
-		CheckType: "test",
-		SourceModel: "gpt-4",
+		Claim:            "test",
+		Context:          "test",
+		CheckType:        "test",
+		SourceModel:      "gpt-4",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -25,9 +25,9 @@ func TestVerifyRequestValidateEmpty(t *testing.T) {
 
 func TestVerifyResultValidateValid(t *testing.T) {
 	opts := VerifyResult{
-		Claim: "test",
-		Verdict: "test",
-		Confidence: 0.95,
+		Claim:                "test",
+		Verdict:              "test",
+		Confidence:           0.95,
 		SuggestedCorrections: "test",
 	}
 	assert.NoError(t, opts.Validate())

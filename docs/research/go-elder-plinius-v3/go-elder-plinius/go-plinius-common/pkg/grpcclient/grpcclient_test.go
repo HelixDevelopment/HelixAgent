@@ -43,12 +43,12 @@ func TestConnectionNilWhenNotConnected(t *testing.T) {
 
 func TestCalculateBackoff(t *testing.T) {
 	tests := []struct {
-		name     string
-		base     time.Duration
-		max      time.Duration
-		attempt  int
-		minWant  time.Duration
-		maxWant  time.Duration
+		name    string
+		base    time.Duration
+		max     time.Duration
+		attempt int
+		minWant time.Duration
+		maxWant time.Duration
 	}{
 		{"first attempt", time.Second, 30 * time.Second, 1, 750 * time.Millisecond, 1250 * time.Millisecond},
 		{"second attempt", time.Second, 30 * time.Second, 2, 1500 * time.Millisecond, 2500 * time.Millisecond},

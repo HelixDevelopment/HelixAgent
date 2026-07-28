@@ -8,14 +8,14 @@ import (
 
 func TestLeakEntryValidateValid(t *testing.T) {
 	opts := LeakEntry{
-		Model: "gpt-4",
-		ID: "test-id-123",
-		Confidence: 0.95,
-		Date: "test",
+		Model:         "gpt-4",
+		ID:            "test-id-123",
+		Confidence:    0.95,
+		Date:          "test",
 		LeakedContent: "test",
-		LeakType: "test",
-		Source: "test",
-		Tags: "test",
+		LeakType:      "test",
+		Source:        "test",
+		Tags:          "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -28,8 +28,8 @@ func TestLeakEntryValidateEmpty(t *testing.T) {
 
 func TestDetectionOptionsValidateValid(t *testing.T) {
 	opts := DetectionOptions{
-		Response: "test",
-		Model: "gpt-4",
+		Response:        "test",
+		Model:           "gpt-4",
 		KnownSignatures: "test",
 	}
 	assert.NoError(t, opts.Validate())

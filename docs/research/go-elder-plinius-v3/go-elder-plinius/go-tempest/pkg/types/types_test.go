@@ -15,7 +15,7 @@ func TestWeatherDataDefaults(t *testing.T) {
 func TestAugmentOptionsValidateValid(t *testing.T) {
 	opts := AugmentOptions{
 		AugmentationType: "test",
-		Prompt: "test prompt",
+		Prompt:           "test prompt",
 	}
 	assert.NoError(t, opts.Validate())
 }

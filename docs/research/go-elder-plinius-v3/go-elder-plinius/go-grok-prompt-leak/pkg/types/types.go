@@ -9,14 +9,14 @@ import (
 
 // PromptEntry represents promptentry data.
 type PromptEntry struct {
-	Model string
-	ID string
+	Model      string
+	ID         string
 	Confidence float64
 	PromptText string
-	Date string
-	Version string
-	Source string
-	Tags []string
+	Date       string
+	Version    string
+	Source     string
+	Tags       []string
 }
 
 // Validate checks that the PromptEntry is valid.
@@ -32,10 +32,10 @@ func (o *PromptEntry) Validate() error {
 
 // SearchOptions represents searchoptions data.
 type SearchOptions struct {
-	Tags []string
-	Models []string
-	Limit int
-	Query string
+	Tags          []string
+	Models        []string
+	Limit         int
+	Query         string
 	MinConfidence float64
 }
 
@@ -52,6 +52,7 @@ func (o *SearchOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *SearchOptions) Defaults() {
-	if o.Limit == 0 { o.Limit = 50 }
+	if o.Limit == 0 {
+		o.Limit = 50
+	}
 }
-

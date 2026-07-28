@@ -53,9 +53,9 @@ func TestPortConflict_ForeignInstanceOnStandardPortIsNotOurs(t *testing.T) {
 	// Ownership as reported by the container runtime: only ONE of these
 	// containers carries this project's prefix.
 	runningContainers := []string{
-		"helixterm-postgres",      // another project on the shared host
-		"penpot-postgres",         // another project on the shared host
-		"helixagent-postgres",     // OURS
+		"helixterm-postgres",  // another project on the shared host
+		"penpot-postgres",     // another project on the shared host
+		"helixagent-postgres", // OURS
 	}
 
 	if redMode() {

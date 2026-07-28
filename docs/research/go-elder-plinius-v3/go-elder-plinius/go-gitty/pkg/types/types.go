@@ -9,12 +9,12 @@ import (
 
 // CommitOptions represents commitoptions data.
 type CommitOptions struct {
-	Files []string
-	Language string
-	Context string
+	Files     []string
+	Language  string
+	Context   string
 	MaxLength int
-	Style string
-	Diff string
+	Style     string
+	Diff      string
 }
 
 // Validate checks that the CommitOptions is valid.
@@ -27,21 +27,21 @@ func (o *CommitOptions) Validate() error {
 
 // CommitMessage represents commitmessage data.
 type CommitMessage struct {
-	Subject string
-	Emoji string
-	Body string
+	Subject  string
+	Emoji    string
+	Body     string
 	Breaking bool
-	Scope string
-	Type string
+	Scope    string
+	Type     string
 }
 
 // ReviewOptions represents reviewoptions data.
 type ReviewOptions struct {
-	Files []string
-	Language string
+	Files      []string
+	Language   string
 	FocusAreas []string
-	Severity string
-	Diff string
+	Severity   string
+	Diff       string
 }
 
 // Validate checks that the ReviewOptions is valid.
@@ -54,28 +54,28 @@ func (o *ReviewOptions) Validate() error {
 
 // ReviewResult represents reviewresult data.
 type ReviewResult struct {
-	Summary string
-	Issues []Issue
-	Praises []string
+	Summary     string
+	Issues      []Issue
+	Praises     []string
 	Suggestions []Suggestion
-	RiskLevel string
+	RiskLevel   string
 }
 
 // Issue represents issue data.
 type Issue struct {
-	Line int
-	Message string
-	Severity string
-	File string
+	Line       int
+	Message    string
+	Severity   string
+	File       string
 	Suggestion string
 }
 
 // Suggestion represents suggestion data.
 type Suggestion struct {
 	CodeExample string
-	Confidence float64
+	Confidence  float64
 	Description string
-	Category string
+	Category    string
 }
 
 // Validate checks that the Suggestion is valid.
@@ -88,10 +88,10 @@ func (o *Suggestion) Validate() error {
 
 // RepoStats represents repostats data.
 type RepoStats struct {
-	HealthScore float64
-	Languages map[string]float64
-	TotalCommits int
-	Contributors int
+	HealthScore    float64
+	Languages      map[string]float64
+	TotalCommits   int
+	Contributors   int
 	RecentActivity string
 }
 
@@ -100,4 +100,3 @@ func (o *CommitOptions) Defaults() {}
 
 // Defaults applies default values for unset fields.
 func (o *ReviewOptions) Defaults() {}
-

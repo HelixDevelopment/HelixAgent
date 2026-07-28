@@ -9,14 +9,14 @@ import (
 
 // LevelSolution represents levelsolution data.
 type LevelSolution struct {
-	Level int
-	Techniques []string
-	Category string
-	Description string
-	Difficulty string
+	Level            int
+	Techniques       []string
+	Category         string
+	Description      string
+	Difficulty       string
 	SystemPromptLeak string
-	Solutions []string
-	Name string
+	Solutions        []string
+	Name             string
 }
 
 // Validate checks that the LevelSolution is valid.
@@ -33,10 +33,10 @@ func (o *LevelSolution) Validate() error {
 // AdventureSolution represents adventuresolution data.
 type AdventureSolution struct {
 	Description string
-	Adventure string
-	Difficulty string
-	Solutions []string
-	Name string
+	Adventure   string
+	Difficulty  string
+	Solutions   []string
+	Name        string
 }
 
 // Validate checks that the AdventureSolution is valid.
@@ -52,13 +52,13 @@ func (o *AdventureSolution) Validate() error {
 
 // PromptLeak represents promptleak data.
 type PromptLeak struct {
-	Model string
-	Date string
-	LeakedContent string
-	ID string
+	Model            string
+	Date             string
+	LeakedContent    string
+	ID               string
 	ExtractionMethod string
-	Source string
-	Confidence float64
+	Source           string
+	Confidence       float64
 }
 
 // Validate checks that the PromptLeak is valid.
@@ -74,11 +74,11 @@ func (o *PromptLeak) Validate() error {
 
 // SearchOptions represents searchoptions data.
 type SearchOptions struct {
-	Query string
+	Query      string
 	Techniques []string
 	Difficulty string
-	Levels []int
-	Limit int
+	Levels     []int
+	Limit      int
 	Categories []string
 }
 
@@ -95,15 +95,16 @@ func (o *SearchOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *SearchOptions) Defaults() {
-	if o.Limit == 0 { o.Limit = 50 }
+	if o.Limit == 0 {
+		o.Limit = 50
+	}
 }
 
 // ArchiveStats represents archivestats data.
 type ArchiveStats struct {
-	Techniques []string
+	Techniques      []string
 	TotalAdventures int
-	TotalLeaks int
-	Categories []string
-	TotalLevels int
+	TotalLeaks      int
+	Categories      []string
+	TotalLevels     int
 }
-

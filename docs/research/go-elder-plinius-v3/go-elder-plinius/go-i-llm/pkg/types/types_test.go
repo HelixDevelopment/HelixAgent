@@ -9,12 +9,12 @@ import (
 func TestConversationPatternValidateValid(t *testing.T) {
 	opts := ConversationPattern{
 		Description: "test description",
-		Category: "test",
-		Template: "test",
-		ID: "test-id-123",
-		Variables: "test",
-		Example: "test",
-		Name: "Test Name",
+		Category:    "test",
+		Template:    "test",
+		ID:          "test-id-123",
+		Variables:   "test",
+		Example:     "test",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -27,8 +27,8 @@ func TestConversationPatternValidateEmpty(t *testing.T) {
 
 func TestAgentConfigValidateValid(t *testing.T) {
 	opts := AgentConfig{
-		Model: "gpt-4",
-		Name: "Test Name",
+		Model:        "gpt-4",
+		Name:         "Test Name",
 		SystemPrompt: "test systemprompt",
 	}
 	assert.NoError(t, opts.Validate())
@@ -49,9 +49,9 @@ func TestAgentConfigDefaults(t *testing.T) {
 
 func TestToolValidateValid(t *testing.T) {
 	opts := Tool{
-		Parameters: "test",
+		Parameters:  "test",
 		Description: "test description",
-		Name: "Test Name",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -65,9 +65,9 @@ func TestToolValidateEmpty(t *testing.T) {
 func TestPromptChainValidateValid(t *testing.T) {
 	opts := PromptChain{
 		Description: "test description",
-		Category: "test",
-		ID: "test-id-123",
-		Name: "Test Name",
+		Category:    "test",
+		ID:          "test-id-123",
+		Name:        "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -81,9 +81,9 @@ func TestPromptChainValidateEmpty(t *testing.T) {
 func TestChainStepValidateValid(t *testing.T) {
 	opts := ChainStep{
 		PromptTemplate: "test prompttemplate",
-		Condition: "test",
-		OutputKey: "test",
-		Name: "Test Name",
+		Condition:      "test",
+		OutputKey:      "test",
+		Name:           "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }

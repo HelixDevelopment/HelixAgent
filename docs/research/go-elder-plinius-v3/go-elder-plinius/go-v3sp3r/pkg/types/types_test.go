@@ -8,8 +8,8 @@ import (
 
 func TestCommandRequestValidateValid(t *testing.T) {
 	opts := CommandRequest{
-		Context: "test",
-		SafetyLevel: "test",
+		Context:         "test",
+		SafetyLevel:     "test",
 		NaturalLanguage: "test",
 	}
 	assert.NoError(t, opts.Validate())
@@ -24,8 +24,8 @@ func TestCommandRequestValidateEmpty(t *testing.T) {
 func TestCommandResultValidateValid(t *testing.T) {
 	opts := CommandResult{
 		SafetyWarning: "test",
-		Description: "test description",
-		Command: "test",
+		Description:   "test description",
+		Command:       "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

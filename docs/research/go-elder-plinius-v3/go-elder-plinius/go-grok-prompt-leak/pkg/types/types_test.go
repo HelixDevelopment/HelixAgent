@@ -8,14 +8,14 @@ import (
 
 func TestPromptEntryValidateValid(t *testing.T) {
 	opts := PromptEntry{
-		Model: "gpt-4",
-		ID: "test-id-123",
+		Model:      "gpt-4",
+		ID:         "test-id-123",
 		Confidence: 0.95,
 		PromptText: "test prompttext",
-		Date: "test",
-		Version: "test",
-		Source: "test",
-		Tags: "test",
+		Date:       "test",
+		Version:    "test",
+		Source:     "test",
+		Tags:       "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -28,10 +28,10 @@ func TestPromptEntryValidateEmpty(t *testing.T) {
 
 func TestSearchOptionsValidateValid(t *testing.T) {
 	opts := SearchOptions{
-		Tags: "test",
-		Models: "gpt-4",
-		Limit: 10,
-		Query: "test query",
+		Tags:          "test",
+		Models:        "gpt-4",
+		Limit:         10,
+		Query:         "test query",
 		MinConfidence: 0.95,
 	}
 	assert.NoError(t, opts.Validate())

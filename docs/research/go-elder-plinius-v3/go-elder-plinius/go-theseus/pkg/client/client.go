@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -88,4 +90,3 @@ func (c *Client) ArenaCompete(ctx context.Context, agentIDs []string, challenge 
 	return nil, errors.New(errors.ErrCodeUnimplemented, "theseus",
 		"ArenaCompete requires backend service integration")
 }
-

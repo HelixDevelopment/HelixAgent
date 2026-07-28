@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -80,4 +82,3 @@ func (c *Client) GetLocations(ctx context.Context) ([]string, error) {
 	return nil, errors.New(errors.ErrCodeUnimplemented, "tempest",
 		"GetLocations requires backend service integration")
 }
-

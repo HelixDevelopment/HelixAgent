@@ -8,14 +8,14 @@ import (
 
 func TestAgentConfigValidateValid(t *testing.T) {
 	opts := AgentConfig{
-		Role: "test",
-		Model: "gpt-4",
+		Role:         "test",
+		Model:        "gpt-4",
 		Dependencies: "test",
 		SystemPrompt: "test systemprompt",
-		Outputs: "test",
-		Description: "test description",
-		Inputs: "test",
-		Name: "Test Name",
+		Outputs:      "test",
+		Description:  "test description",
+		Inputs:       "test",
+		Name:         "Test Name",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -36,10 +36,10 @@ func TestAgentConfigDefaults(t *testing.T) {
 
 func TestTeamConfigValidateValid(t *testing.T) {
 	opts := TeamConfig{
-		Model: "gpt-4",
-		TeamName: "Test TeamName",
+		Model:         "gpt-4",
+		TeamName:      "Test TeamName",
 		ExecutionMode: "test",
-		Idea: "test",
+		Idea:          "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

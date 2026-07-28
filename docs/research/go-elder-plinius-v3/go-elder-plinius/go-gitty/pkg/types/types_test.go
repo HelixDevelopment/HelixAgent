@@ -8,11 +8,11 @@ import (
 
 func TestCommitOptionsValidateValid(t *testing.T) {
 	opts := CommitOptions{
-		Files: "test",
+		Files:    "test",
 		Language: "test",
-		Context: "test",
-		Style: "test",
-		Diff: "test",
+		Context:  "test",
+		Style:    "test",
+		Diff:     "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -25,11 +25,11 @@ func TestCommitOptionsValidateEmpty(t *testing.T) {
 
 func TestReviewOptionsValidateValid(t *testing.T) {
 	opts := ReviewOptions{
-		Files: "test",
-		Language: "test",
+		Files:      "test",
+		Language:   "test",
 		FocusAreas: "test",
-		Severity: "test",
-		Diff: "test",
+		Severity:   "test",
+		Diff:       "test",
 	}
 	assert.NoError(t, opts.Validate())
 }
@@ -43,9 +43,9 @@ func TestReviewOptionsValidateEmpty(t *testing.T) {
 func TestSuggestionValidateValid(t *testing.T) {
 	opts := Suggestion{
 		CodeExample: "test",
-		Confidence: 0.95,
+		Confidence:  0.95,
 		Description: "test description",
-		Category: "test",
+		Category:    "test",
 	}
 	assert.NoError(t, opts.Validate())
 }

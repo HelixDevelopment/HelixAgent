@@ -9,13 +9,13 @@ import (
 
 // ProcessSpeechOptions represents processspeechoptions data.
 type ProcessSpeechOptions struct {
-	AudioData []byte
-	AudioFormat string
-	SampleRate int
-	TargetFormat string
+	AudioData       []byte
+	AudioFormat     string
+	SampleRate      int
+	TargetFormat    string
 	IncludeEstimate bool
-	Material string
-	Scale float64
+	Material        string
+	Scale           float64
 }
 
 // Validate checks that the ProcessSpeechOptions is valid.
@@ -31,17 +31,19 @@ func (o *ProcessSpeechOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *ProcessSpeechOptions) Defaults() {
-	if o.Scale == 0 { o.Scale = 1.0 }
+	if o.Scale == 0 {
+		o.Scale = 1.0
+	}
 }
 
 // GenerateCADOptions represents generatecadoptions data.
 type GenerateCADOptions struct {
-	Description string
-	TargetFormat string
-	Complexity string
+	Description     string
+	TargetFormat    string
+	Complexity      string
 	IncludeEstimate bool
-	Material string
-	Scale float64
+	Material        string
+	Scale           float64
 }
 
 // Validate checks that the GenerateCADOptions is valid.
@@ -54,19 +56,21 @@ func (o *GenerateCADOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *GenerateCADOptions) Defaults() {
-	if o.Scale == 0 { o.Scale = 1.0 }
+	if o.Scale == 0 {
+		o.Scale = 1.0
+	}
 }
 
 // GenerateCADResult represents generatecadresult data.
 type GenerateCADResult struct {
-	CADPrompt string
-	ModelData []byte
-	ModelFormat string
-	DimensionsMM []float64
-	VolumeCM3 float64
-	FaceCount int
+	CADPrompt             string
+	ModelData             []byte
+	ModelFormat           string
+	DimensionsMM          []float64
+	VolumeCM3             float64
+	FaceCount             int
 	EstimatedPrintTimeMin float64
-	CostEstimate *CostEstimate
+	CostEstimate          *CostEstimate
 }
 
 // Validate checks that the GenerateCADResult is valid.
@@ -81,19 +85,19 @@ func (o *GenerateCADResult) Validate() error {
 type CostEstimate struct {
 	MaterialWeightG float64
 	MaterialCostUSD float64
-	PrintTimeMin float64
-	TotalCostUSD float64
+	PrintTimeMin    float64
+	TotalCostUSD    float64
 }
 
 // ExportOptions represents exportoptions data.
 type ExportOptions struct {
-	ModelData []byte
+	ModelData    []byte
 	SourceFormat string
 	TargetFormat string
-	Binary bool
-	Precision int
-	Scale float64
-	RotationDeg []float64
+	Binary       bool
+	Precision    int
+	Scale        float64
+	RotationDeg  []float64
 }
 
 // Validate checks that the ExportOptions is valid.
@@ -106,21 +110,23 @@ func (o *ExportOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *ExportOptions) Defaults() {
-	if o.Scale == 0 { o.Scale = 1.0 }
+	if o.Scale == 0 {
+		o.Scale = 1.0
+	}
 }
 
 // ExportResult represents exportresult data.
 type ExportResult struct {
 	ExportedData []byte
 	TargetFormat string
-	FileSize int64
+	FileSize     int64
 }
 
 // TextToSpeechOptions represents texttospeechoptions data.
 type TextToSpeechOptions struct {
-	Text string
+	Text    string
 	VoiceID string
-	Speed float64
+	Speed   float64
 }
 
 // Validate checks that the TextToSpeechOptions is valid.
@@ -136,12 +142,14 @@ func (o *TextToSpeechOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *TextToSpeechOptions) Defaults() {
-	if o.Speed == 0 { o.Speed = 1.0 }
+	if o.Speed == 0 {
+		o.Speed = 1.0
+	}
 }
 
 // TextToSpeechResult represents texttospeechresult data.
 type TextToSpeechResult struct {
-	AudioData []byte
+	AudioData   []byte
 	DurationSec float64
 }
 
@@ -155,14 +163,14 @@ func (o *TextToSpeechResult) Validate() error {
 
 // Material represents material data.
 type Material struct {
-	Name string
-	Type string
-	DensityGCM3 float64
-	CostPerKGUSD float64
-	MinLayerHeightMM float64
-	MaxTempC float64
-	ColorOptions string
-	Description string
+	Name               string
+	Type               string
+	DensityGCM3        float64
+	CostPerKGUSD       float64
+	MinLayerHeightMM   float64
+	MaxTempC           float64
+	ColorOptions       string
+	Description        string
 	SupportsMulticolor bool
 }
 
@@ -179,8 +187,8 @@ func (o *Material) Validate() error {
 
 // EstimateOptions represents estimateoptions data.
 type EstimateOptions struct {
-	VolumeCM3 float64
-	Material string
+	VolumeCM3     float64
+	Material      string
 	InfillPercent float64
 	LayerHeightMM float64
 }
@@ -198,16 +206,19 @@ func (o *EstimateOptions) Validate() error {
 
 // Defaults applies default values for unset fields.
 func (o *EstimateOptions) Defaults() {
-	if o.InfillPercent == 0 { o.InfillPercent = 20 }
-	if o.LayerHeightMM == 0 { o.LayerHeightMM = 0.2 }
+	if o.InfillPercent == 0 {
+		o.InfillPercent = 20
+	}
+	if o.LayerHeightMM == 0 {
+		o.LayerHeightMM = 0.2
+	}
 }
 
 // EstimateResult represents estimateresult data.
 type EstimateResult struct {
-	MaterialWeightG float64
-	MaterialCostUSD float64
-	PrintTimeMin float64
+	MaterialWeightG    float64
+	MaterialCostUSD    float64
+	PrintTimeMin       float64
 	ElectricityCostUSD float64
-	TotalCostUSD float64
+	TotalCostUSD       float64
 }
-

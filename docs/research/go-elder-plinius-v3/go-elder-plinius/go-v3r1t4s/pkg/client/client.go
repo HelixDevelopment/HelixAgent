@@ -45,7 +45,9 @@ func NewFromConfig(cfg *config.Config) (*Client, error) {
 
 // Close gracefully closes the client.
 func (c *Client) Close() error {
-	if c.closed { return nil }
+	if c.closed {
+		return nil
+	}
 	c.closed = true
 	return nil
 }
@@ -91,4 +93,3 @@ func (c *Client) BatchVerify(ctx context.Context, claims []string) ([]VerifyResu
 	return nil, errors.New(errors.ErrCodeUnimplemented, "v3r1t4s",
 		"BatchVerify requires backend service integration")
 }
-

@@ -9,16 +9,16 @@ import (
 
 // StoryConfig represents storyconfig data.
 type StoryConfig struct {
-	Characters []CharacterConfig
-	Setting string
-	Theme string
-	Genre string
-	Title string
-	Tone string
-	PlotPoints []string
+	Characters          []CharacterConfig
+	Setting             string
+	Theme               string
+	Genre               string
+	Title               string
+	Tone                string
+	PlotPoints          []string
 	WordCountPerChapter int
-	TargetAudience string
-	ChapterCount int
+	TargetAudience      string
+	ChapterCount        int
 }
 
 // Validate checks that the StoryConfig is valid.
@@ -31,12 +31,12 @@ func (o *StoryConfig) Validate() error {
 
 // CharacterConfig represents characterconfig data.
 type CharacterConfig struct {
-	Role string
-	Arc string
-	Motivation string
+	Role        string
+	Arc         string
+	Motivation  string
 	Description string
-	Name string
-	Traits []string
+	Name        string
+	Traits      []string
 }
 
 // Validate checks that the CharacterConfig is valid.
@@ -52,10 +52,10 @@ func (o *CharacterConfig) Validate() error {
 
 // Story represents story data.
 type Story struct {
-	Metadata StoryMetadata
-	Title string
+	Metadata   StoryMetadata
+	Title      string
 	Characters []Character
-	Chapters []Chapter
+	Chapters   []Chapter
 }
 
 // Validate checks that the Story is valid.
@@ -68,22 +68,22 @@ func (o *Story) Validate() error {
 
 // StoryMetadata represents storymetadata data.
 type StoryMetadata struct {
-	Tone string
-	Setting string
-	GeneratedAt string
-	Theme string
+	Tone           string
+	Setting        string
+	GeneratedAt    string
+	Theme          string
 	TotalWordCount int
-	Genre string
+	Genre          string
 }
 
 // Chapter represents chapter data.
 type Chapter struct {
-	Summary string
+	Summary   string
 	WordCount int
-	Content string
-	Scenes []Scene
-	Title string
-	Number int
+	Content   string
+	Scenes    []Scene
+	Title     string
+	Number    int
 }
 
 // Validate checks that the Chapter is valid.
@@ -96,20 +96,20 @@ func (o *Chapter) Validate() error {
 
 // Scene represents scene data.
 type Scene struct {
-	Mood string
-	Setting string
-	Content string
+	Mood       string
+	Setting    string
+	Content    string
 	Characters []string
-	Number int
+	Number     int
 }
 
 // Character represents character data.
 type Character struct {
-	Role string
+	Role        string
 	Description string
-	Traits []string
+	Traits      []string
 	Development string
-	Name string
+	Name        string
 }
 
 // Validate checks that the Character is valid.
@@ -126,19 +126,18 @@ func (o *Character) Validate() error {
 // PlotArc represents plotarc data.
 type PlotArc struct {
 	FallingAction []string
-	Climax string
-	Resolution string
-	RisingAction []string
-	Exposition string
+	Climax        string
+	Resolution    string
+	RisingAction  []string
+	Exposition    string
 }
 
 // StoryAnalysis represents a structural analysis of a generated story.
 type StoryAnalysis struct {
-	WordCount int
+	WordCount    int
 	ChapterCount int
-	Themes []string
-	Pacing string
-	Strengths []string
-	Weaknesses []string
+	Themes       []string
+	Pacing       string
+	Strengths    []string
+	Weaknesses   []string
 }
-

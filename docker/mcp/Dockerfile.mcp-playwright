@@ -16,10 +16,18 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends socat netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
+# LAYOUT: the pinned submodule (microsoft/playwright-mcp @ v0.0.77) is a FLAT
+# repo — cli.js, index.js and package.json sit at the repo root and there is NO
+# packages/ directory. An earlier revision bind-mounted and COPYd
+# packages/playwright-mcp/{package.json,cli.js}, a MONOREPO layout this version
+# does not have, so every build died with:
+#   resolving mountpoints ... sanitizing bind subdirectory
+#   ".../packages/playwright-mcp/package.json": no such file or directory
+# and helixagent retried it on every start. Verified 2026-07-28 against the
+# checked-out tree (`ls` shows no packages/, package.json + cli.js at root).
 RUN --mount=type=cache,target=/root/.npm,sharing=locked,id=npm-cache \
     --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=package-lock.json,target=package-lock.json \
-    --mount=type=bind,source=packages/playwright-mcp/package.json,target=packages/playwright-mcp/package.json \
   npm ci --omit=dev && \
   npx -y playwright-core install-deps chromium
 
@@ -34,7 +42,9 @@ ENV PLAYWRIGHT_MCP_OUTPUT_DIR=/tmp/playwright-output
 
 RUN chown -R ${USERNAME}:${USERNAME} node_modules
 COPY --from=browser --chown=${USERNAME}:${USERNAME} ${PLAYWRIGHT_BROWSERS_PATH} ${PLAYWRIGHT_BROWSERS_PATH}
-COPY --chown=${USERNAME}:${USERNAME} packages/playwright-mcp/cli.js packages/playwright-mcp/package.json ./
+# Flat layout (see the LAYOUT note above): cli.js and package.json are at the
+# repo root in v0.0.77, NOT under packages/playwright-mcp/.
+COPY --chown=${USERNAME}:${USERNAME} cli.js package.json ./
 
 # Entrypoint as root (need to write /entrypoint.sh) then drop privs.
 RUN echo '#!/bin/sh' > /entrypoint.sh && \

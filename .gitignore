@@ -92,6 +92,14 @@ run_sonar.sh
 reports/metrics-snapshots/
 reports/coverage-floor/
 
+# Per-run latency stress output (HXC-165). The committed reference baseline
+# reports/latency/p99-baseline-2026-03-16.txt stays tracked and read-only;
+# only the per-run measurements below are excluded.
+# Regeneration (§11.4.77): pure test output — nothing builds, runs or tests
+# against it. Recreate with:
+#   go test -run '^TestExtremeP99LatencyBaseline$' ./tests/stress/
+reports/latency/runs/
+
 # CI generated reports
 reports/go/
 reports/mobile/

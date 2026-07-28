@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -492,34 +490,18 @@ func TestExtremeP99LatencyBaseline(t *testing.T) {
 	t.Logf("  P99:  %v", p99)
 	t.Logf("  Max:  %v", maxLatency)
 
-	// Write report
-	reportDir := filepath.Join("..", "..", "reports", "latency")
-	err := os.MkdirAll(reportDir, 0o750)
-	if err != nil {
-		t.Logf("Warning: could not create report dir: %v", err)
-	} else {
-		reportContent := fmt.Sprintf(
-			"P99 Latency Baseline Report\n"+
-				"===========================\n"+
-				"Date: 2026-03-16\n"+
-				"Samples: %d\n"+
-				"Min: %v\n"+
-				"Mean: %v\n"+
-				"P50: %v\n"+
-				"P90: %v\n"+
-				"P99: %v\n"+
-				"Max: %v\n",
-			sampleSize, minLatency, mean, p50, p90, p99, maxLatency,
-		)
-
-		reportPath := filepath.Join(reportDir, "p99-baseline-2026-03-16.txt")
-		writeErr := os.WriteFile(reportPath, []byte(reportContent), 0o600)
-		if writeErr != nil {
-			t.Logf("Warning: could not write report: %v", writeErr)
-		} else {
-			t.Logf("Report written to %s", reportPath)
-		}
-	}
+	// Write this run's report to the gitignored runs directory. HXC-165: this
+	// must never write over reports/latency/p99-baseline-2026-03-16.txt, which
+	// is the tracked reference baseline and is read-only for tests.
+	writeLatencyRunReport(t, latencyStats{
+		Samples: sampleSize,
+		Min:     minLatency,
+		Mean:    mean,
+		P50:     p50,
+		P90:     p90,
+		P99:     p99,
+		Max:     maxLatency,
+	})
 
 	// Sanity assertions on latency
 	assert.Less(t, p99, 100*time.Millisecond,

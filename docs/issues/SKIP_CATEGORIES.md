@@ -26,6 +26,9 @@ category entry, not reuse of an ill-fitting one.
   port isn't available on the host.
 - `#requires-network` — Test makes outbound network calls and skips in
   airgapped environments.
+- `#requires-reference-baseline` — Test hashes a committed reference
+  baseline artefact to prove a run did not overwrite it, and skips when
+  that artefact is absent from the checkout. Added for HXC-165.
 
 ## Mode selectors (runtime mode disables the test)
 

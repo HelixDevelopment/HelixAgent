@@ -470,16 +470,35 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 
 	// Health endpoints
 	//
-	// Both include an explicit "service":"helixagent" identity field (§11.4.111
-	// resolve-by-stable-identity, not by port/ordinal). testutil.ServerAvailable
-	// already PREFERS this field when present (internal/testutil/infra.go)
-	// because a bare {"status":"healthy"} payload is generic: this repo's own
-	// mock LLM server (challenges/codebase/mock_server/main.go) answers 200
-	// with EXACTLY that shape on /health while also serving /v1/chat/completions
-	// with fabricated replies, so a HELIXAGENT_HOST/PORT pointed at the mock
-	// would otherwise satisfy the availability gate and let tests run — and
-	// PASS — against the mock instead of the real server. Emitting the
-	// identity field here closes that false-GREEN vector at the source.
+	// Both carry an explicit "service":"helixagent" identity field (§11.4.111
+	// resolve-by-stable-identity, not by port/ordinal), and /v1/health
+	// additionally emits a "providers" key — which is the field that actually
+	// gates availability. Keep emitting BOTH.
+	//
+	// HISTORY — do not re-derive (§11.4.6): commit 3d96b4cf added the "service"
+	// field and claimed that doing so "closes that false-GREEN vector at the
+	// source". Commit 0367570e established verbatim that "that claim was
+	// INCORRECT", and it must not be relied upon: checkHelixAgentHealth still
+	// fell back to accepting any bare {"status":"healthy"} body when no
+	// "service" field was present, and this repo's own mock LLM server
+	// (challenges/codebase/mock_server/main.go) answers /health with EXACTLY
+	// that shape and NO service field while also serving
+	// /v1/chat/completions with fabricated replies — so a
+	// HELIXAGENT_HOST/PORT pointed at the mock still satisfied the
+	// availability gate, and tests would run, and PASS, against the mock
+	// instead of the real server.
+	//
+	// What actually closes the vector lives in the CONSUMER, not here:
+	// testutil.checkHelixAgentHealth (internal/testutil/infra.go) probes
+	// /v1/health and REQUIRES the "providers" key, rejecting any payload
+	// lacking it regardless of "status" or "service". The mock registers no
+	// /v1/health handler at all, so it 404s and is rejected. The "service"
+	// field is only a refinement applied AFTER that mandatory gate.
+	//
+	// CONSEQUENCE: do NOT weaken checkHelixAgentHealth's "providers"
+	// requirement on the premise that emitting "service" here is sufficient —
+	// that premise is the refuted claim above, and acting on it reopens the
+	// mock-matching false-GREEN vector.
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "healthy", "service": "helixagent"})
 	})

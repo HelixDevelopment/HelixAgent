@@ -498,24 +498,44 @@ func (r *DebateLogRepository) StartCleanupWorker(ctx context.Context, interval t
 				// either channel), so ctx can be cancelled and a new tick
 				// can arrive together WHILE it is parked, letting the
 				// random pick land on ticker.C anyway. Re-checking ctx.Done()
-				// here narrows that window to a benign, unobservable race:
-				// under Go's async goroutine preemption (>=1.14) this
-				// goroutine can still be preempted between this re-check and
-				// the CleanupExpiredLogs call below while a cancellation
-				// lands, so no select-based implementation can make the
-				// window provably zero-width. What this re-check DOES
-				// deliver: cancellation observed at this final decision
-				// point always wins (the goroutine returns instead of
-				// calling CleanupExpiredLogs); any cancellation landing
-				// strictly AFTER this check is, to every caller, indistinguishable
-				// from a cancellation that lands immediately after
-				// CleanupExpiredLogs already returned — a race the fix does
-				// not need to close because it is not observable as a defect.
-				// It is THIS re-check, not the priority pre-check above (which
-				// only helps when ctx is already cancelled BEFORE the loop
-				// iteration begins), that provides the guarantee in the
-				// general case where ctx is cancelled WHILE the select is
-				// parked.
+				// here narrows, but does NOT close, that window: under Go's
+				// async goroutine preemption (>=1.14) this goroutine can
+				// still be preempted between this re-check and the
+				// CleanupExpiredLogs call below while a cancellation lands,
+				// so no select-based implementation can make the window
+				// provably zero-width. What this re-check DOES deliver:
+				// cancellation observed AT THIS CHECK always wins (the
+				// goroutine returns instead of calling CleanupExpiredLogs).
+				//
+				// CORRECTED (2026-07-28, §11.4.194 code review): a prior
+				// revision of this comment called the residual window
+				// "unobservable" and "not observable as a defect" — that
+				// claim was WRONG, and directly contradicted by
+				// cleanupCalledOnCancelledCtx (see its field doc comment and
+				// the top of CleanupExpiredLogs below), which is INCREMENTED
+				// exactly when a cancellation lands in this window: this
+				// counter is the §11.4.108 runtime signature that DOES
+				// observe it. What is actually true is narrower and more
+				// honest: a cancellation landing strictly AFTER this check
+				// produces NO EXTERNALLY-VISIBLE side effect distinguishable
+				// from a cancellation that instead landed immediately after
+				// CleanupExpiredLogs already returned — no wrong data is
+				// written, no crash occurs, and the worker still returns on
+				// its very next loop iteration. That is why this residual
+				// race is NOT a defect the fix needs to close. It is,
+				// however, real and internally observable via the counter,
+				// which is precisely why
+				// TestDebateLogRepository_StartCleanupWorker_SelectPriorityRace's
+				// standing GREEN assertion must NOT be built by racing
+				// cancellation against this window (a cancel-AFTER-start
+				// hammer can legitimately increment the counter with no
+				// regression present) — see that test's doc comment for the
+				// deterministic construction it uses instead. It is THIS
+				// re-check, not the priority pre-check above (which only
+				// helps when ctx is already cancelled BEFORE the loop
+				// iteration begins), that provides the return-instead-of-
+				// cleanup guarantee in the general case where ctx is
+				// cancelled WHILE the select is parked.
 				select {
 				case <-ctx.Done():
 					r.log.Info("Stopping debate log cleanup worker")

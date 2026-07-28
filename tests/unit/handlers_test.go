@@ -337,6 +337,31 @@ func TestCompletionHandler_Models(t *testing.T) {
 	// Check that models array contains expected models
 	models := response["data"].([]interface{})
 	assert.Greater(t, len(models), 0)
+
+	// Bind the assertion to the SPECIFIC data this test's own fixture wires
+	// in (fakeModelSourceProvider, registered above as "fake-test-provider"
+	// with SupportedModels ["fake-test-model-1"]), not to a generic
+	// non-empty check. A handler that fabricated ANY hardcoded model list —
+	// exactly the CONST-036 "hardcoded model list" anti-pattern this
+	// project's governance forbids (see BLUFF-002 in CLAUDE.md) — would also
+	// satisfy `assert.NotEmpty` / `assert.Greater(len, 0)`, so those alone do
+	// not prove the models actually came from the registered fake provider.
+	foundFakeModel := false
+	for _, m := range models {
+		entry, ok := m.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if entry["id"] == "fake-test-model-1" {
+			foundFakeModel = true
+			assert.Equal(t, "fake-test-provider", entry["owned_by"],
+				"model %q must be attributed to the fake provider it was registered under, per Models()'s dedupKey := providerName + \"/\" + modelID / owned_by: providerName wiring", entry["id"])
+			break
+		}
+	}
+	assert.Truef(t, foundFakeModel,
+		"expected the returned model list to contain the fixture's own model id %q (owned_by %q) — its absence means the response is NOT actually sourced from the registered fake provider",
+		"fake-test-model-1", "fake-test-provider")
 }
 
 func TestCompletionHandler_Stream(t *testing.T) {

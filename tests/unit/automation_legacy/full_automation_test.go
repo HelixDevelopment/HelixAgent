@@ -13,8 +13,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"dev.helix.agent/internal/testutil"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -33,6 +31,7 @@ import (
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/handlers"
 	"dev.helix.agent/internal/services"
+	"dev.helix.agent/internal/testutil"
 	"digital.vasic.toolschema"
 
 	"go.uber.org/goleak"

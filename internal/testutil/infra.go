@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -50,7 +51,28 @@ type InfraConfig struct {
 // docs/development/port-registry.md). Prior defaults targeted the
 // legacy 7061 / 15432 / 6379 / 18081 ports, which caused every
 // server-dependent e2e test to skip against a running binary.
+//
+// HELIXAGENT_URL precedence (M5, 2026-07-28): several test suites
+// (tests/unit/cli_agent_legacy/cli_agent_test.go's cliAgentTestBaseURL,
+// tests/integration/protocol_comprehensive_integration_test.go's 5+
+// call sites) read HELIXAGENT_URL directly as an operator override and use
+// it AS-IS as the server base URL — while ServerHost/ServerPort (and
+// therefore ServerAvailable / RequireServer's availability GATE, and every
+// suite that resolves its base URL via ServerURL()) only ever looked at
+// HELIXAGENT_HOST/HELIXAGENT_PORT. An operator who exported ONLY
+// HELIXAGENT_URL got silently ignored by the gate and by ServerURL()-based
+// suites while the other suites honoured it — a split env-variable
+// contract. HELIXAGENT_URL, when set, is now parsed here into ServerHost/
+// ServerPort too, so the availability gate probes the SAME host/port every
+// suite's base URL resolves to, regardless of which of the two env vars the
+// operator set.
 func DefaultInfraConfig() InfraConfig {
+	serverHost := envOr("HELIXAGENT_HOST", "localhost")
+	serverPort := envOr("HELIXAGENT_PORT", "8100") // HELIXAGENT_PORT_HTTP
+	if h, p, ok := splitHelixAgentURL(os.Getenv("HELIXAGENT_URL")); ok {
+		serverHost, serverPort = h, p
+	}
+
 	return InfraConfig{
 		PostgresHost: envOr("DB_HOST", "localhost"),
 		PostgresPort: envOr("DB_PORT", "8109"), // HELIXAGENT_PORT_POSTGRES_TEST
@@ -58,9 +80,44 @@ func DefaultInfraConfig() InfraConfig {
 		RedisPort:    envOr("REDIS_PORT", "8110"), // HELIXAGENT_PORT_REDIS_MCP
 		MockLLMHost:  envOr("MOCK_LLM_HOST", "localhost"),
 		MockLLMPort:  envOr("MOCK_LLM_PORT", "8106"), // HELIXAGENT_PORT_MOCK_LLM
-		ServerHost:   envOr("HELIXAGENT_HOST", "localhost"),
-		ServerPort:   envOr("HELIXAGENT_PORT", "8100"), // HELIXAGENT_PORT_HTTP
+		ServerHost:   serverHost,
+		ServerPort:   serverPort,
 	}
+}
+
+// splitHelixAgentURL parses rawURL (as given via HELIXAGENT_URL) into a
+// host + port pair. rawURL may omit its scheme (e.g. "localhost:9999"); a
+// missing "://" is treated as "http://<rawURL>" before parsing. A URL with
+// no explicit port defaults to 443 for https and 80 otherwise, matching
+// standard HTTP-client behaviour. Returns ok=false for an empty or
+// unparsable input, in which case the caller's existing
+// HELIXAGENT_HOST/HELIXAGENT_PORT-derived defaults apply unchanged.
+func splitHelixAgentURL(rawURL string) (host, port string, ok bool) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", "", false
+	}
+
+	parseable := rawURL
+	if !strings.Contains(parseable, "://") {
+		parseable = "http://" + parseable
+	}
+
+	u, err := url.Parse(parseable)
+	if err != nil || u.Hostname() == "" {
+		return "", "", false
+	}
+
+	host = u.Hostname()
+	port = u.Port()
+	if port == "" {
+		if u.Scheme == "https" {
+			port = "443"
+		} else {
+			port = "80"
+		}
+	}
+	return host, port, true
 }
 
 func envOr(key, fallback string) string {
@@ -152,21 +209,57 @@ func MockLLMAvailable() bool {
 // 200 AND a HelixAgent-shaped health payload, binding to the service's
 // reported identity rather than to a port number alone.
 //
-// HONEST BOUNDARY (§11.4.6): `{"status":"healthy"}` is a generic shape — this
-// narrows the false-positive window to services that answer 200 with that
-// exact JSON, it does not make identity certain. The stronger fix is a
-// service-identifying field in /health (e.g. `"service":"helixagent"`), which
-// this check will prefer automatically once the server emits one.
+// CORRECTION (2026-07-28, §11.4.194 code review): an earlier revision probed
+// bare /health and, absent a "service" field, fell back to accepting any
+// {"status":"healthy"} body. That fallback was claimed to be closed by
+// having router.go emit "service":"helixagent" on /health — it was not: the
+// fallback still ACCEPTED a response with no "service" field at all, and
+// this repo's OWN mock LLM server (challenges/codebase/mock_server/main.go
+// healthHandler) answers /health with EXACTLY {"status":"healthy"} and no
+// service field, so pointing HELIXAGENT_HOST/PORT at the mock still
+// satisfied this gate. See checkHelixAgentHealth's doc comment for the
+// actual closure: probe /v1/health and REQUIRE its "providers" key, which
+// the mock cannot produce (it has no /v1/health handler at all).
 func ServerAvailable() bool {
 	cfg := DefaultInfraConfig()
 	return cachedCheck("server", func() bool {
-		url := fmt.Sprintf("http://%s:%s/health", cfg.ServerHost, cfg.ServerPort)
+		url := fmt.Sprintf("http://%s:%s/v1/health", cfg.ServerHost, cfg.ServerPort)
 		return checkHelixAgentHealth(url, 3*time.Second)
 	})
 }
 
 // checkHelixAgentHealth reports whether the URL is served by HelixAgent, as
 // distinct from any other process that happens to hold the port.
+//
+// WHY /v1/health + REQUIRED "providers" KEY (§11.4.111 / §11.4.194 / §11.4.201,
+// corrected 2026-07-28). A prior revision of this function probed bare
+// /health and, when no "service" field was present, fell back to accepting
+// any {"status":"healthy"} body. router.go's /health handler DOES emit
+// "service":"helixagent" — but this repo's OWN mock LLM server
+// (challenges/codebase/mock_server/main.go healthHandler) answers /health
+// with EXACTLY {"status":"healthy"} and no service field, and ALSO
+// implements /v1/chat/completions with fabricated replies. So a
+// HELIXAGENT_HOST/PORT pointed at the mock still satisfied the old fallback
+// and let tests run — and PASS — against the mock instead of the real
+// server. A prior commit message claimed emitting "service":"helixagent" on
+// /health "closes that false-GREEN vector at the source" — that claim was
+// WRONG; this function is what actually closes it.
+//
+// The closure requires a field the mock cannot produce: router.go's
+// /v1/health has emitted a "providers" object (total/healthy/unhealthy)
+// since the endpoint's original introduction (commit 4c968f22, 2025-12-10 —
+// confirmed via `git log -S'"providers": map[string]any{' -- internal/router/
+// router.go`, which returns only that one commit, and `git blame
+// internal/router/router.go:500`, which still attributes the "providers"
+// line to it), long before the "service" field existed (added in commit
+// 3d96b4cf, 2026-07-28). Requiring "providers" therefore introduces no
+// false-negative against any real HelixAgent server binary in this repo's
+// history — every one of them has always emitted it on /v1/health. The mock
+// server registers ONLY "/health" and "/v1/chat/completions"
+// (challenges/codebase/mock_server/main.go's main(), via net/http's default
+// ServeMux) — it has no "/v1/health" handler, so a request there 404s with a
+// plain-text "404 page not found" body and is rejected below (not JSON, and
+// even if it were, it would still lack "providers").
 func checkHelixAgentHealth(url string, timeout time.Duration) bool {
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Get(url)
@@ -190,6 +283,14 @@ func checkHelixAgentHealth(url string, timeout time.Duration) bool {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		// Not JSON at all (e.g. the plain-text "404 page not found" body) —
 		// definitively not HelixAgent's health response.
+		return false
+	}
+
+	// Mandatory identity gate: only a real HelixAgent /v1/health response
+	// carries "providers" (see the doc comment above for why this, unlike
+	// bare "status"=="healthy", cannot be satisfied by this repo's own mock
+	// LLM server). Reject outright, regardless of status/service, if absent.
+	if _, ok := payload["providers"]; !ok {
 		return false
 	}
 
@@ -349,7 +450,19 @@ func LongTimeout(t *testing.T) (context.Context, context.CancelFunc) {
 }
 
 // ServerURL returns the base URL of the HelixAgent test server.
+//
+// HELIXAGENT_URL, when set, is returned AS-IS (trimmed of a trailing slash)
+// — the same convention already used by cliAgentTestBaseURL() in
+// tests/unit/cli_agent_legacy/cli_agent_test.go and the 5+ call sites in
+// tests/integration/protocol_comprehensive_integration_test.go, so every
+// suite resolving its base URL through this function agrees with those
+// suites byte-for-byte (M5, 2026-07-28). DefaultInfraConfig() independently
+// parses HELIXAGENT_URL into ServerHost/ServerPort so the ServerAvailable
+// availability gate keeps probing the SAME host/port this URL resolves to.
 func ServerURL() string {
+	if rawURL := strings.TrimSpace(os.Getenv("HELIXAGENT_URL")); rawURL != "" {
+		return strings.TrimRight(rawURL, "/")
+	}
 	cfg := DefaultInfraConfig()
 	return fmt.Sprintf("http://%s:%s", cfg.ServerHost, cfg.ServerPort)
 }

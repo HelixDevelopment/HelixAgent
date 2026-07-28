@@ -60,6 +60,17 @@ func TestLazyProvider_CreateProviderWithContext_CancellationAlwaysWins(t *testin
 
 	const iterations = 20000
 	var successDespiteCancelCount int32
+	// nilProviderWithNilErrCount records a SEPARATE, secondary invariant
+	// violation (a nil error paired with a nil provider) observed inside the
+	// spawned goroutines. This is recorded here rather than asserted with
+	// require.NotNilf INSIDE the goroutine: testify's require.* calls
+	// t.FailNow on a failure, which invokes runtime.Goexit — off the test's
+	// own goroutine that is a bug the `go vet` `tests` analyzer (rule
+	// "testinggoroutine") specifically flags, since t.FailNow from a
+	// non-test goroutine does not stop the test function and can panic the
+	// process depending on timing. The count is asserted below, on the main
+	// test goroutine, AFTER wg.Wait() has returned.
+	var nilProviderWithNilErrCount int32
 	var wg sync.WaitGroup
 
 	for i := 0; i < iterations; i++ {
@@ -90,11 +101,17 @@ func TestLazyProvider_CreateProviderWithContext_CancellationAlwaysWins(t *testin
 
 			if err == nil {
 				atomic.AddInt32(&successDespiteCancelCount, 1)
-				require.NotNilf(t, prov, "iteration %d: nil error must come with a non-nil provider", i)
+				if prov == nil {
+					atomic.AddInt32(&nilProviderWithNilErrCount, 1)
+				}
 			}
 		}(i)
 	}
 	wg.Wait()
+
+	require.Zerof(t, atomic.LoadInt32(&nilProviderWithNilErrCount),
+		"invariant violation: %d of %d iterations returned a nil error paired with a nil provider — a nil error must always come with a non-nil provider",
+		nilProviderWithNilErrCount, iterations)
 
 	hits := atomic.LoadInt32(&successDespiteCancelCount)
 

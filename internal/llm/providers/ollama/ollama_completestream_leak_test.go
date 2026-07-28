@@ -28,10 +28,25 @@ func redModeGoroutineLeak() bool {
 	return os.Getenv("RED_MODE") == "1"
 }
 
-// leakSymbol is the fully-qualified symbol name that appears in a runtime
-// goroutine-stack dump for the anonymous goroutine CompleteStream spawns.
-// Module path per go.mod: "dev.helix.agent".
-const leakSymbol = "dev.helix.agent/internal/llm/providers/ollama.(*OllamaProvider).CompleteStream.func1"
+// leakSymbol is a PREFIX of the fully-qualified symbol name that appears in
+// a runtime goroutine-stack dump for the anonymous goroutine CompleteStream
+// spawns. Module path per go.mod: "dev.helix.agent".
+//
+// Deliberately does NOT include the trailing closure-number suffix
+// (".func1"): if a future edit to CompleteStream adds an earlier closure
+// literal, Go numbers closures in declaration order, so THIS goroutine's
+// symbol could shift to ".func2" or higher. An exact-match constant would
+// then match NOTHING, and goroutineParkedInCompleteStream — including its
+// own baseline-precondition check in
+// TestOllamaProvider_CompleteStream_GoroutineLeak_OnHTTPDoFailure — would
+// PASS vacuously forever, silently disarming this standing leak guard.
+// strings.Contains below matches this prefix regardless of which numbered
+// suffix the compiler assigns, while the companion "chan send" check (see
+// goroutineParkedInCompleteStream) keeps the match precise despite being a
+// prefix match — it still requires the matched goroutine to actually be
+// blocked sending on a channel, not merely executing somewhere inside
+// CompleteStream.
+const leakSymbol = "dev.helix.agent/internal/llm/providers/ollama.(*OllamaProvider).CompleteStream.func"
 
 // goroutineParkedInCompleteStream dumps every live goroutine's stack via
 // runtime.Stack(buf, all=true) and reports whether any goroutine is currently
@@ -39,7 +54,8 @@ const leakSymbol = "dev.helix.agent/internal/llm/providers/ollama.(*OllamaProvid
 // deterministic, unforgeable liveness probe: it does not rely on counting
 // runtime.NumGoroutine() (which would be polluted by unrelated goroutines
 // from the test binary, the HTTP server, GC workers, etc.) — it looks for
-// THIS SPECIFIC symbol, blocked in a channel-send state, on the live stack.
+// a goroutine whose stack matches the leakSymbol PREFIX AND is blocked in a
+// channel-send ("chan send") wait state.
 func goroutineParkedInCompleteStream() bool {
 	buf := make([]byte, 1<<16)
 	for {

@@ -23,6 +23,40 @@ NC='\033[0m'
 MAX_WAIT_TIME=${MAX_WAIT_TIME:-120}
 HEALTH_CHECK_INTERVAL=2
 
+# ============================================================================
+# TEST-INFRASTRUCTURE CONTRACT (which compose file, which published ports)
+# ============================================================================
+# The core services health-checked below (PostgreSQL, Redis, mock LLM) belong
+# to the TEST stack, and the ONLY compose file that publishes them on the host
+# is docker-compose.test.yml:
+#
+#     postgres   ${POSTGRES_PORT:-15432} -> 5432
+#     redis      ${REDIS_PORT:-16379}    -> 6379
+#     mock-llm   ${MOCK_LLM_PORT:-18081} -> 8090
+#
+# These are exactly the ports tests/precondition/containers_boot_test.go
+# requires (PostgreSQL 15432, Redis 16379, Mock LLM 18081 — all `required`).
+#
+# docker-compose.yml (the default/live stack) CANNOT serve them: its postgres
+# runs with `network_mode: host` and publishes nothing on 15432, and its redis
+# publishes ${REDIS_PORT:-8102}. Booting the default stack here therefore left
+# the health checks below unsatisfiable by construction.
+#
+# ChromaDB and Cognee do NOT exist in docker-compose.test.yml, so they are
+# still started from the default compose file — see start_core_services().
+#
+# The ports are resolved ONCE, here, and used BOTH to boot the stack and to
+# health-check it, so publisher and checker can never disagree. They are passed
+# to the test-compose invocation as command-scoped variables so that (a) a
+# `.env` carrying the LIVE stack's ports (DB_PORT=8101 / REDIS_PORT=8102, per
+# .env.example) cannot leak into the test stack — the shell environment wins
+# over `.env` during compose interpolation — and (b) the default compose file's
+# own port variables are left untouched for the live platform.
+TEST_COMPOSE_FILE="${TEST_COMPOSE_FILE:-$PROJECT_ROOT/docker-compose.test.yml}"
+INFRA_PG_PORT="${POSTGRES_PORT:-${DB_PORT:-15432}}"
+INFRA_REDIS_PORT="${REDIS_PORT:-16379}"
+INFRA_MOCK_LLM_PORT="${MOCK_LLM_PORT:-18081}"
+
 # Logging
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
@@ -153,7 +187,9 @@ check_tcp_port() {
 
 check_postgres() {
     # Use TCP check as primary method (works without pg_isready)
-    local port="${DB_PORT:-15432}"
+    # Port comes from the single source of truth resolved above, so this checks
+    # the port docker-compose.test.yml actually publishes.
+    local port="$INFRA_PG_PORT"
     if check_tcp_port "localhost" "$port"; then
         # If pg_isready is available, use it for a more thorough check
         if command -v pg_isready &>/dev/null; then
@@ -167,7 +203,7 @@ check_postgres() {
 
 check_redis() {
     # Use TCP check as primary method (works without redis-cli)
-    local port="${REDIS_PORT:-16379}"
+    local port="$INFRA_REDIS_PORT"
     if check_tcp_port "localhost" "$port"; then
         # If redis-cli is available, use it for a more thorough check
         if command -v redis-cli &>/dev/null; then
@@ -179,17 +215,67 @@ check_redis() {
     return 1
 }
 
+check_mock_llm() {
+    # The mock LLM server is a `required` service for the precondition suite;
+    # it exposes /health on its published port.
+    curl -sf "http://localhost:${INFRA_MOCK_LLM_PORT}/health" >/dev/null 2>&1
+}
+
 # ============================================================================
 # SERVICE STARTUP FUNCTIONS
 # ============================================================================
 
+# Run a compose command, surfacing its output when it fails instead of
+# discarding it. The previous `2>/dev/null || true` boots made a stack that
+# never came up look identical to one that did.
+compose_up() {
+    local description="$1"
+    shift
+    local output
+    if output=$("$@" 2>&1); then
+        return 0
+    fi
+    log_error "$description failed:"
+    printf '%s\n' "$output" | sed 's/^/    /'
+    return 1
+}
+
 start_core_services() {
-    log_info "Starting core services (postgres, redis, chromadb, cognee)..."
+    log_info "Starting core services (postgres, redis, mock-llm, chromadb, cognee)..."
     cd "$PROJECT_ROOT"
 
-    # Start with default profile
-    $COMPOSE --profile default up -d postgres redis chromadb 2>/dev/null || \
-    $COMPOSE up -d postgres redis chromadb 2>/dev/null || true
+    local core_failed=0
+
+    log_info "Test-stack ports: postgres=$INFRA_PG_PORT redis=$INFRA_REDIS_PORT mock-llm=$INFRA_MOCK_LLM_PORT"
+
+    # --- postgres + redis + mock-llm: docker-compose.test.yml ----------------
+    # This is the only compose file that publishes the ports checked below.
+    if [ ! -f "$TEST_COMPOSE_FILE" ]; then
+        log_error "Test compose file not found: $TEST_COMPOSE_FILE"
+        log_error "PostgreSQL/Redis/mock-llm cannot be published on the expected ports without it."
+        core_failed=1
+    elif ! compose_up "core test stack (postgres, redis, mock-llm)" \
+        env POSTGRES_PORT="$INFRA_PG_PORT" \
+            REDIS_PORT="$INFRA_REDIS_PORT" \
+            MOCK_LLM_PORT="$INFRA_MOCK_LLM_PORT" \
+        $COMPOSE -f "$TEST_COMPOSE_FILE" up -d postgres redis mock-llm; then
+        # Most common cause: a container named helixagent-postgres/-redis is
+        # already running from the DEFAULT compose file (both files pin the
+        # same container_name), so the test stack cannot claim the name.
+        log_error "Hint: run '$0 stop' first if the default stack is already up."
+        core_failed=1
+    fi
+
+    # --- chromadb: default compose only -------------------------------------
+    # docker-compose.test.yml has NO chromadb service, so naming it in a
+    # `-f docker-compose.test.yml up` would fail the whole invocation. ChromaDB
+    # lives in the default compose under the `default` profile with
+    # `network_mode: host` and `--port 8001` — exactly the endpoint waited on
+    # below. It is `required: false` for the precondition suite, so a failure
+    # here warns rather than failing the boot.
+    if ! compose_up "ChromaDB (default compose)" $COMPOSE --profile default up -d chromadb; then
+        log_warn "ChromaDB did not start (optional service)"
+    fi
 
     # Wait for postgres
     log_info "Waiting for PostgreSQL..."
@@ -213,16 +299,44 @@ start_core_services() {
         sleep 2
     done
 
-    # Wait for ChromaDB
+    # Wait for the mock LLM server (required by the precondition suite)
+    log_info "Waiting for Mock LLM server..."
+    wait_for_http "Mock LLM" "http://localhost:${INFRA_MOCK_LLM_PORT}/health" 60 || \
+        log_warn "Mock LLM not ready"
+
+    # Wait for ChromaDB (port 8001 is hardcoded in the default compose file's
+    # chromadb command: ["--host","0.0.0.0","--port","8001"])
     log_info "Waiting for ChromaDB..."
     wait_for_http "ChromaDB" "http://localhost:8001/api/v2/heartbeat" 60 || log_warn "ChromaDB not ready"
 
-    # Start Cognee
-    $COMPOSE --profile default up -d cognee 2>/dev/null || \
-    $COMPOSE --profile ai up -d cognee 2>/dev/null || true
+    # Start Cognee (default compose only — absent from docker-compose.test.yml)
+    if ! { $COMPOSE --profile default up -d cognee || \
+           $COMPOSE --profile ai up -d cognee; } >/dev/null 2>&1; then
+        log_warn "Cognee did not start (optional service)"
+    fi
 
     log_info "Waiting for Cognee..."
     wait_for_http "Cognee" "http://localhost:8000/" 90 || log_warn "Cognee not ready"
+
+    # Honest verdict: report success only when every REQUIRED core service is
+    # actually reachable on the port this script booted it on.
+    if ! check_postgres; then
+        log_error "PostgreSQL is NOT reachable on port $INFRA_PG_PORT"
+        core_failed=1
+    fi
+    if ! check_redis; then
+        log_error "Redis is NOT reachable on port $INFRA_REDIS_PORT"
+        core_failed=1
+    fi
+    if ! check_mock_llm; then
+        log_error "Mock LLM is NOT reachable on port $INFRA_MOCK_LLM_PORT"
+        core_failed=1
+    fi
+
+    if [ "$core_failed" -ne 0 ]; then
+        log_error "Core services did NOT all start"
+        return 1
+    fi
 
     log_success "Core services started"
 }
@@ -298,8 +412,12 @@ start_all() {
     ensure_network
     ensure_volumes
 
-    # Start services in parallel where possible
-    start_core_services
+    # Start services in parallel where possible.
+    # Capture (do not abort on) a core failure so the protocol services still
+    # start and check_status can print the full picture; the failure is
+    # re-surfaced as this function's exit code below.
+    local core_failed=0
+    start_core_services || core_failed=1
 
     # Start protocol services in background
     start_mcp_servers &
@@ -316,6 +434,11 @@ start_all() {
     wait $LSP_PID 2>/dev/null || true
     wait $RAG_PID 2>/dev/null || true
 
+    if [ "$core_failed" -ne 0 ]; then
+        log_error "Infrastructure start INCOMPLETE — core services failed (see above)"
+        return 1
+    fi
+
     log_success "All infrastructure started"
 }
 
@@ -328,8 +451,9 @@ check_status() {
 
     # Core services
     echo "=== CORE SERVICES ==="
-    check_postgres && echo -e "  ${GREEN}✓${NC} PostgreSQL" || echo -e "  ${RED}✗${NC} PostgreSQL"
-    check_redis && echo -e "  ${GREEN}✓${NC} Redis" || echo -e "  ${RED}✗${NC} Redis"
+    check_postgres && echo -e "  ${GREEN}✓${NC} PostgreSQL (${INFRA_PG_PORT})" || echo -e "  ${RED}✗${NC} PostgreSQL (${INFRA_PG_PORT})"
+    check_redis && echo -e "  ${GREEN}✓${NC} Redis (${INFRA_REDIS_PORT})" || echo -e "  ${RED}✗${NC} Redis (${INFRA_REDIS_PORT})"
+    check_mock_llm && echo -e "  ${GREEN}✓${NC} Mock LLM (${INFRA_MOCK_LLM_PORT})" || echo -e "  ${RED}✗${NC} Mock LLM (${INFRA_MOCK_LLM_PORT})"
     curl -sf "http://localhost:8001/api/v2/heartbeat" >/dev/null && echo -e "  ${GREEN}✓${NC} ChromaDB" || echo -e "  ${RED}✗${NC} ChromaDB"
     curl -sf "http://localhost:8000/" >/dev/null && echo -e "  ${GREEN}✓${NC} Cognee" || echo -e "  ${RED}✗${NC} Cognee"
 
@@ -374,6 +498,13 @@ stop_all() {
     # Stop all compose services
     $COMPOSE down 2>/dev/null || true
 
+    # The core test stack (postgres/redis/mock-llm) is booted from
+    # docker-compose.test.yml by start_core_services, so it must be torn down
+    # from the same file — a plain `$COMPOSE down` does not reach it.
+    if [ -f "$TEST_COMPOSE_FILE" ]; then
+        $COMPOSE -f "$TEST_COMPOSE_FILE" down 2>/dev/null || true
+    fi
+
     for compose_file in docker/*/docker-compose*.yml; do
         [ -f "$compose_file" ] && $COMPOSE -f "$compose_file" down 2>/dev/null || true
     done
@@ -387,8 +518,13 @@ stop_all() {
 
 case "${1:-start}" in
     start|up)
-        start_all
+        # Print status even when the boot failed, then exit with the real
+        # verdict so callers (Makefile targets, challenge scripts) cannot
+        # mistake a failed boot for a successful one.
+        start_rc=0
+        start_all || start_rc=$?
         check_status
+        exit "$start_rc"
         ;;
     stop|down)
         stop_all
@@ -396,8 +532,10 @@ case "${1:-start}" in
     restart)
         stop_all
         sleep 3
-        start_all
+        start_rc=0
+        start_all || start_rc=$?
         check_status
+        exit "$start_rc"
         ;;
     status|check)
         detect_runtime

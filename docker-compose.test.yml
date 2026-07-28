@@ -33,13 +33,19 @@ services:
     ports:
       - "${OAUTH_MOCK_PORT:-18091}:7061"
     environment:
+      # The image listens on 8080 unless SERVER_PORT is set, and JSON_CONFIG has no
+      # port property — so the port mapping and healthcheck below only reach a live
+      # listener when 7061 is set explicitly here (same as docker-compose.ci.yml:236).
+      - SERVER_PORT=7061
       - JSON_CONFIG_PATH=/config/config.json
     volumes:
       - ./tests/oauth-mock-config.json:/config/config.json
     networks:
       - helixagent-network
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7061/.well-known/openid-configuration"]
+      # Discovery is served per-issuer at /{issuerId}/.well-known/openid-configuration;
+      # a bare /.well-known/... is not an endpoint. "default" matches the ci variant.
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7061/default/.well-known/openid-configuration"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -80,7 +86,11 @@ services:
     memswap_limit: 1g
     pids_limit: 1024
     oom_score_adj: 500
-    command: redis-server --requirepass helixagent123 --appendonly yes
+    # Single source of truth for the Redis password: the server command, the
+    # healthcheck below and the helixagent service all resolve to this one scalar.
+    environment:
+      REDIS_PASSWORD: &redis_password helixagent123
+    command: ["redis-server", "--requirepass", *redis_password, "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-16379}:6379"
     volumes:
@@ -88,7 +98,9 @@ services:
     networks:
       - helixagent-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      # Authenticates with the same password the server enforces, and asserts the
+      # PONG payload so a NOAUTH / wrong-password reply can never report healthy.
+      test: ["CMD-SHELL", 'redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep -q PONG']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -131,7 +143,12 @@ services:
       - "8080:7061"
     environment:
       # Server Configuration
-      PORT: 8080
+      # PORT drives the actual listen address: internal/config/config.go:315
+      # (getEnv("PORT", "7061")) -> cmd/helixagent/main.go:1792 HTTP3Config.Address ->
+      # internal/transport/http3.go:105 ListenAndServe. It MUST equal the container-side
+      # port of the "8080:7061" mapping and the :7061 healthcheck below (and Dockerfile
+      # EXPOSE 7061). Host-side exposure stays 8080 via the mapping.
+      PORT: "7061"
       HELIXAGENT_API_KEY: test-api-key-for-development
 
       # JWT Configuration
@@ -147,23 +164,25 @@ services:
       # Redis Configuration
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: helixagent123
+      REDIS_PASSWORD: *redis_password
 
       # LLM Provider Configuration (using mock server for testing)
-      # All providers point to mock-llm server for deterministic testing
+      # All providers point to mock-llm server for deterministic testing.
+      # Port 8090 is the in-network listen port (mock-llm PORT=8090 / EXPOSE 8090);
+      # the "${MOCK_LLM_PORT:-18081}" mapping is host-side only.
       CLAUDE_API_KEY: "mock-api-key"
-      CLAUDE_BASE_URL: http://mock-llm:8081/v1
+      CLAUDE_BASE_URL: http://mock-llm:8090/v1
       DEEPSEEK_API_KEY: "mock-api-key"
-      DEEPSEEK_BASE_URL: http://mock-llm:8081/v1
+      DEEPSEEK_BASE_URL: http://mock-llm:8090/v1
       GEMINI_API_KEY: "mock-api-key"
-      GEMINI_BASE_URL: http://mock-llm:8081/v1
+      GEMINI_BASE_URL: http://mock-llm:8090/v1
       QWEN_API_KEY: "mock-api-key"
-      QWEN_BASE_URL: http://mock-llm:8081/v1
+      QWEN_BASE_URL: http://mock-llm:8090/v1
       ZAI_API_KEY: "mock-api-key"
-      ZAI_BASE_URL: http://mock-llm:8081/v1
+      ZAI_BASE_URL: http://mock-llm:8090/v1
 
       # Ollama Configuration (also pointing to mock server)
-      OLLAMA_BASE_URL: http://mock-llm:8081
+      OLLAMA_BASE_URL: http://mock-llm:8090
       OLLAMA_MODEL: mock-llama-3
 
       # Cognee Configuration (disabled for testing)

@@ -159,9 +159,16 @@ The repo-wide instance of this hazard is tracked as **HXC-182**.
 ## 9. Honest boundaries (§11.4.6)
 
 - The guard detects that the baseline CHANGED during a package run. It cannot
-  attribute the write to a test in this package vs a concurrent external writer,
-  and the failure message says exactly that. It fails closed, so the risk is a
-  false FAIL under contention, never a false PASS.
+  attribute the write to a test in this package vs a concurrent external writer.
+  BOTH failure messages that report such a change say exactly that — the
+  `TestMain` message and the sibling assertion inside
+  `TestP99LatencyBaselineArtifactIsolation`. (The second one initially did not:
+  the attribution was corrected in `TestMain` and the identical claim one
+  function away was missed, then caught in review. Recorded because the
+  fix-one-place-not-its-sibling shape recurred three times in a single day; the
+  cheap defence is to grep for the same claim before closing, which is how the
+  remaining instance was confirmed to be the only one.) The guard fails closed,
+  so the risk is a false FAIL under contention, never a false PASS.
 - The guard's scope is package `stress`. A write from `tests/stress/verifier`
   (a separate package) would not be caught; no such writer exists today.
 - A byte-identical rewrite would be undetected. Not reachable in practice, since

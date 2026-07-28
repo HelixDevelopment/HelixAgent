@@ -311,7 +311,10 @@ func TestP99LatencyBaselineArtifactIsolation(t *testing.T) {
 		t.Fatalf("could not re-hash reference baseline: %v", err)
 	}
 	if after != before {
-		t.Fatalf("tracked reference baseline %s was modified by a test run: %s -> %s", baseline, before, after)
+		// Same attribution boundary as TestMain (§11.4.6): the before/after pair
+		// proves the file CHANGED, not who changed it.
+		t.Fatalf("tracked reference baseline %s changed during this test (sha256 %s -> %s) — a write by this test, or a concurrent external writer",
+			baseline, before, after)
 	}
 
 	// (c) prove the comparison in (b) is not blind: the same oracle must report

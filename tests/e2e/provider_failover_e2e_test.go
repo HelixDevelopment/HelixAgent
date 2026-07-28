@@ -5,27 +5,38 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"dev.helix.agent/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// skipIfNoServerFailover skips the test if HelixAgent server is not reachable.
+// skipIfNoServerFailover skips the test unless the HelixAgent server itself is
+// reachable.
+//
+// This used to open a raw TCP connection to a hardcoded localhost:8100 and
+// treat a successful dial as "HelixAgent is up". A TCP connect succeeds against
+// ANY listener, so when a different service held that port the gate passed, the
+// test proceeded, and every assertion failed against the foreign service's
+// replies — reported as product failures. (Observed: llmsverifier owns :8100 on
+// the development host and answers `404 page not found`; this test failed with
+// "Error response must be valid JSON, got: 404 page not found".)
+//
+// testutil.RequireServer verifies the responder is actually HelixAgent — a 200
+// plus a HelixAgent-shaped health payload — rather than merely that the port is
+// occupied (§11.4.111 bind by reported identity, §11.4.201 a guard must assert
+// the condition it claims). Using testutil.ServerURL() alongside it also drops
+// the hardcoded port so the endpoint stays in one place.
 func skipIfNoServerFailover(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("Skipping failover test in short mode (requires live server with LLM providers)") // SKIP-OK: #short-mode
 	}
-	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
-	if err != nil {
-		t.Skip("HelixAgent server not running on :8100") // SKIP-OK: #legacy-untriaged
-	}
-	conn.Close()
+	testutil.RequireServer(t)
 }
 
 // failoverClient returns an HTTP client with a short timeout suitable for
@@ -34,9 +45,10 @@ func failoverClient() *http.Client {
 	return &http.Client{Timeout: 90 * time.Second}
 }
 
-// failoverBaseURL returns the base URL of the local HelixAgent server.
+// failoverBaseURL returns the base URL of the local HelixAgent server, from the
+// single shared source rather than a hardcoded literal.
 func failoverBaseURL() string {
-	return "http://localhost:8100"
+	return testutil.ServerURL()
 }
 
 // chatRequest builds a chat completion request body with the given model and

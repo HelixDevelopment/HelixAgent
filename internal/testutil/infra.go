@@ -2,7 +2,9 @@ package testutil
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -133,13 +135,71 @@ func MockLLMAvailable() bool {
 	})
 }
 
-// ServerAvailable returns true if the HelixAgent server is reachable.
+// ServerAvailable returns true if the HelixAgent server — specifically, NOT
+// merely "something listening on that port" — is reachable.
+//
+// WHY THE IDENTITY CHECK EXISTS (§11.4.111 / §11.4.201)
+// This used to call checkHTTP, which accepts ANY status < 500. A DIFFERENT
+// service occupying the configured port therefore satisfied it: on the
+// development host, llmsverifier legitimately owns :8100 and answers
+// `404 page not found`. 404 is < 500, so ServerAvailable returned true,
+// RequireServer did NOT skip, and roughly a dozen packages then fired real
+// requests at the wrong service and failed on the wrong-shaped replies —
+// reported as product failures when nothing was wrong with the product.
+//
+// A guard must assert the condition it CLAIMS ("the HelixAgent server is
+// reachable"), not a proxy that another process can satisfy. So: require a
+// 200 AND a HelixAgent-shaped health payload, binding to the service's
+// reported identity rather than to a port number alone.
+//
+// HONEST BOUNDARY (§11.4.6): `{"status":"healthy"}` is a generic shape — this
+// narrows the false-positive window to services that answer 200 with that
+// exact JSON, it does not make identity certain. The stronger fix is a
+// service-identifying field in /health (e.g. `"service":"helixagent"`), which
+// this check will prefer automatically once the server emits one.
 func ServerAvailable() bool {
 	cfg := DefaultInfraConfig()
 	return cachedCheck("server", func() bool {
 		url := fmt.Sprintf("http://%s:%s/health", cfg.ServerHost, cfg.ServerPort)
-		return checkHTTP(url, 3*time.Second)
+		return checkHelixAgentHealth(url, 3*time.Second)
 	})
+}
+
+// checkHelixAgentHealth reports whether the URL is served by HelixAgent, as
+// distinct from any other process that happens to hold the port.
+func checkHelixAgentHealth(url string, timeout time.Duration) bool {
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	// A healthy HelixAgent answers 200. A foreign occupant typically answers
+	// 404/401/403 — all of which the old `< 500` test wrongly accepted.
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return false
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		// Not JSON at all (e.g. the plain-text "404 page not found" body) —
+		// definitively not HelixAgent's health response.
+		return false
+	}
+
+	// Prefer an explicit service identifier when the server provides one.
+	if svc, ok := payload["service"].(string); ok {
+		return strings.EqualFold(svc, "helixagent") || strings.EqualFold(svc, "helix_agent")
+	}
+
+	status, _ := payload["status"].(string)
+	return strings.EqualFold(status, "healthy")
 }
 
 // RequirePostgres skips the test if PostgreSQL is not available.

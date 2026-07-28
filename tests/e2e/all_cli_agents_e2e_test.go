@@ -152,6 +152,22 @@ func TestFullInfrastructureE2E(t *testing.T) {
 		t.Skip("Live tests skipped") // SKIP-OK: #legacy-untriaged
 	}
 
+	// Require the HelixAgent server ITSELF, not merely a reachable port.
+	//
+	// The per-subtest guards below skip only when the HTTP call ERRORS — i.e.
+	// nothing is listening. That misses the case where a DIFFERENT service holds
+	// the port: it answers, err is nil, the subtests proceed, and every
+	// assertion fails against the foreign service's replies. Observed exactly
+	// that: llmsverifier legitimately owns :8100 on the development host and
+	// answers `404 page not found`, so HelixAgent_Health failed 200 != 404 and
+	// Models_Endpoint additionally failed to decode the plain-text body — both
+	// reported as product failures with nothing wrong with the product.
+	//
+	// testutil.RequireServer verifies the responder is actually HelixAgent
+	// (§11.4.111 bind by reported identity, §11.4.201 a guard must assert the
+	// condition it claims), so a foreign occupant yields an honest SKIP.
+	testutil.RequireServer(t)
+
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	t.Run("HelixAgent_Health", func(t *testing.T) {

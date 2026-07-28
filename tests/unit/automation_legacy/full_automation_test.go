@@ -12,8 +12,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
+
+	"dev.helix.agent/internal/testutil"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -1562,16 +1563,21 @@ func (m *MockTool) Source() string {
 // =============================================================================
 
 func TestExternalServer_IfRunning(t *testing.T) {
-	// Try to connect to a running HelixAgent server
-	baseURL := "http://localhost:8100"
-
-	// Check if server is running
-	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
-	if err != nil {
-		t.Skip("External HelixAgent server not running - skipping external tests") // SKIP-OK: #legacy-untriaged
-		return
-	}
-	conn.Close()
+	// Require the HelixAgent server ITSELF, not merely an occupied port.
+	//
+	// This used to dial TCP to a hardcoded localhost:8100 and treat a
+	// successful connect as "HelixAgent is running". A TCP connect succeeds
+	// against ANY listener, so when a different service held that port the
+	// check passed and every subtest below failed against the foreign
+	// service's replies. Observed: llmsverifier legitimately owns :8100 on the
+	// development host and answers `404 page not found`.
+	//
+	// testutil.RequireServer verifies the responder is actually HelixAgent
+	// (§11.4.111 bind by reported identity, §11.4.201 a guard must assert the
+	// condition it claims); testutil.ServerURL() removes the hardcoded port so
+	// the endpoint lives in one place.
+	testutil.RequireServer(t)
+	baseURL := testutil.ServerURL()
 
 	client := &http.Client{Timeout: 30 * time.Second}
 

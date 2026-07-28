@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -222,6 +224,106 @@ func TestDreamer_SaveMemories_ConcurrentWriteCorruption(t *testing.T) {
 	}
 }
 
+// TestDreamer_CleanupPhase_ConcurrentWriteCorruption is the C1
+// (independent-review round) corruption proof for cleanupPhase()'s
+// MEMORY.md trim-write — the sibling of
+// TestDreamer_SaveMemories_ConcurrentWriteCorruption for the SAME
+// on-disk write surface memoryMu is documented to serialize (see the
+// Dreamer struct's and memoryWritersInFlight's doc comments). Before
+// the C1 fix, cleanupPhase performed its read-modify-write of
+// MEMORY.md WITHOUT holding memoryMu at all, so a concurrent
+// saveMemories() call — or another concurrent cleanupPhase() call from
+// an overlapping Dream() session — could interleave with it: the exact
+// Defect-1 corruption class this file's other fixes close everywhere
+// else.
+//
+// Like TestDreamer_SaveMemories_ConcurrentWriteCorruption, this test
+// uses memoryWritersPeak (not final file-content inspection) as the
+// oracle — a direct, deterministic observation of "how many goroutines
+// were EVER simultaneously inside the shared write critical section"
+// (now bracketed via the shared beginMemoryWrite() helper both
+// saveMemories() and cleanupPhase() call — see its doc comment in
+// dreamer.go), independent of filesystem write-atomicity
+// characteristics.
+//
+//   - RED_MODE=1: run this test manually against a build with
+//     memoryMu's Lock()/Unlock() commented out INSIDE beginMemoryWrite()
+//     (see beginMemoryWrite()'s doc comment in dreamer.go for the two
+//     lines to revert) — NOT by removing cleanupPhase's
+//     `end := d.beginMemoryWrite(); defer end()` call itself, which
+//     would also remove the counter bracketing and yield a vacuous
+//     peak=0 (verified: this was tried and correctly triggers this
+//     test's own "defect did not reproduce" branch below, not a false
+//     peak>1). Since both saveMemories() and cleanupPhase() now share
+//     this one helper, this is the SAME manual mutation
+//     TestDreamer_SaveMemories_ConcurrentWriteCorruption's RED_MODE
+//     requires — confirmed: it also reproduces peak=40 there under the
+//     identical mutation. Asserts the peak exceeded 1 — reproducing the
+//     corruption window. This will FAIL against the current, fixed
+//     source — that is expected; it is a manual reproduction step, not
+//     part of the standing suite.
+//   - RED_MODE unset / "0" (the DEFAULT, standing GREEN guard): asserts
+//     the peak is EXACTLY 1, deterministically — memoryMu forces every
+//     caller of beginMemoryWrite() (cleanupPhase() here) to serialize
+//     BEFORE the counter itself is ever incremented, so this is not a
+//     probabilistic result, identically to
+//     TestDreamer_SaveMemories_ConcurrentWriteCorruption's guarantee.
+func TestDreamer_CleanupPhase_ConcurrentWriteCorruption(t *testing.T) {
+	redMode := os.Getenv("RED_MODE") == "1"
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
+
+	// §9 data safety: MemoryDir is ALWAYS a fresh t.TempDir() — never
+	// any real MEMORY.md / user memory store on this host.
+	memoryDir := t.TempDir()
+	d := NewDreamer(DreamerConfig{
+		Enabled:   true,
+		MemoryDir: memoryDir,
+	}, logger)
+
+	// Fixture: MEMORY.md with well over 200 lines so cleanupPhase's
+	// read-modify-WRITE branch is genuinely entered by every caller — a
+	// <=200-line file would take the early-return no-write path and
+	// prove nothing about the write critical section this test targets.
+	// Each line is padded to a realistic memory-index-entry width so the
+	// write has a real, measurable size/duration on disk, widening the
+	// overlap window for a manual RED_MODE reproduction run (mirroring
+	// why TestDreamer_SaveMemories_ConcurrentWriteCorruption uses 800
+	// entries rather than 1).
+	const lineCount = 5000
+	var sb strings.Builder
+	for i := 0; i < lineCount; i++ {
+		fmt.Fprintf(&sb, "- **entry-%d** (tag-a, tag-b, tag-c): reasonably sized memory-index line content used to make the trim write take measurable time on disk\n", i)
+	}
+	memoryMdPath := filepath.Join(memoryDir, "MEMORY.md")
+	require.NoError(t, os.WriteFile(memoryMdPath, []byte(sb.String()), 0644))
+
+	const concurrency = 40
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = d.cleanupPhase(context.Background(), &DreamSession{Metadata: map[string]interface{}{}})
+		}()
+	}
+	wg.Wait()
+
+	peak := d.memoryWritersPeak.Load()
+
+	if redMode {
+		require.Greaterf(t, peak, int32(1),
+			"RED_MODE=1: expected memoryWritersPeak to exceed 1 across %d concurrent cleanupPhase() callers (memoryMu absent — concurrent writers in the shared file-writing critical section); got peak=%d — defect did not reproduce under this forcing, this is a FINDING not evidence of a fix (did you comment out memoryMu.Lock()/Unlock() inside beginMemoryWrite() in dreamer.go?)",
+			concurrency, peak)
+		t.Logf("RED_MODE=1: reproduced concurrent-writer corruption window in cleanupPhase — peak=%d simultaneous writers across %d callers", peak, concurrency)
+	} else {
+		require.Equalf(t, int32(1), peak,
+			"RED_MODE=0/unset (GREEN guard): memoryMu (via beginMemoryWrite()) must serialize every cleanupPhase() call exactly like saveMemories() — with %d concurrent callers, memoryWritersPeak must be EXACTLY 1 (never 0, never >1); got peak=%d",
+			concurrency, peak)
+	}
+}
+
 // TestDreamer_StartStop_NoConcurrentWriterUnderRealTicker is an
 // end-to-end stress corroboration (§11.4.85: sustained load, N>=100
 // iterations) driving the REAL Start()/Stop() API — not runOnce/
@@ -263,4 +365,20 @@ func TestDreamer_StartStop_NoConcurrentWriterUnderRealTicker(t *testing.T) {
 	}
 
 	t.Logf("stress: %d Start()/Stop() iterations against a microsecond-interval ticker, max concurrent writer peak observed = %d", iterations, maxPeakSeen)
+
+	// M5 fix (independent-review round): Stop() does not join on run()'s
+	// goroutine (see saveMemories()'s doc comment — that residual is
+	// deliberate and honestly documented), so a straggler Dream() cycle
+	// launched by run() just before the LAST iteration's Stop() call may
+	// still be mid-flight, writing into that iteration's t.TempDir(),
+	// when this test function returns and every t.TempDir() registered
+	// above is removed together (t.Cleanup runs in LIFO order after the
+	// function body completes — Go does not, and cannot, kill a
+	// background goroutine). A straggler write racing that RemoveAll can
+	// (rarely) surface as an ENOTEMPTY flake. This short, bounded drain
+	// gives any such straggler — whose own Dream() cycle over an
+	// essentially-empty memory dir completes in well under a
+	// millisecond in practice — ample time to finish before cleanup
+	// runs, without meaningfully slowing the test.
+	time.Sleep(50 * time.Millisecond)
 }

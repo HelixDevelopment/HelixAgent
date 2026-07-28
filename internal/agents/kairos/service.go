@@ -134,7 +134,26 @@ func NewService(config ServiceConfig, logger *logrus.Logger) *Service {
 	return s
 }
 
-// SetCallbacks sets the service callbacks
+// SetCallbacks sets the service callbacks.
+//
+// Callback contract (I2 fix, see callDecision's doc comment for the
+// forensic anchor): onDecision — like onAction — is invoked in its OWN
+// detached goroutine, raced against a s.config.BlockingBudget-bounded
+// context by tick()'s callDecision helper. Neither callback is passed
+// a context of its own (SetCallbacks accepts no context-aware variant),
+// so an implementation cannot itself observe cancellation — it can only
+// be timed out FROM THE OUTSIDE. Implementations SHOULD return within
+// BlockingBudget: a slower onDecision does not hang Stop() (tick()
+// times the wait out regardless), but the goroutine keeps running in
+// the background after tick() has already moved on, and any error or
+// Action it eventually produces is silently discarded. onDecision MAY
+// call s.Stop() itself without permanently deadlocking the service
+// (verified by
+// TestService_OnDecision_CallingStopSynchronously_DoesNotDeadlock), but
+// doing so blocks THAT callback's own goroutine until run() has
+// observed the stop and exited — prefer returning promptly and letting
+// the normal Stop() path close things down instead of triggering it
+// recursively from inside a callback.
 func (s *Service) SetCallbacks(
 	onObservation func(Observation),
 	onAction func(Action),
@@ -187,25 +206,38 @@ func (s *Service) Start(ctx context.Context) error {
 // fire onAction and execute a genuine, potentially long-running
 // action — moments before Stop() was called; Stop() would then have
 // returned to its caller while that action was still executing,
-// exactly the defect reported. The wait is bounded: tick() itself
-// never blocks longer than s.config.BlockingBudget (it races its own
-// onAction goroutine against an actionCtx timeout of that duration),
-// so s.runWg.Wait() below is bounded by, at most, one BlockingBudget
-// plus whatever remains of the current dispatch loop iteration.
+// exactly the defect reported.
 //
-// Honest scope: this closes the gap for the common case — an action
-// that completes (or times out) within tick()'s own actionCtx budget.
-// It does NOT reach the pre-existing, independent limitation that
-// tick()'s onAction runs in a detached goroutine with no context
-// propagated into the callback itself (see tick()'s doc comment): if
-// onAction hangs past BlockingBudget, tick() returns via its timeout
-// branch and this join is satisfied, while that detached goroutine
-// keeps running in the background after Stop() has returned — the
-// same "cannot forcibly kill a goroutine in Go" limitation documented
-// elsewhere in this codebase (e.g. llm.LazyProvider.
-// createProviderWithContext). Fixing that would require changing
-// onAction's callback contract to accept and honour a context, which
-// is out of scope here.
+// The wait is bounded — I2 fix, independent-review round (see
+// callDecision's doc comment for the full forensic anchor): tick() now
+// races BOTH its onDecision call (via callDecision) AND its onAction
+// call against their own s.config.BlockingBudget-bounded contexts, so
+// s.runWg.Wait() below is bounded by, at most, TWO BlockingBudgets (one
+// for the decision race, one for the action race) plus whatever remains
+// of the current dispatch loop iteration — NOT the single BlockingBudget
+// an earlier revision of this comment claimed, which was only true
+// while onDecision was still called synchronously with no bound at all.
+// An earlier revision's "at most one BlockingBudget" claim was itself
+// the forensic finding that motivated the I2 fix: onDecision was
+// entirely unbounded, so a hanging onDecision could hang this join
+// FOREVER — see callDecision's doc comment for the full defect and the
+// two failure modes (hang-forever, and a self-deadlock when onDecision
+// itself calls Stop()) this closes.
+//
+// Honest scope: this closes the gap for the common case — a decision or
+// action that completes (or times out) within its own bounded context.
+// It does NOT reach the pre-existing, independent limitation that BOTH
+// callbacks run in a detached goroutine with no context propagated into
+// the callback itself (see callDecision's and tick()'s doc comments):
+// if either callback hangs past BlockingBudget, tick() returns via its
+// timeout branch and this join is satisfied, while that detached
+// goroutine keeps running in the background after Stop() has
+// returned — the same "cannot forcibly kill a goroutine in Go"
+// limitation documented elsewhere in this codebase (e.g.
+// llm.LazyProvider.createProviderWithContext). Fixing that would
+// require changing both callback contracts to accept and honour a
+// context, which is out of scope here (see SetCallbacks's doc comment
+// for the callback contract as it now stands).
 func (s *Service) Stop() error {
 	s.startMu.Lock()
 	defer s.startMu.Unlock()
@@ -355,10 +387,12 @@ func (s *Service) tick(ctx context.Context) {
 
 	s.logger.Debug("KAIROS tick: processing context")
 
-	// Make decision
-	action, err := s.onDecision(prompt)
-	if err != nil {
-		s.logger.WithError(err).Error("KAIROS decision error")
+	// Make decision. See callDecision's doc comment for the I2 fix this
+	// closes (a hanging or self-Stop()-calling onDecision could
+	// previously hang tick()/run() forever, which in turn hung Stop()'s
+	// s.runWg.Wait() join — see Stop()'s doc comment).
+	action, decided := s.callDecision(ctx, prompt)
+	if !decided {
 		return
 	}
 
@@ -413,6 +447,90 @@ func (s *Service) tick(ctx context.Context) {
 	}
 
 	s.updateAction(action)
+}
+
+// callDecision invokes the caller-supplied onDecision callback and
+// bounds tick()'s wait for it to s.config.BlockingBudget, mirroring the
+// existing onAction pattern immediately above in tick().
+//
+// I2 fix (independent-review round). Forensic anchor: prior to this
+// fix, tick() called `s.onDecision(prompt)` SYNCHRONOUSLY, in run()'s
+// own goroutine, with no timeout and no context at all — only
+// onAction's race (above) was bounded. This had two consequences:
+//
+//  1. A genuinely hanging onDecision hung tick() forever, which hung
+//     run() forever, so run()'s deferred s.runWg.Done() never fired,
+//     which meant Stop()'s s.runWg.Wait() join (see Stop()'s doc
+//     comment) blocked FOREVER while still holding startMu — every
+//     subsequent Start()/Stop() caller on this Service would also
+//     block indefinitely.
+//  2. An onDecision implementation that itself calls s.Stop()
+//     synchronously was a GUARANTEED PERMANENT SELF-DEADLOCK: that
+//     nested Stop() call would acquire startMu, close s.stopCh, and
+//     then block on s.runWg.Wait() — waiting for run() to return — but
+//     run() (executing onDecision synchronously) was ITSELF blocked
+//     inside that exact nested Stop() call and could never return, so
+//     s.runWg.Done() could never fire, so the nested Stop() call could
+//     never unblock. No production caller wires onDecision today
+//     (verified: no reference to SetCallbacks/onDecision anywhere in
+//     this module outside kairos's and dream's own source+tests), so
+//     this was latent, not live — fixed anyway before it becomes live.
+//
+// Fix (chosen over passing a context into onDecision's signature, or
+// merely documenting "don't do that"): race onDecision in its own
+// goroutine against a decisionCtx bounded by s.config.BlockingBudget —
+// the SAME budget already used for onAction's race, rather than
+// inventing a second, separate timeout value (§11.4.6: BlockingBudget
+// is already an operator-configured "how long may KAIROS block on
+// caller-supplied work per tick" duration; reusing it needs no new
+// config field). This closes BOTH failure modes: (1) tick() now always
+// returns within, at most, BlockingBudget regardless of what onDecision
+// does, so run() always reaches its next checkStop() promptly and
+// Stop()'s join is bounded; (2) if onDecision calls s.Stop() from
+// WITHIN ITS OWN spawned goroutine, that nested call blocks on
+// s.runWg.Wait() as before, but run()'s own goroutine is NEVER blocked
+// past BlockingBudget waiting on the same onDecision call — it times
+// out, tick() returns, runOnce loops back to checkStop(), observes the
+// already-closed s.stopCh (the nested Stop() call closed it before
+// blocking on the wait), returns true, and run()'s deferred
+// s.runWg.Done() fires — which is exactly what unblocks the nested
+// Stop() call. See TestService_Tick_HangingOnDecisionDoesNotHangStop
+// and TestService_OnDecision_CallingStopSynchronously_DoesNotDeadlock.
+//
+// Honest scope (identical trade-off to onAction's, see Stop()'s doc
+// comment): if onDecision genuinely outlives BlockingBudget, this
+// function returns `(Action{}, false)` — the tick is treated as
+// producing no action — while the spawned goroutine keeps running
+// onDecision in the background after callDecision has already
+// returned. That goroutine's result (and any error it would have
+// returned) is silently discarded; this is the same accepted,
+// documented "cannot forcibly kill a goroutine in Go" limitation noted
+// for onAction above.
+func (s *Service) callDecision(ctx context.Context, prompt TickPrompt) (Action, bool) {
+	type decisionResult struct {
+		action Action
+		err    error
+	}
+	resultCh := make(chan decisionResult, 1)
+	go func() {
+		a, e := s.onDecision(prompt)
+		resultCh <- decisionResult{action: a, err: e}
+	}()
+
+	decisionCtx, cancel := context.WithTimeout(ctx, s.config.BlockingBudget)
+	defer cancel()
+
+	select {
+	case result := <-resultCh:
+		if result.err != nil {
+			s.logger.WithError(result.err).Error("KAIROS decision error")
+			return Action{}, false
+		}
+		return result.action, true
+	case <-decisionCtx.Done():
+		s.logger.Warn("KAIROS onDecision exceeded BlockingBudget; treating this tick as producing no action (see callDecision's doc comment for the callback contract)")
+		return Action{}, false
+	}
 }
 
 // updateContext updates the current observed context

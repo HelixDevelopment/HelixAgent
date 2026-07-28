@@ -171,15 +171,25 @@ type SignalGatherer interface {
 //     compound (LastDreamTime/SessionCount/Locked), the *d.current
 //     pointer, and per-session Phases appends during executePhase.
 //   - memoryMu (Mutex) serializes every write to the on-disk memory
-//     store (the per-entry JSON files AND MEMORY.md) so saveMemories()
-//     can never be invoked by two goroutines concurrently — closing a
-//     data-corruption race in which run()'s select (see run()'s doc
-//     comment) could randomly pick a pending tick and launch a full
-//     Dream() session — which itself calls saveMemories() on
-//     completion — at the same moment an external Stop() call is also
-//     directly invoking saveMemories(). See saveMemories()'s doc
-//     comment for the exact invariant this delivers and its honestly
-//     -scoped limits.
+//     store (the per-entry JSON files AND MEMORY.md) across BOTH call
+//     sites that perform such writes — saveMemories() (invoked at the
+//     end of every Dream() session and directly by Stop()) AND
+//     cleanupPhase()'s MEMORY.md size-trim (phase 4 of every Dream()
+//     session) — via the shared beginMemoryWrite()/end() helper both
+//     call, so neither call site can ever be invoked concurrently with
+//     the other. This closes a data-corruption race in which run()'s
+//     select (see run()'s doc comment) could randomly pick a pending
+//     tick and launch a full Dream() session — whose own cleanupPhase
+//     (see forensic anchor below) or completion saveMemories() call —
+//     races an external Stop() call's direct saveMemories() invocation.
+//     Forensic anchor (independent-review round, C1): prior to this
+//     fix, cleanupPhase ran its read-modify-write of MEMORY.md
+//     UNLOCKED — this doc comment (and saveMemories()'s) already
+//     claimed coverage of "every write" while cleanupPhase's own write
+//     was not actually serialized against saveMemories()'s writes, the
+//     exact defect class this mutex exists to close. See
+//     saveMemories()'s and cleanupPhase()'s doc comments for the exact
+//     invariant this delivers and its honestly-scoped limits.
 type Dreamer struct {
 	config   DreamerConfig
 	logger   *logrus.Logger
@@ -195,16 +205,19 @@ type Dreamer struct {
 	// memoryWritersInFlight / memoryWritersPeak are the §11.4.108
 	// runtime signature for the Defect 1 (data corruption) invariant:
 	// they directly OBSERVE how many goroutines are simultaneously
-	// inside saveMemories()'s file-writing critical section, rather
-	// than inferring safety from the absence of an observed file tear
-	// (which is filesystem- and timing-dependent and unreliable to
-	// force on demand). memoryWritersInFlight is incremented on entry
-	// to that critical section and decremented on exit; a
-	// compare-and-swap loop tracks the highest value it has ever
-	// reached in memoryWritersPeak. With memoryMu held around the same
-	// section, the peak is provably never > 1 — a direct,
-	// deterministic proof of "no concurrent writers, ever" — see
-	// TestDreamer_SaveMemories_ConcurrentWriteCorruption.
+	// inside the on-disk-memory-store write critical section — BOTH
+	// saveMemories()'s AND cleanupPhase()'s MEMORY.md trim-write, via
+	// the shared beginMemoryWrite() helper both call — rather than
+	// inferring safety from the absence of an observed file tear (which
+	// is filesystem- and timing-dependent and unreliable to force on
+	// demand). memoryWritersInFlight is incremented on entry to that
+	// critical section and decremented on exit; a compare-and-swap loop
+	// tracks the highest value it has ever reached in memoryWritersPeak.
+	// With memoryMu held around the same section for BOTH call sites,
+	// the peak is provably never > 1 — a direct, deterministic proof of
+	// "no concurrent writers, ever, across the whole write surface" —
+	// see TestDreamer_SaveMemories_ConcurrentWriteCorruption and
+	// TestDreamer_CleanupPhase_ConcurrentWriteCorruption.
 	memoryWritersInFlight atomic.Int32
 	memoryWritersPeak     atomic.Int32
 
@@ -617,9 +630,39 @@ func (d *Dreamer) consolidationPhase(ctx context.Context, session *DreamSession)
 }
 
 // cleanupPhase: Phase 4 - Maintain MEMORY.md size
+//
+// C1 fix (independent-review round, forensic anchor): this phase
+// performs a read-modify-write of the SAME MEMORY.md file saveMemories()
+// (via updateMemoryIndex()) writes under memoryMu. Before this fix,
+// cleanupPhase ran UNLOCKED: a tick-launched Dream() session sitting
+// inside cleanupPhase could race an external Stop() call's direct
+// saveMemories() invocation — both writing MEMORY.md concurrently — the
+// exact Defect-1 data-corruption class the Dreamer struct's and
+// saveMemories()'s doc comments already claimed was closed everywhere.
+// Because this is a READ-MODIFY-write (not an unconditional overwrite),
+// an unlocked race could also read a half-written index mid-write by
+// the other side and persist a truncated/garbled tail.
+//
+// Fix: take memoryMu via the SAME beginMemoryWrite() helper
+// saveMemories() uses, so the §11.4.108 memoryWritersInFlight /
+// memoryWritersPeak runtime signature observes THIS write path too
+// (previously blind to it — see their doc comment on the Dreamer
+// struct) — see TestDreamer_CleanupPhase_ConcurrentWriteCorruption.
+//
+// Lock-order note (no self-deadlock / no re-entrancy risk):
+// cleanupPhase is PhaseCleanup, the LAST of Dream()'s four phases (see
+// Dream()'s phase sequence); executePhase(ctx, session, PhaseCleanup,
+// d.cleanupPhase) fully returns BEFORE Dream() calls its own
+// end-of-session d.saveMemories() — the two calls are strictly
+// sequential within a single Dream() invocation and never nested, so
+// this lock acquisition here never overlaps with, or is re-entered by,
+// that same session's completion save.
 func (d *Dreamer) cleanupPhase(ctx context.Context, session *DreamSession) error {
 	// Keep MEMORY.md within 200 lines (~25KB)
 	memoryMdPath := filepath.Join(d.config.MemoryDir, "MEMORY.md")
+
+	end := d.beginMemoryWrite()
+	defer end()
 
 	content, err := os.ReadFile(memoryMdPath)
 	if err != nil {
@@ -639,7 +682,7 @@ func (d *Dreamer) cleanupPhase(ctx context.Context, session *DreamSession) error
 		// #nosec G703 -- memoryMdPath is the dreamer's own internal state
 		// file, derived from a dreamer-controlled directory, never from
 		// user or LLM input.
-		if err := os.WriteFile(memoryMdPath, []byte(newContent), 0644); err != nil {
+		if err := atomicWriteFile(memoryMdPath, []byte(newContent), 0644); err != nil {
 			return err
 		}
 
@@ -807,24 +850,8 @@ func (d *Dreamer) loadMemories() {
 // eliminates; "a write can still land a moment after Stop() returns"
 // is a lesser, non-corrupting, and explicitly accepted trade-off.
 func (d *Dreamer) saveMemories() {
-	d.memoryMu.Lock()
-	defer d.memoryMu.Unlock()
-
-	// §11.4.108 runtime signature: see memoryWritersInFlight's doc
-	// comment on the Dreamer struct. Bracketing this INSIDE the
-	// memoryMu-protected section (rather than at function entry, which
-	// would race the counter itself before either caller acquires the
-	// lock) is deliberate: it observes exactly the invariant under
-	// test — concurrency inside the file-writing critical section
-	// itself — not mere concurrent entry into saveMemories().
-	inFlight := d.memoryWritersInFlight.Add(1)
-	defer d.memoryWritersInFlight.Add(-1)
-	for {
-		peak := d.memoryWritersPeak.Load()
-		if inFlight <= peak || d.memoryWritersPeak.CompareAndSwap(peak, inFlight) {
-			break
-		}
-	}
+	end := d.beginMemoryWrite()
+	defer end()
 
 	for id, memory := range d.memories.Snapshot() {
 		path := filepath.Join(d.config.MemoryDir, fmt.Sprintf("%s.json", id))
@@ -834,11 +861,99 @@ func (d *Dreamer) saveMemories() {
 			continue
 		}
 
-		os.WriteFile(path, data, 0644)
+		_ = atomicWriteFile(path, data, 0644)
 	}
 
 	// Update MEMORY.md index
 	d.updateMemoryIndex()
+}
+
+// beginMemoryWrite acquires memoryMu and brackets the §11.4.108
+// memoryWritersInFlight / memoryWritersPeak runtime-signature counter
+// (see their doc comment on the Dreamer struct) around the SAME
+// critical section memoryMu protects. It is the single, shared entry
+// point for every call site that writes the on-disk memory store —
+// saveMemories() AND cleanupPhase()'s MEMORY.md trim (the C1 fix) — so
+// the counter oracle observes concurrency across the WHOLE write
+// surface memoryMu is documented to serialize, not merely
+// saveMemories()'s own call site. Bracketing the counter INSIDE the
+// locked section (rather than before acquiring the lock, which would
+// race the counter itself before either caller has serialized) is
+// deliberate: it observes exactly the invariant under test —
+// concurrency inside the file-writing critical section itself, not
+// mere concurrent entry into the calling method.
+//
+// The returned func MUST be deferred immediately by the caller to
+// release both the counter and the lock, in that order, mirroring the
+// acquire order below.
+//
+// Manual RED_MODE reproduction (for BOTH
+// TestDreamer_SaveMemories_ConcurrentWriteCorruption and
+// TestDreamer_CleanupPhase_ConcurrentWriteCorruption, since they now
+// share this one helper): comment out ONLY the `d.memoryMu.Lock()`
+// call below and its matching `d.memoryMu.Unlock()` in the returned
+// closure — leave the counter increment/decrement/CAS loop in place.
+// Removing the ENTIRE beginMemoryWrite() call from a caller instead
+// (rather than just the two lock lines inside it) also removes the
+// counter bracketing and yields a vacuous peak=0, proving nothing —
+// verified when this fix was authored.
+func (d *Dreamer) beginMemoryWrite() func() {
+	d.memoryMu.Lock()
+
+	inFlight := d.memoryWritersInFlight.Add(1)
+	for {
+		peak := d.memoryWritersPeak.Load()
+		if inFlight <= peak || d.memoryWritersPeak.CompareAndSwap(peak, inFlight) {
+			break
+		}
+	}
+
+	return func() {
+		d.memoryWritersInFlight.Add(-1)
+		d.memoryMu.Unlock()
+	}
+}
+
+// atomicWriteFile writes data to path by first writing to a temporary
+// sibling file in the SAME directory as path and then renaming it into
+// place. This closes the read side of the C1 fix's residual (M4,
+// independent-review round): os.WriteFile truncates-then-writes a file
+// in place, so a concurrent reader (loadMemories(), orientationPhase())
+// that opens path while a writer is mid-write can observe a
+// torn/truncated file even though memoryMu now serializes every WRITER
+// against every other writer — memoryMu never protected reads, and a
+// per-instance mutex cannot help a reader in a DIFFERENT Dreamer
+// instance either. os.Rename is atomic on the same filesystem, so any
+// reader either sees the complete old file or the complete new one,
+// never a partial write. The temp file is created in the SAME
+// directory as path (never os.TempDir()) specifically so the final
+// os.Rename is guaranteed same-filesystem — and therefore atomic —
+// rather than silently falling back to a non-atomic cross-device copy
+// on a host where the OS temp dir and MemoryDir live on different
+// filesystems.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".tmp-"+filepath.Base(path)+"-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	// Best-effort cleanup: if we return before the rename succeeds, the
+	// temp file must not be left behind. A successful rename makes this
+	// a no-op (the path no longer exists under tmpPath).
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpPath, perm); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
 }
 
 // updateMemoryIndex updates the MEMORY.md file
@@ -878,7 +993,7 @@ func (d *Dreamer) updateMemoryIndex() {
 	}
 
 	memoryMdPath := filepath.Join(d.config.MemoryDir, "MEMORY.md")
-	os.WriteFile(memoryMdPath, []byte(content.String()), 0644)
+	_ = atomicWriteFile(memoryMdPath, []byte(content.String()), 0644)
 }
 
 // dreamIDCounter and memoryIDCounter guarantee ID uniqueness even when the

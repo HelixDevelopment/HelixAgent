@@ -36,6 +36,7 @@ sql/
 | `debate_system.sql` | Append-only debate round log for multi-agent actions, participant tracking, and analytics |
 | `debate_turns.sql` | Granular turn-level records with confidence scores, tool calls, and Reflexion episodic memory |
 | `distributed_memory.sql` | CRDT-based multi-node memory synchronization via event sourcing |
+| `ensemble_synchronization.sql` | Cluster-wide distributed locks (TTL + owner fencing) and persisted CRDT state for the ensemble SyncManager |
 | `indexes_views.sql` | Concurrent performance indexes and materialized views for analytics dashboards |
 | `llmops_experiments.sql` | LLMOps A/B experiments, continuous evaluations, and prompt version management |
 | `llm_providers.sql` | LLM provider registry, model catalog, and benchmark tracking with Models.dev integration |

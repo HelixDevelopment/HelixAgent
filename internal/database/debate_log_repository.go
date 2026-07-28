@@ -237,8 +237,22 @@ func (r *DebateLogRepository) GetExpiredLogs(ctx context.Context) ([]DebateLogEn
 	return r.scanRows(rows)
 }
 
-// CleanupExpiredLogs removes logs that have passed their expiration date
+// CleanupExpiredLogs removes logs that have passed their expiration date.
+//
+// Defensive nil-pool guard: unlike every other method on this repository
+// (which is always invoked synchronously by request-handling code, so a nil
+// pool there panics into a call site that can observe/handle it), this
+// method is also invoked from StartCleanupWorker's UNSUPERVISED background
+// goroutine with no panic recovery. A nil pool reaching pool.Exec there
+// nil-pointer-panics and crashes the ENTIRE PROCESS, not just one request.
+// Returning a normal error here (consistent with how the worker loop already
+// logs a returned error) closes that crash vector without masking any real
+// failure — the worker still reports it via r.log.WithError(err).Error(...).
 func (r *DebateLogRepository) CleanupExpiredLogs(ctx context.Context) (int64, error) {
+	if r.pool == nil {
+		return 0, fmt.Errorf("cannot cleanup expired debate logs: repository pool is nil")
+	}
+
 	query := `
 		DELETE FROM debate_logs
 		WHERE expires_at IS NOT NULL AND expires_at < NOW()
@@ -439,11 +453,40 @@ func (r *DebateLogRepository) StartCleanupWorker(ctx context.Context, interval t
 		}).Info("Starting debate log cleanup worker")
 
 		for {
+			// Priority pre-check: Go's select chooses UNIFORMLY AT RANDOM
+			// among all ready cases. If a tick is also pending at the
+			// instant ctx is cancelled, the naked select below could pick
+			// the ticker.C branch and run CleanupExpiredLogs on an
+			// ALREADY-CANCELLED context. A non-blocking check on ctx.Done()
+			// first ensures cancellation always wins once it has fired.
+			select {
+			case <-ctx.Done():
+				r.log.Info("Stopping debate log cleanup worker")
+				return
+			default:
+			}
+
 			select {
 			case <-ctx.Done():
 				r.log.Info("Stopping debate log cleanup worker")
 				return
 			case <-ticker.C:
+				// Second, immediate re-check: the blocking select above is
+				// itself a scheduling/yield point (it can park waiting for
+				// either channel), so ctx can be cancelled and a new tick
+				// can arrive together WHILE it is parked, letting the
+				// random pick land on ticker.C anyway. Re-checking ctx.Done()
+				// here, with no further yield point in between, closes that
+				// window: a closed Done channel stays ready forever, so any
+				// cancellation that raced the select above is still visible
+				// here, right before the side-effecting DB call is made.
+				select {
+				case <-ctx.Done():
+					r.log.Info("Stopping debate log cleanup worker")
+					return
+				default:
+				}
+
 				deleted, err := r.CleanupExpiredLogs(ctx)
 				if err != nil {
 					r.log.WithError(err).Error("Failed to cleanup expired debate logs")

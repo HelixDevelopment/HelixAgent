@@ -194,10 +194,35 @@ func (p *LazyProvider) createProviderWithContext(ctx context.Context) (LLMProvid
 		done <- result{provider: prov, err: err}
 	}()
 
+	// Priority pre-check: Go's select chooses UNIFORMLY AT RANDOM among all
+	// ready cases. If scheduler delay lets both ctx.Done() and done become
+	// ready before this goroutine is scheduled, a naked select below could
+	// pick the stale factory result even though the caller already
+	// cancelled/timed-out. A non-blocking check on ctx.Done() first ensures
+	// cancellation always wins when it has already fired.
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("initialization timed out: %w", ctx.Err())
+	default:
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, fmt.Errorf("initialization timed out: %w", ctx.Err())
 	case r := <-done:
+		// Second, immediate re-check: the blocking select above is itself a
+		// scheduling/yield point (it can park waiting for either channel),
+		// so ctx can be cancelled/expire and the factory result can arrive
+		// together WHILE it is parked, letting the random pick land on
+		// `done` anyway. Re-checking ctx.Done() here, with no further yield
+		// point in between, closes that window: a closed Done channel stays
+		// ready forever, so any cancellation that raced the select above is
+		// still visible here, right before the stale result is returned.
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("initialization timed out: %w", ctx.Err())
+		default:
+		}
 		return r.provider, r.err
 	}
 }

@@ -147,9 +147,10 @@ func TestDreamer_RunOnce_SelectPriorityRace(t *testing.T) {
 //
 // # Measured results
 //
-//   - Pre-fix (memoryMu's Lock()/Unlock() temporarily commented out,
-//     runtime-signature bracketing left in place — see saveMemories()'s
-//     doc comment for the two lines to revert): 40 concurrent callers
+//   - Pre-fix (memoryMu's Lock()/Unlock() temporarily commented out
+//     INSIDE the shared beginMemoryWrite() helper, runtime-signature
+//     bracketing left in place — see beginMemoryWrite()'s doc comment in
+//     dreamer.go for the two lines to revert): 40 concurrent callers
 //     against the 800-entry Dreamer measured memoryWritersPeak == 40
 //     (ALL 40 callers were inside the critical section simultaneously)
 //     across three independent runs — the corruption window is not a
@@ -163,8 +164,17 @@ func TestDreamer_RunOnce_SelectPriorityRace(t *testing.T) {
 //     brackets.
 //
 //   - RED_MODE=1: run this test manually against a build with
-//     memoryMu's Lock()/Unlock() in saveMemories() commented out (see
-//     dreamer.go). Asserts the peak exceeded 1 — reproducing the
+//     memoryMu's Lock()/Unlock() commented out INSIDE beginMemoryWrite()
+//     (see beginMemoryWrite()'s doc comment in dreamer.go for the two
+//     lines to revert) — NOT by removing saveMemories()'s
+//     `end := d.beginMemoryWrite(); defer end()` call itself, which
+//     would also remove the counter bracketing and yield a vacuous
+//     peak=0 (that mutation trips this test's own "defect did not
+//     reproduce" branch below, not a false peak>1). Since both
+//     saveMemories() and cleanupPhase() now share this one helper, this
+//     is the SAME manual mutation
+//     TestDreamer_CleanupPhase_ConcurrentWriteCorruption's RED_MODE
+//     requires. Asserts the peak exceeded 1 — reproducing the
 //     corruption window. This will FAIL if run against the current,
 //     fixed source — that is expected; it is a manual reproduction
 //     step, not part of the standing suite.
@@ -214,7 +224,7 @@ func TestDreamer_SaveMemories_ConcurrentWriteCorruption(t *testing.T) {
 
 	if redMode {
 		require.Greaterf(t, peak, int32(1),
-			"RED_MODE=1: expected memoryWritersPeak to exceed 1 across %d concurrent saveMemories() callers (memoryMu absent — concurrent writers in the file-writing critical section); got peak=%d — defect did not reproduce under this forcing, this is a FINDING not evidence of a fix (did you comment out memoryMu.Lock()/Unlock() in saveMemories()?)",
+			"RED_MODE=1: expected memoryWritersPeak to exceed 1 across %d concurrent saveMemories() callers (memoryMu absent — concurrent writers in the shared file-writing critical section); got peak=%d — defect did not reproduce under this forcing, this is a FINDING not evidence of a fix (did you comment out memoryMu.Lock()/Unlock() inside beginMemoryWrite() in dreamer.go?)",
 			concurrency, peak)
 		t.Logf("RED_MODE=1: reproduced concurrent-writer corruption window — peak=%d simultaneous writers across %d callers", peak, concurrency)
 	} else {
@@ -283,9 +293,28 @@ func TestDreamer_CleanupPhase_ConcurrentWriteCorruption(t *testing.T) {
 	}, logger)
 
 	// Fixture: MEMORY.md with well over 200 lines so cleanupPhase's
-	// read-modify-WRITE branch is genuinely entered by every caller — a
-	// <=200-line file would take the early-return no-write path and
+	// read-modify-WRITE branch IS genuinely exercised — a <=200-line file
+	// would send EVERY caller down the early-return no-write path and
 	// prove nothing about the write critical section this test targets.
+	//
+	// Honest scope of what this fixture guarantees (§11.4.6): it does NOT
+	// make every caller write. In the standing GREEN configuration the
+	// callers are serialized, so the FIRST one trims 5000 lines down to
+	// 200; callers 2..40 then re-read exactly 200 lines, fail
+	// cleanupPhase's `len(lines) > 200` test, and take the early no-write
+	// return — exactly ONE caller reaches the write. That is sufficient
+	// here because memoryWritersPeak brackets the WHOLE critical section
+	// INCLUDING the read (see beginMemoryWrite()'s doc comment in
+	// dreamer.go), so peak == 1 across 40 bracketed callers is a valid
+	// serialization proof however many of them write; the concurrent-
+	// WRITER proof proper lives in
+	// TestDreamer_SaveMemories_ConcurrentWriteCorruption, whose callers
+	// all write unconditionally. Under the RED_MODE mutation the callers
+	// are no longer serialized, so many of them read the un-trimmed
+	// 5000-line file concurrently and DO enter the write branch (a
+	// late-scheduled caller can still read post-trim content — hence
+	// "many", not "every").
+	//
 	// Each line is padded to a realistic memory-index-entry width so the
 	// write has a real, measurable size/duration on disk, widening the
 	// overlap window for a manual RED_MODE reproduction run (mirroring

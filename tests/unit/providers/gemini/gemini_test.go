@@ -86,6 +86,17 @@ func TestGeminiProvider_ValidateConfig(t *testing.T) {
 	})
 
 	t.Run("missing api key", func(t *testing.T) {
+		// ANTI-BLUFF (§11.4.201 / §11.4.115): NewGeminiUnifiedProvider silently
+		// backfills an empty APIKey from os.Getenv("GEMINI_API_KEY")
+		// (internal/llm/providers/gemini/gemini.go:223-225), so on a host that
+		// happens to have GEMINI_API_KEY exported, p.apiKey would be non-empty
+		// and this "missing api key" test would assert the WRONG thing. Force
+		// the real, asserted condition — no key, from neither the constructor
+		// argument NOR the environment — via t.Setenv, which Go's testing
+		// package restores automatically when this subtest ends. This makes
+		// the test deterministic (§11.4.50) instead of branching on host state.
+		t.Setenv("GEMINI_API_KEY", "")
+
 		provider := gemini.NewGeminiProvider(
 			"",
 			"https://generativelanguage.googleapis.com",
@@ -94,9 +105,11 @@ func TestGeminiProvider_ValidateConfig(t *testing.T) {
 		require.NotNil(t, provider)
 
 		valid, errors := provider.ValidateConfig(nil)
-		// GeminiUnifiedProvider supports CLI/OAuth fallback, so validation
-		// passes when Gemini CLI is installed even without an API key.
-		// The result is environment-dependent.
+		// GeminiUnifiedProvider ALSO supports CLI/OAuth fallback
+		// (gemini.go:486 ValidateConfig: invalid iff apiKey=="" && !IsGeminiCLIInstalled()),
+		// which is a second, independent environment guard this test still
+		// must honor — it is NOT the guard that was broken (that was the
+		// GEMINI_API_KEY env backfill, fixed above by t.Setenv), so it is kept.
 		if gemini.IsGeminiCLIInstalled() {
 			assert.True(t, valid, "should be valid when Gemini CLI is available as fallback")
 			assert.Empty(t, errors)

@@ -287,27 +287,90 @@ func (wp *WorkerPool) SubmitAsync(task *clis.Task) <-chan *TaskResult {
 		timer := time.NewTimer(SubmitAsyncTimeout)
 		defer timer.Stop()
 
-		// Wait for the worker to deliver the result via deliverResult,
-		// or for the pool context to be cancelled (shutdown).
-		select {
-		case result := <-deliveryCh:
-			resultCh <- result
-		case <-wp.ctx.Done():
-			resultCh <- &TaskResult{
-				TaskID:  task.ID,
-				Success: false,
-				Error:   fmt.Errorf("worker pool stopped"),
-			}
-		case <-timer.C:
-			resultCh <- &TaskResult{
-				TaskID:  task.ID,
-				Success: false,
-				Error:   fmt.Errorf("timeout waiting for result after %s", SubmitAsyncTimeout),
-			}
-		}
+		resultCh <- wp.waitForAsyncResult(task.ID, deliveryCh, timer)
 	}()
 
 	return resultCh
+}
+
+// waitForAsyncResult waits for a worker to deliver a result via deliveryCh,
+// or for the pool context to be cancelled (shutdown), or for the
+// SubmitAsyncTimeout timer to fire — whichever happens first — and returns
+// the TaskResult to report back to the SubmitAsync caller.
+//
+// Extracted out of SubmitAsync's goroutine (rather than left inline) so its
+// priority-select behaviour can be exercised and regression-tested directly
+// and deterministically; see
+// TestWorkerPool_WaitForAsyncResult_DeliveredResultAlwaysWinsOverShutdown.
+//
+// Once wp.ctx is cancelled (pool Stop()), wp.ctx.Done() stays PERMANENTLY
+// ready for the rest of the process's lifetime. Go's select statement
+// chooses UNIFORMLY AT RANDOM among all cases ready at the instant it is
+// evaluated — so if a genuine, already-computed successful result is
+// sitting buffered in deliveryCh (capacity 1) at the same moment wp.ctx is
+// already cancelled, a naked/unprioritized select has real (measured
+// ~50%) odds of discarding the already-delivered result in favour of a
+// fabricated "worker pool stopped" error, for the entire remaining
+// lifetime of every task still in flight at shutdown.
+//
+// The non-blocking pre-check on deliveryCh below, and the re-check inside
+// the wp.ctx.Done() branch, give priority to an already-buffered genuine
+// result over the fabricated shutdown error — the mirror image of the
+// priority-select fix in lazy_provider.go / debate_log_repository.go
+// (those give priority to ctx cancellation over a stale/late result; here
+// a real, already-delivered result must win over a fabricated error).
+//
+// HONESTY (§11.4.107 / no-bluff): this does NOT claim the race is fully
+// closed in the general case where a worker's deliverResult() call writes
+// into deliveryCh WHILE this select is already parked (rather than before
+// it is ever entered) — under Go's async goroutine preemption (>=1.14) no
+// select-based implementation can make that window provably zero-width.
+// What this genuinely, provably guarantees: a result already buffered in
+// deliveryCh at the moment a decision point below is evaluated always wins
+// over a fabricated "worker pool stopped" error.
+func (wp *WorkerPool) waitForAsyncResult(taskID string, deliveryCh chan *TaskResult, timer *time.Timer) *TaskResult {
+	// Priority pre-check: an already-delivered, buffered result must never
+	// lose to a fabricated shutdown error just because wp.ctx also happens
+	// to be (permanently, post-shutdown) ready. A non-blocking check on
+	// deliveryCh first ensures an already-buffered result always wins.
+	select {
+	case result := <-deliveryCh:
+		return result
+	default:
+	}
+
+	select {
+	case result := <-deliveryCh:
+		return result
+	case <-wp.ctx.Done():
+		// Second, immediate re-check: the blocking select above is itself a
+		// scheduling/yield point (it can park waiting for any of the three
+		// channels), so a worker's deliverResult() can write into
+		// deliveryCh WHILE it is parked, letting the random pick land on
+		// wp.ctx.Done() anyway even though a genuine result now sits
+		// buffered. Re-checking deliveryCh here (non-blocking) narrows that
+		// window: an already-buffered result at THIS final decision point
+		// always wins over the fabricated error. This does not close the
+		// window completely (see the honesty note on this method) but it
+		// is the strongest guarantee a select-based implementation can
+		// offer.
+		select {
+		case result := <-deliveryCh:
+			return result
+		default:
+		}
+		return &TaskResult{
+			TaskID:  taskID,
+			Success: false,
+			Error:   fmt.Errorf("worker pool stopped"),
+		}
+	case <-timer.C:
+		return &TaskResult{
+			TaskID:  taskID,
+			Success: false,
+			Error:   fmt.Errorf("timeout waiting for result after %s", SubmitAsyncTimeout),
+		}
+	}
 }
 
 // GetTask retrieves a task by ID.

@@ -17,6 +17,14 @@ import (
 
 // systemMetricsCollector handles actual system metrics collection
 type systemMetricsCollector struct {
+	// mu serialises the read-modify-write of prevCPUStats/initialized below.
+	// metricsCollectorInstance is a package-global *systemMetricsCollector
+	// shared by every ProtocolMonitor's metricsCollector() goroutine (each on
+	// its own ticker, see collectCPUPercent -> computeCPUPercent), so this
+	// mutation must be guarded the same way the sibling ProtocolMetrics
+	// methods in this file already guard theirs (see e.g. lines 183, 245,
+	// 255, 265, 294).
+	mu           sync.Mutex
 	prevCPUStats cpuStats
 	prevNetBytes int64
 	initialized  bool
@@ -562,28 +570,73 @@ func collectCPUPercent() float64 {
 				total:  total,
 			}
 
-			if !metricsCollectorInstance.initialized {
-				metricsCollectorInstance.prevCPUStats = currentStats
-				metricsCollectorInstance.initialized = true
-				return 0.0
-			}
-
-			// Calculate CPU percentage based on delta
-			totalDelta := currentStats.total - metricsCollectorInstance.prevCPUStats.total
-			idleDelta := currentStats.idle - metricsCollectorInstance.prevCPUStats.idle
-
-			metricsCollectorInstance.prevCPUStats = currentStats
-
-			if totalDelta == 0 {
-				return 0.0
-			}
-
-			cpuPercent := 100.0 * float64(totalDelta-idleDelta) / float64(totalDelta)
-			return cpuPercent
+			return metricsCollectorInstance.computeCPUPercent(currentStats)
 		}
 	}
 
 	return 0.0
+}
+
+// computeCPUPercent updates c's previous-sample state from currentStats and
+// returns the CPU busy percentage computed from the delta against the
+// prior sample.
+//
+// Concurrency (§11.4.115 fix): c.mu serialises the read-modify-write of
+// c.prevCPUStats / c.initialized. metricsCollectorInstance is a
+// package-global *systemMetricsCollector shared by every ProtocolMonitor's
+// metricsCollector() goroutine (each on its own ticker), so without this
+// lock concurrent scrapes could interleave/tear the read-then-write of
+// prevCPUStats -- the same class of shared-state mutation the sibling
+// ProtocolMetrics methods in this file already guard via mu.Lock()/
+// mu.Unlock() (see e.g. lines 183, 245, 255, 265, 294).
+//
+// Safety: idleDelta > totalDelta (a torn/adversarial sample pair, or either
+// /proc/stat counter having gone backwards) would otherwise let the uint64
+// subtraction totalDelta-idleDelta wrap around to a value near 2^64,
+// reporting a wildly wrong (far above 100%) CPU percentage instead of a
+// sane, clamped result. totalDelta == 0 (a repeated sample / stalled
+// counter) would otherwise divide by zero. Both are guarded below, and the
+// final result is defensively clamped to [0,100].
+func (c *systemMetricsCollector) computeCPUPercent(currentStats cpuStats) float64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.initialized {
+		c.prevCPUStats = currentStats
+		c.initialized = true
+		return 0.0
+	}
+
+	// Calculate CPU percentage based on delta
+	totalDelta := currentStats.total - c.prevCPUStats.total
+	idleDelta := currentStats.idle - c.prevCPUStats.idle
+
+	c.prevCPUStats = currentStats
+
+	if totalDelta == 0 {
+		return 0.0
+	}
+
+	if idleDelta > totalDelta {
+		// Torn or adversarial sample pair: an unguarded uint64 subtraction
+		// here would wrap around to a huge value. There is no sane
+		// percentage to derive from an invalid delta, so clamp to 0 rather
+		// than propagate garbage.
+		return 0.0
+	}
+
+	cpuPercent := 100.0 * float64(totalDelta-idleDelta) / float64(totalDelta)
+
+	// Defensive clamp: guards against any remaining floating-point edge
+	// case producing a value marginally outside [0,100].
+	if cpuPercent < 0 {
+		return 0.0
+	}
+	if cpuPercent > 100 {
+		return 100.0
+	}
+
+	return cpuPercent
 }
 
 // collectNetworkBytes reads network usage from /proc/net/dev on Linux

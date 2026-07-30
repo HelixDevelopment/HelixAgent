@@ -28,6 +28,79 @@ const defaultConfig: MCPServerConfig = {
   enableBrotli: true,
 };
 
+/**
+ * Read configuration from the process environment.
+ *
+ * Container definitions (Dockerfile `ENV`, compose `environment:`) set
+ * MCP_PORT / MCP_TRANSPORT / HELIXAGENT_URL to steer this server. Before this
+ * function existed the code read NOTHING from the environment, so every one of
+ * those settings was inert: the published container port and the declared
+ * container health check were both written to match MCP_PORT while the server
+ * silently ignored it. That made the health check unsatisfiable — it probed a
+ * port nothing could ever listen on — and made the port knob look like
+ * configuration while doing nothing at all.
+ *
+ * Precedence is defaults < environment < CLI flags (applied in `main()`), so a
+ * CLI user's explicit `--port` / `--transport` always wins, and an embedder
+ * constructing `HelixAgentMCPServer` programmatically is never surprised by
+ * ambient environment — env is applied only on the CLI entry path.
+ *
+ * An env var that is SET but INVALID is a hard error, never a silent fallback:
+ * silently ignoring a bad value is the exact defect this function exists to
+ * remove (a setting that produces "no change and no error").
+ */
+export function envConfig(env: NodeJS.ProcessEnv = process.env): Partial<MCPServerConfig> {
+  const config: Partial<MCPServerConfig> = {};
+
+  const rawPort = env.MCP_PORT?.trim();
+  if (rawPort) {
+    const port = Number(rawPort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(
+        `MCP_PORT must be an integer between 1 and 65535, got '${rawPort}'`
+      );
+    }
+    config.port = port;
+  }
+
+  const rawTransport = env.MCP_TRANSPORT?.trim();
+  if (rawTransport) {
+    if (rawTransport !== 'stdio' && rawTransport !== 'sse') {
+      throw new Error(
+        `MCP_TRANSPORT must be 'stdio' or 'sse', got '${rawTransport}'`
+      );
+    }
+    config.transport = rawTransport;
+  }
+
+  const rawEndpoint = env.HELIXAGENT_URL?.trim();
+  if (rawEndpoint) {
+    config.endpoint = rawEndpoint;
+  }
+
+  // Boolean transport toggles. Only an explicit 'false'/'0' disables them, so an
+  // unset or malformed value keeps the built-in default rather than silently
+  // flipping behaviour.
+  const boolEnv = (raw: string | undefined): boolean | undefined => {
+    const value = raw?.trim().toLowerCase();
+    if (!value) return undefined;
+    if (value === 'false' || value === '0' || value === 'no') return false;
+    if (value === 'true' || value === '1' || value === 'yes') return true;
+    return undefined;
+  };
+
+  const http3 = boolEnv(env.ENABLE_HTTP3);
+  if (http3 !== undefined) config.preferHTTP3 = http3;
+
+  const toon = boolEnv(env.ENABLE_TOON);
+  if (toon !== undefined) config.enableTOON = toon;
+
+  const brotli = boolEnv(env.ENABLE_BROTLI);
+  if (brotli !== undefined) config.enableBrotli = brotli;
+
+  return config;
+}
+
 // MCP Protocol types
 interface MCPRequest {
   jsonrpc: '2.0';
@@ -408,7 +481,10 @@ export interface MCPTool {
 // CLI entry point
 async function main() {
   const args = process.argv.slice(2);
-  const config: Partial<MCPServerConfig> = {};
+  // Precedence: built-in defaults < environment < CLI flags. Env is read here
+  // (the CLI entry path) rather than in the constructor so programmatic
+  // embedders are not affected by ambient environment.
+  const config: Partial<MCPServerConfig> = envConfig();
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -444,6 +520,18 @@ Options:
   --no-toon            Disable TOON protocol
   --no-brotli          Disable Brotli compression
   --help               Show this help message
+
+Environment (overridden by the flags above, overrides the defaults):
+  MCP_PORT             SSE server port
+  MCP_TRANSPORT        Transport type: stdio or sse
+  HELIXAGENT_URL       HelixAgent endpoint
+  ENABLE_HTTP3         false/0/no disables HTTP/3 preference
+  ENABLE_TOON          false/0/no disables TOON protocol
+  ENABLE_BROTLI        false/0/no disables Brotli compression
+
+Note: the SSE transport is what opens a listening TCP port and serves /health;
+under the stdio transport no port is bound. A container that needs its port
+published or health-checked must set MCP_TRANSPORT=sse.
         `);
         process.exit(0);
     }

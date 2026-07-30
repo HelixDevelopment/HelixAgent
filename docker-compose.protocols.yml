@@ -29,6 +29,12 @@ services:
     ports:
       - "${HELIXAGENT_MCP_PORT:-9100}:9100"
     environment:
+      # MCP_TRANSPORT=sse is what makes the published port and the health check
+      # below meaningful: the stdio transport binds no port and serves no
+      # /health endpoint. MCP_PORT is read by the server (src/index.ts
+      # envConfig) and MUST stay equal to the container-side port published
+      # above and probed by the health check below.
+      - MCP_TRANSPORT=sse
       - MCP_PORT=9100
       - HELIXAGENT_URL=http://helixagent:7061
       - MCP_SERVER_NAME=helixagent
@@ -49,7 +55,15 @@ services:
       helixagent:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9100/health"]
+      # `curl` is NOT installed in node:20-alpine (verified against the image),
+      # so the previous curl-based probe could never succeed even once the
+      # server was listening. `node` is guaranteed present in a node image and
+      # reads MCP_PORT, so the probe tracks the port the server actually binds.
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:'+(process.env.MCP_PORT||9100)+'/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
       interval: 30s
       timeout: 10s
       retries: 3

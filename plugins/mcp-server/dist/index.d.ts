@@ -14,6 +14,28 @@ export interface MCPServerConfig {
     enableBrotli?: boolean;
 }
 /**
+ * Read configuration from the process environment.
+ *
+ * Container definitions (Dockerfile `ENV`, compose `environment:`) set
+ * MCP_PORT / MCP_TRANSPORT / HELIXAGENT_URL to steer this server. Before this
+ * function existed the code read NOTHING from the environment, so every one of
+ * those settings was inert: the published container port and the declared
+ * container health check were both written to match MCP_PORT while the server
+ * silently ignored it. That made the health check unsatisfiable — it probed a
+ * port nothing could ever listen on — and made the port knob look like
+ * configuration while doing nothing at all.
+ *
+ * Precedence is defaults < environment < CLI flags (applied in `main()`), so a
+ * CLI user's explicit `--port` / `--transport` always wins, and an embedder
+ * constructing `HelixAgentMCPServer` programmatically is never surprised by
+ * ambient environment — env is applied only on the CLI entry path.
+ *
+ * An env var that is SET but INVALID is a hard error, never a silent fallback:
+ * silently ignoring a bad value is the exact defect this function exists to
+ * remove (a setting that produces "no change and no error").
+ */
+export declare function envConfig(env?: NodeJS.ProcessEnv): Partial<MCPServerConfig>;
+/**
  * Generic MCP Server for HelixAgent
  */
 export declare class HelixAgentMCPServer {

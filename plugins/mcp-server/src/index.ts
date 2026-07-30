@@ -8,6 +8,7 @@
 
 import { createReadStream, createWriteStream } from 'fs';
 import { HelixAgentTransport } from './transport';
+import { parseAllowedOrigins, originHeaders } from './cors';
 import { DebateTool, EnsembleTool, TaskTool, RAGTool, MemoryTool, ProvidersTool, ACPTool, LSPTool, EmbeddingsTool, VisionTool, CogneeTool } from './tools';
 
 // Configuration
@@ -18,6 +19,12 @@ export interface MCPServerConfig {
   preferHTTP3?: boolean;
   enableTOON?: boolean;
   enableBrotli?: boolean;
+  /**
+   * Origins permitted to read SSE-transport responses cross-origin. Empty
+   * (the default) means default-deny: no cross-origin browser caller may read
+   * a response. See ./cors.ts (HXC-212).
+   */
+  allowedOrigins?: string[];
 }
 
 const defaultConfig: MCPServerConfig = {
@@ -26,6 +33,7 @@ const defaultConfig: MCPServerConfig = {
   preferHTTP3: true,
   enableTOON: true,
   enableBrotli: true,
+  allowedOrigins: [],
 };
 
 /**
@@ -76,6 +84,17 @@ export function envConfig(env: NodeJS.ProcessEnv = process.env): Partial<MCPServ
   const rawEndpoint = env.HELIXAGENT_URL?.trim();
   if (rawEndpoint) {
     config.endpoint = rawEndpoint;
+  }
+
+  // Cross-origin allowlist for the SSE transport (HXC-212), comma-separated.
+  // Unset means EMPTY, i.e. default-deny: no cross-origin browser caller may
+  // read a response. Unlike MCP_PORT / MCP_TRANSPORT an unparseable value is
+  // not possible here -- a literal "*" and blank fields are dropped by
+  // parseAllowedOrigins rather than rejected, because the safe reading of "*"
+  // is "deny", and failing closed is never the surprise that failing open is.
+  const rawOrigins = env.MCP_ALLOWED_ORIGINS;
+  if (rawOrigins !== undefined) {
+    config.allowedOrigins = parseAllowedOrigins(rawOrigins);
   }
 
   // Boolean transport toggles. Only an explicit 'false'/'0' disables them, so an
@@ -212,10 +231,22 @@ export class HelixAgentMCPServer {
     const http = await import('http');
     const port = this.config.port || 7062;
 
+    // HXC-212: the origin allowlist, resolved once. Empty = default-deny.
+    // Re-normalised here (not trusted as given) so a programmatic embedder
+    // cannot smuggle a literal "*" past the parser.
+    const allowedOrigins = new Set(parseAllowedOrigins(this.config.allowedOrigins));
+
     const server = http.createServer(async (req, res) => {
+      // Never "*": only an origin on the allowlist is echoed back, and only to
+      // itself. A request with no Origin gets no Allow-Origin header and is
+      // otherwise untouched.
+      const corsHeaders = originHeaders(req.headers.origin, allowedOrigins);
+
       if (req.method === 'OPTIONS') {
+        // The 204 short-circuit and the advertised methods/headers are
+        // unchanged; only WHO may read a response changed.
         res.writeHead(204, {
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders,
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
         });
@@ -239,7 +270,7 @@ export class HelixAgentMCPServer {
 
             res.writeHead(200, {
               'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
+              ...corsHeaders,
             });
             res.end(JSON.stringify(response));
           } catch (error) {
@@ -525,6 +556,10 @@ Environment (overridden by the flags above, overrides the defaults):
   MCP_PORT             SSE server port
   MCP_TRANSPORT        Transport type: stdio or sse
   HELIXAGENT_URL       HelixAgent endpoint
+  MCP_ALLOWED_ORIGINS  Comma-separated origins permitted to read SSE-transport
+                       responses cross-origin. Unset = deny all cross-origin
+                       browser access. A literal "*" is rejected. Clients that
+                       send no Origin (the CLI agents) are unaffected.
   ENABLE_HTTP3         false/0/no disables HTTP/3 preference
   ENABLE_TOON          false/0/no disables TOON protocol
   ENABLE_BROTLI        false/0/no disables Brotli compression

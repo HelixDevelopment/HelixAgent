@@ -12,6 +12,12 @@ export interface MCPServerConfig {
     preferHTTP3?: boolean;
     enableTOON?: boolean;
     enableBrotli?: boolean;
+    /**
+     * Origins permitted to read SSE-transport responses cross-origin. Empty
+     * (the default) means default-deny: no cross-origin browser caller may read
+     * a response. See ./cors.ts (HXC-212).
+     */
+    allowedOrigins?: string[];
 }
 /**
  * Read configuration from the process environment.

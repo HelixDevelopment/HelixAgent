@@ -9,6 +9,7 @@
 import { createReadStream, createWriteStream } from 'fs';
 import { HelixAgentTransport } from './transport';
 import { parseAllowedOrigins, originHeaders } from './cors';
+import { parseAllowedHosts, isHostAllowed } from './host';
 import { DebateTool, EnsembleTool, TaskTool, RAGTool, MemoryTool, ProvidersTool, ACPTool, LSPTool, EmbeddingsTool, VisionTool, CogneeTool } from './tools';
 
 // Configuration
@@ -25,6 +26,13 @@ export interface MCPServerConfig {
    * a response. See ./cors.ts (HXC-212).
    */
   allowedOrigins?: string[];
+  /**
+   * DNS names this server may be addressed by, beyond the loopback and
+   * IP-literal forms that are always permitted. Empty (the default) is already
+   * safe: rebinding needs a DNS name, and unlisted names are refused. See
+   * ./host.ts (HXC-172).
+   */
+  allowedHosts?: string[];
 }
 
 const defaultConfig: MCPServerConfig = {
@@ -34,6 +42,7 @@ const defaultConfig: MCPServerConfig = {
   enableTOON: true,
   enableBrotli: true,
   allowedOrigins: [],
+  allowedHosts: [],
 };
 
 /**
@@ -95,6 +104,17 @@ export function envConfig(env: NodeJS.ProcessEnv = process.env): Partial<MCPServ
   const rawOrigins = env.MCP_ALLOWED_ORIGINS;
   if (rawOrigins !== undefined) {
     config.allowedOrigins = parseAllowedOrigins(rawOrigins);
+  }
+
+  // DNS names this deployment is reached by (HXC-172), comma-separated. Unset
+  // means EMPTY, which is already safe: loopback and IP-literal Hosts are
+  // permitted unconditionally, every other DNS name is refused. Like the origin
+  // list a literal "*" is dropped rather than rejected -- the safe reading of
+  // "*" is "add nothing", and failing closed is never the surprise that failing
+  // open is.
+  const rawHosts = env.MCP_ALLOWED_HOSTS;
+  if (rawHosts !== undefined) {
+    config.allowedHosts = parseAllowedHosts(rawHosts);
   }
 
   // Boolean transport toggles. Only an explicit 'false'/'0' disables them, so an
@@ -235,12 +255,57 @@ export class HelixAgentMCPServer {
     // Re-normalised here (not trusted as given) so a programmatic embedder
     // cannot smuggle a literal "*" past the parser.
     const allowedOrigins = new Set(parseAllowedOrigins(this.config.allowedOrigins));
+    // HXC-172: DNS-rebinding protection. Re-normalised here (not trusted as
+    // given) so a programmatic embedder cannot smuggle a literal "*" past the
+    // parser, exactly as with the origin list above.
+    const allowedHosts = new Set(parseAllowedHosts(this.config.allowedHosts));
 
     const server = http.createServer(async (req, res) => {
+      // HXC-172, defence 1 of 2 — Host validation, applied before anything else
+      // and to every route. `server.listen(port)` binds all interfaces, so a
+      // page that rebinds its own DNS name to this address would otherwise
+      // reach the full MCP surface. Loopback and IP-literal Hosts are always
+      // permitted, so the container health check and host-side access need no
+      // configuration; any other DNS name must be named in MCP_ALLOWED_HOSTS.
+      if (!isHostAllowed(req.headers.host, allowedHosts)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          jsonrpc: '2.0',
+          id: 0,
+          error: { code: -32600, message: 'Host not allowed' },
+        }));
+        return;
+      }
+
       // Never "*": only an origin on the allowlist is echoed back, and only to
       // itself. A request with no Origin gets no Allow-Origin header and is
       // otherwise untouched.
       const corsHeaders = originHeaders(req.headers.origin, allowedOrigins);
+
+      // HXC-172, defence 2 of 2 — refuse a non-allowlisted browser origin
+      // OUTRIGHT rather than merely withholding Allow-Origin.
+      //
+      // HXC-212 stopped a hostile page READING our responses, which is what
+      // CORS governs. It does not stop the request being EXECUTED: the browser
+      // discards the reply only after we have already run the call, so a
+      // `tools/call` from a hostile page still had its side effect. Blocking
+      // the read is not blocking the call.
+      //
+      // OPTIONS is deliberately exempt: the preflight is the browser ASKING
+      // permission, and answering it with 204-and-no-Allow-Origin is already
+      // the correct denial (the browser then never sends the real request).
+      // Rejecting the preflight instead would change a settled contract
+      // (§11.4.120) while closing nothing extra.
+      const origin = req.headers.origin;
+      if (req.method !== 'OPTIONS' && origin !== undefined && !allowedOrigins.has(origin)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          jsonrpc: '2.0',
+          id: 0,
+          error: { code: -32600, message: 'Origin not allowed' },
+        }));
+        return;
+      }
 
       if (req.method === 'OPTIONS') {
         // The 204 short-circuit and the advertised methods/headers are
@@ -559,7 +624,14 @@ Environment (overridden by the flags above, overrides the defaults):
   MCP_ALLOWED_ORIGINS  Comma-separated origins permitted to read SSE-transport
                        responses cross-origin. Unset = deny all cross-origin
                        browser access. A literal "*" is rejected. Clients that
-                       send no Origin (the CLI agents) are unaffected.
+                       send no Origin (the CLI agents) are unaffected. A request
+                       from an origin that is not on the list is refused with
+                       403, not merely made unreadable.
+  MCP_ALLOWED_HOSTS    Comma-separated DNS names this server may be addressed
+                       by (DNS-rebinding protection). Loopback and IP-literal
+                       Host values are always permitted, so the default empty
+                       list is already safe and needs no configuration; set this
+                       only when a deployment is reached by a DNS name.
   ENABLE_HTTP3         false/0/no disables HTTP/3 preference
   ENABLE_TOON          false/0/no disables TOON protocol
   ENABLE_BROTLI        false/0/no disables Brotli compression
@@ -578,6 +650,8 @@ published or health-checked must set MCP_TRANSPORT=sse.
 
 // Export for programmatic use
 export { HelixAgentTransport } from './transport';
+export { parseAllowedOrigins, originHeaders } from './cors';
+export { parseAllowedHosts, isHostAllowed } from './host';
 export * from './tools';
 
 // Run if invoked directly

@@ -18,6 +18,13 @@ export interface MCPServerConfig {
      * a response. See ./cors.ts (HXC-212).
      */
     allowedOrigins?: string[];
+    /**
+     * DNS names this server may be addressed by, beyond the loopback and
+     * IP-literal forms that are always permitted. Empty (the default) is already
+     * safe: rebinding needs a DNS name, and unlisted names are refused. See
+     * ./host.ts (HXC-172).
+     */
+    allowedHosts?: string[];
 }
 /**
  * Read configuration from the process environment.
@@ -92,5 +99,7 @@ export interface MCPTool {
     execute(args: Record<string, unknown>): Promise<unknown>;
 }
 export { HelixAgentTransport } from './transport';
+export { parseAllowedOrigins, originHeaders } from './cors';
+export { parseAllowedHosts, isHostAllowed } from './host';
 export * from './tools';
 //# sourceMappingURL=index.d.ts.map

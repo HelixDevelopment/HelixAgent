@@ -11,9 +11,11 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "start": "node dist/index.js",
-    "test": "npm run build && npm run test:cors",
+    "test": "npm run build && npm run test:cors && npm run test:host",
     "test:cors": "RED_MODE=0 node test/cors_guard.test.js",
     "test:cors:red": "RED_MODE=1 node test/cors_guard.test.js",
+    "test:host": "RED_MODE=0 node test/host_rebinding_guard.test.js",
+    "test:host:red": "RED_MODE=1 node test/host_rebinding_guard.test.js",
     "lint": "eslint src/",
     "clean": "rm -rf dist/"
   },

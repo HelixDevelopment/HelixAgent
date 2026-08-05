@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -24,6 +25,13 @@ type ProtocolSecurity struct {
 	apiKeys     *safe.Store[string, *APIKey]
 	permissions *safe.Store[string, []string] // key -> permissions
 	logger      *logrus.Logger
+	// entropy is the source of cryptographic randomness for auto-generated
+	// API keys. It is always crypto/rand.Reader in production (set by
+	// NewProtocolSecurity); tests override it to exercise the
+	// entropy-failure path. A nil entropy falls back to crypto/rand.Reader
+	// so a zero-value ProtocolSecurity can never silently weaken key
+	// generation.
+	entropy io.Reader
 }
 
 // APIKey represents an API key with permissions
@@ -51,12 +59,27 @@ func NewProtocolSecurity(logger *logrus.Logger) *ProtocolSecurity {
 		apiKeys:     safe.NewStore[string, *APIKey](),
 		permissions: safe.NewStore[string, []string](),
 		logger:      logger,
+		entropy:     rand.Reader,
 	}
+}
+
+// entropySource returns the configured entropy source, defaulting to
+// crypto/rand.Reader.
+func (s *ProtocolSecurity) entropySource() io.Reader {
+	if s.entropy == nil {
+		return rand.Reader
+	}
+	return s.entropy
 }
 
 // CreateAPIKey creates a new API key with permissions (auto-generates the key)
 func (s *ProtocolSecurity) CreateAPIKey(name, owner string, permissions []string) (*APIKey, error) {
-	key := generateSecureToken()
+	key, err := generateSecureToken(s.entropySource())
+	if err != nil {
+		// Fail closed: no key is minted and none is stored, so nothing
+		// downstream can mistake a weak value for a valid credential.
+		return nil, fmt.Errorf("failed to generate API key %q: %w", name, err)
+	}
 	return s.CreateAPIKeyWithValue(name, owner, key, permissions)
 }
 
@@ -254,17 +277,32 @@ func GetGlobalRateLimiter() *RateLimiter {
 
 // Utility functions
 
-func generateSecureToken() string {
-	return fmt.Sprintf("sk-%s", generateID())
+// generateSecureToken returns a new API key, or an error if the entropy source
+// cannot supply the required randomness.
+//
+// It FAILS CLOSED (HXC-221). There is deliberately no fallback: an API key is a
+// credential matched against the `Authorization: Bearer` header by
+// ExtractAPIKeyFromHeader + ValidateAccess, so substituting a predictable value
+// (previously the wall clock) for randomness would issue a guessable
+// credential that the caller could not distinguish from a sound one. Refusing
+// is the only safe outcome; the caller must propagate the error.
+func generateSecureToken(entropy io.Reader) (string, error) {
+	id, err := generateID(entropy)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("sk-%s", id), nil
 }
 
-func generateID() string {
+// generateID returns 16 bytes of cryptographic randomness, hex-encoded, or an
+// error if the entropy source cannot supply all 16 bytes. A short read is an
+// error, never a partially-random result.
+func generateID(entropy io.Reader) (string, error) {
 	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		// Fallback only if crypto/rand fails (extremely rare)
-		return fmt.Sprintf("%d", time.Now().UnixNano())
+	if _, err := io.ReadFull(entropy, b); err != nil {
+		return "", fmt.Errorf("read 16 bytes of entropy: %w", err)
 	}
-	return hex.EncodeToString(b)
+	return hex.EncodeToString(b), nil
 }
 
 // Middleware helpers

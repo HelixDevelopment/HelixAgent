@@ -3294,6 +3294,13 @@ func TestGetMandatoryDependencies(t *testing.T) {
 }
 
 func TestVerifyAllMandatoryDependencies_AllFail(t *testing.T) {
+	// HXC-228: verification now WAITS for slow-starting dependencies before
+	// declaring failure. This test's dependencies never recover, so with the
+	// default 120s budget it would sit through the full wait. Shorten the
+	// budget — the assertion below is unchanged, and a non-zero value keeps the
+	// retry path exercised rather than skipping it via the fail-fast escape.
+	t.Setenv("HELIXAGENT_DEP_WAIT_SECONDS", "1")
+
 	// Save original checkers
 	originalPostgresChecker := postgresHealthChecker
 	originalRedisChecker := redisHealthChecker
@@ -3483,4 +3490,290 @@ func TestDefaultAppConfig_StrictDependencies(t *testing.T) {
 func TestAppConfig_StrictDependenciesFlag(t *testing.T) {
 	// Verify strictDependencies flag is defined
 	assert.NotNil(t, strictDependencies)
+}
+
+// =============================================================================
+// HXC-228 — cold-boot dependency race: bounded tolerant readiness waiting
+//
+// Forensic anchor (captured, docs/qa/live_systemd_boot_20260806T145857Z/
+// 11_helixagent_coldboot_race.txt + docs/qa/hxc228_cognee_coldboot_race_*/):
+// all four dependency probes and the fatal exit landed in the SAME second the
+// unit started, so a Cognee that was merely still coming up was treated as
+// permanently absent. Fifteen seconds later the identical check passed.
+// =============================================================================
+
+// TestClassifyDepFailure_DistinguishesAbsentFromStarting pins the classifier to
+// the error strings actually observed on the host, per §11.4.6 — these are
+// captured probe failures, not invented ones.
+func TestClassifyDepFailure_DistinguishesAbsentFromStarting(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want depFailureKind
+	}{
+		{
+			// Captured with the Cognee container stopped.
+			name: "captured_connection_refused_is_absent",
+			err:  errors.New(`cannot connect to Cognee: cannot connect: Get "http://localhost:8000/": dial tcp 127.0.0.1:8000: connect: connection refused`),
+			want: depAbsent,
+		},
+		{
+			// Captured during the Cognee start-up window (the HXC-228 race):
+			// the rootless port forwarder is bound, the app is not serving yet.
+			name: "captured_connection_reset_is_starting",
+			err:  errors.New(`cannot connect to Cognee: cannot connect: Get "http://localhost:8000/": read tcp 127.0.0.1:52250->127.0.0.1:8000: read: connection reset by peer`),
+			want: depStarting,
+		},
+		{
+			name: "typed_econnrefused_is_absent",
+			err:  fmt.Errorf("probe failed: %w", syscall.ECONNREFUSED),
+			want: depAbsent,
+		},
+		{
+			name: "unresolvable_host_is_absent",
+			err:  errors.New(`dial tcp: lookup cognee: no such host`),
+			want: depAbsent,
+		},
+		{
+			name: "timeout_is_starting",
+			err:  errors.New(`Get "http://localhost:8000/": context deadline exceeded (Client.Timeout exceeded)`),
+			want: depStarting,
+		},
+		{
+			name: "unhealthy_http_status_is_starting",
+			err:  errors.New("health check failed with status: 503"),
+			want: depStarting,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, classifyDepFailure(tt.err),
+				"misclassifying this failure sends the operator the wrong remedy")
+		})
+	}
+}
+
+// TestProbeDependencyUntil_ToleratesSlowStartingDependency is the unit-level
+// mirror of the captured defect: a dependency that fails first and succeeds a
+// moment later must be WAITED FOR, not treated as absent.
+func TestProbeDependencyUntil_ToleratesSlowStartingDependency(t *testing.T) {
+	var attempts int
+	dep := MandatoryDependency{
+		Name:     "Cognee",
+		Required: true,
+		CheckFunc: func() error {
+			attempts++
+			if attempts < 3 {
+				return errors.New("read tcp 127.0.0.1:1->127.0.0.1:8000: read: connection reset by peer")
+			}
+			return nil
+		},
+	}
+
+	result := probeDependencyUntil(dep, time.Now().Add(30*time.Second), createTestLogger())
+
+	require.NoError(t, result.err, "a dependency that became ready must NOT be reported as failed")
+	assert.Equal(t, 3, result.attempts, "must have retried rather than giving up on the first failure")
+}
+
+// TestProbeDependencyUntil_AbsentDependencyStillFails is the anti-bluff guard:
+// tolerance must NOT weaken mandatory verification into uselessness. A
+// dependency that never comes up must still fail — §11.4 forbids a service
+// claiming health it does not have.
+func TestProbeDependencyUntil_AbsentDependencyStillFails(t *testing.T) {
+	dep := MandatoryDependency{
+		Name:     "Cognee",
+		Required: true,
+		CheckFunc: func() error {
+			return errors.New("dial tcp 127.0.0.1:8000: connect: connection refused")
+		},
+	}
+
+	start := time.Now()
+	result := probeDependencyUntil(dep, start.Add(2*time.Second), createTestLogger())
+	elapsed := time.Since(start)
+
+	require.Error(t, result.err, "a genuinely absent dependency MUST still block boot")
+	assert.Equal(t, depAbsent, result.kind)
+	assert.Greater(t, result.attempts, 1, "must have retried before concluding absence")
+	// Bounded: an unbounded wait would convert a crash into a hang.
+	assert.Less(t, elapsed, 20*time.Second, "wait must be bounded by the deadline")
+}
+
+// TestProbeDependencyUntil_HealthyDependencyCostsNothing proves the happy path
+// is unchanged — no added boot latency when everything is already up.
+func TestProbeDependencyUntil_HealthyDependencyCostsNothing(t *testing.T) {
+	dep := MandatoryDependency{
+		Name:      "Cognee",
+		Required:  true,
+		CheckFunc: func() error { return nil },
+	}
+
+	start := time.Now()
+	result := probeDependencyUntil(dep, start.Add(120*time.Second), createTestLogger())
+
+	require.NoError(t, result.err)
+	assert.Equal(t, 1, result.attempts, "a healthy dependency must be probed exactly once")
+	assert.Less(t, time.Since(start), time.Second, "healthy path must not sleep")
+}
+
+// TestDependencyWaitBudget_ResolvesFromEnvironment covers the bound's knob,
+// including the explicit fail-fast escape (0) and invalid input.
+func TestDependencyWaitBudget_ResolvesFromEnvironment(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		set   bool
+		want  time.Duration
+	}{
+		{name: "unset_uses_default", set: false, want: defaultDependencyWaitSeconds * time.Second},
+		{name: "explicit_value", set: true, value: "45", want: 45 * time.Second},
+		{name: "zero_restores_fail_fast", set: true, value: "0", want: 0},
+		{name: "invalid_falls_back_to_default", set: true, value: "banana", want: defaultDependencyWaitSeconds * time.Second},
+		{name: "negative_falls_back_to_default", set: true, value: "-5", want: defaultDependencyWaitSeconds * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.set {
+				t.Setenv("HELIXAGENT_DEP_WAIT_SECONDS", tt.value)
+			} else {
+				t.Setenv("HELIXAGENT_DEP_WAIT_SECONDS", "")
+			}
+			assert.Equal(t, tt.want, dependencyWaitBudget(createTestLogger()))
+		})
+	}
+}
+
+// TestProbeDependencyUntil_ZeroBudgetFailsFast proves the escape hatch really
+// restores single-attempt strictness.
+func TestProbeDependencyUntil_ZeroBudgetFailsFast(t *testing.T) {
+	var attempts int
+	dep := MandatoryDependency{
+		Name:     "Cognee",
+		Required: true,
+		CheckFunc: func() error {
+			attempts++
+			return errors.New("connect: connection refused")
+		},
+	}
+
+	result := probeDependencyUntil(dep, time.Now(), createTestLogger())
+
+	require.Error(t, result.err)
+	assert.Equal(t, 1, attempts, "a zero budget must probe exactly once")
+}
+
+// TestFormatBootBlockedMessage_RemedyMatchesFailureKind is the message fix:
+// telling an operator to start a stack that is demonstrably already running
+// sends them debugging the wrong thing.
+func TestFormatBootBlockedMessage_RemedyMatchesFailureKind(t *testing.T) {
+	t.Run("starting_dependency_does_not_advise_starting_the_stack", func(t *testing.T) {
+		msg := formatBootBlockedMessage([]depFailure{{
+			name:     "Cognee",
+			err:      errors.New("read: connection reset by peer"),
+			kind:     depStarting,
+			attempts: 12,
+		}}, 4, 120*time.Second)
+
+		assert.Contains(t, msg, "BOOT BLOCKED")
+		assert.Contains(t, msg, "STILL STARTING")
+		assert.Contains(t, msg, "HELIXAGENT_DEP_WAIT_SECONDS")
+		// The exact bluff HXC-228 reported: misleading remedy.
+		assert.NotContains(t, msg, "make docker-start",
+			"must not tell the operator to start a stack that is already running")
+		assert.NotContains(t, msg, "docker-compose up -d")
+	})
+
+	t.Run("absent_dependency_does_advise_starting_the_stack", func(t *testing.T) {
+		msg := formatBootBlockedMessage([]depFailure{{
+			name:     "Cognee",
+			err:      errors.New("connect: connection refused"),
+			kind:     depAbsent,
+			attempts: 12,
+		}}, 4, 120*time.Second)
+
+		assert.Contains(t, msg, "NOT RUNNING")
+		assert.Contains(t, msg, "make docker-start")
+	})
+
+	t.Run("mixed_failures_carry_both_remedies", func(t *testing.T) {
+		msg := formatBootBlockedMessage([]depFailure{
+			{name: "Cognee", err: errors.New("reset"), kind: depStarting, attempts: 9},
+			{name: "ChromaDB", err: errors.New("refused"), kind: depAbsent, attempts: 9},
+		}, 4, 120*time.Second)
+
+		assert.Contains(t, msg, "STILL STARTING")
+		assert.Contains(t, msg, "NOT RUNNING")
+		assert.Contains(t, msg, "2 of 4 mandatory dependencies failed")
+	})
+}
+
+// TestClassifyDepFailure_AuthoritativeRejection covers the third kind, found
+// while validating HXC-228 on the live stack: a wrong DB_PASSWORD was being
+// classified STILL STARTING, so the operator was told to wait longer for a
+// condition that waiting can never fix — the same misleading-remedy defect
+// this ticket exists to remove.
+func TestClassifyDepFailure_AuthoritativeRejection(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+	}{
+		{
+			// Captured verbatim from a live probe with the wrong password.
+			name: "captured_postgres_sasl_auth_failure",
+			err: errors.New("failed to connect to PostgreSQL: failed to connect to `user=helixagent database=helixagent_db`: " +
+				"127.0.0.1:5433 (localhost): failed SASL auth: FATAL: password authentication failed for user \"helixagent\" (SQLSTATE 28P01)"),
+		},
+		{name: "redis_wrongpass", err: errors.New("failed to connect to Redis: WRONGPASS invalid username-password pair")},
+		{name: "redis_noauth", err: errors.New("failed to connect to Redis: NOAUTH Authentication required")},
+		{name: "http_401", err: errors.New("health check failed with status: 401")},
+		{name: "http_403", err: errors.New("health check failed with status: 403")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, depRejected, classifyDepFailure(tt.err),
+				"a credential rejection must never be reported as a timing problem")
+		})
+	}
+}
+
+// TestProbeDependencyUntil_RejectionFailsImmediately proves we do not burn the
+// whole wait budget on a certainty.
+func TestProbeDependencyUntil_RejectionFailsImmediately(t *testing.T) {
+	var attempts int
+	dep := MandatoryDependency{
+		Name:     "PostgreSQL",
+		Required: true,
+		CheckFunc: func() error {
+			attempts++
+			return errors.New("failed SASL auth: FATAL: password authentication failed (SQLSTATE 28P01)")
+		},
+	}
+
+	start := time.Now()
+	result := probeDependencyUntil(dep, start.Add(120*time.Second), createTestLogger())
+
+	require.Error(t, result.err)
+	assert.Equal(t, depRejected, result.kind)
+	assert.Equal(t, 1, attempts, "a credential rejection must not be retried")
+	assert.Less(t, time.Since(start), time.Second, "must fail fast, not consume the budget")
+}
+
+// TestFormatBootBlockedMessage_RejectionAdvisesCredentials pins the remedy.
+func TestFormatBootBlockedMessage_RejectionAdvisesCredentials(t *testing.T) {
+	msg := formatBootBlockedMessage([]depFailure{{
+		name:     "PostgreSQL",
+		err:      errors.New("password authentication failed (SQLSTATE 28P01)"),
+		kind:     depRejected,
+		attempts: 1,
+	}}, 4, 120*time.Second)
+
+	assert.Contains(t, msg, "REJECTED OUR CREDENTIALS")
+	assert.Contains(t, msg, "DB_PASSWORD")
+	// Both wrong remedies must be absent.
+	assert.NotContains(t, msg, "make docker-start")
+	assert.NotContains(t, msg, "raise HELIXAGENT_DEP_WAIT_SECONDS")
 }

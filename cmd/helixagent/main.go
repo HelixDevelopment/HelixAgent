@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -784,34 +785,253 @@ func GetMandatoryDependencies() []MandatoryDependency {
 	}
 }
 
-// verifyAllMandatoryDependencies checks ALL required integration dependencies
-// Returns an error if ANY mandatory dependency is unavailable
+// depFailureKind distinguishes the two operationally different reasons a
+// dependency probe fails. They demand OPPOSITE operator actions, so collapsing
+// them into one message actively misleads (see verifyAllMandatoryDependencies).
+type depFailureKind int
+
+const (
+	// depAbsent — nothing is listening on the endpoint at all: the dependency
+	// has not been started, or is bound somewhere else. The operator must start
+	// the stack.
+	depAbsent depFailureKind = iota
+	// depStarting — something accepted the connection but did not serve a
+	// healthy response: the dependency process/container exists and is still
+	// coming up (or is unhealthy). Starting the stack again is the WRONG advice.
+	depStarting
+	// depRejected — the dependency is up and answered, but AUTHORITATIVELY
+	// rejected us (bad credentials, forbidden). Waiting cannot fix this, so
+	// probing retries immediately stop: telling the operator to wait longer
+	// would be the same misleading-remedy defect HXC-228 is about.
+	depRejected
+)
+
+func (k depFailureKind) String() string {
+	switch k {
+	case depAbsent:
+		return "NOT RUNNING"
+	case depRejected:
+		return "REJECTED OUR CREDENTIALS"
+	default:
+		return "STILL STARTING"
+	}
+}
+
+// classifyDepFailure decides whether a failed probe means "nothing is there"
+// or "something is there but is not serving yet".
+//
+// Grounded in captured evidence, not guesswork (§11.4.6). On this host, with
+// the Cognee container stopped the probe fails with
+//
+//	dial tcp 127.0.0.1:8000: connect: connection refused
+//
+// while during its start-up window — the HXC-228 race — the port forwarder is
+// already bound and the probe fails with
+//
+//	read tcp ...->127.0.0.1:8000: read: connection reset by peer
+//
+// The refused/unreachable/unresolvable family means depAbsent; anything that
+// got far enough to be reset, time out, or answer non-200 means depStarting.
+func classifyDepFailure(err error) depFailureKind {
+	if err == nil {
+		return depStarting
+	}
+	// Prefer typed matching; fall back to string matching because the pgx and
+	// go-redis drivers do not always preserve the syscall error in their chain.
+	for _, errno := range []syscall.Errno{syscall.ECONNREFUSED, syscall.EHOSTUNREACH, syscall.ENETUNREACH} {
+		if errors.Is(err, errno) {
+			return depAbsent
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	for _, needle := range []string{
+		"connection refused",
+		"no route to host",
+		"network is unreachable",
+		"no such host",
+	} {
+		if strings.Contains(msg, needle) {
+			return depAbsent
+		}
+	}
+	// Authoritative rejections: the dependency IS serving and said no. Observed
+	// while validating HXC-228 — a wrong DB_PASSWORD surfaces as
+	// "failed SASL auth: FATAL: password authentication failed ... (SQLSTATE 28P01)".
+	// Retrying that for the full budget wastes the boot and then advises the
+	// operator to wait even longer, which is precisely the misleading remedy
+	// this ticket exists to remove.
+	for _, needle := range []string{
+		"password authentication failed",
+		"authentication failed",
+		"sqlstate 28p01", // invalid_password
+		"sqlstate 28000", // invalid_authorization_specification
+		"wrongpass",      // redis: wrong password
+		"noauth",         // redis: auth required, none supplied
+		"invalid password",
+		"status: 401",
+		"status: 403",
+	} {
+		if strings.Contains(msg, needle) {
+			return depRejected
+		}
+	}
+	return depStarting
+}
+
+// defaultDependencyWaitSeconds bounds how long boot verification will wait for
+// slow-starting dependencies. Bounded on purpose: an unbounded wait converts a
+// crash into a hang, which is strictly worse — systemd would sit in
+// "activating" forever instead of reporting a failure the operator can see.
+const defaultDependencyWaitSeconds = 120
+
+// dependencyWaitBudget resolves the total wait budget shared by ALL dependency
+// probes. Set HELIXAGENT_DEP_WAIT_SECONDS=0 to restore strict fail-fast
+// (single attempt per dependency, no waiting).
+func dependencyWaitBudget(logger *logrus.Logger) time.Duration {
+	raw := strings.TrimSpace(os.Getenv("HELIXAGENT_DEP_WAIT_SECONDS"))
+	if raw == "" {
+		return defaultDependencyWaitSeconds * time.Second
+	}
+	seconds, err := strconv.Atoi(raw)
+	if err != nil || seconds < 0 {
+		logger.WithFields(logrus.Fields{
+			"HELIXAGENT_DEP_WAIT_SECONDS": raw,
+			"fallback_seconds":            defaultDependencyWaitSeconds,
+		}).Warn("Invalid dependency wait budget, using default")
+		return defaultDependencyWaitSeconds * time.Second
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+// depProbeResult is the outcome of probing one dependency until it became
+// healthy or the shared deadline expired.
+type depProbeResult struct {
+	err      error // nil => healthy
+	kind     depFailureKind
+	attempts int
+	waited   time.Duration
+}
+
+// probeDependencyUntil polls one dependency until it reports healthy or the
+// shared deadline passes, backing off exponentially between attempts.
+//
+// Condition-based, not a fixed sleep: a dependency that is already up returns
+// on the first attempt and costs nothing, so the happy path is unchanged.
+func probeDependencyUntil(dep MandatoryDependency, deadline time.Time, logger *logrus.Logger) depProbeResult {
+	const maxBackoff = 8 * time.Second
+
+	start := time.Now()
+	backoff := time.Second
+
+	for attempts := 1; ; attempts++ {
+		err := dep.CheckFunc()
+		if err == nil {
+			return depProbeResult{attempts: attempts, waited: time.Since(start)}
+		}
+
+		kind := classifyDepFailure(err)
+		// An authoritative rejection will not change by waiting — fail
+		// immediately rather than burning the whole budget on a certainty.
+		if kind == depRejected {
+			return depProbeResult{err: err, kind: kind, attempts: attempts, waited: time.Since(start)}
+		}
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return depProbeResult{err: err, kind: kind, attempts: attempts, waited: time.Since(start)}
+		}
+
+		sleep := backoff
+		if sleep > remaining {
+			sleep = remaining
+		}
+		logger.WithFields(logrus.Fields{
+			"dependency":  dep.Name,
+			"state":       kind.String(),
+			"attempt":     attempts,
+			"retry_in":    sleep.Round(time.Millisecond),
+			"deadline_in": remaining.Round(time.Second),
+			"error":       err,
+		}).Warn("⏳ DEPENDENCY NOT READY — waiting")
+
+		time.Sleep(sleep)
+		if backoff < maxBackoff {
+			backoff *= 2
+		}
+	}
+}
+
+// depFailure records a dependency that never became healthy within the budget.
+type depFailure struct {
+	name     string
+	err      error
+	kind     depFailureKind
+	attempts int
+}
+
+// verifyAllMandatoryDependencies checks ALL required integration dependencies.
+// Returns an error if ANY mandatory dependency is still unavailable after the
+// bounded wait budget.
+//
+// HXC-228: this used to probe each dependency EXACTLY ONCE. On a cold boot all
+// four probes and the fatal exit landed inside the same second the unit
+// started, so a dependency that was merely still coming up — Cognee, whose
+// compose entry waits on postgres+redis being healthy and so is always among
+// the last to serve — was treated as permanently absent and blocked the boot.
+// Fifteen seconds later the very same check passed. A readiness check that runs
+// once, in the same second the process starts, cannot distinguish "not ready
+// yet" from "not there at all".
+//
+// The fix is to WAIT, but only within a bound: a genuinely absent dependency
+// must still block the boot (that is the whole point of mandatory verification
+// per §11.4 — a service must never claim health it does not have).
 func verifyAllMandatoryDependencies(logger *logrus.Logger) error {
 	dependencies := GetMandatoryDependencies()
-	var failedDeps []string
+	var failedDeps []depFailure
 	var successDeps []string
+
+	budget := dependencyWaitBudget(logger)
+	// ONE deadline shared by every dependency, so total added boot latency is
+	// the budget — not the budget multiplied by the number of dependencies.
+	deadline := time.Now().Add(budget)
 
 	logger.Info("╔══════════════════════════════════════════════════════════════════╗")
 	logger.Info("║           MANDATORY DEPENDENCY VERIFICATION                       ║")
 	logger.Info("╚══════════════════════════════════════════════════════════════════╝")
+	logger.WithField("wait_budget", budget).Info("Waiting up to this long for slow-starting dependencies")
 
 	for _, dep := range dependencies {
 		logger.WithField("dependency", dep.Name).Info("Checking dependency...")
 
-		if err := dep.CheckFunc(); err != nil {
-			failedDeps = append(failedDeps, fmt.Sprintf("%s: %v", dep.Name, err))
+		result := probeDependencyUntil(dep, deadline, logger)
+		if result.err != nil {
+			failedDeps = append(failedDeps, depFailure{
+				name:     dep.Name,
+				err:      result.err,
+				kind:     result.kind,
+				attempts: result.attempts,
+			})
 			logger.WithFields(logrus.Fields{
 				"dependency":  dep.Name,
 				"description": dep.Description,
-				"error":       err,
+				"state":       result.kind.String(),
+				"attempts":    result.attempts,
+				"waited":      result.waited.Round(time.Second),
+				"error":       result.err,
 			}).Error("❌ DEPENDENCY FAILED")
-		} else {
-			successDeps = append(successDeps, dep.Name)
-			logger.WithFields(logrus.Fields{
-				"dependency":  dep.Name,
-				"description": dep.Description,
-			}).Info("✅ DEPENDENCY OK")
+			continue
 		}
+
+		successDeps = append(successDeps, dep.Name)
+		fields := logrus.Fields{
+			"dependency":  dep.Name,
+			"description": dep.Description,
+		}
+		if result.attempts > 1 {
+			fields["attempts"] = result.attempts
+			fields["waited"] = result.waited.Round(time.Second)
+		}
+		logger.WithFields(fields).Info("✅ DEPENDENCY OK")
 	}
 
 	logger.Info("────────────────────────────────────────────────────────────────────")
@@ -822,18 +1042,59 @@ func verifyAllMandatoryDependencies(logger *logrus.Logger) error {
 	}).Info("Dependency verification summary")
 
 	if len(failedDeps) > 0 {
-		errorMsg := fmt.Sprintf("BOOT BLOCKED: %d of %d mandatory dependencies failed:\n", len(failedDeps), len(dependencies))
-		for i, failure := range failedDeps {
-			errorMsg += fmt.Sprintf("  %d. %s\n", i+1, failure)
-		}
-		errorMsg += "\nHelixAgent REQUIRES all integration components to be running.\n"
-		errorMsg += "Please start all dependencies with: docker-compose up -d\n"
-		errorMsg += "Or use: make docker-start"
-
-		return fmt.Errorf("%s", errorMsg)
+		return fmt.Errorf("%s", formatBootBlockedMessage(failedDeps, len(dependencies), budget))
 	}
 
 	return nil
+}
+
+// formatBootBlockedMessage renders the operator-facing boot failure.
+//
+// HXC-228: the previous message unconditionally advised "docker-compose up -d /
+// make docker-start". When the dependency was already starting, that advice
+// pointed the operator at a stack that was demonstrably already running and
+// sent them debugging the wrong thing. The remedy now follows the actual
+// failure kind, and is only offered for dependencies that really are absent.
+func formatBootBlockedMessage(failures []depFailure, total int, budget time.Duration) string {
+	var anyAbsent, anyStarting, anyRejected bool
+
+	msg := fmt.Sprintf("BOOT BLOCKED: %d of %d mandatory dependencies failed after waiting up to %s:\n",
+		len(failures), total, budget)
+	for i, f := range failures {
+		switch f.kind {
+		case depAbsent:
+			anyAbsent = true
+		case depRejected:
+			anyRejected = true
+		default:
+			anyStarting = true
+		}
+		msg += fmt.Sprintf("  %d. %s [%s after %d attempt(s)]: %v\n", i+1, f.name, f.kind, f.attempts, f.err)
+	}
+
+	msg += "\nHelixAgent REQUIRES all integration components to be running.\n"
+
+	if anyRejected {
+		msg += "\nREJECTED OUR CREDENTIALS — these dependencies are up and answering, but\n"
+		msg += "refused our credentials. This is a configuration error, not a timing one:\n"
+		msg += "waiting longer and restarting the stack will BOTH fail. Check the relevant\n"
+		msg += "secrets (DB_PASSWORD, REDIS_PASSWORD, API keys) in your .env.\n"
+	}
+
+	if anyAbsent {
+		msg += "\nNOT RUNNING — nothing is listening on these endpoints. The dependency\n"
+		msg += "stack is not up (or is bound to different ports than configured).\n"
+		msg += "Start it with: make docker-start\n"
+	}
+	if anyStarting {
+		msg += "\nSTILL STARTING — these endpoints accepted a connection but never served a\n"
+		msg += "healthy response. The dependency IS running and did not finish starting in\n"
+		msg += "time; starting the stack again will NOT help. Check that dependency's own\n"
+		msg += "logs and health status. If it legitimately needs longer than the current\n"
+		msg += fmt.Sprintf("budget, raise HELIXAGENT_DEP_WAIT_SECONDS (currently %d).\n", int(budget.Seconds()))
+	}
+
+	return strings.TrimRight(msg, "\n")
 }
 
 // runStartupVerification performs unified startup verification using LLMsVerifier

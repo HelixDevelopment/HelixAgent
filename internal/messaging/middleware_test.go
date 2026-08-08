@@ -472,11 +472,55 @@ func TestRetryMiddleware_MaxDelayRespected(t *testing.T) {
 	msg := NewMessage("test", []byte("payload"))
 	_ = handler(context.Background(), msg)
 
-	// Verify no delay exceeds maxDelay (with some tolerance for timing)
+	// Expected gap sequence with InitialDelay=100ms, Multiplier=10, MaxDelay=150ms:
+	//   gap[0] = InitialDelay              = 100ms  (cap does NOT bind yet)
+	//   gap[1..] = min(prev*10, MaxDelay)  = 150ms  (cap binds)
+	// If the cap regressed, gap[1] would be 100ms*10 = 1000ms and gap[2] 10s.
+	// >=3 timestamps yields >=2 gaps, of which gaps[1:] (>=1) are cap-bound —
+	// enough to index cappedGaps[0] safely. In practice MaxRetries=5 with an
+	// always-failing handler yields 6 timestamps / 5 gaps / 4 cap-bound.
+	require.GreaterOrEqual(t, len(timestamps), 3, "need at least one cap-bound backoff gap to exercise the cap")
+
+	gaps := make([]time.Duration, 0, len(timestamps)-1)
 	for i := 1; i < len(timestamps); i++ {
-		delay := timestamps[i].Sub(timestamps[i-1])
-		assert.True(t, delay <= 200*time.Millisecond) // maxDelay + tolerance
+		gaps = append(gaps, timestamps[i].Sub(timestamps[i-1]))
 	}
+
+	// Only gaps[1:] are cap-bound; gaps[0] is InitialDelay and is below MaxDelay
+	// regardless of whether the cap works, so including it would make the
+	// assertion vacuous.
+	cappedGaps := gaps[1:]
+
+	// Why the minimum: OS scheduling delay is strictly ADDITIVE — it can only
+	// make an observed gap LARGER, never smaller. A per-sample ceiling
+	// therefore measures the host, not the cap: on a CPU-quota-limited cgroup a
+	// single throttle event adds a full 100ms enforcement period, which is why
+	// the previous `delay <= 200ms` ceiling (only 50ms of headroom over the
+	// 150ms MaxDelay) failed under load. The MINIMUM converges on the true
+	// capped delay from above and keeps full teeth: an uncapped backoff would
+	// make every cap-bound gap >= 1000ms, minimum included.
+	minCapped := cappedGaps[0]
+	maxGap := gaps[0]
+	for _, g := range cappedGaps {
+		if g < minCapped {
+			minCapped = g
+		}
+	}
+	for _, g := range gaps {
+		if g > maxGap {
+			maxGap = g
+		}
+	}
+
+	assert.LessOrEqual(t, minCapped, config.MaxDelay+50*time.Millisecond,
+		"best-case backoff gap %v exceeded MaxDelay (%v); exponential backoff is not being capped",
+		minCapped, config.MaxDelay)
+
+	// Independent coarse guard against runaway backoff. Generous enough to
+	// absorb a scheduler stall, tight enough that an uncapped gap (>=1000ms)
+	// still fails.
+	assert.LessOrEqual(t, maxGap, 500*time.Millisecond,
+		"backoff gap %v indicates runaway (uncapped) exponential backoff", maxGap)
 }
 
 // =============================================================================

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -1182,18 +1183,95 @@ func TestClaudeProvider_WaitWithJitter(t *testing.T) {
 	t.Parallel()
 	provider := NewClaudeProvider("test-key", "", "")
 
-	start := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	const (
+		baseDelay = 100 * time.Millisecond
+		// A GROSS-REGRESSION ceiling, deliberately NOT the 10% jitter bound.
+		// waitWithJitter sleeps delay + rand[0,0.1)*delay, so the minimum over
+		// `samples` draws sits just above baseDelay — but a baseDelay*1.1
+		// ceiling leaves only ~1ms of headroom from the jitter distribution
+		// alone (measured worst-case minimum over 20k trials: 108.9ms), before
+		// any scheduler noise, which would make this test flaky in its own
+		// right. baseDelay*1.5 keeps ~41ms of headroom while still catching any
+		// regression that inflates the sleep by 2x or more (the delay*2
+		// mutation lands at ~200ms). The 10% jitter bound is asserted
+		// separately and deterministically — see the JitterFor test below.
+		grossRegressionCeiling = baseDelay + baseDelay/2 // 150ms
+		samples                = 5
+	)
+
+	// Scope of this test: that waitWithJitter actually sleeps for at least the
+	// base delay and is not grossly longer. The 10% jitter BOUND is not
+	// asserted here — TestClaudeProvider_JitterFor_RespectsTenPercentBound
+	// covers the jitterFor FUNCTION deterministically. Honest boundary: that
+	// pairing does not pin the call-site composition, so a mutation that
+	// multiplied jitterFor's result at the call site would evade both checks
+	// until it grew large enough to trip the gross-regression ceiling below.
+	//
+	// Why not assert the jitter bound here: OS scheduling delay is strictly
+	// ADDITIVE — it can only make an observed elapsed time LARGER, never
+	// smaller — and on a CPU-quota-limited cgroup a single throttle period adds
+	// ~100ms, an order of magnitude more than the 10ms of jitter being
+	// measured (measured under load: 183.5ms against this 110ms ceiling). A
+	// per-sample ceiling therefore measures the host, not the code. Taking the
+	// MINIMUM removes the host sensitivity, but the minimum converges on
+	// delay+min(jitter) -> delay, so it cannot police the jitter range either
+	// (empirically it catches a 5x jitter regression only ~33% of the time).
+	// Hence: wall-clock covers the sleep, the unit test covers the bound.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	baseDelay := 100 * time.Millisecond
-	provider.waitWithJitter(ctx, baseDelay)
-	elapsed := time.Since(start)
+	minElapsed := time.Duration(math.MaxInt64)
+	for i := 0; i < samples; i++ {
+		start := time.Now()
+		provider.waitWithJitter(ctx, baseDelay)
+		elapsed := time.Since(start)
 
-	// Should wait at least the base delay
-	assert.GreaterOrEqual(t, elapsed, baseDelay)
-	// Should not exceed base delay + 10% jitter + buffer
-	assert.LessOrEqual(t, elapsed, 150*time.Millisecond)
+		// Lower bound is robust to scheduler delay (stalls only ever add
+		// time), so it is asserted on every sample.
+		assert.GreaterOrEqual(t, elapsed, baseDelay,
+			"waitWithJitter must never return before the base delay (sample %d)", i)
+
+		if elapsed < minElapsed {
+			minElapsed = elapsed
+		}
+	}
+
+	// Gross-regression guard: catches a change that systematically inflates the
+	// sleep (e.g. delay*2), which no amount of scheduler noise can explain away
+	// because noise only ever adds to the minimum.
+	assert.LessOrEqual(t, minElapsed, grossRegressionCeiling,
+		"best-case wait %v exceeded the gross-regression ceiling (%v); waitWithJitter is sleeping substantially longer than its contract",
+		minElapsed, grossRegressionCeiling)
+}
+
+// TestClaudeProvider_JitterFor_RespectsTenPercentBound asserts the documented
+// jitter contract directly and deterministically: jitterFor(d) always lands in
+// [0, 10% of d). This is the assertion with real teeth — it involves no
+// wall-clock measurement, so it cannot be masked by scheduler delay, and any
+// widening of the jitter factor fails it immediately and every time.
+func TestClaudeProvider_JitterFor_RespectsTenPercentBound(t *testing.T) {
+	t.Parallel()
+
+	for _, delay := range []time.Duration{
+		time.Millisecond, 100 * time.Millisecond, time.Second, time.Minute,
+	} {
+		maxJitter := delay / 10
+		for i := 0; i < 10000; i++ {
+			j := jitterFor(delay)
+			require.GreaterOrEqual(t, j, time.Duration(0),
+				"jitter must never be negative (delay=%v)", delay)
+			require.Less(t, j, maxJitter,
+				"jitter %v must stay under 10%% of delay %v", j, delay)
+		}
+	}
+
+	// Sanity: jitter must actually vary, otherwise the bound above would be
+	// satisfied trivially by a constant zero.
+	seen := make(map[time.Duration]struct{})
+	for i := 0; i < 100; i++ {
+		seen[jitterFor(time.Second)] = struct{}{}
+	}
+	assert.Greater(t, len(seen), 1, "jitter should be randomised, not constant")
 }
 
 func TestClaudeProvider_WaitWithJitter_ContextCancelled(t *testing.T) {

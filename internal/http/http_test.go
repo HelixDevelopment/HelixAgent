@@ -1176,11 +1176,24 @@ func TestHTTPClientPool_ActiveRequestsTracking(t *testing.T) {
 	assert.Equal(t, int64(1), metrics.ActiveRequests)
 
 	requestComplete.Done()
-	time.Sleep(50 * time.Millisecond)
 
-	// After request, active should be 0
-	metrics = pool.Metrics()
-	assert.Equal(t, int64(0), metrics.ActiveRequests)
+	// After the request drains, active must return to 0.
+	//
+	// This previously slept a fixed 50ms and then asserted once. That is
+	// sleep-based synchronisation, not a check of the invariant: the decrement
+	// happens in the client goroutine (the deferred atomic.AddInt64(..., -1) in
+	// DoWithContext, which Get calls), and nothing guarantees that goroutine is
+	// rescheduled and finished within any fixed wall-clock window. Under host
+	// CPU contention it may not be, which produced a spurious "expected 0,
+	// actual 1".
+	//
+	// Polling for the condition keeps full teeth — a genuinely leaked counter
+	// never reaches 0 and this still fails — while removing the arbitrary
+	// deadline.
+	assert.Eventually(t, func() bool {
+		return pool.Metrics().ActiveRequests == 0
+	}, 10*time.Second, 5*time.Millisecond,
+		"ActiveRequests never returned to 0 after the request completed")
 }
 
 func TestHostClient_HeaderConcurrency(t *testing.T) {

@@ -373,13 +373,25 @@ func isAuthRetryableStatus(statusCode int) bool {
 	return statusCode == http.StatusUnauthorized // 401
 }
 
+// jitterFor returns the randomised jitter added to a retry delay: a duration in
+// the half-open range [0, 10% of delay).
+//
+// Extracted from waitWithJitter so the 10% bound is directly and
+// deterministically unit-testable. Asserting that bound through wall-clock
+// timing is unreliable: OS scheduling delay is additive and, on a CPU-quota
+// limited cgroup, a single throttle period can add ~100ms — an order of
+// magnitude more than the jitter being measured, which both masks real
+// regressions and causes spurious failures.
+func jitterFor(delay time.Duration) time.Duration {
+	// Using math/rand is acceptable for non-security jitter
+	return time.Duration(rand.Float64() * 0.1 * float64(delay)) // #nosec G404 - jitter doesn't require cryptographic randomness
+}
+
 // waitWithJitter waits for the specified duration plus random jitter
 func (p *SimpleOpenRouterProvider) waitWithJitter(ctx context.Context, delay time.Duration) {
-	// Add 10% jitter - using math/rand is acceptable for non-security jitter
-	jitter := time.Duration(rand.Float64() * 0.1 * float64(delay)) // #nosec G404 - jitter doesn't require cryptographic randomness
 	select {
 	case <-ctx.Done():
-	case <-time.After(delay + jitter):
+	case <-time.After(delay + jitterFor(delay)):
 	}
 }
 

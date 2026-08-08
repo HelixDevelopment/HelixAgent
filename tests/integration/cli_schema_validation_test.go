@@ -317,21 +317,61 @@ func TestAllCLIAgentsSchemaValidation(t *testing.T) {
 	}
 }
 
+// historicalForeignCheckoutRoot is the absolute path this test used to hardcode as the
+// generator's working directory. It belongs to one developer's machine and exists on no
+// other checkout, so `exec` failed at `chdir` before the binary ever ran — the test could
+// not pass anywhere else and never exercised the generator at all.
+//
+// It is retained ONLY as the RED_MODE=1 reproduction input (§11.4.115 polarity switch).
+const historicalForeignCheckoutRoot = "/run/media/milosvasic/DATA4TB/Projects/HelixAgent"
+
+// generatorWorkDir returns the working directory the helixagent binary is invoked from.
+//
+// RED_MODE=1 restores the historical hardcoded foreign path so the guard can prove it
+// still detects the defect; the default (RED_MODE unset or 0) derives the repository root
+// from the running test's location, so the test works on every checkout.
+func generatorWorkDir(t *testing.T) string {
+	t.Helper()
+	if os.Getenv("RED_MODE") == "1" {
+		return historicalForeignCheckoutRoot
+	}
+	return findProjectRootForOpenCode(t)
+}
+
 // TestGeneratedConfigHasNoInvalidFields ensures the generator doesn't produce invalid configs
 func TestGeneratedConfigHasNoInvalidFields(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping binary-dependent test in short mode") // SKIP-OK: #short-mode
 	}
+
+	// Per-test output path: a shared /tmp filename races concurrent runs on a shared host.
+	outputPath := filepath.Join(t.TempDir(), "test_opencode_config.json")
+
 	// Generate a fresh config
-	cmd := exec.Command("./bin/helixagent", "-generate-opencode-config", "-opencode-output", "/tmp/test_opencode_config.json")
-	cmd.Dir = "/run/media/milosvasic/DATA4TB/Projects/HelixAgent"
+	cmd := exec.Command("./bin/helixagent", "-generate-opencode-config", "-opencode-output", outputPath)
+	cmd.Dir = generatorWorkDir(t)
 	output, err := cmd.CombinedOutput()
+
+	if os.Getenv("RED_MODE") == "1" {
+		// RED baseline: reproduce the historical defect on the pre-fix working directory.
+		// The generator must fail to even start because the hardcoded path does not exist.
+		if err == nil {
+			t.Fatalf("RED_MODE: expected generation to fail from %q, but it succeeded", historicalForeignCheckoutRoot)
+		}
+		if !strings.Contains(err.Error(), "no such file or directory") {
+			t.Fatalf("RED_MODE: expected a chdir/no-such-file failure from %q, got: %v\nOutput: %s",
+				historicalForeignCheckoutRoot, err, output)
+		}
+		t.Logf("RED_MODE: reproduced the historical defect — %v", err)
+		return
+	}
+
 	if err != nil {
 		t.Fatalf("Failed to generate config: %v\nOutput: %s", err, output)
 	}
 
 	// Read and validate the generated config
-	data, err := os.ReadFile("/tmp/test_opencode_config.json")
+	data, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatalf("Failed to read generated config: %v", err)
 	}
@@ -366,8 +406,7 @@ func TestGeneratedConfigHasNoInvalidFields(t *testing.T) {
 	t.Logf("Generated config validation passed: %d providers, %d MCP servers, %d agents",
 		len(config.GetProviders()), len(config.GetMCPs()), len(config.GetAgents()))
 
-	// Cleanup
-	os.Remove("/tmp/test_opencode_config.json")
+	// t.TempDir() is removed automatically when the test finishes.
 }
 
 // TestMCPServerFieldValidation tests that all MCP servers have only valid fields

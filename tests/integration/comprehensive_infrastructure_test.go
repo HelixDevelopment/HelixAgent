@@ -80,6 +80,7 @@ func TestCoreInfrastructure(t *testing.T) {
 
 func TestHelixAgentAPI(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	t.Run("Health_Endpoint", func(t *testing.T) {
@@ -126,6 +127,7 @@ func TestHelixAgentAPI(t *testing.T) {
 
 func TestACPProtocol(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 	baseURL := config.HelixAgentURL + "/v1/acp"
 
@@ -205,8 +207,14 @@ func TestACPProtocol(t *testing.T) {
 // VISION PROTOCOL TESTS
 // ============================================================================
 
+// onePixelPNGBase64 is a valid, minimal (1x1, transparent) PNG. It gives the
+// vision endpoints a real decodable image so the positive path exercises the
+// handler's actual processing rather than its input-validation rejection.
+const onePixelPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
 func TestVisionProtocol(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 	baseURL := config.HelixAgentURL + "/v1/vision"
 
@@ -251,19 +259,60 @@ func TestVisionProtocol(t *testing.T) {
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-			// Test actual capability endpoint
-			reqBody := map[string]interface{}{
+			// Negative case: an empty "image" carries no image at all, so the
+			// only correct answer is a rejection. This previously asserted 200
+			// — i.e. it demanded that HelixAgent ACCEPT a request with no
+			// image — and failed against a server that was behaving correctly.
+			// HelixAgent answers 400 with
+			//   {"error":"vision request requires either 'image' (base64) or 'image_url' field"}
+			// which is the contract this now pins.
+			emptyBody, _ := json.Marshal(map[string]interface{}{
 				"image":  "",
 				"prompt": "test",
-			}
-			body, _ := json.Marshal(reqBody)
+			})
 
-			resp2, err := client.Post(baseURL+"/"+cap, "application/json", bytes.NewReader(body))
+			respEmpty, err := client.Post(baseURL+"/"+cap, "application/json", bytes.NewReader(emptyBody))
+			if err != nil {
+				t.Skipf("Vision not available: %v (SKIP-OK: #infra-unavailable)", err)
+			}
+			defer respEmpty.Body.Close()
+			assert.Equal(t, http.StatusBadRequest, respEmpty.StatusCode,
+				"a vision request with no image must be rejected, not accepted")
+
+			// Positive case: a real (1x1 PNG) image.
+			//
+			// This deliberately does NOT assert "200 => the capability works".
+			// internal/handlers/vision_handler.go currently answers every
+			// capability from a declared stub (stubOnlyStatus = "stub_only",
+			// "verified": false, "no vision-capable provider is wired into
+			// VisionHandler yet"). A test that accepted 200 here would go green
+			// on a stub and certify a feature that does no vision work — the
+			// PASS-bluff §11.4 forbids. While the handler self-reports
+			// stub_only we SKIP with that reason; once a real provider is
+			// wired the skip stops firing and the assertions below bind.
+			realBody, _ := json.Marshal(map[string]interface{}{
+				"image":  onePixelPNGBase64,
+				"prompt": "test",
+			})
+
+			resp2, err := client.Post(baseURL+"/"+cap, "application/json", bytes.NewReader(realBody))
 			if err != nil {
 				t.Skipf("Vision not available: %v (SKIP-OK: #infra-unavailable)", err)
 			}
 			defer resp2.Body.Close()
 			assert.Equal(t, http.StatusOK, resp2.StatusCode)
+
+			var visionResult map[string]interface{}
+			require.NoError(t, json.NewDecoder(resp2.Body).Decode(&visionResult))
+
+			if visionResult["status"] == "stub_only" {
+				t.Skipf("vision capability %q is stub-only: no vision-capable provider is "+
+					"wired into VisionHandler, so a PASS here would certify work that did "+
+					"not happen (SKIP-OK: #vision-provider-not-wired)", cap)
+			}
+
+			assert.Equal(t, true, visionResult["verified"],
+				"a non-stub vision response must be verified")
 		})
 	}
 }
@@ -395,6 +444,7 @@ func TestRAGServices(t *testing.T) {
 
 func TestEmbeddings(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 	baseURL := config.HelixAgentURL + "/v1/embeddings/generate"
 
@@ -450,6 +500,7 @@ func TestEmbeddings(t *testing.T) {
 
 func TestCogneeIntegration(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 60 * time.Second}
 	baseURL := config.HelixAgentURL + "/v1/cognee"
 
@@ -550,6 +601,7 @@ func TestCogneeIntegration(t *testing.T) {
 
 func TestConcurrentRequests(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	t.Run("Concurrent_Health_Checks", func(t *testing.T) {
@@ -596,6 +648,7 @@ func TestConcurrentRequests(t *testing.T) {
 
 func TestSecurity(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	t.Run("SQL_Injection_Protection", func(t *testing.T) {
@@ -648,6 +701,7 @@ func TestSecurity(t *testing.T) {
 
 func TestAIDebate(t *testing.T) {
 	config := getTestConfig()
+	requireHelixAgent(t, config.HelixAgentURL)
 	client := &http.Client{Timeout: 120 * time.Second}
 	baseURL := config.HelixAgentURL + "/v1/debates"
 

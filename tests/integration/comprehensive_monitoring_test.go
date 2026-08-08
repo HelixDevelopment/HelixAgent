@@ -30,6 +30,8 @@ var (
 
 // TestHelixAgentHealth tests that HelixAgent API is healthy
 func TestHelixAgentHealth(t *testing.T) {
+	requireHelixAgent(t, helixAgentURL)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -49,6 +51,8 @@ func TestHelixAgentHealth(t *testing.T) {
 
 // TestHelixAgentMetrics tests that HelixAgent exposes Prometheus metrics
 func TestHelixAgentMetrics(t *testing.T) {
+	requireHelixAgent(t, helixAgentURL)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -73,6 +77,8 @@ func TestHelixAgentMetrics(t *testing.T) {
 
 // TestHelixAgentProviders tests provider monitoring
 func TestHelixAgentProviders(t *testing.T) {
+	requireHelixAgent(t, helixAgentURL)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -347,12 +353,12 @@ func TestCustomExporterMetrics(t *testing.T) {
 
 // TestMCPToolSearch tests the MCP tool search functionality
 func TestMCPToolSearch(t *testing.T) {
-	// Check if HelixAgent is running
-	client := &http.Client{Timeout: 3 * time.Second}
-	if _, err := client.Get(helixAgentURL + "/health"); err != nil {
-		t.Logf("HelixAgent not running - skipping MCP tool search test (acceptable)")
-		return
-	}
+	// This previously `return`ed on a connection error, which reports a
+	// silent PASS for a test that never ran, and — like every other guard in
+	// this file — could not tell "HelixAgent is absent" from "a different
+	// service holds this port". requireHelixAgent distinguishes both and
+	// records an honest SKIP.
+	requireHelixAgent(t, helixAgentURL)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -418,6 +424,11 @@ func TestMonitoringEndpointsLatency(t *testing.T) {
 
 // TestMonitoringStackIntegration tests the complete monitoring stack
 func TestMonitoringStackIntegration(t *testing.T) {
+	// The assertion below requires "at least HelixAgent should be healthy",
+	// so an unreachable or impersonated HelixAgent makes this a statement
+	// about the environment, not about the monitoring stack.
+	requireHelixAgent(t, helixAgentURL)
+
 	// This test verifies that all monitoring components work together
 	services := []struct {
 		name string

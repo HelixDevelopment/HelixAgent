@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -128,10 +129,52 @@ func TestEnsureMCPServers_BringUpFailureIsObservable(t *testing.T) {
 			"captured log:\n%s", sink.String())
 	}
 
+	// THE LOAD-BEARING ASSERTION. Everything above proves a channel EXISTS and
+	// that the bring-up genuinely failed. Neither proves the outcome DELIVERS.
+	//
+	// An independent review mutated exactly the four goroutine settle() calls
+	// — the "compiles but never settles" state this fix exists to remove — and
+	// the earlier version of this test STILL PASSED (build 0, guard 0). It
+	// asserted `status != nil` and scraped the log, so a status that never
+	// settles satisfied it. That is a blind guard: green on the very defect it
+	// guards.
+	//
+	// Wait() is what closes it. On the fixed artifact the failed goroutine
+	// settles and Wait returns (MCPStartupFailed, err) promptly; with settle()
+	// stripped the status stays pending and Wait returns MCPStartupPending at
+	// the deadline. The short timeout keeps the failure fast, not flaky: the
+	// bring-up has ALREADY failed and logged by this point, so a correct
+	// implementation has already settled.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	state, bringUpErr := status.Wait(ctx)
+
 	if os.Getenv("RED_MODE") == "1" {
-		t.Fatalf("RED baseline (HXC-234): the MCP bring-up FAILED for a real "+
-			"reason and the failure was logged, but ensureMCPServers returned "+
-			"nil and exposed no caller-observable channel — no caller could "+
-			"act on it.\ncaptured log:\n%s", sink.String())
+		if state == MCPStartupFailed {
+			t.Fatalf("RED baseline (HXC-234) did NOT reproduce: the bring-up "+
+				"failure reached a caller through status.Wait() (state=%s, "+
+				"err=%v). This artifact already carries the fix — run RED "+
+				"against a pre-fix tree.\ncaptured log:\n%s",
+				state, bringUpErr, sink.String())
+		}
+		t.Logf("RED confirmed: bring-up FAILED and was logged, yet a caller "+
+			"holding the status observes state=%s err=%v — the failure never "+
+			"arrives.", state, bringUpErr)
+		return
 	}
+
+	if state != MCPStartupFailed {
+		t.Fatalf("GUARD FAILED: the MCP bring-up genuinely failed (proved by "+
+			"the log assertion above) but a caller calling status.Wait() "+
+			"observed state=%q, not %q. The failure does not reach the "+
+			"caller.\ncaptured log:\n%s",
+			state, MCPStartupFailed, sink.String())
+	}
+	if bringUpErr == nil {
+		t.Fatal("GUARD FAILED: status settled MCPStartupFailed but carried a " +
+			"nil error — the caller learns THAT it failed, never WHY, which " +
+			"is the same actionability gap in a different place")
+	}
+	t.Logf("GREEN: caller-observable outcome delivered — state=%s err=%v",
+		state, bringUpErr)
 }

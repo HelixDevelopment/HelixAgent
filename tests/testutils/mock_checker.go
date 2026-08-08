@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"dev.helix.agent/internal/testutil"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -58,14 +59,30 @@ func IsPostgresAvailable() bool {
 	return conn.Ping(ctx) == nil
 }
 
-// IsRedisAvailable checks if Redis is running
+// IsRedisAvailable reports whether a usable Redis is running.
+//
+// This used to read:
+//
+//	// For simple check, assume available if environment is set
+//	// Real check would use redis client
+//	return true
+//
+// which is a gate that asserts nothing (§11.4.201 / §11.4.1): it returned
+// "Redis is running" for any process that had REDIS_HOST exported, including
+// when no Redis existed at all. Every caller — RequireInfrastructure,
+// IsTestInfrastructureAvailable, IsFullTestEnvironment — inherited that.
+//
+// It now performs the same AUTH+PING handshake a real client would, via the
+// shared testutil probe, so guard and subject cannot disagree.
+//
+// The env-var precondition is deliberately kept: this helper's contract is
+// "the operator pointed us at a Redis", and an unset REDIS_HOST/REDIS_URL
+// means they did not.
 func IsRedisAvailable() bool {
 	if os.Getenv("REDIS_HOST") == "" && os.Getenv("REDIS_URL") == "" {
 		return false
 	}
-	// For simple check, assume available if environment is set
-	// Real check would use redis client
-	return true
+	return testutil.RedisAvailable()
 }
 
 // IsServerAvailable checks if the HelixAgent server is running

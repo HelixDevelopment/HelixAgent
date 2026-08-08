@@ -13,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"dev.helix.agent/internal/ports"
 )
 
 // Infrastructure availability cache — checked once per test run.
@@ -76,12 +78,25 @@ func DefaultInfraConfig() InfraConfig {
 	return InfraConfig{
 		PostgresHost: envOr("DB_HOST", "localhost"),
 		PostgresPort: envOr("DB_PORT", "8109"), // HELIXAGENT_PORT_POSTGRES_TEST
-		RedisHost:    envOr("REDIS_HOST", "localhost"),
-		RedisPort:    envOr("REDIS_PORT", "8110"), // HELIXAGENT_PORT_REDIS_MCP
-		MockLLMHost:  envOr("MOCK_LLM_HOST", "localhost"),
-		MockLLMPort:  envOr("MOCK_LLM_PORT", "8106"), // HELIXAGENT_PORT_MOCK_LLM
-		ServerHost:   serverHost,
-		ServerPort:   serverPort,
+		// Redis resolves through ports.Redis* so this GATE and the product
+		// code it gates agree by construction (§11.4.111 / §11.4.201).
+		//
+		// A previous revision defaulted to "8110" — HELIXAGENT_PORT_REDIS_MCP.
+		// That is a DIFFERENT service: the password-protected MCP-backend
+		// Redis, not the canonical application Redis the product dials. The
+		// mis-binding was recorded, unremarked, in this package's own test:
+		// `assert.Equal(t, "8110", cfg.RedisPort) // HELIXAGENT_PORT_REDIS_MCP`.
+		// Because 8110 is up on the dev host while the product's endpoint was
+		// not, RequireRedis reported "available" and every test it guarded
+		// then failed inside the subject with
+		// "dial tcp 127.0.0.1:6379: connect: connection refused" — an absent
+		// dependency reported as a product defect.
+		RedisHost:   ports.RedisHost(),
+		RedisPort:   ports.RedisPortString(),
+		MockLLMHost: envOr("MOCK_LLM_HOST", "localhost"),
+		MockLLMPort: envOr("MOCK_LLM_PORT", "8106"), // HELIXAGENT_PORT_MOCK_LLM
+		ServerHost:  serverHost,
+		ServerPort:  serverPort,
 	}
 }
 
@@ -176,12 +191,76 @@ func PostgresAvailable() bool {
 	})
 }
 
-// RedisAvailable returns true if Redis is reachable.
+// RedisAvailable returns true if Redis is reachable AND usable — that is, if
+// a real client with this process's credentials can actually issue commands.
+//
+// WHY A PROTOCOL HANDSHAKE, NOT A TCP DIAL (§11.4.201)
+// This used to call checkTCP, so ANY process holding the port satisfied it.
+// That is not a theoretical hole here: the MCP-backend Redis on
+// HELIXAGENT_PORT_REDIS_MCP is started with --requirepass and answers a bare
+// PING with "-NOAUTH Authentication required." (measured 2026-08-08), and
+// helix_agent's own docker-compose.yml starts the canonical Redis with
+// --requirepass too. A TCP-open probe calls both of those "available" while
+// every command against them fails — so tests did not skip, and then failed
+// inside the subject as though the product were broken.
+//
+// A guard must assert the condition it CLAIMS. This one completes the same
+// AUTH+PING exchange a real client would, using the same credentials the
+// product would use, and reports available only on a "+PONG".
 func RedisAvailable() bool {
 	cfg := DefaultInfraConfig()
 	return cachedCheck("redis", func() bool {
-		return checkTCP(cfg.RedisHost, cfg.RedisPort, 2*time.Second)
+		return checkRedisPing(cfg.RedisHost, cfg.RedisPort,
+			ports.RedisPassword(), 2*time.Second)
 	})
+}
+
+// checkRedisPing reports whether a usable Redis answers at host:port.
+//
+// Implemented against the wire protocol with net rather than a client library
+// so that this test-infrastructure package stays dependency-free and so the
+// probe's failure modes are inspectable here rather than inside a pool
+// abstraction. RESP inline commands are used because they are exactly what
+// redis-cli sends and every Redis version accepts them.
+func checkRedisPing(host, port, password string, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	deadline := time.Now().Add(timeout)
+	_ = conn.SetDeadline(deadline)
+
+	reply := func(cmd string) (string, bool) {
+		if _, werr := conn.Write([]byte(cmd + "\r\n")); werr != nil {
+			return "", false
+		}
+		buf := make([]byte, 256)
+		n, rerr := conn.Read(buf)
+		if rerr != nil || n == 0 {
+			return "", false
+		}
+		return string(buf[:n]), true
+	}
+
+	// AUTH first when a password is configured; a server that does not
+	// require one answers "-ERR Client sent AUTH, but no password is set",
+	// which is a perfectly usable server, so only an explicit failure to
+	// exchange bytes is fatal here — the PING below is the real verdict.
+	if password != "" {
+		if _, ok := reply("AUTH " + password); !ok {
+			return false
+		}
+	}
+
+	resp, ok := reply("PING")
+	if !ok {
+		return false
+	}
+	// "+PONG" is the only accepted answer. "-NOAUTH ...", "-WRONGPASS ...",
+	// an HTTP response, or silence from a foreign occupant all fall through.
+	return strings.HasPrefix(resp, "+PONG")
 }
 
 // MockLLMAvailable returns true if the Mock LLM server is reachable.
@@ -483,7 +562,9 @@ func RedisAddr() string {
 	return net.JoinHostPort(cfg.RedisHost, cfg.RedisPort)
 }
 
-// RedisPassword returns the Redis password for tests.
+// RedisPassword returns the Redis password for tests, resolved through the
+// same helper the product uses so a test client and the code under test can
+// never disagree about credentials.
 func RedisPassword() string {
-	return envOr("REDIS_PASSWORD", "")
+	return ports.RedisPassword()
 }

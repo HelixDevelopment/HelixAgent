@@ -68,6 +68,7 @@ import (
 	"dev.helix.agent/internal/messaging"
 	"dev.helix.agent/internal/messaging/inmemory"
 	"dev.helix.agent/internal/models"
+	"dev.helix.agent/internal/ports"
 	"dev.helix.agent/internal/router"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/transport"
@@ -620,7 +621,12 @@ func checkServicesViaHealthProbes(services []string) map[string]bool {
 	running := make(map[string]bool)
 	serviceChecks := map[string]string{
 		"postgres": "localhost:8101",
-		"redis":    "localhost:6379",
+		// Was "localhost:6379". The postgres entry beside it had already been
+		// migrated to its CONST-027 port (8101) while redis was left on the
+		// pre-migration literal — a half-finished migration, not a deliberate
+		// choice. Resolving through ports.RedisAddr also makes this probe
+		// agree with checkRedisHealth, which it is meant to corroborate.
+		"redis":    ports.RedisAddr(),
 		"cognee":   "http://localhost:8000/",
 		"chromadb": "http://localhost:8001/",
 	}
@@ -813,21 +819,27 @@ func checkPostgresHealth() error {
 	return nil
 }
 
-// checkRedisHealth verifies Redis connectivity
+// checkRedisHealth verifies Redis connectivity.
+//
+// The endpoint is resolved through ports.RedisAddr rather than a local
+// fallback. A previous revision defaulted the port to the literal "6379",
+// which internal/ports records as SUPERSEDED — `RedisDefault — no-password
+// Redis (was 6379)` — and re-registers at 8102 under CONST-027. Our own
+// docker-compose.yml:53 publishes "${REDIS_PORT:-8102}:6379" and
+// .env.example:276 documents REDIS_PORT=8102, so the old default named a
+// port this project's deployment never publishes; on a host with no .env it
+// produced "dial tcp 127.0.0.1:6379: connect: connection refused" on every
+// health check. Same defect the helixllm-gateway unit already carries a
+// forensic comment about (scripts/systemd/helixllm-gateway.service).
+//
+// Resolving centrally also makes this function agree by construction with
+// testutil.RequireRedis, the gate that decides whether tests exercising it
+// should run at all — they previously read the same REDIS_PORT var but
+// disagreed on the fallback, so the guard passed while the subject failed.
 func checkRedisHealth() error {
-	redisHost := os.Getenv("REDIS_HOST")
-	if redisHost == "" {
-		redisHost = "localhost"
-	}
-	redisPort := os.Getenv("REDIS_PORT")
-	if redisPort == "" {
-		redisPort = "6379"
-	}
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-
 	rdb := redis.NewClient(&redis.Options{
-		Addr:        redisHost + ":" + redisPort,
-		Password:    redisPassword,
+		Addr:        ports.RedisAddr(),
+		Password:    ports.RedisPassword(),
 		DB:          0,
 		DialTimeout: 5 * time.Second,
 	})

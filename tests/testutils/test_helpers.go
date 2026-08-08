@@ -14,6 +14,7 @@ import (
 
 	"dev.helix.agent/internal/config"
 	"dev.helix.agent/internal/models"
+	"dev.helix.agent/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -313,7 +314,14 @@ func SkipIfNoRedis(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test that requires Redis connection (short mode)") // SKIP-OK: #short-mode
 	}
-	if !checkTCPEndpoint(envOrDefault("REDIS_HOST", "localhost"), envOrDefault("REDIS_PORT", "16379")) {
+	// Resolves through the shared testutil gate rather than a local
+	// checkTCPEndpoint with its own default. The previous default was
+	// "16379" — the pre-CONST-027 literal for the MCP-backend Redis, a
+	// third distinct answer to "where is Redis?" alongside the product's
+	// 6379 and testutil's 8110. And a TCP probe cannot tell a usable Redis
+	// from one that rejects every command with NOAUTH (§11.4.201), which is
+	// exactly what our own --requirepass compose produces.
+	if !testutil.RedisAvailable() {
 		t.Skip("Redis not available — start with: make test-infra-start") // SKIP-OK: #legacy-untriaged
 	}
 }

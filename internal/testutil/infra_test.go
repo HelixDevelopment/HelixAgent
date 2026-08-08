@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"dev.helix.agent/internal/ports"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +23,15 @@ func TestDefaultInfraConfig(t *testing.T) {
 	assert.Equal(t, "localhost", cfg.PostgresHost)
 	assert.Equal(t, "8109", cfg.PostgresPort) // HELIXAGENT_PORT_POSTGRES_TEST per CONST-027 (was: 15432)
 	assert.Equal(t, "localhost", cfg.RedisHost)
-	assert.Equal(t, "8110", cfg.RedisPort) // HELIXAGENT_PORT_REDIS_MCP per CONST-027 (was: 6379)
+	// Reconciled 2026-08-09 (§11.4.120). This asserted the literal "8110" —
+	// HELIXAGENT_PORT_REDIS_MCP — which is the password-protected MCP-backend
+	// Redis, NOT the canonical application Redis the product dials. The
+	// comment on the old line named the mis-binding without flagging it as
+	// one. The gate now resolves ports.RedisDefault, the same service
+	// checkRedisHealth() and internal/config resolve, so a passing guard
+	// implies the subject can actually connect.
+	assert.Equal(t, ports.RedisPortString(), cfg.RedisPort,
+		"the Redis availability gate must resolve ports.RedisDefault, not RedisMCP")
 	assert.Equal(t, "localhost", cfg.MockLLMHost)
 	assert.Equal(t, "8106", cfg.MockLLMPort) // HELIXAGENT_PORT_MOCK_LLM per CONST-027 (was: 18081)
 	assert.Equal(t, "localhost", cfg.ServerHost)

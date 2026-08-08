@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"dev.helix.agent/internal/ports"
 )
 
 func TestLoad(t *testing.T) {
@@ -111,8 +113,15 @@ func TestLoad(t *testing.T) {
 		if cfg.Redis.Host != "localhost" {
 			t.Errorf("Expected Redis.Host 'localhost', got %s", cfg.Redis.Host)
 		}
-		if cfg.Redis.Port != "6379" {
-			t.Errorf("Expected Redis.Port '6379', got %s", cfg.Redis.Port)
+		// Reconciled 2026-08-09 (§11.4.120): this asserted the literal
+		// "6379", the pre-CONST-027 port internal/ports records as
+		// superseded and that our own docker-compose.yml never publishes.
+		// The default now resolves through ports.RedisDefault, so the
+		// assertion binds to the registry rather than to a number — it keeps
+		// holding if HELIXAGENT_PORT_PREFIX flips the whole band to 9xxx.
+		if wantRedisPort := ports.RedisPortString(); cfg.Redis.Port != wantRedisPort {
+			t.Errorf("Expected Redis.Port %q (ports.RedisDefault), got %s",
+				wantRedisPort, cfg.Redis.Port)
 		}
 		if cfg.Redis.Password != "" {
 			t.Errorf("Expected Redis.Password '', got %s", cfg.Redis.Password)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"dev.helix.agent/internal/memory"
+	"dev.helix.agent/internal/ports"
 )
 
 type Config struct {
@@ -337,9 +338,15 @@ func Load() *Config {
 			PoolSize:       getIntEnv("DB_POOL_SIZE", 10),
 		},
 		Redis: RedisConfig{
-			Host:     getEnv("REDIS_HOST", "localhost"),
-			Port:     getEnv("REDIS_PORT", "6379"),
-			Password: getEnv("REDIS_PASSWORD", ""),
+			// Resolved via ports.Redis* (CONST-027). The previous literal
+			// default "6379" is the port internal/ports records as superseded
+			// (`RedisDefault — no-password Redis (was 6379)`) and re-registers
+			// at 8102 — the port our own docker-compose.yml:53 publishes and
+			// .env.example:276 documents. REDIS_HOST/REDIS_PORT still take
+			// precedence, so no configured deployment changes behaviour.
+			Host:     ports.RedisHost(),
+			Port:     ports.RedisPortString(),
+			Password: ports.RedisPassword(),
 			DB:       getIntEnv("REDIS_DB", 0),
 			PoolSize: getIntEnv("REDIS_POOL_SIZE", 10),
 			Timeout:  getDurationEnv("REDIS_TIMEOUT", 5*time.Second),
@@ -504,8 +511,12 @@ func DefaultServicesConfig() ServicesConfig {
 			Profile:     "default",
 		},
 		Redis: ServiceEndpoint{
-			Host:        "localhost",
-			Port:        "6379",
+			// Same CONST-027 resolution as the RedisConfig default above; a
+			// hardcoded "6379" here named a port docker-compose.yml never
+			// publishes, so the endpoint this service descriptor pointed at
+			// could not come up.
+			Host:        ports.RedisHost(),
+			Port:        ports.RedisPortString(),
 			Enabled:     true,
 			Required:    true,
 			Remote:      remoteEnabled, // Set based on CONTAINERS_REMOTE_ENABLED

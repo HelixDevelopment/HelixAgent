@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"dev.helix.agent/internal/ports"
 )
 
 func TestDefaultServicesConfig(t *testing.T) {
@@ -48,8 +50,12 @@ func TestDefaultServicesConfig(t *testing.T) {
 		if cfg.Redis.Host != "localhost" {
 			t.Errorf("Expected Redis host 'localhost', got %s", cfg.Redis.Host)
 		}
-		if cfg.Redis.Port != "6379" {
-			t.Errorf("Expected Redis port '6379', got %s", cfg.Redis.Port)
+		// Reconciled 2026-08-09 (§11.4.120) — see config_test.go: the
+		// endpoint descriptor now resolves through ports.RedisDefault
+		// instead of the superseded 6379 literal.
+		if wantRedisPort := ports.RedisPortString(); cfg.Redis.Port != wantRedisPort {
+			t.Errorf("Expected Redis port %q (ports.RedisDefault), got %s",
+				wantRedisPort, cfg.Redis.Port)
 		}
 		if !cfg.Redis.Enabled {
 			t.Error("Expected Redis to be enabled")

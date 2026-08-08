@@ -380,20 +380,122 @@ func ensureRequiredContainersWithConfig(logger *logrus.Logger, cfg *ContainerCon
 	return nil
 }
 
+// MCPStartupState is the closed set of outcomes of an MCP fleet bring-up.
+type MCPStartupState string
+
+const (
+	// MCPStartupPending — bring-up dispatched, not yet settled.
+	MCPStartupPending MCPStartupState = "pending"
+	// MCPStartupSkipped — bring-up deliberately not attempted (e.g. no
+	// compose file). Distinct from "attempted and failed".
+	MCPStartupSkipped MCPStartupState = "skipped"
+	// MCPStartupSucceeded — the fleet came up.
+	MCPStartupSucceeded MCPStartupState = "succeeded"
+	// MCPStartupFailed — the bring-up was attempted and genuinely failed;
+	// Err() carries the real cause.
+	MCPStartupFailed MCPStartupState = "failed"
+)
+
+// MCPStartupStatus is the caller-observable outcome of an MCP fleet bring-up.
+//
+// HXC-234: the bring-up runs on a background goroutine, so its error cannot be
+// returned from ensureMCPServers. Before this type existed the error was
+// logged inside the closure and then dropped, and ensureMCPServers returned nil
+// unconditionally — its caller's `if err != nil` was structurally incapable of
+// firing, and NO caller anywhere could observe a failed MCP fleet. This handle
+// is that missing channel: the goroutine settles it, and any caller can poll
+// it (Snapshot) or await it (Wait) and act on the real error.
+type MCPStartupStatus struct {
+	mu    sync.RWMutex
+	state MCPStartupState
+	err   error
+	done  chan struct{}
+}
+
+func newMCPStartupStatus() *MCPStartupStatus {
+	return &MCPStartupStatus{
+		state: MCPStartupPending,
+		done:  make(chan struct{}),
+	}
+}
+
+// settle records a terminal outcome. It is idempotent — the first outcome
+// wins, so a late writer can never overwrite a reported failure.
+func (s *MCPStartupStatus) settle(state MCPStartupState, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.state != MCPStartupPending {
+		return
+	}
+	s.state = state
+	s.err = err
+	close(s.done)
+}
+
+// Snapshot returns the current state and, when failed, the real cause.
+func (s *MCPStartupStatus) Snapshot() (MCPStartupState, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state, s.err
+}
+
+// Wait blocks until the bring-up settles or ctx is done. On ctx expiry it
+// returns the still-pending state rather than inventing an outcome.
+func (s *MCPStartupStatus) Wait(ctx context.Context) (MCPStartupState, error) {
+	select {
+	case <-s.done:
+	case <-ctx.Done():
+	}
+	return s.Snapshot()
+}
+
+// globalMCPStartup holds the most recent MCP bring-up outcome so that
+// downstream consumers (health reporting, capability reporting, the startup
+// path itself) can distinguish "the MCP fleet never came up" from "no MCP
+// fleet was configured". Guarded by its own mutex: it is written on the
+// startup path and read from request-serving goroutines.
+var (
+	globalMCPStartupMu sync.RWMutex
+	globalMCPStartup   *MCPStartupStatus
+)
+
+func setMCPStartupStatus(s *MCPStartupStatus) {
+	globalMCPStartupMu.Lock()
+	defer globalMCPStartupMu.Unlock()
+	globalMCPStartup = s
+}
+
+// mcpStartupStatus returns the current MCP bring-up handle, or nil if no
+// bring-up has been dispatched in this process.
+func mcpStartupStatus() *MCPStartupStatus {
+	globalMCPStartupMu.RLock()
+	defer globalMCPStartupMu.RUnlock()
+	return globalMCPStartup
+}
+
 // ensureMCPServers starts all MCP Docker containers from git submodules
 // Uses docker-compose.mcp-servers.yml to build and run 32 MCP servers
 // All servers use TCP ports (9101-9999) - no npm/npx dependencies.
 // Routes through the Containers module adapter.
-func ensureMCPServers(logger *logrus.Logger) error {
+//
+// The returned error covers only the synchronous pre-flight. The bring-up
+// itself is asynchronous, so its outcome is reported through the returned
+// *MCPStartupStatus — the caller MUST consult it (Snapshot/Wait) rather than
+// assume a nil error means the fleet is up. The status is also published via
+// setMCPStartupStatus so process-wide consumers can read it.
+func ensureMCPServers(logger *logrus.Logger) (*MCPStartupStatus, error) {
 	if globalContainerAdapter == nil {
-		return fmt.Errorf("container adapter not initialized")
+		return nil, fmt.Errorf("container adapter not initialized")
 	}
 
 	// Get project directory
 	projectDir, err := filepath.Abs(".")
 	if err != nil {
-		return fmt.Errorf("failed to get project directory: %w", err)
+		return nil, fmt.Errorf("failed to get project directory: %w", err)
 	}
+
+	status := newMCPStartupStatus()
+	setMCPStartupStatus(status)
 
 	// Check if MCP compose file exists
 	mcpComposeFile := filepath.Join(
@@ -404,7 +506,10 @@ func ensureMCPServers(logger *logrus.Logger) error {
 		logger.WithField("file", mcpComposeFile).Warn(
 			"MCP compose file not found, skipping MCP auto-start",
 		)
-		return nil
+		// Skipped, NOT failed — a caller must be able to tell "no fleet was
+		// configured" from "the fleet was attempted and broke".
+		status.settle(MCPStartupSkipped, nil)
+		return status, nil
 	}
 
 	logger.WithField("mcp_servers", 32).Info(
@@ -420,6 +525,14 @@ func ensureMCPServers(logger *logrus.Logger) error {
 		// deadline here killed every remote MCP-compose run before
 		// it could finish pulling.
 		ctx := context.Background()
+
+		// EVERY exit path below MUST settle(). A path that returns without
+		// settling leaves status at MCPStartupPending forever, so Wait()
+		// blocks until its caller's context expires and Snapshot() reports
+		// "still starting" for a bring-up that finished minutes ago. That
+		// would reproduce the original defect through a nicer API: the
+		// failure still never reaches a caller. The log line is not the
+		// channel — settle() is.
 
 		if globalContainerAdapter.RemoteEnabled() {
 			// PARTITIONED + strict-remote (CONST-031 + Issue #52):
@@ -437,11 +550,14 @@ func ensureMCPServers(logger *logrus.Logger) error {
 						"CONST-031. MCP servers will not be available " +
 						"until remote distribution recovers.",
 				)
+				status.settle(MCPStartupFailed, fmt.Errorf(
+					"partitioned remote deploy failed: %w", err))
 				return
 			}
 			logger.Info(
 				"MCP servers placed across hosts via partitioned distribution",
 			)
+			status.settle(MCPStartupSucceeded, nil)
 			return
 		}
 
@@ -452,17 +568,23 @@ func ensureMCPServers(logger *logrus.Logger) error {
 			logger.WithError(err).Warn(
 				"Failed to start some MCP servers (local mode)",
 			)
+			status.settle(MCPStartupFailed, fmt.Errorf(
+				"local MCP compose bring-up failed: %w", err))
 			return
 		}
 		logger.Info(
 			"MCP servers started successfully (32 servers on ports 9101-9999)",
 		)
+		status.settle(MCPStartupSucceeded, nil)
 	}()
 
 	logger.Info(
 		"MCP servers starting in background (32 servers on ports 9101-9999)",
 	)
-	return nil
+	// nil error here means "dispatch succeeded", NOT "the fleet is up" — the
+	// outcome arrives via status.Wait()/Snapshot(). Returning the handle is
+	// what makes the background failure observable at all.
+	return status, nil
 }
 
 // getRunningServicesWithRuntimeConfig checks which compose services are
@@ -1788,8 +1910,40 @@ func run(appCfg *AppConfig) error {
 	// Auto-start MCP servers from git submodules (32 servers, zero npm dependencies)
 	if appCfg.AutoStartMCP {
 		logger.Info("Starting MCP servers from git submodules...")
-		if err := ensureMCPServers(logger); err != nil {
-			logger.WithError(err).Warn("Failed to start MCP servers, continuing without them")
+		// Two distinct failure kinds, deliberately reported differently.
+		// A pre-flight error means the bring-up never started; a settled
+		// MCPStartupFailed means it started and broke. Collapsing them was
+		// the original defect — the caller could observe neither.
+		mcpStatus, err := ensureMCPServers(logger)
+		if err != nil {
+			logger.WithError(err).Warn(
+				"MCP server bring-up could not be dispatched, continuing without them")
+		} else if mcpStatus != nil {
+			// Observe the background outcome instead of assuming it.
+			// Bounded so a hung bring-up cannot delay startup: an
+			// unresolved status is reported as still-pending, not as
+			// success.
+			go func() {
+				ctx, cancel := context.WithTimeout(
+					context.Background(), 5*time.Minute)
+				defer cancel()
+				state, bringUpErr := mcpStatus.Wait(ctx)
+				switch state {
+				case MCPStartupFailed:
+					logger.WithError(bringUpErr).Error(
+						"MCP fleet bring-up FAILED — tool capabilities are " +
+							"absent, not merely unconfigured")
+				case MCPStartupSkipped:
+					logger.Info(
+						"MCP fleet not configured; no bring-up was attempted")
+				case MCPStartupSucceeded:
+					logger.Info("MCP fleet bring-up confirmed")
+				default:
+					logger.WithField("state", string(state)).Warn(
+						"MCP fleet bring-up did not settle within 5m; " +
+							"treating as UNKNOWN, not as success")
+				}
+			}()
 		}
 	}
 

@@ -12,13 +12,33 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# HXC-234: pnpm is PINNED, never `@latest`. An unpinned toolchain makes the
+# image non-reproducible — its content changes with no diff on our side. That
+# is exactly how this build broke: `pnpm@latest` floated up to 11.20.0, whose
+# default turns ERR_PNPM_IGNORED_BUILDS into a hard install failure instead of
+# a warning, and neither this upstream submodule nor anything we own runs
+# `pnpm approve-builds`. 10.34.5 is the latest maintained 10.x, reads this
+# repo's lockfileVersion 9.0, and predates that default change.
+# Deliberately NOT an allow-list: enumerating @biomejs/biome, esbuild, msw,
+# supabase here would hardcode third-party dependency names we do not control
+# into our Dockerfile, and silently re-break whenever upstream changes deps.
+RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 COPY . .
 
 # pnpm install with workspace awareness; build only the supabase server
 # package (and its mcp-utils sibling, per upstream's build script).
-RUN pnpm install --frozen-lockfile=false --no-strict-peer-dependencies && \
+# HXC-234: the build context is the checked-out submodule working tree, which
+# on a developer host carries an untracked `node_modules/` from a prior host
+# install (HXC-222 untracked them from git, but they remain on disk). `COPY . .`
+# drags those host-built, possibly wrong-arch modules into the image; pnpm then
+# detects a modules dir it did not create and aborts with
+# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY because it cannot prompt. Delete
+# them explicitly rather than muting the prompt via CI=true: the stale host
+# artifact is the actual defect, and removing it is deterministic across pnpm
+# versions instead of depending on pnpm's CI-detection semantics.
+RUN find . -name node_modules -type d -prune -exec rm -rf {} + && \
+    pnpm install --frozen-lockfile=false --no-strict-peer-dependencies && \
     pnpm --filter @supabase/mcp-utils --filter @supabase/mcp-server-supabase build
 
 FROM node:22-bookworm-slim

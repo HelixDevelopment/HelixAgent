@@ -2,10 +2,10 @@ package zen
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"sync"
@@ -207,6 +207,17 @@ func (p *ZenCLIProvider) Complete(ctx context.Context, req *models.LLMRequest) (
 	cmdCtx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
+	// The budget cmdCtx actually enforces is min(caller deadline, p.timeout).
+	// Capture WHICH one binds, so a timeout reports the real budget instead of
+	// blindly printing p.timeout (a caller who allowed 60s used to be told
+	// "timed out after 2m0s").
+	budget, budgetSource := p.timeout, "provider timeout"
+	if deadline, ok := ctx.Deadline(); ok {
+		if remaining := time.Until(deadline); remaining < budget {
+			budget, budgetSource = remaining, "caller context deadline"
+		}
+	}
+
 	// Determine model to use
 	model := p.model
 	if req.ModelParams.Model != "" {
@@ -226,33 +237,93 @@ func (p *ZenCLIProvider) Complete(ctx context.Context, req *models.LLMRequest) (
 		"--model", model, // Specify model to use
 	}
 
-	// Execute opencode command
+	// Execute opencode command.
+	//
+	// Read stdout through a PIPE and return as soon as the CLI closes the turn
+	// — deliberately NOT cmd.Run() with a bytes.Buffer.
+	//
+	// `opencode run` is an agentic loop, not a one-shot completion: measured
+	// 2026-08-09 with --format json, it emitted the answer at ~19s, closed the
+	// turn ~1.3s later, then carried on with six more tool-use steps and was
+	// STILL RUNNING at 150s (it had to be SIGKILLed). Buffering into a
+	// bytes.Buffer made Wait() block on the stdout copier until every writer
+	// closed the pipe — including grandchildren that survive the context's kill
+	// — so Complete() could not return the answer it already had, waited out
+	// the full timeout, and then threw the answer away. A pipe has no copier:
+	// we stop reading when the turn closes and abandon the process.
 	cmd := exec.CommandContext(cmdCtx, p.cliPath, args...)
 
-	// Capture output
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open opencode stdout pipe: %w", err)
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open opencode stderr pipe: %w", err)
+	}
 
 	startTime := time.Now()
-	err := cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start opencode CLI: %w", err)
+	}
+
+	stderrSink := newConcurrentBuffer()
+	go stderrSink.drain(stderrPipe)
+
+	reader := newOpenCodeTurnReader(stdoutPipe)
+	go reader.run()
+
+	select {
+	case <-reader.done:
+	case <-cmdCtx.Done():
+	}
 	duration := time.Since(startTime)
 
-	if err != nil {
-		// Check for context cancellation
-		if cmdCtx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("opencode CLI timed out after %v", p.timeout)
-		}
-		return nil, fmt.Errorf("opencode CLI failed: %w (stderr: %s)", err, stderr.String())
+	content, rawOutput, complete, sawEOF := reader.result()
+
+	// abandon stops the CLI and reaps it off the caller's path. Wait() is NOT
+	// called inline here: the agentic loop's surviving children can hold the
+	// pipes open long after we have what we asked for.
+	abandon := func() {
+		cancel()
+		_ = stdoutPipe.Close()
+		_ = stderrPipe.Close()
+		go func() { _ = cmd.Wait() }()
 	}
 
-	rawOutput := stdout.String()
-	if rawOutput == "" {
+	switch {
+	case complete:
+		// The turn closed and we have the assistant's reply — done, regardless
+		// of whether the process intends to keep running.
+		abandon()
+
+	case cmdCtx.Err() != nil:
+		abandon()
+		return nil, fmt.Errorf("opencode CLI timed out after %s (%s; elapsed %s)",
+			budget.Round(time.Second), budgetSource, duration.Round(time.Millisecond))
+
+	case sawEOF:
+		// The CLI exited without emitting a turn-close event. It has already
+		// exited, so Wait() returns immediately and its exit code is
+		// meaningful — a non-zero exit here is a real failure, not an answer.
+		if waitErr := cmd.Wait(); waitErr != nil {
+			return nil, fmt.Errorf("opencode CLI failed: %w (stderr: %s)", waitErr, stderrSink.String())
+		}
+		if strings.TrimSpace(rawOutput) == "" {
+			return nil, fmt.Errorf("opencode CLI returned empty response")
+		}
+		// Legacy single-object shape: {"response": "...content..."}
+		content = p.parseJSONResponse(rawOutput)
+
+	default:
+		abandon()
+		return nil, fmt.Errorf("opencode CLI stopped producing output without completing a turn (stderr: %s)", stderrSink.String())
+	}
+
+	output := content
+	if strings.TrimSpace(output) == "" {
 		return nil, fmt.Errorf("opencode CLI returned empty response")
 	}
-
-	// Parse JSON output format: {"response": "...content..."}
-	output := p.parseJSONResponse(rawOutput)
 
 	// Estimate token count (rough approximation: 4 chars per token)
 	promptTokens := len(prompt) / 4
@@ -282,6 +353,124 @@ func (p *ZenCLIProvider) Complete(ctx context.Context, req *models.LLMRequest) (
 // Format: {"response": "...content..."}
 type openCodeJSONResponse struct {
 	Response string `json:"response"`
+}
+
+// openCodeEvent is one line of the CLI's newline-delimited JSON event stream
+// (`--format json`). Only the fields we key off are declared; the real events
+// carry far more, and unknown fields are ignored by encoding/json.
+//
+// Shapes observed on the wire 2026-08-09 (opencode/big-pickle):
+//
+//	{"type":"text","part":{"type":"text","text":"4"}}
+//	{"type":"step_finish","part":{"type":"step-finish","reason":"stop"}}
+//	{"type":"step_start",...}  {"type":"tool_use",...}
+type openCodeEvent struct {
+	Type string `json:"type"`
+	Part struct {
+		Text   string `json:"text"`
+		Reason string `json:"reason"`
+	} `json:"part"`
+}
+
+// maxOpenCodeEventLine bounds a single NDJSON event. The default
+// bufio.Scanner token limit is 64 KiB; measured events carry whole tool
+// payloads and exceed that, and a truncated line would silently drop an
+// answer.
+const maxOpenCodeEventLine = 4 << 20 // 4 MiB
+
+// openCodeTurnReader consumes the CLI's event stream, accumulating the
+// assistant's text and signalling the moment the turn closes — so a caller can
+// stop waiting on a process that has answered but intends to keep working.
+type openCodeTurnReader struct {
+	scanner *bufio.Scanner
+	done    chan struct{}
+
+	mu       sync.Mutex
+	text     strings.Builder
+	raw      strings.Builder
+	complete bool
+	eof      bool
+}
+
+func newOpenCodeTurnReader(r io.Reader) *openCodeTurnReader {
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), maxOpenCodeEventLine)
+	return &openCodeTurnReader{scanner: sc, done: make(chan struct{})}
+}
+
+// run scans until the assistant's turn closes or the stream ends. It closes
+// done in both cases; which of the two happened is reported by result().
+func (r *openCodeTurnReader) run() {
+	defer close(r.done)
+
+	for r.scanner.Scan() {
+		line := r.scanner.Text()
+
+		r.mu.Lock()
+		r.raw.WriteString(line)
+		r.raw.WriteByte('\n')
+
+		var ev openCodeEvent
+		if json.Unmarshal([]byte(line), &ev) == nil {
+			switch ev.Type {
+			case "text":
+				r.text.WriteString(ev.Part.Text)
+			case "step_finish":
+				// A stop-reason step closes the assistant's turn. Requiring at
+				// least one text part first keeps a tool-only step from being
+				// mistaken for the answer.
+				if ev.Part.Reason == "stop" && r.text.Len() > 0 {
+					r.complete = true
+					r.mu.Unlock()
+					return
+				}
+			}
+		}
+		r.mu.Unlock()
+	}
+
+	r.mu.Lock()
+	r.eof = true
+	r.mu.Unlock()
+}
+
+// result reports the accumulated reply, the raw event log, whether the turn
+// closed, and whether the stream ended. Safe to call while run() is blocked on
+// a read that will never complete.
+func (r *openCodeTurnReader) result() (text, raw string, complete, eof bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.text.String(), r.raw.String(), r.complete, r.eof
+}
+
+// concurrentBuffer collects a pipe's contents while the main path may read
+// them at any moment (e.g. to quote stderr in an error).
+type concurrentBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func newConcurrentBuffer() *concurrentBuffer { return &concurrentBuffer{} }
+
+func (c *concurrentBuffer) drain(r io.Reader) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			c.mu.Lock()
+			c.buf.Write(buf[:n])
+			c.mu.Unlock()
+		}
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (c *concurrentBuffer) String() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.buf.String()
 }
 
 // parseJSONResponse extracts content from OpenCode CLI JSON output

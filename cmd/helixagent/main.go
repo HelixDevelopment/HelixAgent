@@ -2881,30 +2881,39 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	var err error
 
 	// Build OpenCode configuration.
-	// Single "Helix Agent" provider with TWO models under it:
-	// - helix-llm: Fast local inference via HelixLLM (provider chain with fallback)
-	// - helix-debate: AI Debate Ensemble for best quality
-	// Agents: task/title -> helix-llm (fast), coder/summarizer -> helix-debate (quality)
+	// Single "HelixAgent" provider with TWO models under it:
+	// - helixagent-llm: Fast local inference via HelixLLM (provider chain with fallback)
+	// - helixagent-debate: AI Debate Ensemble for best quality
+	// Agents: task/title -> helixagent-llm (fast), coder/summarizer -> helixagent-debate (quality)
+	//
+	// Model ids are the CANONICAL names per docs/api/API_REFERENCE.md and the
+	// /v1/models response (internal/handlers/openai_compatible.go:532 —
+	// "helixagent-debate (canonical for CLI configs)"). The `helix-debate` /
+	// `helix-llm` forms are LEGACY ALIASES (ibid. :535, :2295) that the server
+	// still accepts for already-deployed configs, but which MUST NOT be emitted
+	// by this generator. The sibling Crush generator (handleGenerateCrush) and
+	// the shipped reference config configs/cli-agents/opencode.json both use
+	// the canonical ids.
 	config := OpenCodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		Provider: map[string]OpenCodeProviderDefNew{
 			"helixagent": {
 				NPM:  "@ai-sdk/openai-compatible",
-				Name: "Helix Agent",
+				Name: "HelixAgent",
 				Options: &OpenCodeProviderOptionsNew{
 					BaseURL: baseURL + "/v1",
 					APIKey:  apiKey,
 				},
 				Models: map[string]OpenCodeModelDefNew{
-					"helix-debate": {
-						Name: "Helix AI Debate Ensemble",
+					"helixagent-debate": {
+						Name: "HelixAgent AI Debate Ensemble",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,
 						},
 					},
-					"helix-llm": {
-						Name: "Helix LLM",
+					"helixagent-llm": {
+						Name: "HelixLLM",
 						Limit: &OpenCodeModelLimit{
 							Context: 128000,
 							Output:  8192,
@@ -2914,23 +2923,30 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 			},
 		},
 		// Agent configuration - uses provider-id/model-id format
-		// task/title → helix-llm (provider chain with fallback for fast local inference)
-		// coder/summarizer → helix-debate (full debate ensemble for quality)
+		// task/title → helixagent-llm (provider chain with fallback for fast local inference)
+		// coder/summarizer → helixagent-debate (full debate ensemble for quality)
+		//
+		// The canonical ids are load-bearing, not cosmetic: the explicit-debate
+		// override in internal/handlers/openai_compatible.go:829 matches ONLY
+		// `helixagent-debate` / `helixagent-ensemble`. Binding coder/summarizer
+		// to the legacy `helix-debate` alias silently opted every OpenCode user
+		// out of that override, letting the intent classifier downgrade an
+		// explicit debate request to a single provider.
 		Agent: map[string]OpenCodeAgentDefNew{
 			"coder": {
-				Model:     "helixagent/helix-debate",
+				Model:     "helixagent/helixagent-debate",
 				MaxTokens: 8192,
 			},
 			"summarizer": {
-				Model:     "helixagent/helix-debate",
+				Model:     "helixagent/helixagent-debate",
 				MaxTokens: 4096,
 			},
 			"task": {
-				Model:     "helixagent/helix-llm",
+				Model:     "helixagent/helixagent-llm",
 				MaxTokens: 4096,
 			},
 			"title": {
-				Model:     "helixagent/helix-llm",
+				Model:     "helixagent/helixagent-llm",
 				MaxTokens: 80,
 			},
 		},

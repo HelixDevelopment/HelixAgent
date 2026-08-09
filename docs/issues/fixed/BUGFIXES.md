@@ -721,6 +721,21 @@ Corrected assertion to match actual model name.
 
 **File Modified:** `cmd/helixagent/main_test.go`
 
+> **SUPERSEDED 2026-08-09 (§11.4.120).** This resolution was reversed: the
+> assertion is back to `helixagent/helixagent-debate` and the GENERATOR was
+> fixed instead. This entry bent the test to match the code without any
+> contract analysis — its whole justification was "Corrected assertion to match
+> actual model name". The contract is documented in
+> `internal/handlers/openai_compatible.go:532/:2292` (`helixagent-debate` =
+> "canonical for CLI configs", `helix-debate` = "legacy alias"), in
+> `docs/api/API_REFERENCE.md` (15/15 canonical, zero legacy), in the sibling
+> Crush generator (`cmd/helixagent/main.go:4252`), and in the git-tracked
+> reference config `configs/cli-agents/opencode.json`. Emitting the legacy
+> alias also cost OpenCode users the explicit-debate override at
+> `openai_compatible.go:829`. Full evidence + the standing regression guard:
+> `tests/integration/opencode_config_regression_test.go`
+> (`TestOpenCodeConfigUsesCanonicalModelIDs`).
+
 ---
 
 ## Issue #5: Redis Port Mismatch

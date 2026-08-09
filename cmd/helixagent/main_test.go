@@ -3089,7 +3089,18 @@ func TestHandleGenerateOpenCode(t *testing.T) {
 		assert.Contains(t, output, "provider")
 		assert.Contains(t, output, "agent")
 		assert.Contains(t, output, "mcp")
-		assert.Contains(t, output, "helixagent/helix-debate")
+		// §11.4.120 RECONCILED 2026-08-09. Was "helixagent/helix-debate".
+		// docs/issues/fixed/BUGFIXES.md:717 ("Issue #6: Model Name Mismatch in
+		// Test Assertions") had moved this assertion FROM the canonical id TO
+		// the legacy alias with the sole justification "Corrected assertion to
+		// match actual model name" — i.e. the test was bent to agree with the
+		// generator, with no contract analysis. The contract (canonical ids for
+		// CLI configs) is documented in internal/handlers/openai_compatible.go
+		// :532/:2292, docs/api/API_REFERENCE.md, and the shipped reference
+		// config configs/cli-agents/opencode.json; the generator was the side
+		// that violated it. See the contract block in
+		// tests/integration/opencode_config_regression_test.go.
+		assert.Contains(t, output, "helixagent/helixagent-debate")
 		assert.Contains(t, output, "helixagent")
 	})
 
@@ -3154,7 +3165,9 @@ func TestHandleGenerateOpenCode(t *testing.T) {
 		assert.Contains(t, string(content), "provider")
 		assert.Contains(t, string(content), "agent")
 		assert.Contains(t, string(content), "mcp")
-		assert.Contains(t, string(content), "helixagent/helix-debate")
+		// §11.4.120 RECONCILED 2026-08-09 — see the sibling reconciliation in
+		// TestHandleGenerateOpenCode/"generates OpenCode config to stdout".
+		assert.Contains(t, string(content), "helixagent/helixagent-debate")
 	})
 
 	t.Run("uses env variable template for API key", func(t *testing.T) {

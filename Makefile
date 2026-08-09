@@ -1388,6 +1388,7 @@ ci-validate-all:
 	@$(MAKE) ci-validate-monitoring
 	@$(MAKE) ci-validate-constitution
 	@$(MAKE) ci-validate-concurrency
+	@$(MAKE) selftest-readiness
 	@$(MAKE) no-silent-skips-warn
 	@$(MAKE) no-mocks-above-unit
 	@echo "🔐 Running new P0/P1 regression gates..."
@@ -1432,6 +1433,16 @@ ci-validate-concurrency:
 	@echo "🔍 CONST-029: auditing Pattern-A sites against allowlist..."
 	@./scripts/concurrency-audit.sh
 	@echo "✅ Concurrency audit passed"
+
+# scripts/lib/helixagent_readiness.sh is the instrument that decides whether
+# run_complete_validation.sh / orchestrate_full_test.sh may believe their own
+# results, so it needs its own gate: three one-line mutations were measured to
+# invert its verdicts with nothing in the repo failing and shellcheck silent.
+# The self-test proves the instrument discriminates (golden-good probes +
+# golden-bad mutants, §11.4.107(10)). Starts its own loopback fixtures on
+# kernel-assigned ephemeral ports; touches no live service.
+selftest-readiness: ## DoD: prove scripts/lib/helixagent_readiness.sh still discriminates
+	@./scripts/lib/helixagent_readiness_selftest.sh
 
 ci-pre-commit:
 	@echo "🔍 Pre-commit validation..."

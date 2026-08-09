@@ -1,9 +1,12 @@
 package testutil
 
 import (
+	"bufio"
 	"net"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -170,6 +173,240 @@ func TestRedisGate_RejectsNonRedisListener(t *testing.T) {
 		"RedisAvailable() must reject an endpoint that is reachable but "+
 			"does not answer the Redis protocol; a TCP-open check cannot "+
 			"tell a usable Redis from a NOAUTH-rejecting or foreign occupant")
+}
+
+// =============================================================================
+// RESP-speaking fixtures for the AUTH+PING handshake
+//
+// TestRedisGate_RejectsNonRedisListener above covers exactly ONE failure
+// shape: a listener that accepts the connection and then says NOTHING. That
+// is the cheap half of the space, and it leaves the gate's headline mechanism
+// — the handshake itself — unguarded. Proof (§1.1): weakening checkRedisPing
+// to accept ANY reply
+//
+//	resp, ok := reply("PING")   ->   _, ok := reply("PING")
+//	if !ok { return false }          if !ok { return false }
+//	return strings.HasPrefix(resp, "+PONG")   ->   return true
+//
+// keeps that test GREEN, because a silent listener still fails the read. The
+// whole point of the handshake is to reject a listener that DOES reply but is
+// unusable, and nothing exercised that.
+//
+// It is not a theoretical shape either. Measured on this host 2026-08-08:
+// helixagent-mcp-redis-backend on HELIXAGENT_PORT_REDIS_MCP is started with
+// --requirepass and answers a bare PING with
+//
+//	-NOAUTH Authentication required.
+//
+// and helix_agent's own docker-compose.yml starts the canonical Redis with
+// --requirepass too. "Replied, therefore up" calls both of those available
+// while every command against them fails.
+//
+// The fixtures below close that: a golden-BAD that replies -NOAUTH (and a
+// -WRONGPASS sibling), and the golden-GOOD the gate also lacked — because a
+// one-sided suite is defeated by the opposite mutation. With only golden-bad
+// fixtures, `func checkRedisPing(...) bool { return false }` passes
+// everything, and RequireRedis would silently skip every Redis test forever.
+// =============================================================================
+
+// fakeRedis is a loopback listener speaking just enough RESP to answer the
+// inline AUTH and PING commands checkRedisPing sends. It records what it
+// received so a test can prove the gate really authenticated rather than
+// merely getting lucky.
+type fakeRedis struct {
+	addr string
+
+	mu       sync.Mutex
+	received []string
+}
+
+// startFakeRedis binds an ephemeral loopback port and answers each inline
+// command with reply(cmd). Returns once the listener is accepting.
+func startFakeRedis(t *testing.T, reply func(cmd string) string) *fakeRedis {
+	t.Helper()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "fixture: could not bind loopback listener")
+	t.Cleanup(func() { _ = ln.Close() })
+
+	f := &fakeRedis{addr: ln.Addr().String()}
+
+	go func() {
+		for {
+			conn, aerr := ln.Accept()
+			if aerr != nil {
+				return // listener closed by t.Cleanup
+			}
+			go func(c net.Conn) {
+				defer func() { _ = c.Close() }()
+				// Bounded so a fixture can never outlive its test.
+				_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+				r := bufio.NewReader(c)
+				for {
+					line, rerr := r.ReadString('\n')
+					if rerr != nil {
+						return
+					}
+					cmd := strings.TrimRight(line, "\r\n")
+					f.record(cmd)
+					if _, werr := c.Write([]byte(reply(cmd))); werr != nil {
+						return
+					}
+				}
+			}(conn)
+		}
+	}()
+
+	return f
+}
+
+func (f *fakeRedis) record(cmd string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.received = append(f.received, cmd)
+}
+
+func (f *fakeRedis) commands() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.received...)
+}
+
+// pointGateAt aims the availability gate at the fixture and clears the
+// once-per-run verdict cache so this test observes its own endpoint.
+func pointGateAt(t *testing.T, f *fakeRedis, password string) {
+	t.Helper()
+	host, port, err := net.SplitHostPort(f.addr)
+	require.NoError(t, err)
+	t.Setenv("REDIS_HOST", host)
+	t.Setenv("REDIS_PORT", port)
+	t.Setenv("REDIS_PASSWORD", password)
+	resetInfraCacheForTest()
+	t.Cleanup(resetInfraCacheForTest)
+}
+
+// --- golden-bad: replies, but is unusable ---------------------------------
+
+// TestRedisGate_RejectsNoAuthListener is the golden-bad fixture for the
+// measured failure mode: a password-protected Redis probed without
+// credentials answers every command with "-NOAUTH Authentication required."
+//
+// This endpoint is REACHABLE and it REPLIES. Only a gate that inspects the
+// reply can reject it — which is precisely the assertion the commit's
+// headline mechanism exists to make, and precisely what no test covered.
+func TestRedisGate_RejectsNoAuthListener(t *testing.T) {
+	f := startFakeRedis(t, func(string) string {
+		return "-NOAUTH Authentication required.\r\n"
+	})
+	// No password configured — exactly the state of a host with no .env,
+	// which is how this was hit for real.
+	pointGateAt(t, f, "")
+
+	got := RedisAvailable()
+
+	if redModeEnabled() {
+		assert.True(t, got,
+			"RED baseline: a reply-means-up gate is expected to accept a "+
+				"-NOAUTH endpoint. If this fails, the gate already inspects "+
+				"the reply — re-run with RED_MODE=0.")
+		return
+	}
+
+	assert.False(t, got,
+		"RedisAvailable() must reject an endpoint that answers -NOAUTH: it is "+
+			"reachable and it replies, but every command against it fails. "+
+			"Reporting it available is what let guarded tests proceed into a "+
+			"guaranteed failure and be read as product defects")
+
+	assert.Contains(t, f.commands(), "PING",
+		"the gate must actually have spoken to the endpoint; a verdict "+
+			"reached without sending anything would be a different bug that "+
+			"happens to produce the right answer here")
+}
+
+// TestRedisGate_RejectsWrongPasswordListener is the sibling shape: credentials
+// were supplied but rejected. Same class — replies, unusable — and it also
+// proves the gate does not treat "AUTH got an answer" as success.
+func TestRedisGate_RejectsWrongPasswordListener(t *testing.T) {
+	f := startFakeRedis(t, func(cmd string) string {
+		if strings.HasPrefix(cmd, "AUTH ") {
+			return "-WRONGPASS invalid username-password pair\r\n"
+		}
+		return "-NOAUTH Authentication required.\r\n"
+	})
+	pointGateAt(t, f, "definitely-not-the-password")
+
+	got := RedisAvailable()
+
+	if redModeEnabled() {
+		assert.True(t, got, "RED baseline: reply-means-up accepts -WRONGPASS")
+		return
+	}
+
+	assert.False(t, got,
+		"a Redis that rejects our credentials is not a Redis we can use; "+
+			"an available verdict here sends the caller into a failure whose "+
+			"cause is invisible at the call site")
+}
+
+// --- golden-good: a real handshake must still be accepted -----------------
+
+// TestRedisGate_AcceptsAuthenticatedRedis is the golden-good fixture.
+//
+// Without it the golden-bad tests above are satisfied by a gate that rejects
+// EVERYTHING — `return false` — which would make RequireRedis skip every
+// Redis test in the repo forever while every one of these tests stayed green.
+// That is the same PASS-bluff as the defect, just inverted.
+//
+// It also asserts the gate sent the CONFIGURED password, so "authenticates"
+// is verified rather than assumed.
+func TestRedisGate_AcceptsAuthenticatedRedis(t *testing.T) {
+	const password = "helixagent-test-secret"
+
+	f := startFakeRedis(t, func(cmd string) string {
+		switch {
+		case cmd == "AUTH "+password:
+			return "+OK\r\n"
+		case cmd == "PING":
+			return "+PONG\r\n"
+		default:
+			return "-ERR unexpected command\r\n"
+		}
+	})
+	pointGateAt(t, f, password)
+
+	assert.True(t, RedisAvailable(),
+		"a Redis that completes AUTH+PING MUST be reported available; a gate "+
+			"that rejects everything skips the entire Redis suite forever and "+
+			"passes every golden-bad test while doing it")
+
+	assert.Contains(t, f.commands(), "AUTH "+password,
+		"the gate must AUTHENTICATE with the configured credentials, not just "+
+			"open a socket and hope; without this assertion a gate that never "+
+			"sends AUTH still passes whenever the server does not require one")
+	assert.Contains(t, f.commands(), "PING")
+}
+
+// TestRedisGate_AcceptsUnauthenticatedRedis covers the other legitimate
+// deployment: a Redis started without --requirepass. AUTH must be skipped
+// (sending it would draw "-ERR Client sent AUTH, but no password is set")
+// and the bare PING must carry the verdict.
+func TestRedisGate_AcceptsUnauthenticatedRedis(t *testing.T) {
+	f := startFakeRedis(t, func(cmd string) string {
+		if cmd == "PING" {
+			return "+PONG\r\n"
+		}
+		return "-ERR Client sent AUTH, but no password is set\r\n"
+	})
+	pointGateAt(t, f, "")
+
+	assert.True(t, RedisAvailable(),
+		"a password-less Redis answering +PONG is usable and must be accepted")
+
+	for _, cmd := range f.commands() {
+		assert.False(t, strings.HasPrefix(cmd, "AUTH"),
+			"no password is configured, so the gate must not send AUTH")
+	}
 }
 
 // resetInfraCacheForTest clears the once-per-run availability cache so a

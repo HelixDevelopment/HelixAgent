@@ -390,8 +390,12 @@ echo -e "${BOLD}Summary:${NC}"
 echo "─────────────────────────────────────────────────────────────────"
 
 if [ "$RUN_UNIT" = true ]; then
-    UNIT_STATUS=$(grep -c "^---.*PASS" test_output_clis.log 2>/dev/null || echo "0")
-    echo -e "  Unit Tests:          ${GREEN}${UNIT_STATUS} packages${NC}"
+    # `grep -c` prints "0" AND exits 1 on no-match, so `|| echo "0"` emits two
+    # values that collapse to $'0\n0' — rendered as a broken two-line count and
+    # fatal to any `-eq` guard. See lib/helixagent_readiness.sh for the same
+    # footgun; `|| true` suppresses the status without adding a second value.
+    UNIT_STATUS=$(grep -c "^---.*PASS" test_output_clis.log 2>/dev/null || true)
+    echo -e "  Unit Tests:          ${GREEN}${UNIT_STATUS:-0} packages${NC}"
 fi
 
 if [ "$RUN_INTEGRATION" = true ]; then

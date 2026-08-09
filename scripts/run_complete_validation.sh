@@ -327,14 +327,24 @@ print_summary() {
     echo -e "${BOLD}📊 Test Results Summary:${NC}"
     echo "═════════════════════════════════════════════════════════════════"
     
+    # NOTE ON `grep -c`: it PRINTS "0" and ALSO exits 1 when there are no
+    # matches, so an `|| echo "0"` fallback emits TWO values. They collapse
+    # through command substitution into the string $'0\n0', which renders as
+    # "0\n0 packages" and makes any `[ "$n" -eq 0 ]` guard abort with
+    # "integer expression expected" — a non-zero status that reads as
+    # "not zero", i.e. "tests ran". Same footgun documented in
+    # lib/helixagent_readiness.sh; `|| true` is the correct suppressor
+    # because grep has already printed the count.
     if [ -f logs/test_clis.log ]; then
-        local clis_passed=$(grep -c "^---.*PASS" logs/test_clis.log 2>/dev/null || echo "0")
-        echo -e "  CLIS Tests:           ${GREEN}${clis_passed} packages${NC}"
+        local clis_passed
+        clis_passed=$(grep -c "^---.*PASS" logs/test_clis.log 2>/dev/null || true)
+        echo -e "  CLIS Tests:           ${GREEN}${clis_passed:-0} packages${NC}"
     fi
-    
+
     if [ -f logs/test_ensemble.log ]; then
-        local ensemble_passed=$(grep -c "^---.*PASS" logs/test_ensemble.log 2>/dev/null || echo "0")
-        echo -e "  Ensemble Tests:       ${GREEN}${ensemble_passed} packages${NC}"
+        local ensemble_passed
+        ensemble_passed=$(grep -c "^---.*PASS" logs/test_ensemble.log 2>/dev/null || true)
+        echo -e "  Ensemble Tests:       ${GREEN}${ensemble_passed:-0} packages${NC}"
     fi
     
     if [ -f logs/test_integration.log ]; then
@@ -342,8 +352,9 @@ print_summary() {
     fi
     
     if [ -f logs/test_llms_verifier.log ]; then
-        local providers_ok=$(grep -c "\[PASS\].*Provider is healthy" logs/test_llms_verifier.log 2>/dev/null || echo "0")
-        echo -e "  Providers Healthy:    ${GREEN}${providers_ok}${NC}"
+        local providers_ok
+        providers_ok=$(grep -c "\[PASS\].*Provider is healthy" logs/test_llms_verifier.log 2>/dev/null || true)
+        echo -e "  Providers Healthy:    ${GREEN}${providers_ok:-0}${NC}"
     fi
     
     if [ -f logs/test_challenges.log ]; then

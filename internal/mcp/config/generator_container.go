@@ -260,72 +260,52 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["fetch"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("fetch"),
 		Enabled:  true,
-		Port:     9101,
 		Category: "core",
 	}
 	mcps["git"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("git"),
 		Enabled:  true,
-		Port:     9102,
 		Category: "core",
 	}
 	mcps["time"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("time"),
 		Enabled:  true,
-		Port:     9103,
 		Category: "core",
 	}
 	mcps["filesystem"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("filesystem"),
 		Enabled:  true,
-		Port:     9104,
 		Category: "core",
 	}
 	mcps["memory"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("memory"),
 		Enabled:  true,
-		Port:     9105,
 		Category: "core",
 	}
 	mcps["everything"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("everything"),
 		Enabled:  true,
-		Port:     9106,
 		Category: "core",
 	}
 	mcps["sequential-thinking"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("sequential-thinking"),
 		Enabled:  true,
-		Port:     9107,
 		Category: "core",
 	}
 	mcps["sqlite"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("sqlite"),
 		Enabled:  true,
-		Port:     9108,
 		Category: "core",
 	}
 	mcps["puppeteer"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("puppeteer"),
 		Enabled:  true,
-		Port:     9109,
 		Category: "core",
 	}
 	mcps["postgres"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("postgres"),
 		Enabled:  g.hasAnyEnvVar("POSTGRES_URL", "POSTGRES_HOST"),
-		Port:     9110,
 		Category: "core",
 	}
 
@@ -334,37 +314,27 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["mongodb"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("mongodb"),
 		Enabled:  g.hasAnyEnvVar("MONGODB_URI", "MONGODB_HOST"),
-		Port:     9201,
 		Category: "database",
 	}
 	mcps["redis"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("redis"),
 		Enabled:  g.hasAnyEnvVar("REDIS_URL", "REDIS_HOST"),
-		Port:     9202,
 		Category: "database",
 	}
 	mcps["mysql"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("mysql"),
 		Enabled:  g.hasAnyEnvVar("MYSQL_URL", "MYSQL_HOST"),
-		Port:     9203,
 		Category: "database",
 	}
 	mcps["elasticsearch"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("elasticsearch"),
 		Enabled:  g.hasAnyEnvVar("ELASTICSEARCH_URL", "ELASTICSEARCH_HOST"),
-		Port:     9204,
 		Category: "database",
 	}
 	mcps["supabase"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("supabase"),
 		Enabled:  g.hasAllEnvVars("SUPABASE_URL", "SUPABASE_KEY"),
-		Port:     9205,
 		Category: "database",
 	}
 
@@ -373,30 +343,22 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["qdrant"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("qdrant"),
 		Enabled:  g.hasAnyEnvVar("QDRANT_URL", "QDRANT_HOST"),
-		Port:     9301,
 		Category: "vector",
 	}
 	mcps["chroma"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("chroma"),
 		Enabled:  g.hasAnyEnvVar("CHROMA_URL", "CHROMA_HOST"),
-		Port:     9302,
 		Category: "vector",
 	}
 	mcps["pinecone"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("pinecone"),
 		Enabled:  g.hasEnvVar("PINECONE_API_KEY"),
-		Port:     9303,
 		Category: "vector",
 	}
 	mcps["weaviate"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("weaviate"),
 		Enabled:  g.hasAnyEnvVar("WEAVIATE_URL", "WEAVIATE_HOST"),
-		Port:     9304,
 		Category: "vector",
 	}
 
@@ -405,93 +367,67 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["github"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("github"),
 		Enabled:  g.hasEnvVar("GITHUB_TOKEN"),
-		Port:     9401,
 		Category: "devops",
 	}
 	mcps["gitlab"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("gitlab"),
 		Enabled:  g.hasEnvVar("GITLAB_TOKEN"),
-		Port:     9402,
 		Category: "devops",
 	}
 	mcps["sentry"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("sentry"),
 		Enabled:  g.hasAllEnvVars("SENTRY_AUTH_TOKEN", "SENTRY_ORG"),
-		Port:     9403,
 		Category: "devops",
 	}
 	mcps["kubernetes"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("kubernetes"),
 		Enabled:  g.hasEnvVar("KUBECONFIG"),
-		Port:     9404,
 		Category: "devops",
 	}
 	mcps["docker"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("docker"),
 		Enabled:  true, // Always available - uses local docker socket
-		Port:     9405,
 		Category: "devops",
 	}
 	mcps["ansible"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("ansible"),
 		Enabled:  true, // Always available
-		Port:     9406,
 		Category: "devops",
 	}
 	mcps["aws"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("aws"),
 		Enabled:  g.hasAllEnvVars("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"),
-		Port:     9407,
 		Category: "devops",
 	}
 	mcps["gcp"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("gcp"),
 		Enabled:  g.hasEnvVar("GOOGLE_APPLICATION_CREDENTIALS"),
-		Port:     9408,
 		Category: "devops",
 	}
 	mcps["heroku"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("heroku"),
 		Enabled:  g.hasEnvVar("HEROKU_API_KEY"),
-		Port:     9409,
 		Category: "devops",
 	}
 	mcps["cloudflare"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("cloudflare"),
 		Enabled:  g.hasEnvVar("CLOUDFLARE_API_TOKEN"),
-		Port:     9410,
 		Category: "devops",
 	}
 	mcps["vercel"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("vercel"),
 		Enabled:  g.hasEnvVar("VERCEL_TOKEN"),
-		Port:     9411,
 		Category: "devops",
 	}
 	mcps["workers"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("workers"),
 		Enabled:  g.hasEnvVar("CLOUDFLARE_API_TOKEN"),
-		Port:     9412,
 		Category: "devops",
 	}
 	mcps["jetbrains"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("jetbrains"),
 		Enabled:  true, // Works locally
-		Port:     9413,
 		Category: "devops",
 	}
 
@@ -500,30 +436,22 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["playwright"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("playwright"),
 		Enabled:  true, // Always available
-		Port:     9501,
 		Category: "browser",
 	}
 	mcps["browserbase"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("browserbase"),
 		Enabled:  g.hasEnvVar("BROWSERBASE_API_KEY"),
-		Port:     9502,
 		Category: "browser",
 	}
 	mcps["firecrawl"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("firecrawl"),
 		Enabled:  g.hasEnvVar("FIRECRAWL_API_KEY"),
-		Port:     9503,
 		Category: "browser",
 	}
 	mcps["crawl4ai"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("crawl4ai"),
 		Enabled:  true, // Works locally
-		Port:     9504,
 		Category: "browser",
 	}
 
@@ -532,23 +460,17 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["slack"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("slack"),
 		Enabled:  g.hasAllEnvVars("SLACK_BOT_TOKEN", "SLACK_TEAM_ID"),
-		Port:     9601,
 		Category: "communication",
 	}
 	mcps["discord"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("discord"),
 		Enabled:  g.hasEnvVar("DISCORD_TOKEN"),
-		Port:     9602,
 		Category: "communication",
 	}
 	mcps["telegram"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("telegram"),
 		Enabled:  g.hasEnvVar("TELEGRAM_BOT_TOKEN"),
-		Port:     9603,
 		Category: "communication",
 	}
 
@@ -557,72 +479,52 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["notion"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("notion"),
 		Enabled:  g.hasEnvVar("NOTION_API_KEY"),
-		Port:     9701,
 		Category: "productivity",
 	}
 	mcps["linear"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("linear"),
 		Enabled:  g.hasEnvVar("LINEAR_API_KEY"),
-		Port:     9702,
 		Category: "productivity",
 	}
 	mcps["jira"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("jira"),
 		Enabled:  g.hasAllEnvVars("JIRA_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"),
-		Port:     9703,
 		Category: "productivity",
 	}
 	mcps["asana"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("asana"),
 		Enabled:  g.hasEnvVar("ASANA_ACCESS_TOKEN"),
-		Port:     9704,
 		Category: "productivity",
 	}
 	mcps["trello"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("trello"),
 		Enabled:  g.hasAllEnvVars("TRELLO_API_KEY", "TRELLO_API_TOKEN"),
-		Port:     9705,
 		Category: "productivity",
 	}
 	mcps["todoist"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("todoist"),
 		Enabled:  g.hasEnvVar("TODOIST_API_TOKEN"),
-		Port:     9706,
 		Category: "productivity",
 	}
 	mcps["monday"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("monday"),
 		Enabled:  g.hasEnvVar("MONDAY_API_TOKEN"),
-		Port:     9707,
 		Category: "productivity",
 	}
 	mcps["airtable"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("airtable"),
 		Enabled:  g.hasEnvVar("AIRTABLE_API_KEY"),
-		Port:     9708,
 		Category: "productivity",
 	}
 	mcps["obsidian"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("obsidian"),
 		Enabled:  g.hasEnvVar("OBSIDIAN_VAULT_PATH"),
-		Port:     9709,
 		Category: "productivity",
 	}
 	mcps["atlassian"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("atlassian"),
 		Enabled:  g.hasAllEnvVars("ATLASSIAN_URL", "ATLASSIAN_EMAIL", "ATLASSIAN_API_TOKEN"),
-		Port:     9710,
 		Category: "productivity",
 	}
 
@@ -631,72 +533,52 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["brave-search"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("brave-search"),
 		Enabled:  g.hasEnvVar("BRAVE_API_KEY"),
-		Port:     9801,
 		Category: "search",
 	}
 	mcps["exa"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("exa"),
 		Enabled:  g.hasEnvVar("EXA_API_KEY"),
-		Port:     9802,
 		Category: "search",
 	}
 	mcps["tavily"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("tavily"),
 		Enabled:  g.hasEnvVar("TAVILY_API_KEY"),
-		Port:     9803,
 		Category: "search",
 	}
 	mcps["perplexity"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("perplexity"),
 		Enabled:  g.hasEnvVar("PERPLEXITY_API_KEY"),
-		Port:     9804,
 		Category: "search",
 	}
 	mcps["kagi"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("kagi"),
 		Enabled:  g.hasEnvVar("KAGI_API_KEY"),
-		Port:     9805,
 		Category: "search",
 	}
 	mcps["omnisearch"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("omnisearch"),
 		Enabled:  true, // Works without API key
-		Port:     9806,
 		Category: "search",
 	}
 	mcps["context7"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("context7"),
 		Enabled:  true, // Works without API key
-		Port:     9807,
 		Category: "search",
 	}
 	mcps["llamaindex"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("llamaindex"),
 		Enabled:  g.hasEnvVar("OPENAI_API_KEY"),
-		Port:     9808,
 		Category: "search",
 	}
 	mcps["langchain"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("langchain"),
 		Enabled:  g.hasEnvVar("OPENAI_API_KEY"),
-		Port:     9809,
 		Category: "search",
 	}
 	mcps["openai"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("openai"),
 		Enabled:  g.hasEnvVar("OPENAI_API_KEY"),
-		Port:     9810,
 		Category: "search",
 	}
 
@@ -705,37 +587,27 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["google-drive"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("google-drive"),
 		Enabled:  g.hasAllEnvVars("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
-		Port:     9901,
 		Category: "google",
 	}
 	mcps["google-calendar"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("google-calendar"),
 		Enabled:  g.hasAllEnvVars("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
-		Port:     9902,
 		Category: "google",
 	}
 	mcps["google-maps"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("google-maps"),
 		Enabled:  g.hasEnvVar("GOOGLE_MAPS_API_KEY"),
-		Port:     9903,
 		Category: "google",
 	}
 	mcps["youtube"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("youtube"),
 		Enabled:  g.hasEnvVar("YOUTUBE_API_KEY"),
-		Port:     9904,
 		Category: "google",
 	}
 	mcps["gmail"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("gmail"),
 		Enabled:  g.hasAllEnvVars("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
-		Port:     9905,
 		Category: "google",
 	}
 
@@ -744,23 +616,17 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["datadog"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("datadog"),
 		Enabled:  g.hasAllEnvVars("DD_API_KEY", "DD_APP_KEY"),
-		Port:     9921,
 		Category: "monitoring",
 	}
 	mcps["grafana"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("grafana"),
 		Enabled:  g.hasAllEnvVars("GRAFANA_URL", "GRAFANA_TOKEN"),
-		Port:     9922,
 		Category: "monitoring",
 	}
 	mcps["prometheus"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("prometheus"),
 		Enabled:  g.hasEnvVar("PROMETHEUS_URL"),
-		Port:     9923,
 		Category: "monitoring",
 	}
 
@@ -769,23 +635,17 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["stripe"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("stripe"),
 		Enabled:  g.hasEnvVar("STRIPE_API_KEY"),
-		Port:     9941,
 		Category: "finance",
 	}
 	mcps["hubspot"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("hubspot"),
 		Enabled:  g.hasEnvVar("HUBSPOT_ACCESS_TOKEN"),
-		Port:     9942,
 		Category: "finance",
 	}
 	mcps["zendesk"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("zendesk"),
 		Enabled:  g.hasAllEnvVars("ZENDESK_SUBDOMAIN", "ZENDESK_EMAIL", "ZENDESK_TOKEN"),
-		Port:     9943,
 		Category: "finance",
 	}
 
@@ -794,13 +654,52 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 	// ==========================================================================
 	mcps["figma"] = ContainerMCPServerConfig{
 		Type:     "remote",
-		URL:      g.getMCPURL("figma"),
 		Enabled:  g.hasEnvVar("FIGMA_API_KEY"),
-		Port:     9961,
 		Category: "design",
 	}
 
+	g.resolveContainerEndpoints(mcps)
+
 	return mcps
+}
+
+// resolveContainerEndpoints derives the URL and the Port of every
+// containerized MCP from ONE lookup in MCPContainerPorts, keyed by the name
+// the server is registered under in `mcps`.
+//
+// WHY THIS EXISTS (2026-08-09)
+//
+// Both fields used to be written by hand in each of the 71 config literals:
+// the URL via g.getMCPURL(name) — which reads MCPContainerPorts — and the
+// Port as a bare integer. When the allocation table was migrated to the 82xx
+// scheme the URLs followed automatically and the hand-written ports did not,
+// so every single entry ended up contradicting itself:
+//
+//	fetch:  URL=http://localhost:8200/sse   Port=9101
+//	github: URL=http://localhost:8220/sse   Port=9401
+//
+// A consumer dialling cfg.URL reached the container; one composing an address
+// from cfg.Port reached a port nothing listens on. Measured pre-fix: 71 of 71
+// container-backed entries disagreed (TestContainerMCPPortAgreesWithURL).
+//
+// Deriving both here — from the same table, keyed by the same map key — makes
+// the endpoint and the port two renderings of ONE fact rather than two facts
+// that have to be kept equal by hand. There is no name string to mistype: the
+// key the caller registered under IS the lookup key.
+//
+// Names absent from MCPContainerPorts are left untouched, which is what
+// "helixagent" needs: it is a remote endpoint on the HelixAgent server itself
+// (URL from g.baseURL, Port 0), not one of the containerized MCP ports.
+func (g *ContainerMCPConfigGenerator) resolveContainerEndpoints(mcps map[string]ContainerMCPServerConfig) {
+	for name, cfg := range mcps {
+		alloc, ok := g.portMap[name]
+		if !ok {
+			continue
+		}
+		cfg.Port = alloc.Port
+		cfg.URL = g.getMCPURL(name)
+		mcps[name] = cfg
+	}
 }
 
 // GetEnabledContainerMCPs returns only the MCPs that are enabled

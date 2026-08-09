@@ -1734,10 +1734,91 @@ func DefaultAppConfig() *AppConfig {
 		AutoStartMCP:       true, // Auto-start all 32 MCP Docker containers
 		StrictDependencies: true, // MANDATORY: All dependencies must be available
 		ServerHost:         "0.0.0.0",
-		ServerPort:         "8100",
+		ServerPort:         appConfigDefaultServerPort,
 		Logger:             logger,
 		ShutdownSignal:     nil,
 	}
+}
+
+// appConfigDefaultServerPort is the AppConfig.ServerPort placeholder that
+// run() treats as "not explicitly chosen" (see the override at the top of
+// run()). It is a SENTINEL, not the port the server binds: config.Load()
+// owns that. Naming it here keeps the sentinel and its one comparison from
+// drifting apart, and keeps it visibly distinct from a real port default.
+const appConfigDefaultServerPort = "8100"
+
+// helixAgentServePort returns the TCP port THIS binary serves its HTTP API
+// on, resolved through exactly the precedence run() applies.
+//
+// WHY A RESOLVER AND NOT A LITERAL (§11.4.6 no-guessing, §11.4.111
+// resolve-by-name-not-by-ordinal)
+//
+// The port is not knowable from any single static source — the in-tree
+// sources disagree, and one of them is invisible to the process at compile
+// time:
+//
+//	internal/config/config.go   getEnv("PORT", "7061")  <-- what the binary
+//	    ACTUALLY binds: run() calls config.Load() and serves on
+//	    cfg.Server.Host:cfg.Server.Port
+//	internal/ports/ports.go     HelixAgentHTTP = 8100 ("was 7061") — the
+//	    registry the TESTS default to
+//	configs/development.yaml    port: 7061 — but nothing loads it (the
+//	    -config flag is declared and never read)
+//	main()                      runs godotenv.Overload on `.env.bak` and
+//	    `.env` BEFORE config.Load(). `.env` is gitignored, so an operator's
+//	    PORT= line silently overrides everything above it.
+//
+// Two callers previously answered this question by re-deriving it with
+// their own literal — `os.Getenv("PORT")` defaulting to "8100" — which
+// disagreed with config.Load's "7061" default on the out-of-the-box path.
+// Both callers WRITE THAT ANSWER INTO A USER-FACING CLI-agent config, so
+// the disagreement shipped: the documented generator handed users a
+// baseURL for a port this binary never binds (and which, in this project's
+// own deployment, belongs to llm-verifier — see
+// scripts/lib/helixagent_readiness.sh for the measured collision).
+//
+// Replacing one literal with another literal would be the same defect with
+// a different number. Instead this asks the authority: config.Load(), the
+// very call whose result run() binds. Generator and server therefore agree
+// BY CONSTRUCTION — including when an operator sets PORT in the gitignored
+// .env, which no literal could ever have honoured.
+//
+// appCfg may be nil (the boot-time auto-regenerate goroutine passes a
+// freshly built AppConfig with no ServerPort; nil is accepted so future
+// callers need not fabricate one).
+func helixAgentServePort(appCfg *AppConfig) string {
+	port := config.Load().Server.Port
+
+	// Mirror run()'s override precisely: an explicitly chosen ServerPort
+	// wins, the sentinel does not. Kept in step with run() through the
+	// shared constant so the two cannot diverge.
+	if appCfg != nil && appCfg.ServerPort != "" &&
+		appCfg.ServerPort != appConfigDefaultServerPort {
+		port = appCfg.ServerPort
+	}
+
+	return port
+}
+
+// helixAgentClientHost returns the host a CLI-agent config should DIAL to
+// reach this HelixAgent.
+//
+// Deliberately NOT config.Load().Server.Host: that is the BIND address and
+// defaults to 0.0.0.0, which is a wildcard to listen on, not an address a
+// client can connect to. The dial-side default is localhost, overridable
+// with HELIXAGENT_HOST for the remote case.
+func helixAgentClientHost() string {
+	if host := os.Getenv("HELIXAGENT_HOST"); host != "" {
+		return host
+	}
+	return "localhost"
+}
+
+// helixAgentClientBaseURL returns the "http://host:port" a generated
+// CLI-agent config must point at to reach this HelixAgent's API.
+func helixAgentClientBaseURL(appCfg *AppConfig) string {
+	return fmt.Sprintf("http://%s:%s",
+		helixAgentClientHost(), helixAgentServePort(appCfg))
 }
 
 // run executes the main application logic with the given configuration
@@ -1816,7 +1897,7 @@ func run(appCfg *AppConfig) error {
 	if appCfg.ServerHost != "" && appCfg.ServerHost != "0.0.0.0" {
 		cfg.Server.Host = appCfg.ServerHost
 	}
-	if appCfg.ServerPort != "" && appCfg.ServerPort != "8100" {
+	if appCfg.ServerPort != "" && appCfg.ServerPort != appConfigDefaultServerPort {
 		cfg.Server.Port = appCfg.ServerPort
 	}
 	// Skip auto-discovery when verification is skipped (test mode)
@@ -2848,17 +2929,14 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		}
 	}
 
-	// Get host and port for MCP SSE URLs
-	host := os.Getenv("HELIXAGENT_HOST")
-	if host == "" {
-		host = "localhost"
-	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8100"
-	}
-
-	baseURL := fmt.Sprintf("http://%s:%s", host, port)
+	// Base URL for the provider endpoint and every MCP SSE URL below.
+	//
+	// Resolved through helixAgentServePort (i.e. config.Load(), the call the
+	// server itself binds from) rather than a literal default local to this
+	// function. A local literal previously defaulted to "8100" while the
+	// server bound config.Load's "7061", so the config written for the user
+	// named a port this binary never listens on. See helixAgentServePort.
+	baseURL := helixAgentClientBaseURL(appCfg)
 
 	// Get HelixLLM configuration from environment or .env file
 	envVarsAll := loadEnvVars()
@@ -4220,20 +4298,27 @@ func handleGenerateCrush(appCfg *AppConfig) error {
 		}
 	}
 
-	// Get host and port
-	host := os.Getenv("HELIXAGENT_HOST")
-	if host == "" {
-		host = "localhost"
-	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8100"
-	}
+	// Host and port for the provider endpoint, extensions and formatters.
+	//
+	// Resolved through helixAgentServePort (config.Load(), the call the
+	// server binds from) — see the identical fix in handleGenerateOpenCode
+	// and the rationale on helixAgentServePort. This function previously
+	// carried its own "8100" literal that disagreed with the port the
+	// server actually listens on.
+	host := helixAgentClientHost()
+	port := helixAgentServePort(appCfg)
 
 	baseURL := fmt.Sprintf("http://%s:%s/v1", host, port)
+
+	// A PORT that will not parse is an operator configuration error the
+	// server itself would trip over. Surfacing it beats silently writing a
+	// fallback port number into the user's config — a silent fallback here
+	// is what shipped the wrong endpoint in the first place.
 	crushPortInt, err := strconv.Atoi(port)
 	if err != nil {
-		crushPortInt = 8100 // default port (HELIXAGENT_PORT_HTTP)
+		return fmt.Errorf(
+			"cannot generate Crush config: resolved HelixAgent port %q is not "+
+				"a number (check PORT in the environment or .env): %w", port, err)
 	}
 
 	// Build the Crush configuration

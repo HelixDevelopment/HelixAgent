@@ -12,6 +12,7 @@ import (
 
 	llm "dev.helix.agent/internal/llm"
 	models "dev.helix.agent/internal/models"
+	"dev.helix.agent/internal/ports"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/version"
 	pb "dev.helix.agent/pkg/api"
@@ -1179,10 +1180,45 @@ func contains(slice []string, value string) bool {
 	return false
 }
 
+// grpcListenAddr returns the address this gRPC server listens on, resolved
+// by name from internal/ports rather than from a bare literal.
+//
+// WHY NOT :50051 (§11.4.111 resolve-by-name-not-by-ordinal)
+//
+// This server used to hardcode `:50051`. That is the gRPC ecosystem's
+// conventional port, which makes it the number most likely to be already
+// taken — and on this project's own stack it IS taken: the
+// helixcode-infra-weaviate container publishes it. So HelixAgent's gRPC
+// server could not start while HelixAgent's own infrastructure was running,
+// and clients dialling the same literal reached Weaviate, which answers
+// `Unimplemented` to every HelixAgent method while completing a perfectly
+// healthy HTTP/2 handshake — a live wrong peer, not an absent one, so
+// reachability guards did not skip and the resulting failures were reported
+// against HelixAgent although HelixAgent was never running.
+//
+// The service is now registered as ports.HelixAgentGRPC (core band, offset
+// 112). Registration is the load-bearing half of the fix: the registry
+// exists precisely to arbitrate port ownership, and a service missing from
+// it cannot be collision-checked against the services that are in it — the
+// clash was undetectable by construction, not merely undetected. Resolving
+// by name also makes the port overridable per deployment via the registry's
+// own HELIXAGENT_PORT_GRPC env var.
+func grpcListenAddr() string {
+	return ports.Addr(ports.HelixAgentGRPC)
+}
+
 func main() {
-	lis, err := net.Listen("tcp", ":50051")
+	addr := grpcListenAddr()
+
+	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		// Fail fast, deliberately: falling back to some other port would
+		// strand every client that resolved the published address
+		// correctly. Name the address and the override so the refusal is
+		// actionable rather than merely fatal.
+		log.Fatalf("failed to listen on %s: %v "+
+			"(another process holds it; free it, or set %s to a free port)",
+			addr, err, ports.HelixAgentGRPC)
 	}
 
 	grpcServer := grpc.NewServer()

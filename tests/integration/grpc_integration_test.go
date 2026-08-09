@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"dev.helix.agent/internal/ports"
 	pb "dev.helix.agent/pkg/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,11 +22,37 @@ import (
 
 // getGRPCConn establishes a gRPC client connection to the test server.
 // It skips the test if the server is not reachable.
+//
+// PORT RESOLUTION (§11.4.111, corrected 2026-08-09). This helper used to
+// default to the literal "50051" — the same literal cmd/grpc-server
+// hardcoded. On this project's own stack that port is published by the
+// helixcode-infra-weaviate container, so with the server down the dial
+// still SUCCEEDED (a real TCP peer completing a real HTTP/2 handshake),
+// t.Skipf never fired, and every RPC came back `Unimplemented` from
+// Weaviate. Measured with a control needle: a FABRICATED service name
+// returned the same `Unimplemented` while `weaviate.v1.Weaviate/Search`
+// executed — proving the responder was Weaviate, not a HelixAgent missing
+// methods. The failures were then reported against HelixAgent although
+// HelixAgent was never running.
+//
+// The default now comes from the same registry entry cmd/grpc-server binds
+// (ports.HelixAgentGRPC), so client and server agree by construction
+// instead of by a shared guess. GRPC_TEST_PORT still overrides, for pointing
+// a run at a server on a non-default port.
+//
+// KNOWN RESIDUAL GAP (§11.4.6 — recorded, not silently left). Reachability
+// is still not identity: if some OTHER process occupies the registry port,
+// this helper will again connect to it and report its errors as HelixAgent's.
+// Closing that needs a peer-identity oracle (probe a known method and treat
+// Unimplemented-on-every-method as foreign, distinct from
+// Unimplemented-on-one-method, which is a genuine product gap). That oracle
+// is not implemented here; this comment is the honest statement of what this
+// helper does and does not guarantee.
 func getGRPCConn(t *testing.T) *grpc.ClientConn {
 	t.Helper()
 	port := os.Getenv("GRPC_TEST_PORT")
 	if port == "" {
-		port = "50051"
+		port = strconv.Itoa(ports.Get(ports.HelixAgentGRPC))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

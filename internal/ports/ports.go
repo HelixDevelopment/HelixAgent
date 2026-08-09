@@ -92,6 +92,21 @@ const (
 	// existed during the verification window, breaking CLAUDE.md rule #6
 	// (every service MUST expose health endpoints).
 	HelixAgentLiveness Service = "HELIXAGENT_PORT_LIVENESS"
+	// HelixAgentGRPC — the gRPC API served by cmd/grpc-server
+	// (LLMFacade + LLMProvider). Was 50051, hardcoded and absent
+	// from this registry until 2026-08-09.
+	//
+	// 50051 is the gRPC ecosystem's conventional port, which makes
+	// it the single most contended number a gRPC service can pick:
+	// this project's own helixcode-infra-weaviate container
+	// publishes it, so the server could not start while HelixAgent's
+	// infrastructure was up, and clients dialling that literal
+	// reached Weaviate and got Unimplemented for every method.
+	// Because the service was not registered here, that collision
+	// was undetectable by TestOffsets_NoCollisions — a service the
+	// registry does not know cannot be arbitrated against the ones
+	// it does.
+	HelixAgentGRPC Service = "HELIXAGENT_PORT_GRPC"
 
 	// Lazy / auxiliary data services (offsets 20-29).
 	// Cognee — knowledge-graph engine (was 8000, lazy).
@@ -241,6 +256,7 @@ var offsets = map[Service]int{
 	PostgresTest:       109,
 	RedisMCP:           110,
 	HelixAgentLiveness: 111,
+	HelixAgentGRPC:     112,
 	Cognee:             120,
 	ChromaDB:           121,
 	Qdrant:             122,

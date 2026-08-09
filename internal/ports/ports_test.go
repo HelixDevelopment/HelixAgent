@@ -78,6 +78,7 @@ func TestGet_DefaultsMatchCanonicalMap(t *testing.T) {
 		PostgresExtra:   8108,
 		PostgresTest:    8109,
 		RedisMCP:        8110,
+		HelixAgentGRPC:  8112,
 		Cognee:          8120,
 		ChromaDB:        8121,
 		Qdrant:          8122,
@@ -286,8 +287,14 @@ func TestOffsets_WithinExpectedBands(t *testing.T) {
 		// added 2026-04-25 alongside the verification-window /health
 		// fix. Belongs in the core band, not MCP.
 		HelixAgentLiveness: {},
-		Cognee:             {},
-		ChromaDB:           {}, Qdrant: {}, Neo4jHTTP: {}, Neo4jBolt: {},
+		// HelixAgentGRPC — the gRPC API served by cmd/grpc-server
+		// (offset 112), registered 2026-08-09 when it was found
+		// hardcoded to :50051, a port this project's own Weaviate
+		// container publishes. It is core HelixAgent surface, not an
+		// MCP server, so it belongs in the 100-199 band.
+		HelixAgentGRPC: {},
+		Cognee:         {},
+		ChromaDB:       {}, Qdrant: {}, Neo4jHTTP: {}, Neo4jBolt: {},
 	}
 	observability := map[Service]struct{}{
 		ACPManager: {}, ElasticsearchAlt: {}, OpenSearch: {},

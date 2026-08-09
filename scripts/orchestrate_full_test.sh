@@ -9,6 +9,12 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
+# Readiness + test-execution assertions. See the header of that file for why
+# `curl -s` is not a readiness check and why the port is discovered rather
+# than hardcoded (§11.4.201, §11.4.111, §11.4.6).
+# shellcheck source=lib/helixagent_readiness.sh
+source "$SCRIPT_DIR/lib/helixagent_readiness.sh"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -165,33 +171,44 @@ if [ "$RUN_INTEGRATION" = true ]; then
     log_info "Starting HelixAgent for integration tests..."
     ./bin/helixagent &
     HELIX_PID=$!
-    sleep 5
-    
-    # Wait for health
-    for i in {1..30}; do
-        if curl -s http://localhost:8100/health > /dev/null 2>&1; then
-            break
-        fi
-        sleep 1
-    done
-    
-    if ! curl -s http://localhost:8100/health > /dev/null 2>&1; then
-        log_error "HelixAgent failed to start"
+
+    # Readiness = "the server WE started identifies itself at the address it
+    # actually bound", not "something answered :8100". The old check used bare
+    # `curl -s`, which exits 0 on the 404 a foreign occupant returns, so it
+    # passed without ever reaching this server.
+    if ! HELIX_URL="$(helix_wait_ready "$HELIX_PID" 60)"; then
+        log_error "HelixAgent failed to become ready"
         kill $HELIX_PID 2>/dev/null || true
         exit 1
     fi
-    log_success "HelixAgent is running (PID: $HELIX_PID)"
-    
+    # Point the tests at the server we just verified. Without this they keep
+    # their :8100 default and assert against whatever holds that port.
+    export HELIXAGENT_URL="$HELIX_URL"
+    log_success "HelixAgent is running (PID: $HELIX_PID) at $HELIX_URL"
+
+    # This script STARTED the server and just proved its identity, so a test
+    # that cannot find it is a real failure here, not an honest environment
+    # skip. Without this, the guarded tests skip and `go test` still exits 0.
+    export HELIXAGENT_REQUIRED=1
+
     log_info "Running integration tests..."
     nice -n 19 ionice -c 3 go test ./tests/integration/... -v -timeout 10m 2>&1 | tee test_output_integration.log | tail -50
     INTEGRATION_EXIT=${PIPESTATUS[0]}
-    
+
     log_info "Shutting down HelixAgent..."
     kill $HELIX_PID 2>/dev/null || true
     wait $HELIX_PID 2>/dev/null || true
-    
+
+    # A suite that ran nothing is not a suite that passed: `go test` exits 0
+    # for an all-skipped package, so exit status alone cannot tell "everything
+    # passed" from "nothing executed".
+    if ! helix_assert_tests_executed test_output_integration.log "Integration tests"; then
+        log_error "Integration tests executed ZERO test cases — nothing was validated"
+        exit 1
+    fi
+
     if [ $INTEGRATION_EXIT -eq 0 ]; then
-        log_success "Integration tests passed"
+        log_success "Integration tests passed ($(helix_count_executed_tests test_output_integration.log) test cases executed)"
     else
         log_error "Integration tests failed (exit: $INTEGRATION_EXIT)"
     fi

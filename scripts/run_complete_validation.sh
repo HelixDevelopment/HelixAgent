@@ -9,6 +9,12 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
+# Readiness + test-execution assertions. See the header of that file for why
+# `curl -s` is not a readiness check and why the port is discovered rather
+# than hardcoded (§11.4.201, §11.4.111, §11.4.6).
+# shellcheck source=lib/helixagent_readiness.sh
+source "$SCRIPT_DIR/lib/helixagent_readiness.sh"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -179,34 +185,58 @@ run_integration_tests() {
     log_info "Starting HelixAgent..."
     ./bin/helixagent > logs/helixagent.log 2>&1 &
     HELIX_PID=$!
-    
+
+    # Readiness = "the server WE started identifies itself at the address it
+    # actually bound", not "something answered :8100". The old check used bare
+    # `curl -s`, which exits 0 on the 404 a foreign occupant returns, so it
+    # passed without ever reaching this server.
     log_info "Waiting for HelixAgent to be ready..."
-    for i in {1..60}; do
-        if curl -s http://localhost:8100/health > /dev/null 2>&1; then
-            break
-        fi
-        sleep 1
-    done
-    
-    if ! curl -s http://localhost:8100/health > /dev/null 2>&1; then
-        log_error "HelixAgent failed to start (check logs/helixagent.log)"
+    local HELIX_URL
+    if ! HELIX_URL="$(helix_wait_ready "$HELIX_PID" 60)"; then
+        log_error "HelixAgent failed to become ready (check logs/helixagent.log)"
         kill $HELIX_PID 2>/dev/null || true
         return 1
     fi
-    
-    log_success "HelixAgent is running (PID: $HELIX_PID)"
-    
+    # Point the tests at the server we just verified. Without this they keep
+    # their :8100 default and assert against whatever holds that port.
+    export HELIXAGENT_URL="$HELIX_URL"
+
+    log_success "HelixAgent is running (PID: $HELIX_PID) at $HELIX_URL"
+
     # Check providers endpoint
     log_info "Checking providers endpoint..."
-    curl -s http://localhost:8100/v1/providers | jq '.' > logs/providers_list.json 2>/dev/null || true
-    
+    curl -sf "$HELIX_URL/v1/providers" | jq '.' > logs/providers_list.json 2>/dev/null || true
+
+    # This script STARTED the server and just proved its identity, so a test
+    # that cannot find it is a real failure here, not an honest environment
+    # skip. Without this, the guarded tests skip and `go test` still exits 0.
+    export HELIXAGENT_REQUIRED=1
+
     log_info "Running integration tests..."
-    if ! nice -n 19 ionice -c 3 go test ./tests/integration/... -v -timeout 10m 2>&1 | tee logs/test_integration.log | tail -50; then
+    local integration_exit=0
+    nice -n 19 ionice -c 3 go test ./tests/integration/... -v -timeout 10m 2>&1 \
+        | tee logs/test_integration.log | tail -50
+    integration_exit=${PIPESTATUS[0]}
+
+    # A suite that ran nothing is not a suite that passed: `go test` exits 0
+    # for an all-skipped package, so exit status alone cannot tell "everything
+    # passed" from "nothing executed".
+    if ! helix_assert_tests_executed logs/test_integration.log "Integration tests"; then
+        log_error "Integration tests executed ZERO test cases — nothing was validated"
+        kill $HELIX_PID 2>/dev/null || true
+        return 1
+    fi
+
+    # Genuine test failures keep this script's existing gather-everything
+    # posture (warn and continue, as the unit phases do). Only "nothing ran"
+    # is fatal: that means the MEASUREMENT was invalid, not that the product
+    # is broken, so continuing would report a verdict about nothing.
+    if [ "$integration_exit" -ne 0 ]; then
         log_warn "Some integration tests failed (see logs/test_integration.log)"
     else
-        log_success "Integration tests passed"
+        log_success "Integration tests passed ($(helix_count_executed_tests logs/test_integration.log) test cases executed)"
     fi
-    
+
     log_info "Running LLMsVerifier (comprehensive provider validation)..."
     if ! ./scripts/run_llms_verifier.sh 2>&1 | tee logs/test_llms_verifier.log; then
         log_warn "Some providers failed validation (see docs/reports/llms_verifier/$(date +%Y-%m-%d)/)"
@@ -227,22 +257,19 @@ run_challenge_tests() {
     log_info "Starting HelixAgent for challenges..."
     ./bin/helixagent > logs/helixagent_challenges.log 2>&1 &
     HELIX_PID=$!
-    
-    sleep 5
-    
-    for i in {1..30}; do
-        if curl -s http://localhost:8100/health > /dev/null 2>&1; then
-            break
-        fi
-        sleep 1
-    done
-    
-    if ! curl -s http://localhost:8100/health > /dev/null 2>&1; then
-        log_error "HelixAgent failed to start for challenges"
+
+    # Same identity-based readiness gate as Phase 4: the challenge scripts read
+    # HELIXAGENT_URL, so exporting the address we actually verified keeps them
+    # pointed at this server rather than at whatever holds the default port.
+    local HELIX_URL
+    if ! HELIX_URL="$(helix_wait_ready "$HELIX_PID" 60)"; then
+        log_error "HelixAgent failed to become ready for challenges (check logs/helixagent_challenges.log)"
         kill $HELIX_PID 2>/dev/null || true
         return 1
     fi
-    
+    export HELIXAGENT_URL="$HELIX_URL"
+    log_success "HelixAgent is running for challenges (PID: $HELIX_PID) at $HELIX_URL"
+
     # Run challenges
     CHALLENGES=(
         "tests/challenges/ensemble_voting_challenge.sh"

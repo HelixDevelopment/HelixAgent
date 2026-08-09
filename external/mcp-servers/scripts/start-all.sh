@@ -16,6 +16,18 @@ start_node_server() {
     port=$2
     dir=$3
 
+    # The active-server sources are optional in this image (Dockerfile
+    # ARG ACTIVE_SERVERS, default `absent`). Without this guard the `cd`
+    # below fails, and `set -e` at the top of this script turns one absent
+    # directory into "no MCP server starts at all" — the container dies on
+    # boot instead of serving the servers it DOES have.
+    if [ ! -d "$dir" ]; then
+        echo "Skipping $name: $dir is not present in this image"
+        echo "  (built without the active MCP server sources — rebuild with"
+        echo "   --build-arg ACTIVE_SERVERS=present to include them)"
+        return 0
+    fi
+
     echo "Starting $name (Node.js) on port $port..."
     cd "$dir"
 
@@ -40,6 +52,14 @@ start_python_server() {
     port=$2
     dir=$3
     module=$4
+
+    # See start_node_server(): active-server sources are optional in this image.
+    if [ ! -d "$dir" ]; then
+        echo "Skipping $name: $dir is not present in this image"
+        echo "  (built without the active MCP server sources — rebuild with"
+        echo "   --build-arg ACTIVE_SERVERS=present to include them)"
+        return 0
+    fi
 
     echo "Starting $name (Python) on port $port..."
     cd "$dir"

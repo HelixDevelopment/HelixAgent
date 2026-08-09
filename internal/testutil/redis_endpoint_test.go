@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -407,6 +408,181 @@ func TestRedisGate_AcceptsUnauthenticatedRedis(t *testing.T) {
 		assert.False(t, strings.HasPrefix(cmd, "AUTH"),
 			"no password is configured, so the gate must not send AUTH")
 	}
+}
+
+// =============================================================================
+// DELIBERATELY-UNMIGRATED RedisAvailable CALLERS
+//
+// 6fbf6282 claimed guard and subject "agree by construction". That holds for
+// the guard's own resolution — DefaultInfraConfig goes through ports.Redis*,
+// the same helpers the product uses — but it is NOT true of every CALLER. A
+// caller whose subject re-derives its own endpoint disagrees with the guard
+// no matter how correct the guard is, and three do.
+//
+// Leaving them undocumented would make the commit's claim read as universal
+// when it is not, so each is pinned below with its rationale. Documentation
+// alone rots, so TestUnmigratedRedisCallers_LedgerIsCurrent asserts each
+// entry still describes the file it names: migrate a caller and the ledger
+// FAILS until it is updated (§11.4.120 — reconcile the gate, never
+// fake-pass it).
+//
+// WHY THESE ARE DOCUMENTED RATHER THAN RECONCILED HERE:
+//
+// Entries 1 and 2 are one-line changes in files outside this change's scope;
+// they are handed on rather than reached into, so a concurrent edit is not
+// clobbered. Entry 3 is different and worth reading before "fixing" it: the
+// obvious reconciliation — teach this package's gate to honour REDIS_URL —
+// would RE-CREATE the very defect 6fbf6282 closed. internal/ports, which the
+// PRODUCT resolves through, does not read REDIS_URL. Teaching only the guard
+// to read it makes guard and product resolve different endpoints again. The
+// correct fix is in internal/ports (product behaviour) or in mock_checker.go
+// (its precondition), never here.
+// =============================================================================
+
+// unmigratedRedisCaller pins one call site that guards with RedisAvailable
+// but whose subject resolves a DIFFERENT endpoint.
+type unmigratedRedisCaller struct {
+	// Path is repo-root-relative.
+	Path string
+	// Marker is a literal that is present while the divergence is present.
+	// When it disappears the caller was (probably) migrated and this entry
+	// must be re-checked and removed.
+	Marker string
+	// Why records the divergence and its consequence.
+	Why string
+}
+
+var unmigratedRedisCallers = []unmigratedRedisCaller{
+	{
+		Path:   "tests/integration/infrastructure_integration_test.go",
+		Marker: `infraGetEnvOrDefault("REDIS_PORT", "6379")`,
+		Why: "Four TestIntegration_Redis_* tests guard with testutil.RequireRedis " +
+			"(ports.RedisDefault + REDIS_PASSWORD) while their subjects build a " +
+			"config.RedisConfig from REDIS_PORT defaulted to 6379 with the " +
+			"password baked in as \"helixagent123\". Both directions leak: with " +
+			"REDIS_PORT unset the guard probes the canonical port and the " +
+			"subject dials 6379, and with compose Redis up on the canonical " +
+			"port but REDIS_PASSWORD unset the guard draws -NOAUTH and skips " +
+			"four tests whose subjects carry the password and would have " +
+			"connected. Fix: drop the local defaults and resolve through " +
+			"testutil.RedisAddr / testutil.RedisPassword.",
+	},
+	{
+		Path:   "internal/mcp/servers/redis_adapter_test.go",
+		Marker: "Port:     6379,",
+		Why: "TestRedisAdapter_Integration guards with testutil.RequireRedis but " +
+			"hardcodes Host \"localhost\", Port 6379 and an empty password in " +
+			"its RedisAdapterConfig, so the guard vouches for a different " +
+			"service than the subject dials. Its own adapter.Initialize error " +
+			"path then skips, so the mismatch degrades to a silent skip rather " +
+			"than a failure — coverage vanishing quietly. Fix: resolve the " +
+			"adapter config through ports.RedisHost / ports.RedisPort / " +
+			"ports.RedisPassword.",
+	},
+	{
+		Path:   "tests/testutils/mock_checker.go",
+		Marker: `os.Getenv("REDIS_URL")`,
+		Why: "IsRedisAvailable accepts EITHER REDIS_HOST or REDIS_URL as its " +
+			"precondition, then delegates to testutil.RedisAvailable, which " +
+			"only ever dials RedisHost():RedisPort() and ignores the URL " +
+			"entirely. An operator who exports only REDIS_URL therefore gets " +
+			"\"Redis not available. Set REDIS_HOST or REDIS_URL\" while " +
+			"REDIS_URL IS set — the guard blaming the operator for the guard's " +
+			"own blind spot. GetMockConfig's RedisURL default also still " +
+			"carries the pre-CONST-027 port 16379. Fix belongs in " +
+			"internal/ports (so product and guard both honour REDIS_URL) or in " +
+			"this file's precondition — NOT in this package alone, which would " +
+			"re-split guard and subject.",
+	},
+}
+
+// repoFileContains reports whether the repo-root-relative path contains
+// marker. Split out so the ledger check's own detector can be validated
+// (§11.4.107(10)) rather than trusted.
+func repoFileContains(relPath, marker string) (bool, error) {
+	// This package lives at <repo>/internal/testutil.
+	data, err := os.ReadFile(filepath.Join("..", "..", relPath))
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(string(data), marker), nil
+}
+
+// TestUnmigratedRedisCallers_LedgerIsCurrent gives the ledger teeth.
+//
+// Without it the list is a comment: a caller could be migrated (or renamed,
+// or deleted) and the ledger would keep asserting a divergence that no
+// longer exists, which is its own small bluff. A FAILURE here is not
+// necessarily a defect — it most likely means someone did the right thing
+// and the entry should now be removed.
+func TestUnmigratedRedisCallers_LedgerIsCurrent(t *testing.T) {
+	require.NotEmpty(t, unmigratedRedisCallers,
+		"an empty ledger must mean every caller was migrated, not that the "+
+			"ledger was quietly emptied to make this test pass")
+
+	for _, entry := range unmigratedRedisCallers {
+		t.Run(entry.Path, func(t *testing.T) {
+			found, err := repoFileContains(entry.Path, entry.Marker)
+			require.NoError(t, err,
+				"ledger entry names a file that cannot be read; if the caller "+
+					"was moved or deleted, update or remove this entry")
+
+			assert.True(t, found,
+				"marker %q is gone from %s.\n\nThis entry documents a KNOWN "+
+					"guard/subject endpoint divergence:\n\n  %s\n\nIf you "+
+					"migrated this caller: delete the entry. If the marker "+
+					"merely drifted: update it. Do NOT weaken this assertion — "+
+					"a ledger that cannot detect its own staleness is worse "+
+					"than no ledger.",
+				entry.Marker, entry.Path, entry.Why)
+
+			assert.NotEmpty(t, entry.Why,
+				"every entry must record WHY it is unmigrated; an unexplained "+
+					"exemption is indistinguishable from an oversight")
+		})
+	}
+}
+
+// TestRepoFileContains_DetectsBothPolarities self-validates the ledger's
+// detector. A detector hard-wired to `return true` would make the ledger
+// pass forever regardless of what the tree actually contains; one hard-wired
+// to `return false` would make it fail forever. Golden-good and golden-bad
+// both, on a fixture this test writes itself.
+func TestRepoFileContains_DetectsBothPolarities(t *testing.T) {
+	// repoFileContains resolves its argument against the repo root, so the
+	// fixture path has to be expressed relative to that root. Both sides of
+	// filepath.Rel must be absolute for it to work.
+	dir := t.TempDir()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	rel, err := filepath.Rel(root, dir)
+	require.NoError(t, err, "fixture dir must be addressable from the repo root")
+
+	present := filepath.Join(dir, "present.txt")
+	require.NoError(t, os.WriteFile(present, []byte("alpha MARKER omega\n"), 0o600))
+	absent := filepath.Join(dir, "absent.txt")
+	require.NoError(t, os.WriteFile(absent, []byte("alpha omega\n"), 0o600))
+
+	t.Run("golden-good: marker present is detected", func(t *testing.T) {
+		found, err := repoFileContains(filepath.Join(rel, "present.txt"), "MARKER")
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
+
+	t.Run("golden-bad: marker absent is detected", func(t *testing.T) {
+		found, err := repoFileContains(filepath.Join(rel, "absent.txt"), "MARKER")
+		require.NoError(t, err)
+		assert.False(t, found,
+			"a detector that cannot report absence would make the ledger "+
+				"green forever")
+	})
+
+	t.Run("missing file surfaces as an error, not a false negative", func(t *testing.T) {
+		_, err := repoFileContains(filepath.Join(rel, "nope.txt"), "MARKER")
+		assert.Error(t, err,
+			"a deleted caller must fail loudly; swallowing the error would "+
+				"silently retire the ledger entry")
+	})
 }
 
 // resetInfraCacheForTest clears the once-per-run availability cache so a

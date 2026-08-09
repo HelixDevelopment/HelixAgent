@@ -391,6 +391,36 @@ func RequirePostgres(t *testing.T) {
 }
 
 // RequireRedis skips the test if Redis is not available.
+//
+// SCOPE OF THE GUARANTEE — READ BEFORE ADDING A CALLER (§11.4.6)
+//
+// This guard resolves its endpoint through ports.Redis* (see
+// DefaultInfraConfig), so it agrees WITH THE PRODUCT by construction. It
+// does NOT agree with a caller whose own subject dials somewhere else: it
+// only ever asserts "the canonical Redis is usable", never "the endpoint
+// YOUR subject is about to dial is usable".
+//
+// Three call sites currently disagree with their own subjects. They are
+// listed as deliberately-unmigrated in unmigratedRedisCallers
+// (redis_endpoint_test.go), which pins each one so the list cannot rot
+// silently, and each carries its rationale there. The failure mode is not
+// merely "the guard is weaker than it looks" — it is bidirectional:
+//
+//	FORWARD leak  guard passes, subject fails => an absent dependency is
+//	              reported as a product defect (the original 6fbf6282 case).
+//	REVERSE leak  guard fails, subject would have connected => the test
+//	              SKIPS, and coverage silently disappears while the suite
+//	              stays green. Live shape: bring compose Redis up on
+//	              HELIXAGENT_PORT_REDIS_DEFAULT with REDIS_PASSWORD unset,
+//	              and the guard's handshake draws -NOAUTH, skipping four
+//	              infrastructure tests whose subjects hardcode a password
+//	              and would have connected.
+//
+// A new caller MUST resolve its endpoint the same way this guard does —
+// ports.RedisAddr / ports.RedisPassword, or testutil.RedisAddr /
+// testutil.RedisPassword — rather than re-deriving one from REDIS_PORT with
+// its own default. Adding another hardcoded-endpoint caller re-opens the
+// exact divergence 6fbf6282 closed.
 func RequireRedis(t *testing.T) {
 	t.Helper()
 	if !RedisAvailable() {

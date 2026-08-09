@@ -205,14 +205,24 @@ func probeHelixAgent(baseURL string) helixAgentProbe {
 		// other Go service that does not serve /health. State the ambiguity;
 		// do not pick a cause (§11.4.6).
 		probe.Outcome = outcomeNonJSONBody
+
+		// Only a 404 carries the dropped-route reading. A 200 with an HTML
+		// body (a proxy's error page, a static site) is a different animal,
+		// and telling the operator its /health route might be missing would
+		// send them looking for a route that plainly answered.
+		cause := "nothing in this response identifies the responder"
+		if resp.StatusCode == http.StatusNotFound {
+			cause = "EITHER a foreign service bound to this port OR a " +
+				"HelixAgent whose /health route was dropped — Go's default " +
+				"mux answers both with an identical 404"
+		}
 		probe.Detail = fmt.Sprintf(
 			"the service at %s answered HTTP %d with a non-JSON body "+
-				"(body: %s) — AMBIGUOUS: this is EITHER a foreign service "+
-				"bound to this port OR a HelixAgent whose /health route is "+
-				"missing (both emit an identical response). Set %s=1 to treat "+
-				"this as a failure in environments where HelixAgent is known "+
-				"to be deployed",
-			baseURL, resp.StatusCode, truncateForMessage(body), helixAgentRequiredEnv)
+				"(body: %s) — AMBIGUOUS: %s. Set %s=1 to treat this as a "+
+				"failure in environments where HelixAgent is known to be "+
+				"deployed",
+			baseURL, resp.StatusCode, truncateForMessage(body), cause,
+			helixAgentRequiredEnv)
 		return probe
 	}
 }
@@ -236,8 +246,9 @@ type helixAgentGuardT interface {
 }
 
 // compile-time proof that the real *testing.T still satisfies the guard
-// interface, so a future signature drift is caught here rather than at ~30
-// call sites.
+// interface, so a future signature drift is caught here rather than at the
+// 13 call sites (measured: 5 in comprehensive_monitoring_test.go, 8 in
+// comprehensive_infrastructure_test.go).
 var _ helixAgentGuardT = (*testing.T)(nil)
 
 // requireHelixAgent asserts that baseURL is served by a real HelixAgent

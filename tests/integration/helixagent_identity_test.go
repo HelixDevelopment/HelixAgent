@@ -5,7 +5,7 @@ package integration
 //
 // WHY THIS FILE EXISTS (§11.4.107(10), §11.4.201)
 //
-// The gate shipped with ZERO tests of its own, and a gate that guards ~30
+// The gate shipped with ZERO tests of its own, and a gate that guards 13
 // call sites while nothing guards IT is an unfalsifiable gate. The escape was
 // demonstrated, not theorised: mutate helixAgentServiceName to "helixagentx"
 // and point HELIXAGENT_URL at anything answering
@@ -189,6 +189,33 @@ func TestProbeHelixAgent_NonJSONBodyIsAmbiguous(t *testing.T) {
 			"missing /health route; asserting either cause is a guess")
 	assert.Contains(t, probe.Detail, helixAgentRequiredEnv,
 		"the message must tell the operator how to turn this into a failure")
+	assert.Contains(t, probe.Detail, "/health route was dropped",
+		"a 404 is the one status where the dropped-route reading applies, "+
+			"and it is the reason this outcome is ambiguous at all")
+}
+
+// TestProbeHelixAgent_NonJSON200DoesNotBlameAMissingRoute is the sibling of
+// the 404 case. A 200 with an HTML body — a proxy error page, a static site
+// on the port — is classified the same way and behaves the same way, but the
+// dropped-/health-route reading does NOT apply: the route plainly answered.
+// Telling the operator it might be missing sends them hunting for a route
+// that is right there.
+func TestProbeHelixAgent_NonJSON200DoesNotBlameAMissingRoute(t *testing.T) {
+	srv := newHealthFixture(t, http.StatusOK,
+		"<html><body>Service Temporarily Unavailable</body></html>")
+
+	probe := probeHelixAgent(srv.URL)
+
+	assert.True(t, probe.Reachable)
+	assert.False(t, probe.IsHelixAgent,
+		"an HTML body identifies nobody and must not be accepted")
+	assert.Equal(t, outcomeNonJSONBody, probe.Outcome,
+		"classification is unchanged — only the explanation differs by status")
+	assert.NotContains(t, probe.Detail, "route was dropped",
+		"this endpoint ANSWERED /health with a 200; blaming a missing route "+
+			"would misdirect the operator")
+	assert.Contains(t, probe.Detail, "AMBIGUOUS")
+	assert.Contains(t, probe.Detail, helixAgentRequiredEnv)
 }
 
 // TestProbeHelixAgent_ServerErrorIsNotAPortSquatter covers case (c): a real
@@ -414,6 +441,45 @@ func TestRequireHelixAgent_StrictModeStillAdmitsRealHelixAgent(t *testing.T) {
 			"on everything")
 	assert.False(t, rec.failed)
 	assert.False(t, rec.skipped)
+}
+
+// TestHelixAgentRequiredEnv_IsTheDocumentedLiteral closes the second
+// self-referential loop in this file.
+//
+// Every OTHER test here sets the variable through helixAgentRequiredEnv —
+// the same constant requireHelixAgent reads. That is a closed loop: rename
+// the constant's VALUE to "HELIXAGENT_REQUIRE" and the whole suite stays
+// GREEN, including with the real HELIXAGENT_REQUIRED=1 exported into the
+// run, because the tests and the code moved together. An environment wired
+// with HELIXAGENT_REQUIRED=1 would then silently revert to fail-open
+// masking — the precise failure the flag exists to prevent.
+//
+// The service name was already pinned this way (the golden-good fixture
+// hardcodes {"service":"helixagent"}, which is what makes the helixagentx
+// mutation fail). This does the same for the env var.
+//
+// WHICH CONSTANTS NEED THIS: any constant whose value is part of a contract
+// with something OUTSIDE this process — an env var an operator exports, a
+// field name a server emits. The outcome* constants below deliberately do
+// NOT get this treatment: they never cross a process boundary, so their
+// values are free to change and only their distinctness matters.
+func TestHelixAgentRequiredEnv_IsTheDocumentedLiteral(t *testing.T) {
+	// Written out longhand ON PURPOSE — do not replace with the constant.
+	const documented = "HELIXAGENT_REQUIRED"
+
+	assert.Equal(t, documented, helixAgentRequiredEnv,
+		"the strict-mode env var name is an operator-facing contract; "+
+			"changing it silently disables strict mode in every environment "+
+			"already exporting the old name")
+
+	// Compare-only is not enough: drive the real resolver through the
+	// literal so the binding is proven end-to-end, not merely asserted.
+	t.Setenv(documented, "1")
+	assert.True(t, helixAgentRequired(),
+		"exporting the documented name %q must enable strict mode; if this "+
+			"fails, the code reads some other variable and every environment "+
+			"that sets %s has silently fallen back to skip-on-unidentified",
+		documented, documented)
 }
 
 // TestHelixAgentRequired_OnlyExactlyOneEnables pins the trigger value. A

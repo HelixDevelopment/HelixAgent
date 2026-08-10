@@ -646,7 +646,7 @@ func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 //	$ HELIXAGENT_HOST=0.0.0.0 helixagent -generate-opencode-config
 //	        "baseURL": "http://0.0.0.0:7061/v1"
 //
-// EVERY ASSERTION BELOW IS INDEPENDENT OF THE CODE UNDER TEST. An earlier
+// NO ASSERTION BELOW RE-CONSULTS THE DECISION-MAKER. An earlier
 // revision asserted `helixAgentHostIsDialable(helixAgentClientHost())`, which
 // is f(g(x)) where g only ever emits values f accepts — true for ALL inputs,
 // including a broken f. Measured: replacing the semantic net.ParseIP /
@@ -661,6 +661,29 @@ func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 // name the EXPECTED VALUE (helixAgentDialFallbackHost) rather than re-consulting
 // the decision-maker, and the predicate gets its own truth table below so a
 // change to it cannot hide behind the caller that filters its output.
+//
+// NAMING THE CONSTANT IS NOT YET ANCHORING TO IT. An earlier revision of this
+// comment claimed every assertion was independent of the code under test.
+// That was false one level up, and the residue was the same self-reference
+// class it had just closed: helixAgentClientHost RETURNS
+// helixAgentDialFallbackHost verbatim, so an expectation written in terms of
+// that constant moves with the code when the constant itself is mutated.
+// Measured — a one-line production edit, `helixAgentDialFallbackHost =
+// "0.0.0.0"`, with no test touched:
+//
+//	$ go test ./cmd/helixagent/   # ok, zero failures
+//	$ env -u HELIXAGENT_HOST helixagent -generate-opencode-config
+//	        "baseURL": "http://0.0.0.0:7061/v1"
+//
+// — the MAJOR-B defect, back on the DEFAULT user path, invisible to its own
+// guard. Two assertions close it, because a bad fallback comes in two
+// distinct shapes and neither one subsumes the other:
+//
+//   - the truth table reads the constant as an INPUT, so an UNDIALABLE
+//     fallback ("0.0.0.0", "::", "") fails against the predicate;
+//   - the artifact subtest pins the LITERAL "localhost" once, so a fallback
+//     merely CHANGED to some other dialable host (say "example.com" — which
+//     the predicate happily accepts) fails there.
 func TestHelixAgentClientHost_IsDialable(t *testing.T) {
 	t.Run("default_is_the_loopback_fallback", func(t *testing.T) {
 		unsetEnvForTest(t, "HELIXAGENT_HOST")
@@ -700,6 +723,30 @@ func TestHelixAgentClientHost_IsDialable(t *testing.T) {
 			{"::1", true, "loopback IPv6"},
 			{"helix.example.internal", true, "a hostname; resolving it is DNS's job"},
 			{"localhost", true, "a hostname"},
+
+			// The fallback CONSTANT, read as an INPUT. Every other row above
+			// is a literal, and every other assertion in this test names the
+			// constant on BOTH sides of a comparison — which moves the code
+			// and its expectation in lockstep, so mutating the constant
+			// changes what ships without failing anything. Measured, with
+			// helixAgentDialFallbackHost set to "0.0.0.0" and nothing else
+			// changed:
+			//
+			//	$ go test ./cmd/helixagent/   # ok, zero failures
+			//	$ env -u HELIXAGENT_HOST helixagent -generate-opencode-config
+			//	        "baseURL": "http://0.0.0.0:7061/v1"
+			//
+			// This row breaks the lockstep for the UNDIALABLE case: whatever
+			// the constant is set to, it is judged by the predicate rather
+			// than assumed to satisfy it. helixAgentClientHost returns this
+			// value on the default path, so a fallback that cannot be dialed
+			// is an unusable endpoint shipped to every user who never sets
+			// HELIXAGENT_HOST. (A fallback that is merely CHANGED to another
+			// dialable host passes here by design — that is a different
+			// defect, caught by the pinned literal in the artifact subtest.)
+			{helixAgentDialFallbackHost, true,
+				"the loopback fallback constant itself must be dialable — it " +
+					"is the host every default-path config ships"},
 		} {
 			t.Run(fmt.Sprintf("%q", testCase.host), func(t *testing.T) {
 				require.Equal(t, testCase.want, helixAgentHostIsDialable(testCase.host),
@@ -748,6 +795,23 @@ func TestHelixAgentClientHost_IsDialable(t *testing.T) {
 		// asserts the POSITIVE property (every emitted host IS the resolved
 		// fallback) across every spelling, which subsumes the old check:
 		// localhost is not 0.0.0.0.
+		//
+		// THE ONE ASSERTION ANCHORED OUTSIDE THE CODE UNDER TEST. Everything
+		// else here compares against helixAgentDialFallbackHost, which is the
+		// production constant: mutate it and the code and every expectation
+		// move together, leaving the suite green while the binary ships the
+		// mutated value on the DEFAULT path (measured — see the truth table
+		// above). Pinning the literal ONCE breaks that lockstep, and it is
+		// pinned HERE, at the artifact layer, because this is where the value
+		// reaches a user. With the constant pinned, the two assertions below
+		// are anchored too: they read as "http://localhost:" in all but
+		// spelling.
+		require.Equal(t, "localhost", helixAgentDialFallbackHost,
+			"the dial-side fallback must be loopback. Changing it changes the "+
+				"endpoint every user who has not set HELIXAGENT_HOST is "+
+				"handed, so the value is pinned to a literal here rather than "+
+				"read back from the constant it is supposed to be checking")
+
 		t.Setenv("HELIXAGENT_API_KEY", deterministicAPIKey)
 
 		for _, wildcard := range []string{

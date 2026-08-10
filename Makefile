@@ -51,27 +51,57 @@ build-legacy-memory:
 # `-o /dev/null` keeps the check artifact-free: a plain `go build ./...` writes
 # a binary into each module directory, which would then show up as an untracked
 # build artifact (CONST-053).
+
+# Measured floor: this tree has 6 challenge modules. The count is asserted
+# because the loop below is otherwise FAIL-OPEN on an empty glob — when
+# challenges/codebase/go_files/*/go.mod matches nothing, sh leaves the pattern
+# unexpanded, `[ -f` fails on the literal, `continue` fires, the body never
+# runs, and `failed` stays 0. Measured, running this recipe where the glob
+# matches nothing:
+#
+#	$ make -f .../Makefile build-challenge-modules   # from an empty dir
+#	🔨 Building challenge Go modules (each is a separate module)...
+#	✅ all challenge modules build
+#	EXIT=0
+#
+# — success reported having compiled NOTHING, the §11.4.201 false-null. The
+# trigger is not hypothetical: a CONST-052 rename of this very path is the
+# forensic history that made this target necessary in the first place, and it
+# would silently disarm the target rather than fail it. A floor (not an exact
+# count) lets modules be ADDED without touching this file, while a module that
+# VANISHES is a capability removal (§11.4.122), not a smaller build scope.
+CHALLENGE_MODULE_FLOOR := 6
+
 build-challenge-modules:
 	@echo "🔨 Building challenge Go modules (each is a separate module)..."
-	@failed=0; \
+	@log=$$(mktemp "$${TMPDIR:-/tmp}/helixagent-challenge-build.XXXXXX"); \
+	trap 'rm -f "$$log"' EXIT INT TERM; \
+	failed=0; found=0; \
 	for mod in challenges/codebase/go_files/*/go.mod; do \
 		[ -f "$$mod" ] || continue; \
+		found=$$((found + 1)); \
 		dir=$$(dirname "$$mod"); \
 		printf '  %-52s ' "$$dir"; \
-		if (cd "$$dir" && go build -o /dev/null ./... 2>/tmp/helixagent-challenge-build.log); then \
+		if (cd "$$dir" && go build -o /dev/null ./... 2>"$$log"); then \
 			echo "OK"; \
 		else \
 			echo "FAIL"; \
-			sed 's/^/      /' /tmp/helixagent-challenge-build.log; \
+			sed 's/^/      /' "$$log"; \
 			failed=1; \
 		fi; \
 	done; \
-	rm -f /tmp/helixagent-challenge-build.log; \
+	if [ "$$found" -lt $(CHALLENGE_MODULE_FLOOR) ]; then \
+		echo "❌ found $$found challenge module(s) under challenges/codebase/go_files/*/go.mod,"; \
+		echo "   expected at least $(CHALLENGE_MODULE_FLOOR). A module that disappeared from this"; \
+		echo "   glob is a capability removal (§11.4.122), not a test-scope reduction —"; \
+		echo "   and an empty glob would otherwise report success having built NOTHING."; \
+		exit 1; \
+	fi; \
 	if [ "$$failed" -ne 0 ]; then \
 		echo "❌ one or more challenge modules failed to build"; \
 		exit 1; \
 	fi; \
-	echo "✅ all challenge modules build"
+	echo "✅ all $$found challenge modules build"
 
 build-all:
 	@echo "🔨 Building all architectures..."

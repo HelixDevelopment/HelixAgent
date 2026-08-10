@@ -1207,6 +1207,24 @@ func grpcListenAddr() string {
 	return ports.Addr(ports.HelixAgentGRPC)
 }
 
+// startupBanner renders the line an operator reads to learn where to dial.
+//
+// It takes the bound address as an argument rather than re-resolving it, so
+// the banner cannot drift from the listener: main() passes the very value it
+// handed to net.Listen, and startup_banner_test.go asserts the two agree.
+//
+// This line was the surviving half of the :50051 defect. The listener moved
+// to the registry address while the banner kept printing the old literal
+// verbatim twenty-five lines below — so the fix published the exact
+// instruction that reproduces the bug it fixed. Readers who followed it
+// reached the helixcode-infra-weaviate container that owns :50051, got a
+// successful HTTP/2 handshake and `Unimplemented` on every method, and had
+// no way to tell that from a broken HelixAgent. The banner is copied by
+// operators and by docs, so it is load-bearing, not decoration.
+func startupBanner(addr string) string {
+	return fmt.Sprintf("HelixAgent gRPC server listening on %s", addr)
+}
+
 func main() {
 	addr := grpcListenAddr()
 
@@ -1235,7 +1253,7 @@ func main() {
 	providerServer := NewLLMProviderServer(providerRegistry)
 	pb.RegisterLLMProviderServer(grpcServer, providerServer)
 
-	log.Println("HelixAgent gRPC server listening on :50051")
+	log.Println(startupBanner(addr))
 	log.Println("Registered services: LLMFacade, LLMProvider")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("server failed: %v", err)

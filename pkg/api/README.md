@@ -101,7 +101,7 @@ import (
 
 func main() {
     // Connect to HelixAgent
-    conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+    conn, err := grpc.Dial("localhost:8112", grpc.WithTransportCredentials(insecure.NewCredentials()))
     if err != nil {
         log.Fatal(err)
     }
@@ -235,7 +235,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(creds))
+conn, err := grpc.Dial("localhost:8112", grpc.WithTransportCredentials(creds))
 
 // With timeout
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -313,7 +313,7 @@ if err != nil {
 ## Environment Variables
 
 ```bash
-HELIXAGENT_API_HOST=localhost:50051
+HELIXAGENT_API_HOST=localhost:8112
 HELIXAGENT_API_TLS_CERT=/path/to/cert.pem
 HELIXAGENT_API_TLS_KEY=/path/to/key.pem
 HELIXAGENT_API_AUTH_TOKEN=your-api-token

@@ -41,15 +41,16 @@ go build -o bin/grpc-server ./cmd/grpc-server
 # Run
 ./bin/grpc-server
 
-# Run with custom port
-GRPC_PORT=50051 ./bin/grpc-server
+# Run with custom port (the default is 8112; HELIXAGENT_PORT_PREFIX=9 shifts
+# the whole band to 91xx instead of overriding this one service)
+HELIXAGENT_PORT_GRPC=8500 ./bin/grpc-server
 ```
 
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GRPC_PORT` | gRPC server port | `50051` |
+| `HELIXAGENT_PORT_GRPC` | gRPC server port | `8112` |
 | `GRPC_MAX_MESSAGE_SIZE` | Max message size | `4MB` |
 | `GRPC_KEEPALIVE_TIME` | Keepalive interval | `30s` |
 
@@ -61,7 +62,7 @@ import (
     pb "dev.helix.agent/proto"
 )
 
-conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+conn, err := grpc.Dial("localhost:8112", grpc.WithInsecure())
 if err != nil {
     log.Fatal(err)
 }
@@ -92,10 +93,10 @@ for {
 
 ```bash
 # Using grpcurl
-grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check
+grpcurl -plaintext localhost:8112 grpc.health.v1.Health/Check
 
 # Using grpc-health-probe
-grpc-health-probe -addr=localhost:50051
+grpc-health-probe -addr=localhost:8112
 ```
 
 ## Testing

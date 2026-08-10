@@ -14,10 +14,10 @@ same session as the change.** Coverage and green suites are not evidence.
 # Compile gRPC-generated code and verify it's current vs. the .proto source.
 cd pkg/api && go build ./...
 # Optional round-trip — only runs if grpcurl is installed AND ./bin/helixagent
-# is serving gRPC on :50051. Either being absent is a skip-not-fail per DoD.
+# is serving gRPC on :8112. Either being absent is a skip-not-fail per DoD.
 if command -v grpcurl >/dev/null 2>&1 && curl -fsS -m 2 http://localhost:8100/v1/health >/dev/null 2>&1; then
   grpcurl -plaintext -d '{"messages":[{"role":"user","content":"ping"}]}' \
-    localhost:50051 api.LLMFacade/Complete | jq -e '.content | length > 0'
+    localhost:8112 api.LLMFacade/Complete | jq -e '.content | length > 0'
 else
   echo "SKIP: grpcurl or HelixAgent not available for round-trip; build-only verification green"
 fi
@@ -157,7 +157,7 @@ External clients import this package:
 import api "dev.helix.agent/pkg/api"
 
 func main() {
-    conn, _ := grpc.Dial("localhost:50051", ...)
+    conn, _ := grpc.Dial("localhost:8112", ...)
     client := api.NewLLMFacadeClient(conn)
     // ... use client
 }

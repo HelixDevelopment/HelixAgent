@@ -21,21 +21,21 @@ HelixAgent provides a gRPC interface alongside its REST API, enabling high-perfo
 
 ## Connection Setup
 
-The gRPC server runs on a separate port from the HTTP API (default: `50051`). Connect using any gRPC client library:
+The gRPC server runs on a separate port from the HTTP API (default: `8112`). Connect using any gRPC client library:
 
 ```bash
 # Using grpcurl for testing
-grpcurl -plaintext localhost:50051 list
+grpcurl -plaintext localhost:8112 list
 
 # Using grpcurl to call a method
 grpcurl -plaintext -d '{"prompt": "Hello"}' \
-  localhost:50051 helixagent.LLMFacade/Complete
+  localhost:8112 helixagent.LLMFacade/Complete
 ```
 
 For Go clients:
 
 ```go
-conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+conn, err := grpc.Dial("localhost:8112", grpc.WithTransportCredentials(insecure.NewCredentials()))
 if err != nil {
     log.Fatal(err)
 }
@@ -239,7 +239,7 @@ Errors include descriptive messages. For streaming RPCs, errors are delivered th
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GRPC_PORT` | `50051` | gRPC server listen port |
+| `HELIXAGENT_PORT_GRPC` | `8112` | gRPC server listen port |
 | `GRPC_MAX_RECV_MSG_SIZE` | `4MB` | Maximum inbound message size |
 | `GRPC_MAX_SEND_MSG_SIZE` | `4MB` | Maximum outbound message size |
 

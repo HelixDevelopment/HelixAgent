@@ -1,4 +1,4 @@
-.PHONY: all build build-legacy-memory test run fmt lint security-scan security-scan-all deps-scan secrets-scan gosec-baseline security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check audit audit-json audit-coverage audit-todo audit-skip audit-deadcode audit-concurrency test-submodule-sync
+.PHONY: all build build-challenge-modules build-legacy-memory test run fmt lint security-scan security-scan-all deps-scan secrets-scan gosec-baseline security-scan-snyk security-scan-sonarqube security-scan-trivy security-scan-gosec security-scan-go security-scan-stop security-scan-semgrep security-scan-kics security-scan-grype security-scan-container security-scan-iac security-report docker-build docker-run docker-stop docker-clean docker-logs docker-test docker-dev docker-prod coverage docker-clean-all install-deps help docs check-deps test-all test-all-docker container-detect container-build container-start container-stop container-logs container-status container-test podman-build podman-run podman-stop podman-logs podman-clean podman-full test-no-skip test-all-must-pass test-performance test-performance-bench test-challenges test-coverage-100 benchmark-baseline benchmark-check audit audit-json audit-coverage audit-todo audit-skip audit-deadcode audit-concurrency test-submodule-sync
 
 EXCLUDE_DIRS := cli_agents MCP MCP-Servers
 
@@ -14,7 +14,7 @@ export GOMAXPROCS := 2
 # Guard ensures recipe still works when the loader is absent.
 LOAD_KEYS := if [ -f scripts/load_api_keys.sh ]; then . scripts/load_api_keys.sh; fi
 
-all: fmt vet lint test build
+all: fmt vet lint test build build-challenge-modules
 
 # =============================================================================
 # BUILD TARGETS
@@ -31,6 +31,47 @@ build-debug:
 build-legacy-memory:
 	@echo "Building HelixAgent (legacy memory, no HelixMemory)..."
 	go build -mod=mod -tags nohelixmemory -ldflags="-w -s" -o bin/helixagent ./cmd/helixagent
+
+# build-challenge-modules compiles the challenge Go programs, each of which is
+# its OWN Go module and therefore invisible to every root-level `go build ./...`
+# / `go vet ./...` / `go list ./...` in this Makefile.
+#
+# WHY THIS TARGET EXISTS (§11.4.108 SOURCE vs ARTIFACT). A source fix landed in
+# challenges/codebase/go_files/unified_cli_generator was reported as verified by
+# a root `go build ./...` that returned exit 0 — but `go list ./...` returns ZERO
+# packages for that path, so the compiler had never seen the file. The root
+# module's exit code carried no information about it. Measured on this tree:
+#
+#	$ go list ./... | grep -c unified_cli_generator
+#	0
+#
+# A separate module needs a separate build invocation; asserting otherwise is
+# the exact green-but-never-compiled gap this target closes.
+#
+# `-o /dev/null` keeps the check artifact-free: a plain `go build ./...` writes
+# a binary into each module directory, which would then show up as an untracked
+# build artifact (CONST-053).
+build-challenge-modules:
+	@echo "🔨 Building challenge Go modules (each is a separate module)..."
+	@failed=0; \
+	for mod in challenges/codebase/go_files/*/go.mod; do \
+		[ -f "$$mod" ] || continue; \
+		dir=$$(dirname "$$mod"); \
+		printf '  %-52s ' "$$dir"; \
+		if (cd "$$dir" && go build -o /dev/null ./... 2>/tmp/helixagent-challenge-build.log); then \
+			echo "OK"; \
+		else \
+			echo "FAIL"; \
+			sed 's/^/      /' /tmp/helixagent-challenge-build.log; \
+			failed=1; \
+		fi; \
+	done; \
+	rm -f /tmp/helixagent-challenge-build.log; \
+	if [ "$$failed" -ne 0 ]; then \
+		echo "❌ one or more challenge modules failed to build"; \
+		exit 1; \
+	fi; \
+	echo "✅ all challenge modules build"
 
 build-all:
 	@echo "🔨 Building all architectures..."

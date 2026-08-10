@@ -72,6 +72,33 @@ const (
 	helixAgentEndpointProbePortB = "19073"
 )
 
+// helixAgentEndpointProbeHostA and ...HostB are the HOST-dimension analogue of
+// the two probe ports: two arbitrary, unrelated, ROUTABLE-looking hosts that
+// drive the same metamorphic comparison one field over.
+//
+// WHY THE HOST NEEDS ITS OWN PROBE PAIR. An endpoint is a host AND a port, and
+// until this pair existed every check in this file compared PORTS only. That
+// left the host field completely unguarded, which is not a theoretical gap —
+// hardcoding the all-agents generator's host while leaving its port resolved
+// was measured, on this tree, to emit:
+//
+//	$ HELIXAGENT_HOST=helix.example.internal helixagent -generate-all-agents
+//	   1081 http://127.0.0.1:19071          <- the operator's host, discarded
+//	      1 http://helix.example.internal:19071
+//
+// and the whole suite still reported ok. That is the same 47-of-48 shape as
+// the port defect this file was written for, in the field nothing asserted.
+//
+// Both values are HOSTNAMES, not IP literals, so helixAgentClientHost passes
+// them through untouched (it only rewrites unspecified IP literals) — the probe
+// measures the generator, not the wildcard-normalisation logic, which
+// TestHelixAgentClientHost_IsDialable owns. `.invalid` is reserved by RFC 2606
+// and can never resolve, so a config carrying one is inert if it ever escapes.
+const (
+	helixAgentEndpointProbeHostA = "helix-probe-a.invalid"
+	helixAgentEndpointProbeHostB = "helix-probe-b.invalid"
+)
+
 // deterministicAPIKey pins HELIXAGENT_API_KEY so two generator runs differ
 // ONLY by the port under test. Without it each run mints a fresh random key
 // and the two outputs are never comparable.
@@ -184,6 +211,23 @@ var helixAgentAPIPaths = map[string]bool{
 // justification — failing closed, never silently widening.
 var allowedInvariantHTTPPorts = map[string]bool{}
 
+// allowedInvariantHTTPHosts is the host-dimension twin of
+// allowedInvariantHTTPPorts: hosts permitted to appear in BOTH generation runs.
+//
+// Also EMPTY, and also a measured fact rather than an oversight. A full
+// 48-agent generation under HELIXAGENT_HOST=helix-probe-a.invalid produced:
+//
+//	$ find <outdir> -type f -exec cat {} + | grep -oE 'https?://[^/:]+:[0-9]+' \
+//	    | sort | uniq -c
+//	   1082 http://helix-probe-a.invalid:19071
+//
+// 1082 of 1082 — every ported http endpoint in the corpus is the HelixAgent
+// endpoint, so any host that survives a HELIXAGENT_HOST change is a hardcode.
+// If a legitimate foreign HTTP service is ever added, this test fails loudly
+// and the host is added here WITH its justification — failing closed, never
+// silently widening.
+var allowedInvariantHTTPHosts = map[string]bool{}
+
 // httpEndpoint is one "scheme://host:port/path" occurrence in a config.
 type httpEndpoint struct {
 	host string
@@ -230,6 +274,18 @@ func httpPortsIn(content string) map[string]bool {
 	return ports
 }
 
+// httpHostsIn returns the set of hosts used by ported http(s) endpoints —
+// the exact host-dimension counterpart of httpPortsIn, so the two dimensions
+// are compared by the same machinery and cannot drift in strictness.
+func httpHostsIn(content string) map[string]bool {
+	hosts := make(map[string]bool)
+	for _, endpoint := range httpEndpointsIn(content) {
+		hosts[endpoint.host] = true
+	}
+
+	return hosts
+}
+
 // sortedKeys renders a port set for a failure message.
 func sortedKeys(set map[string]bool) []string {
 	keys := make([]string, 0, len(set))
@@ -241,38 +297,111 @@ func sortedKeys(set map[string]bool) []string {
 	return keys
 }
 
+// metamorphicDimension describes ONE field of an endpoint (its port, or its
+// host) across the two generation runs, so both can be judged by one routine.
+type metamorphicDimension struct {
+	name             string // plural noun for the failure message: "ports"/"hosts"
+	envVar           string // the variable the two runs differ in
+	valuesA, valuesB map[string]bool
+	probeA, probeB   string
+	allowedInvariant map[string]bool
+}
+
+// metamorphicFaults applies the invariance and movement checks to one
+// dimension and returns a fault line per violation (empty when clean).
+//
+// INVARIANCE: any value surviving a change of the driving env var is a
+// hardcode, unless it is an explicitly justified foreign service.
+//
+// MOVEMENT: what does vary must be EXACTLY the run's probe value. That catches
+// a total hardcode (nothing varies, so the variant set is empty) and a
+// resolution to the wrong value (something varies, but not to the probe).
+func metamorphicFaults(d metamorphicDimension) []string {
+	var faults []string
+
+	invariant := make(map[string]bool)
+	for value := range d.valuesA {
+		if d.valuesB[value] && !d.allowedInvariant[value] {
+			invariant[value] = true
+		}
+	}
+
+	if len(invariant) > 0 {
+		faults = append(faults, fmt.Sprintf(
+			"%s unchanged across a %s change (hardcoded): %v",
+			d.name, d.envVar, sortedKeys(invariant)))
+	}
+
+	variantA := make(map[string]bool)
+	for value := range d.valuesA {
+		if !d.valuesB[value] {
+			variantA[value] = true
+		}
+	}
+
+	variantB := make(map[string]bool)
+	for value := range d.valuesB {
+		if !d.valuesA[value] {
+			variantB[value] = true
+		}
+	}
+
+	if len(variantA) != 1 || !variantA[d.probeA] ||
+		len(variantB) != 1 || !variantB[d.probeB] {
+		faults = append(faults, fmt.Sprintf(
+			"%s tracking %s=%s were %v (want exactly [%s]); "+
+				"tracking %s=%s were %v (want exactly [%s])",
+			d.name, d.envVar, d.probeA, sortedKeys(variantA), d.probeA,
+			d.envVar, d.probeB, sortedKeys(variantB), d.probeB))
+	}
+
+	return faults
+}
+
 // TestAllAgentConfigs_HelixEndpointsTrackServerBindPort asserts that EVERY
-// agent config the fan-out writes names the port the server actually binds.
+// agent config the fan-out writes names the ENDPOINT the server actually
+// serves — both halves of it, host AND port.
+//
+// BOTH DIMENSIONS, EQUALLY STRICTLY. An earlier revision of this file compared
+// ports only. Every check passed a generator whose host was hardcoded, because
+// no assertion in the file ever looked at the host field: measured on this
+// tree, hardcoding the all-agents host emitted 1081 of 1082 endpoints on
+// 127.0.0.1 while the operator's HELIXAGENT_HOST was discarded, and the suite
+// reported ok. A config whose port is right and whose host is wrong is exactly
+// as unreachable for the user as the reverse, so the two runs below now differ
+// in BOTH variables and every check is applied to both.
 //
 // THE ORACLE IS METAMORPHIC (§11.4.107(8)), not a comparison against a known
-// number. The generator runs twice under two different PORT values, and each
-// file is classified per port:
+// value. The generator runs twice under two different PORT / HELIXAGENT_HOST
+// pairs, and each file is classified per port and per host:
 //
-//	invariant = ports present in BOTH runs   -> a foreign service; the
+//	invariant = values present in BOTH runs   -> a foreign service; the
 //	            postgres MCP on 15432 is the only one in this tree, and it is
 //	            CORRECT for it not to move with HelixAgent's PORT
-//	variant   = ports present in only ONE run -> a HelixAgent endpoint, which
-//	            MUST equal that run's PORT
+//	variant   = values present in only ONE run -> a HelixAgent endpoint, which
+//	            MUST equal that run's PORT / HELIXAGENT_HOST
 //
-// The assertion is `variant == {PORT}` exactly. That catches both failure
-// directions without naming any port:
+// The assertion is `variant == {probe}` exactly, per dimension. That catches
+// both failure directions without naming any port or host:
 //
 //   - a hardcoded endpoint does not move between runs, so it lands in
 //     `invariant` and leaves `variant` EMPTY -> FAIL (this is the shipped
 //     defect: every file except opencode.json had an empty variant set)
-//   - an endpoint resolved to the WRONG value moves but does not equal PORT
-//     -> FAIL
+//   - an endpoint resolved to the WRONG value moves but does not equal the
+//     probe -> FAIL
 //
-// Because the probe ports are arbitrary and unrelated to anything in the
-// tree, no literal can satisfy this by coincidence — which is the property
+// Because the probe ports and hosts are arbitrary and unrelated to anything in
+// the tree, no literal can satisfy this by coincidence — which is the property
 // that makes this a guard and not a restatement of the fix.
 func TestAllAgentConfigs_HelixEndpointsTrackServerBindPort(t *testing.T) {
 	t.Setenv("HELIXAGENT_API_KEY", deterministicAPIKey)
 
 	t.Setenv("PORT", helixAgentEndpointProbePortA)
+	t.Setenv("HELIXAGENT_HOST", helixAgentEndpointProbeHostA)
 	runA := generateAllAgentConfigs(t, t.TempDir())
 
 	t.Setenv("PORT", helixAgentEndpointProbePortB)
+	t.Setenv("HELIXAGENT_HOST", helixAgentEndpointProbeHostB)
 	runB := generateAllAgentConfigs(t, t.TempDir())
 
 	require.Equal(t, len(runA), len(runB),
@@ -302,76 +431,91 @@ func TestAllAgentConfigs_HelixEndpointsTrackServerBindPort(t *testing.T) {
 		var faults []string
 
 		// CHECK 1 — BY NAME. Every URL offering a HelixAgent API must carry
-		// that run's port. This is the check that catches a PARTIAL hardcode:
-		// when the provider URL resolves but the nine MCP endpoints do not,
-		// the movement checks below are satisfied by the provider URL alone
-		// while the endpoints — the CLI agent's actual working surface — still
-		// point at the wrong service.
+		// that run's port AND that run's host. This is the check that catches
+		// a PARTIAL hardcode: when the provider URL resolves but the nine MCP
+		// endpoints do not, the movement checks below are satisfied by the
+		// provider URL alone while the endpoints — the CLI agent's actual
+		// working surface — still point at the wrong service.
+		//
+		// The MATCHING stays host-agnostic (httpEndpointPattern is deliberately
+		// not anchored to a known host, so a hardcode spelled "127.0.0.1:8100"
+		// is still seen). The ASSERTION is not: a HelixAgent API URL must name
+		// the RESOLVED host, because an endpoint the user cannot dial is broken
+		// whichever half of it is wrong.
 		for _, run := range []struct {
 			label     string
 			content   string
+			probeHost string
 			probePort string
 		}{
-			{"PORT=" + helixAgentEndpointProbePortA, contentA, helixAgentEndpointProbePortA},
-			{"PORT=" + helixAgentEndpointProbePortB, contentB, helixAgentEndpointProbePortB},
+			{
+				label:     "PORT=" + helixAgentEndpointProbePortA + " HELIXAGENT_HOST=" + helixAgentEndpointProbeHostA,
+				content:   contentA,
+				probeHost: helixAgentEndpointProbeHostA,
+				probePort: helixAgentEndpointProbePortA,
+			},
+			{
+				label:     "PORT=" + helixAgentEndpointProbePortB + " HELIXAGENT_HOST=" + helixAgentEndpointProbeHostB,
+				content:   contentB,
+				probeHost: helixAgentEndpointProbeHostB,
+				probePort: helixAgentEndpointProbePortB,
+			},
 		} {
-			stray := make(map[string]bool)
+			strayPort := make(map[string]bool)
+			strayHost := make(map[string]bool)
+
 			for _, endpoint := range httpEndpointsIn(run.content) {
-				if helixAgentAPIPaths[endpoint.path] && endpoint.port != run.probePort {
-					stray[endpoint.String()] = true
+				if !helixAgentAPIPaths[endpoint.path] {
+					continue
+				}
+
+				if endpoint.port != run.probePort {
+					strayPort[endpoint.String()] = true
+				}
+
+				if endpoint.host != run.probeHost {
+					strayHost[endpoint.String()] = true
 				}
 			}
 
-			if len(stray) > 0 {
+			if len(strayPort) > 0 {
 				faults = append(faults, fmt.Sprintf(
 					"%s: HelixAgent API endpoints on the wrong port: %v",
-					run.label, sortedKeys(stray)))
+					run.label, sortedKeys(strayPort)))
+			}
+
+			if len(strayHost) > 0 {
+				faults = append(faults, fmt.Sprintf(
+					"%s: HelixAgent API endpoints on the wrong host: %v",
+					run.label, sortedKeys(strayHost)))
 			}
 		}
 
-		portsA := httpPortsIn(contentA)
-		portsB := httpPortsIn(contentB)
+		// CHECKS 2+3 — INVARIANCE and MOVEMENT, applied to the PORT dimension
+		// and then, by the SAME code, to the HOST dimension. Sharing the
+		// routine is the point: it is not possible for one dimension to be
+		// checked less strictly than the other, which is precisely how the
+		// host field went unguarded while the port field was covered three
+		// ways.
+		faults = append(faults, metamorphicFaults(metamorphicDimension{
+			name:             "ports",
+			envVar:           "PORT",
+			valuesA:          httpPortsIn(contentA),
+			valuesB:          httpPortsIn(contentB),
+			probeA:           helixAgentEndpointProbePortA,
+			probeB:           helixAgentEndpointProbePortB,
+			allowedInvariant: allowedInvariantHTTPPorts,
+		})...)
 
-		// CHECK 2 — INVARIANCE. Any http port surviving a PORT change is a
-		// hardcode unless it is an explicitly justified foreign service.
-		invariant := make(map[string]bool)
-		for port := range portsA {
-			if portsB[port] && !allowedInvariantHTTPPorts[port] {
-				invariant[port] = true
-			}
-		}
-
-		if len(invariant) > 0 {
-			faults = append(faults, fmt.Sprintf(
-				"ports unchanged across a PORT change (hardcoded): %v",
-				sortedKeys(invariant)))
-		}
-
-		// CHECK 3 — MOVEMENT. What does vary must be exactly the run's port,
-		// which catches a total hardcode (nothing varies) and a resolution to
-		// the wrong value (something varies, but not to PORT).
-		variantA := make(map[string]bool)
-		for port := range portsA {
-			if !portsB[port] {
-				variantA[port] = true
-			}
-		}
-
-		variantB := make(map[string]bool)
-		for port := range portsB {
-			if !portsA[port] {
-				variantB[port] = true
-			}
-		}
-
-		if len(variantA) != 1 || !variantA[helixAgentEndpointProbePortA] ||
-			len(variantB) != 1 || !variantB[helixAgentEndpointProbePortB] {
-			faults = append(faults, fmt.Sprintf(
-				"ports tracking PORT=%s were %v (want exactly [%s]); "+
-					"tracking PORT=%s were %v (want exactly [%s])",
-				helixAgentEndpointProbePortA, sortedKeys(variantA), helixAgentEndpointProbePortA,
-				helixAgentEndpointProbePortB, sortedKeys(variantB), helixAgentEndpointProbePortB))
-		}
+		faults = append(faults, metamorphicFaults(metamorphicDimension{
+			name:             "hosts",
+			envVar:           "HELIXAGENT_HOST",
+			valuesA:          httpHostsIn(contentA),
+			valuesB:          httpHostsIn(contentB),
+			probeA:           helixAgentEndpointProbeHostA,
+			probeB:           helixAgentEndpointProbeHostB,
+			allowedInvariant: allowedInvariantHTTPHosts,
+		})...)
 
 		if len(faults) > 0 {
 			defective = append(defective,
@@ -414,7 +558,7 @@ func TestAllAgentConfigs_HelixEndpointsTrackServerBindPort(t *testing.T) {
 func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 	t.Setenv("HELIXAGENT_API_KEY", deterministicAPIKey)
 
-	generate := func(t *testing.T) map[string]bool {
+	generate := func(t *testing.T) (ports, hosts map[string]bool) {
 		t.Helper()
 
 		out := filepath.Join(t.TempDir(), "aider.yml")
@@ -428,18 +572,19 @@ func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 		raw, err := os.ReadFile(out)
 		require.NoError(t, err, "the generator must write the config file")
 
-		ports := httpPortsIn(string(raw))
+		ports = httpPortsIn(string(raw))
+		hosts = httpHostsIn(string(raw))
 		require.NotEmpty(t, ports,
 			"the generated config must name an http endpoint at all")
 
-		return ports
+		return ports, hosts
 	}
 
 	t.Run("agrees_with_server_bind_port", func(t *testing.T) {
 		unsetEnvForTest(t, "PORT")
 
 		bind := config.Load().Server.Port
-		ports := generate(t)
+		ports, _ := generate(t)
 
 		require.True(t, ports[bind],
 			"the generated agent config must name the port the server binds "+
@@ -449,7 +594,7 @@ func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 	t.Run("follows_PORT_so_it_is_resolved_not_literal", func(t *testing.T) {
 		t.Setenv("PORT", helixAgentEndpointProbePortA)
 
-		ports := generate(t)
+		ports, _ := generate(t)
 
 		require.True(t, ports[helixAgentEndpointProbePortA],
 			"with PORT=%s the generated config must name that port; got %v — "+
@@ -460,6 +605,27 @@ func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 			"every http endpoint in the config must resolve to the same port; "+
 				"got %v — a partial hardcode (provider URL resolved, MCP "+
 				"endpoints literal) lands here", sortedKeys(ports))
+	})
+
+	// The host-dimension twin of the two subtests above. Without it this entry
+	// point asserts half an endpoint: a generator that resolves the port and
+	// hardcodes the host satisfies every port assertion while handing the user
+	// an address that is not the one they configured.
+	t.Run("follows_HELIXAGENT_HOST_so_it_is_resolved_not_literal", func(t *testing.T) {
+		t.Setenv("PORT", helixAgentEndpointProbePortA)
+		t.Setenv("HELIXAGENT_HOST", helixAgentEndpointProbeHostA)
+
+		_, hosts := generate(t)
+
+		require.True(t, hosts[helixAgentEndpointProbeHostA],
+			"with HELIXAGENT_HOST=%s the generated config must name that host; "+
+				"got %v — an unmoved host is a hardcode, not a resolution",
+			helixAgentEndpointProbeHostA, sortedKeys(hosts))
+
+		require.Len(t, hosts, 1,
+			"every http endpoint in the config must resolve to the same host; "+
+				"got %v — a partial hardcode (provider URL resolved, MCP "+
+				"endpoints literal) lands here", sortedKeys(hosts))
 	})
 }
 
@@ -479,29 +645,82 @@ func TestAgentConfig_SingleAgent_ResolvesRatherThanHardcodes(t *testing.T) {
 //
 //	$ HELIXAGENT_HOST=0.0.0.0 helixagent -generate-opencode-config
 //	        "baseURL": "http://0.0.0.0:7061/v1"
+//
+// EVERY ASSERTION BELOW IS INDEPENDENT OF THE CODE UNDER TEST. An earlier
+// revision asserted `helixAgentHostIsDialable(helixAgentClientHost())`, which
+// is f(g(x)) where g only ever emits values f accepts — true for ALL inputs,
+// including a broken f. Measured: replacing the semantic net.ParseIP /
+// IsUnspecified test with a naive `host != "0.0.0.0"` string blacklist left
+// every subtest GREEN while the binary emitted
+//
+//	HELIXAGENT_HOST=::                -> "baseURL": "http://:::7061/v1"
+//	HELIXAGENT_HOST=[::]              -> "baseURL": "http://[::]:7061/v1"
+//	HELIXAGENT_HOST=0:0:0:0:0:0:0:0   -> "baseURL": "http://0:0:0:0:0:0:0:0:7061/v1"
+//
+// — the first of which is not even a well-formed URL. The assertions therefore
+// name the EXPECTED VALUE (helixAgentDialFallbackHost) rather than re-consulting
+// the decision-maker, and the predicate gets its own truth table below so a
+// change to it cannot hide behind the caller that filters its output.
 func TestHelixAgentClientHost_IsDialable(t *testing.T) {
-	t.Run("default_is_dialable", func(t *testing.T) {
+	t.Run("default_is_the_loopback_fallback", func(t *testing.T) {
 		unsetEnvForTest(t, "HELIXAGENT_HOST")
 
-		host := helixAgentClientHost()
+		require.Equal(t, helixAgentDialFallbackHost, helixAgentClientHost(),
+			"with HELIXAGENT_HOST unset the dial host must be the loopback "+
+				"fallback; the bind address (SERVER_HOST, default 0.0.0.0) is "+
+				"not an answer to the dial-side question")
+	})
 
-		require.True(t, helixAgentHostIsDialable(host),
-			"the default dial host %q is not an address a client can connect "+
-				"to; the bind address (SERVER_HOST, default 0.0.0.0) is not an "+
-				"answer to the dial-side question", host)
+	// The predicate's OWN truth table, with expectations written out by hand.
+	// This is the guard for the property the doc comment on
+	// helixAgentHostIsDialable argues at length — that the test is SEMANTIC
+	// (parse the IP, reject the unspecified address) and not a blacklist of
+	// spellings. Every unspecified spelling below is a distinct way of writing
+	// the same address that a string blacklist would have to enumerate;
+	// "0.0.0.1" is the negative control that a prefix-matching blacklist gets
+	// wrong in the other direction.
+	t.Run("dialable_predicate_truth_table", func(t *testing.T) {
+		for _, testCase := range []struct {
+			host string
+			want bool
+			why  string
+		}{
+			{"0.0.0.0", false, "IPv4 unspecified"},
+			{"  0.0.0.0  ", false, "IPv4 unspecified, surrounded by whitespace"},
+			{"::", false, "IPv6 unspecified"},
+			{"[::]", false, "IPv6 unspecified, bracketed"},
+			{"::0", false, "IPv6 unspecified, alternate spelling"},
+			{"0:0:0:0:0:0:0:0", false, "IPv6 unspecified, fully expanded"},
+			{"::ffff:0.0.0.0", false, "IPv4-mapped unspecified"},
+			{"", false, "empty is not an address"},
+			{"   ", false, "whitespace is not an address"},
+			{"0.0.0.1", true, "a real routable address that merely LOOKS like the wildcard"},
+			{"10.1.2.3", true, "ordinary private IPv4"},
+			{"127.0.0.1", true, "loopback IPv4"},
+			{"::1", true, "loopback IPv6"},
+			{"helix.example.internal", true, "a hostname; resolving it is DNS's job"},
+			{"localhost", true, "a hostname"},
+		} {
+			t.Run(fmt.Sprintf("%q", testCase.host), func(t *testing.T) {
+				require.Equal(t, testCase.want, helixAgentHostIsDialable(testCase.host),
+					"helixAgentHostIsDialable(%q) must be %v (%s)",
+					testCase.host, testCase.want, testCase.why)
+			})
+		}
 	})
 
 	t.Run("wildcard_override_is_normalised", func(t *testing.T) {
-		for _, wildcard := range []string{"0.0.0.0", "::", "[::]", "0:0:0:0:0:0:0:0", "  0.0.0.0  "} {
+		for _, wildcard := range []string{
+			"0.0.0.0", "::", "[::]", "::0", "0:0:0:0:0:0:0:0",
+			"::ffff:0.0.0.0", "  0.0.0.0  ",
+		} {
 			t.Run(strings.TrimSpace(wildcard), func(t *testing.T) {
 				t.Setenv("HELIXAGENT_HOST", wildcard)
 
-				host := helixAgentClientHost()
-
-				require.True(t, helixAgentHostIsDialable(host),
-					"HELIXAGENT_HOST=%q is a listen wildcard; the generated "+
-						"config must not hand it to a user as a dial target "+
-						"(got %q)", wildcard, host)
+				require.Equal(t, helixAgentDialFallbackHost, helixAgentClientHost(),
+					"HELIXAGENT_HOST=%q is a listen wildcard; it must be "+
+						"replaced by the loopback fallback, not handed to a "+
+						"user as a dial target", wildcard)
 			})
 		}
 	})
@@ -521,21 +740,57 @@ func TestHelixAgentClientHost_IsDialable(t *testing.T) {
 	t.Run("emitted_config_never_carries_the_wildcard", func(t *testing.T) {
 		// §11.4.108: the helper being right is the SOURCE layer. This asserts
 		// the ARTIFACT layer — what a user actually opens.
+		//
+		// Reconciled per §11.4.120 from a NotContains("0.0.0.0:") check on a
+		// single spelling. That assertion was satisfied by artifacts naming
+		// "::" or "0:0:0:0:0:0:0:0" — the very spellings a blacklist misses —
+		// so it could not fail on the defect it existed to catch. It now
+		// asserts the POSITIVE property (every emitted host IS the resolved
+		// fallback) across every spelling, which subsumes the old check:
+		// localhost is not 0.0.0.0.
 		t.Setenv("HELIXAGENT_API_KEY", deterministicAPIKey)
-		t.Setenv("HELIXAGENT_HOST", "0.0.0.0")
 
-		out := filepath.Join(t.TempDir(), "opencode.json")
-		require.NoError(t, handleGenerateOpenCode(&AppConfig{
-			Logger:         quietLogger(),
-			OpenCodeOutput: out,
-		}), "the OpenCode generator must succeed")
+		for _, wildcard := range []string{
+			"0.0.0.0", "::", "[::]", "::0", "0:0:0:0:0:0:0:0", "::ffff:0.0.0.0",
+		} {
+			t.Run(wildcard, func(t *testing.T) {
+				t.Setenv("HELIXAGENT_HOST", wildcard)
 
-		raw, err := os.ReadFile(out)
-		require.NoError(t, err)
+				out := filepath.Join(t.TempDir(), "opencode.json")
+				require.NoError(t, handleGenerateOpenCode(&AppConfig{
+					Logger:         quietLogger(),
+					OpenCodeOutput: out,
+				}), "the OpenCode generator must succeed")
 
-		require.NotContains(t, string(raw), "0.0.0.0:",
-			"the emitted config names the bind wildcard as an endpoint host; "+
-				"a user handed this config cannot connect to it")
+				raw, err := os.ReadFile(out)
+				require.NoError(t, err)
+				content := string(raw)
+
+				// Assert on the RAW TEXT first, not on parsed endpoints. Some
+				// wildcard spellings do not survive into a well-formed URL at
+				// all ("::" yields the unparseable "http://:::7061/v1"), and a
+				// URL the oracle's own regex cannot read would otherwise leave
+				// the parsed set empty and the comparison below vacuous — the
+				// §11.4.201 false-null at the instrument layer.
+				total := strings.Count(content, "http://")
+				resolved := strings.Count(content,
+					"http://"+helixAgentDialFallbackHost+":")
+
+				require.Equal(t, total, resolved,
+					"HELIXAGENT_HOST=%q is a listen wildcard: all %d http "+
+						"endpoint(s) in the emitted config must read "+
+						"http://%s:<port>, but only %d do. A user handed this "+
+						"config cannot connect to it, and some spellings do "+
+						"not even yield a valid URL (http://:::7061/v1).",
+					wildcard, total, helixAgentDialFallbackHost, resolved)
+
+				hosts := httpHostsIn(content)
+				require.Equal(t,
+					[]string{helixAgentDialFallbackHost}, sortedKeys(hosts),
+					"HELIXAGENT_HOST=%q: every parsed endpoint host must be "+
+						"the loopback fallback", wildcard)
+			})
+		}
 	})
 }
 

@@ -5,10 +5,32 @@ metadata:
   labels:
     app: helixagent
 data:
+  # HONEST STATUS of this whole ConfigMap (§11.4.6), measured 2026-08-10:
+  # nothing reads it. It is listed in kustomization.yaml so it IS applied to
+  # the cluster, but deployment.yaml declares no `volumes:` / `volumeMounts:`
+  # referencing `helixagent-config`, so the file never appears in the pod; and
+  # internal/config/config.go builds Config purely from getEnv(...) with no
+  # viper/yaml file read, so even a mounted copy would be ignored. The keys
+  # below are therefore DOCUMENTATION, not configuration.
+  #
+  # It is corrected rather than deleted (§11.4.124 — "unread" is not proof of
+  # "unneeded", and this is the declared shape of the server's config): a
+  # ConfigMap publishing a third wrong port number is a trap for the next
+  # reader, who would reasonably believe editing it changes something.
   config.yaml: |
     server:
+      # Matches deployment.yaml's `PORT: "8080"` env var, which IS read
+      # (internal/config/config.go: getEnv("PORT", "7061")) and IS the port
+      # the pod's containerPort + both probes use.
       port: 8080
-      grpc_port: 9090
+      # Was 9090 — a port no HelixAgent process binds. The gRPC server
+      # (cmd/grpc-server) resolves ports.HelixAgentGRPC = 8112, verified at
+      # runtime: the built binary's LISTEN socket is *:8112. This key itself
+      # has NO Go reader (grep for `grpc_port` finds only the unrelated
+      # internal/vectordb/qdrant struct), so correcting it changes no
+      # behaviour — it stops the manifest set from publishing two different
+      # answers to "what port is gRPC on?".
+      grpc_port: 8112
       mode: release
       read_timeout: 30s
       write_timeout: 30s

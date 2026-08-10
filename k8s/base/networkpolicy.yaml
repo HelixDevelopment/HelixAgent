@@ -22,8 +22,11 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+        # gRPC ingress must name the same registry port the Deployment
+        # exposes and the Service targets (8112). Left at 9090 this would
+        # admit traffic to a port nothing binds while blocking the real one.
         - protocol: TCP
-          port: 9090
+          port: 8112
   egress:
     - to:
         - namespaceSelector: {}

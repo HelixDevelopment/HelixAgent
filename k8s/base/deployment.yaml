@@ -22,15 +22,38 @@ spec:
           ports:
             - containerPort: 8080
               name: http
-            - containerPort: 9090
+            # gRPC is published on the port registry's own number
+            # (internal/ports: HelixAgentGRPC, core band offset 112). It was
+            # 9090, which nothing ever bound.
+            #
+            # HONEST STATUS (§11.4.6): the image this Deployment runs is built
+            # from ./cmd/helixagent, which contains NO gRPC server — that is a
+            # separate binary, ./cmd/grpc-server. So this port is correct but
+            # currently INERT: no process in this pod listens on it until a
+            # grpc-server container is added. It is kept, and kept correct, so
+            # that adding one is a one-line change rather than a re-derivation
+            # — and so nobody re-invents a third number. Tracked as HXC-260.
+            - containerPort: 8112
               name: grpc
           env:
             - name: GIN_MODE
               value: "release"
+            # PORT is genuinely read: internal/config/config.go resolves
+            # getEnv("PORT", "7061") into cfg.Server.Port, which run() binds.
+            # 8080 therefore really is the served port and matches the
+            # containerPort and both probes below.
             - name: PORT
               value: "8080"
-            - name: GRPC_PORT
-              value: "9090"
+            # Was GRPC_PORT — a variable NO Go source reads, so it could never
+            # move the port and silently defeated anyone who tried. The server
+            # resolves ports.HelixAgentGRPC, whose canonical variable is this
+            # one. Pinned explicitly rather than left to the registry default
+            # so that HELIXAGENT_PORT_PREFIX=9 (which would shift the default
+            # to 9112) cannot silently desynchronise it from the containerPort
+            # above. internal/ports.TestK8sManifests_GRPCPortMatchesRegistry
+            # asserts the two agree with the registry.
+            - name: HELIXAGENT_PORT_GRPC
+              value: "8112"
             - name: DB_HOST
               valueFrom:
                 secretKeyRef:

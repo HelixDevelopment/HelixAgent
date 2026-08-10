@@ -13,9 +13,14 @@ spec:
       port: 80
       targetPort: 8080
       protocol: TCP
+    # targetPort MUST match the Deployment's gRPC containerPort, which is the
+    # port registry's HelixAgentGRPC (8112). Both were 9090 — a port no
+    # container binds — so this Service forwarded gRPC traffic into a
+    # blackhole. See deployment.yaml for why the endpoint is inert until a
+    # grpc-server container is added (HXC-260).
     - name: grpc
-      port: 9090
-      targetPort: 9090
+      port: 8112
+      targetPort: 8112
       protocol: TCP
   selector:
     app: helixagent
@@ -32,8 +37,10 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+    # Same registry port as the ClusterIP Service above; the headless Service
+    # must not disagree with it.
     - name: grpc
-      port: 9090
-      targetPort: 9090
+      port: 8112
+      targetPort: 8112
   selector:
     app: helixagent

@@ -36,7 +36,13 @@ func NewUnifiedCLIGenerator(host string, port int, outputDir string) *UnifiedCLI
 		HelixAgentPort: port,
 		OutputDir:      outputDir,
 		IncludeScores:  true,
-		MCPServers:     cliagents.DefaultMCPServers(),
+		// ForHost, not DefaultMCPServers(): the no-argument wrapper is
+		// literally DefaultMCPServersForHost("localhost", 8100), so it ignored
+		// this constructor's own host/port arguments and emitted the nine
+		// HelixAgent service URLs on a hardcoded port — the same defect the
+		// shipped binary's generators carried, in the one place a -host/-port
+		// flag made it look configurable.
+		MCPServers: cliagents.DefaultMCPServersForHost(host, port),
 	}
 
 	return &UnifiedCLIGenerator{

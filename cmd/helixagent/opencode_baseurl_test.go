@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -220,12 +221,28 @@ func TestOpenCodeConfig_BaseURLIdentifiesAsHelixAgent(t *testing.T) {
 // probeServiceIdentity GETs url and reports the value of the response's
 // "service" field.
 //
-// It returns (service, reachable, detail). reachable is false ONLY when
-// nothing answered at all — a connection refusal. Any HTTP answer, including
-// a 404 or a non-JSON body, is reachable-but-not-HelixAgent and yields an
-// empty service with a descriptive detail: a foreign occupant answering must
-// never be reported as "unreachable", because that would let the caller skip
-// past the very defect it is looking for (the §11.4.201 false-null).
+// It returns (service, reachable, detail). reachable is false ONLY when the
+// DIAL ITSELF failed — nothing is listening (ECONNREFUSED), the host is not
+// routable (EHOSTUNREACH / ENETUNREACH), or the name does not resolve. Any
+// answer at all — an HTTP 404, a non-JSON body, a TCP accept-then-close, a
+// reset, a line protocol that is not HTTP, a timeout — is
+// reachable-but-not-HelixAgent and yields an empty service with a
+// descriptive detail: a foreign occupant answering must never be reported as
+// "unreachable", because that would let the caller SKIP past the very defect
+// it is looking for (the §11.4.201 false-null).
+//
+// WHY THE CLASSIFICATION IS BY DIAL STAGE AND NOT BY TIMEOUT. This function
+// previously special-cased only `net.Error.Timeout()` and sent every other
+// transport error to the refusal bucket. That doc-comment promised what this
+// one now promises, but the code did not deliver it: a squatter that accepts
+// the connection and closes it (EOF), resets it (ECONNRESET), or speaks a
+// non-HTTP line protocol — all of which mean SOMETHING IS THERE AND IT IS
+// NOT HELIXAGENT, the exact shipped defect — was reported as unreachable and
+// SKIPped, converting a FAIL into a silent pass. The bucket is therefore
+// chosen by whether the CONNECTION could be established, which is the
+// question "is anything there?" actually asks. Unknown errors default to
+// reachable (fail-closed): an unrecognised transport error is not evidence
+// that the port is empty (§11.4.6).
 //
 // The "service" field must be PRESENT and equal to helixagent. There is
 // deliberately no fallback to {"status":"healthy"}: this repo's own mock LLM
@@ -237,14 +254,16 @@ func probeServiceIdentity(url string, timeout time.Duration) (service string, re
 
 	resp, err := client.Get(url)
 	if err != nil {
-		var netErr net.Error
-		if errors.As(err, &netErr) && netErr.Timeout() {
-			// A timeout is not a refusal: something may well be there and
-			// simply slow or black-holing. Treat it as reachable-unknown so
-			// it cannot be silently skipped past.
-			return "", true, "request timed out: " + err.Error()
+		if isDialStageFailure(err) {
+			return "", false, err.Error()
 		}
-		return "", false, err.Error()
+
+		// The connection was established (or failed for a reason that is not
+		// evidence of an empty port) and then something went wrong: the peer
+		// closed, reset, spoke a non-HTTP protocol, or went silent. Something
+		// IS there and it is not answering as HelixAgent — a FAIL, never a
+		// SKIP.
+		return "", true, "connected, but no usable HTTP answer: " + err.Error()
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -266,6 +285,33 @@ func probeServiceIdentity(url string, timeout time.Duration) (service string, re
 
 	return svc, true, "HTTP " + strconv.Itoa(resp.StatusCode) +
 		", service=" + svc
+}
+
+// isDialStageFailure reports whether err means the CONNECTION was never
+// established — the only class that honestly answers "nothing is there".
+//
+// The three members are the dial-stage syscalls plus DNS non-existence:
+//
+//	ECONNREFUSED  the port is closed; the host actively refused
+//	EHOSTUNREACH  no route to the host
+//	ENETUNREACH   no route to the network
+//	DNSError{IsNotFound}  the name does not exist
+//
+// Matched by errors.Is/errors.As through the net.OpError -> os.SyscallError
+// -> syscall.Errno chain rather than by string, so it does not break when a
+// message is reworded. Deliberately NOT included: ECONNRESET and EOF (the
+// peer answered, then hung up — something is there), and timeouts (the peer
+// may be there and slow). Those are the false-null this classification
+// exists to prevent.
+func isDialStageFailure(err error) bool {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return dnsErr.IsNotFound
+	}
+
+	return errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.EHOSTUNREACH) ||
+		errors.Is(err, syscall.ENETUNREACH)
 }
 
 func truncate(s string, max int) string {

@@ -1800,25 +1800,152 @@ func helixAgentServePort(appCfg *AppConfig) string {
 	return port
 }
 
+// helixAgentDialFallbackHost is the dial-side host used whenever no routable
+// host is knowable — either HELIXAGENT_HOST is unset, or it names a wildcard
+// (see helixAgentClientHost). Loopback is the only defensible default: a
+// server bound to the wildcard IS reachable at loopback from the same host,
+// while the wildcard itself carries no information about which address any
+// particular client should use.
+const helixAgentDialFallbackHost = "localhost"
+
 // helixAgentClientHost returns the host a CLI-agent config should DIAL to
 // reach this HelixAgent.
 //
 // Deliberately NOT config.Load().Server.Host: that is the BIND address and
-// defaults to 0.0.0.0, which is a wildcard to listen on, not an address a
-// client can connect to. The dial-side default is localhost, overridable
-// with HELIXAGENT_HOST for the remote case.
+// defaults to 0.0.0.0 — a wildcard meaning "listen on every interface", not
+// an address any client can connect to. A generated config carries the DIAL
+// side, so bind-host and dial-host are two different questions with two
+// different answers, and answering one with the other emits a config that
+// cannot reach the server it describes.
+//
+// WHY THE WILDCARD IS NORMALISED RATHER THAN PASSED THROUGH (measured, not
+// hypothetical). HELIXAGENT_HOST is the documented override for the remote
+// case, and docker-compose.multi-provider.yaml:81 sets `HELIXAGENT_HOST:
+// 0.0.0.0`. Passed through verbatim that emitted, on this host, before this
+// change:
+//
+//	$ HELIXAGENT_HOST=0.0.0.0 helixagent -generate-opencode-config
+//	        "baseURL": "http://0.0.0.0:7061/v1"
+//
+// A valid LISTEN address and a meaningless DIAL target — the same defect
+// class as the port literal this file already resolved, one field over, and
+// reachable today through a committed compose file rather than only through
+// a hypothetical edit. An unspecified address is therefore resolved to
+// loopback instead of being shipped to the user. A real routable host (a
+// name, or any specified IP) passes through untouched; only the wildcard —
+// which no client can dial — is replaced.
+// The substitution is announced, never silent: an operator who set
+// HELIXAGENT_HOST deliberately must be able to see that the generator did
+// not use their value, without having to diff the emitted file (§11.4.6 —
+// surface the decision, do not hide it).
 func helixAgentClientHost() string {
-	if host := os.Getenv("HELIXAGENT_HOST"); host != "" {
-		return host
+	host := strings.TrimSpace(os.Getenv("HELIXAGENT_HOST"))
+	if host == "" {
+		return helixAgentDialFallbackHost
 	}
-	return "localhost"
+
+	if !helixAgentHostIsDialable(host) {
+		logrus.WithFields(logrus.Fields{
+			"HELIXAGENT_HOST": host,
+			"using":           helixAgentDialFallbackHost,
+		}).Warn("HELIXAGENT_HOST names a listen wildcard, which is not an " +
+			"address a client can dial; generated configs will use the " +
+			"loopback fallback. Set it to a routable host or name to override.")
+
+		return helixAgentDialFallbackHost
+	}
+
+	return host
+}
+
+// helixAgentHostIsDialable reports whether host is an address a client can
+// actually connect to.
+//
+// The test is semantic rather than a string blacklist (§11.4.111): the host
+// is PARSED as an IP and rejected when it is the UNSPECIFIED address, which
+// covers 0.0.0.0, ::, and every alternate spelling of them (0:0:0:0:0:0:0:0,
+// ::ffff:0.0.0.0, a bracketed literal) without enumerating any of them. A
+// value that is not an IP literal is a hostname and is dialable as far as
+// this process can know — resolving it is DNS's job, not this function's
+// (§11.4.6: do not answer a question you have no evidence for).
+func helixAgentHostIsDialable(host string) bool {
+	trimmed := strings.TrimSpace(host)
+	if trimmed == "" {
+		return false
+	}
+
+	// Accept a bracketed IPv6 literal ("[::]") as well as a bare one.
+	if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+		trimmed = trimmed[1 : len(trimmed)-1]
+	}
+
+	ip := net.ParseIP(trimmed)
+	if ip == nil {
+		return true // a hostname; not this function's call to resolve
+	}
+
+	return !ip.IsUnspecified()
+}
+
+// helixAgentServePortNumber returns helixAgentServePort parsed as a TCP port
+// number, for the callers whose config struct types the port as an int.
+//
+// The parse lives here rather than at each call site so every generator
+// applies ONE rule to a malformed PORT. An unparseable value is an operator
+// configuration error the server itself would trip over; surfacing it beats
+// writing a nonsense endpoint into a user's config file — which is exactly
+// what the OpenCode generator did while Crush (which parsed) refused:
+//
+//	$ PORT=abc helixagent -generate-opencode-config   # exit 0
+//	        "baseURL": "http://localhost:abc/v1"
+//
+// RANGE IS CHECKED, NOT JUST SYNTAX. strconv.Atoi answers "is this an
+// integer", which is a weaker question than "is this a port". Checking only
+// the former left the identical defect wearing a numeric costume — measured
+// on the build that had just fixed the "abc" case:
+//
+//	PORT=0      -> "baseURL": "http://localhost:0/v1"
+//	PORT=-1     -> "baseURL": "http://localhost:-1/v1"
+//	PORT=65536  -> "baseURL": "http://localhost:65536/v1"
+//
+// None of those is an endpoint any client can reach, so each is the same
+// user-facing failure as "abc" and is refused on the same grounds.
+func helixAgentServePortNumber(appCfg *AppConfig) (int, error) {
+	port := helixAgentServePort(appCfg)
+
+	number, err := strconv.Atoi(port)
+	if err != nil {
+		return 0, fmt.Errorf(
+			"resolved HelixAgent port %q is not a number (check PORT in the "+
+				"environment or .env): %w", port, err)
+	}
+
+	// 1..65535: 0 means "let the kernel choose" to a listener and is not a
+	// destination a client can dial, so it is as unusable in a generated
+	// config as an out-of-range value.
+	if number < 1 || number > 65535 {
+		return 0, fmt.Errorf(
+			"resolved HelixAgent port %q is outside the valid range 1-65535 "+
+				"(check PORT in the environment or .env)", port)
+	}
+
+	return number, nil
 }
 
 // helixAgentClientBaseURL returns the "http://host:port" a generated
 // CLI-agent config must point at to reach this HelixAgent's API.
-func helixAgentClientBaseURL(appCfg *AppConfig) string {
-	return fmt.Sprintf("http://%s:%s",
-		helixAgentClientHost(), helixAgentServePort(appCfg))
+//
+// It returns an error rather than a best-effort string so a malformed PORT
+// cannot reach a user's config file: the signature is what forces every
+// caller to handle it, rather than each caller remembering to (§11.4.6 — a
+// generator has no basis on which to invent a port).
+func helixAgentClientBaseURL(appCfg *AppConfig) (string, error) {
+	port, err := helixAgentServePortNumber(appCfg)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("http://%s:%d", helixAgentClientHost(), port), nil
 }
 
 // run executes the main application logic with the given configuration
@@ -2903,7 +3030,10 @@ type OpenCodeTUIDef struct {
 // handleGenerateOpenCode handles the --generate-opencode-config command
 // Generates OpenCode v1.1.30+ compatible configuration
 // Config file should be saved as opencode.json (WITHOUT leading dot) in ~/.config/opencode/
-// User must set LOCAL_ENDPOINT env var to HelixAgent URL (e.g., http://localhost:8100)
+// The endpoint is RESOLVED, not configured by hand: see helixAgentClientBaseURL
+// (config.Load(), the call run() binds from). The stale advice this line used
+// to give — set LOCAL_ENDPOINT to http://localhost:8100 — named a port this
+// binary does not serve.
 func handleGenerateOpenCode(appCfg *AppConfig) error {
 	logger := appCfg.Logger
 	if logger == nil {
@@ -2936,7 +3066,15 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 	// function. A local literal previously defaulted to "8100" while the
 	// server bound config.Load's "7061", so the config written for the user
 	// named a port this binary never listens on. See helixAgentServePort.
-	baseURL := helixAgentClientBaseURL(appCfg)
+	//
+	// The error is not cosmetic: a PORT that will not parse used to travel
+	// silently into the emitted baseURL here ("http://localhost:abc/v1",
+	// exit 0) while the sibling Crush generator refused the same input. Both
+	// now apply the one rule in helixAgentServePortNumber.
+	baseURL, err := helixAgentClientBaseURL(appCfg)
+	if err != nil {
+		return fmt.Errorf("cannot generate OpenCode config: %w", err)
+	}
 
 	// Get HelixLLM configuration from environment or .env file
 	envVarsAll := loadEnvVars()
@@ -2955,8 +3093,8 @@ func handleGenerateOpenCode(appCfg *AppConfig) error {
 		}
 	}
 
+	// err is already in scope from the baseURL resolution above.
 	var jsonData []byte
-	var err error
 
 	// Build OpenCode configuration.
 	// Single "HelixAgent" provider with TWO models under it:
@@ -3254,7 +3392,8 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Type:    "local",
 			Command: []string{"node", helixHome + "/plugins/mcp-server/dist/index.js", "--endpoint", baseURL},
 		},
-		// Remote protocol endpoints (running at port 8100)
+		// Remote protocol endpoints, built from the RESOLVED baseURL above —
+		// never a literal port (this comment previously named 8100).
 		"helixagent-mcp": {
 			Type: "remote",
 			URL:  baseURL + "/v1/mcp",
@@ -4305,21 +4444,20 @@ func handleGenerateCrush(appCfg *AppConfig) error {
 	// and the rationale on helixAgentServePort. This function previously
 	// carried its own "8100" literal that disagreed with the port the
 	// server actually listens on.
-	host := helixAgentClientHost()
-	port := helixAgentServePort(appCfg)
-
-	baseURL := fmt.Sprintf("http://%s:%s/v1", host, port)
-
 	// A PORT that will not parse is an operator configuration error the
 	// server itself would trip over. Surfacing it beats silently writing a
 	// fallback port number into the user's config — a silent fallback here
-	// is what shipped the wrong endpoint in the first place.
-	crushPortInt, err := strconv.Atoi(port)
+	// is what shipped the wrong endpoint in the first place. The parse now
+	// lives in helixAgentServePortNumber so every generator refuses the same
+	// input; this function's private strconv.Atoi was the only one that did,
+	// which is how the OpenCode generator came to accept "abc".
+	host := helixAgentClientHost()
+	crushPortInt, err := helixAgentServePortNumber(appCfg)
 	if err != nil {
-		return fmt.Errorf(
-			"cannot generate Crush config: resolved HelixAgent port %q is not "+
-				"a number (check PORT in the environment or .env): %w", port, err)
+		return fmt.Errorf("cannot generate Crush config: %w", err)
 	}
+
+	baseURL := fmt.Sprintf("http://%s:%d/v1", host, crushPortInt)
 
 	// Build the Crush configuration
 	// Crush uses a different structure than OpenCode - providers with models array
@@ -4367,7 +4505,7 @@ func handleGenerateCrush(appCfg *AppConfig) error {
 				Enabled: true,
 			},
 		},
-		Mcp:        getCrushMCPServers(fmt.Sprintf("http://%s:%s", host, port), *workingMCPsOnly),
+		Mcp:        getCrushMCPServers(fmt.Sprintf("http://%s:%d", host, crushPortInt), *workingMCPsOnly),
 		Plugins:    cliagents.DefaultPlugins(),
 		Extensions: cliagents.DefaultHelixAgentExtensions(host, crushPortInt),
 		Formatters: cliagents.DefaultFormattersConfig(host, crushPortInt),
@@ -4513,7 +4651,8 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		// HelixAgent Protocol Endpoints (7 MCPs) - LOCAL + REMOTE
 		// Local MCP plugin - runs the HelixAgent MCP server as a subprocess
 		"helixagent": {Type: "local", Command: []string{"node", helixHome + "/plugins/mcp-server/dist/index.js", "--endpoint", baseURL}, Enabled: true},
-		// Remote protocol endpoints (running at port 8100)
+		// Remote protocol endpoints, built from the RESOLVED baseURL above —
+		// never a literal port (this comment previously named 8100).
 		"helixagent-mcp":        {Type: "remote", URL: baseURL + "/v1/mcp", Enabled: true},
 		"helixagent-acp":        {Type: "remote", URL: baseURL + "/v1/acp", Enabled: true},
 		"helixagent-lsp":        {Type: "remote", URL: baseURL + "/v1/lsp", Enabled: true},
@@ -4932,14 +5071,46 @@ func handleGenerateAgentConfig(appCfg *AppConfig) error {
 		helixLLMAPIKey = val
 	}
 
-	// Build MCP server list: default + HelixLLM endpoints
-	mcpServers := cliagents.DefaultMCPServers()
+	// HelixAgent endpoint: resolved, never literal.
+	//
+	// This is the SAME resolution handleGenerateOpenCode and
+	// handleGenerateCrush use, applied here because this generator feeds the
+	// OTHER 47 agents — every one of which inherited the literal pair below
+	// and therefore aimed its user at a port this binary does not bind:
+	//
+	//	$ helixagent -generate-agent-config=aider | grep -o 'localhost:[0-9]*'
+	//	localhost:8100          <- while the server binds 7061
+	//	$ PORT=9999 helixagent -generate-agent-config=aider
+	//	localhost:8100          <- a literal, so PORT could not move it
+	//
+	// Fixing only the two generators that were reported left the defect
+	// shipping on every other agent; routing the fan-out through the same
+	// helpers makes all 48 agree BY CONSTRUCTION rather than one at a time.
+	agentHost := helixAgentClientHost()
+	agentPort, err := helixAgentServePortNumber(appCfg)
+	if err != nil {
+		return fmt.Errorf("cannot generate %s config: %w", agentType, err)
+	}
+
+	// Build MCP server list: default + HelixLLM endpoints.
+	//
+	// ForHost, not the no-argument DefaultMCPServers(): that wrapper is
+	// literally `DefaultMCPServersForHost("localhost", 8100)`, a SECOND
+	// hardcode independent of GeneratorConfig. Routing only the provider
+	// endpoint through the resolver left it emitting nine HelixAgent service
+	// URLs per agent on the wrong port — measured on the fixed build before
+	// this line changed: 423 residual `localhost:8100` occurrences across 47
+	// of the 48 files, every one of them a /v1/{mcp,acp,lsp,embeddings,
+	// vision,cognee,rag,formatters,monitoring} endpoint. The endpoints are
+	// the CLI agent's actual working surface, so a config whose provider URL
+	// is right and whose MCP URLs are wrong is still broken for the user.
+	mcpServers := cliagents.DefaultMCPServersForHost(agentHost, agentPort)
 	mcpServers = append(mcpServers, cliagents.HelixLLMMCPServers(helixLLMHost, helixLLMPort)...)
 
 	// Create generator with HelixAgent + HelixLLM settings
 	config := &cliagents.GeneratorConfig{
-		HelixAgentHost: "localhost",
-		HelixAgentPort: 8100,
+		HelixAgentHost: agentHost,
+		HelixAgentPort: agentPort,
 		HelixLLMHost:   helixLLMHost,
 		HelixLLMPort:   helixLLMPort,
 		HelixLLMAPIKey: helixLLMAPIKey,
@@ -5088,13 +5259,28 @@ func handleGenerateAllAgents(appCfg *AppConfig) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// HelixAgent endpoint: resolved, never literal — see the identical
+	// resolution in handleGenerateAgentConfig. This literal pair is what put
+	// the wrong endpoint into 47 of the 48 files this command writes (only
+	// opencode.json escaped, because it is delegated to the already-fixed
+	// handleGenerateOpenCode below).
+	allAgentsHost := helixAgentClientHost()
+	allAgentsPort, err := helixAgentServePortNumber(appCfg)
+	if err != nil {
+		return fmt.Errorf("cannot generate agent configs: %w", err)
+	}
+
 	// Create generator with HelixAgent settings
 	config := &cliagents.GeneratorConfig{
-		HelixAgentHost: "localhost",
-		HelixAgentPort: 8100,
+		HelixAgentHost: allAgentsHost,
+		HelixAgentPort: allAgentsPort,
 		OutputDir:      outputDir,
-		MCPServers:     cliagents.DefaultMCPServers(),
-		IncludeScores:  true,
+		// ForHost, not DefaultMCPServers() — see the note on the same call in
+		// handleGenerateAgentConfig: the no-argument wrapper hardcodes
+		// localhost:8100 and is a second, independent source of the wrong
+		// endpoint that routing GeneratorConfig alone does not reach.
+		MCPServers:    cliagents.DefaultMCPServersForHost(allAgentsHost, allAgentsPort),
+		IncludeScores: true,
 	}
 	generator := cliagents.NewUnifiedGenerator(config)
 

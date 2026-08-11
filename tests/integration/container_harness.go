@@ -32,6 +32,94 @@ type ContainerHarness struct {
 	servicesUp  map[string]bool
 	mu          sync.RWMutex
 	projectRoot string
+
+	// owned is the ONLY authority Cleanup consults before stopping
+	// anything. It is nil until THIS harness instance has itself run a
+	// ComposeUp that returned success, and it is cleared once that
+	// project has been torn down. See composeOwnership for why this
+	// replaced the previous liveness-probe guards.
+	owned *composeOwnership
+
+	// composeDown performs the actual teardown. It is a field rather
+	// than a direct h.Adapter.ComposeDown call so the destructive path
+	// is reachable from a test without a container runtime — the defect
+	// this indirection exists to guard is, by its nature, one that
+	// cannot be safely reproduced against a live stack.
+	composeDown func(ctx context.Context, composeFile, profile string) error
+}
+
+// composeOwnership records a compose project that THIS harness instance
+// provably started.
+//
+// # Why ownership is recorded rather than inferred (§11.4.111, §11.4.174)
+//
+// Cleanup previously decided whether it was allowed to run ComposeDown by
+// RE-DERIVING, at teardown time, the same three conditions BootAllServices
+// had consulted at boot time — an env var, a containers/.env flag, and a
+// bare TCP dial of localhost:8100. None of the three records what boot
+// actually DID; all three are re-evaluated against a world that may have
+// changed in between. The port probe was the worst of them on two counts:
+//
+//	(1) It asked the wrong question. "Something accepted a TCP connection"
+//	    is a liveness signal, never an ownership proof. Even a correct,
+//	    identity-verified probe of a real HelixAgent would not establish
+//	    that THIS harness started the containers — the two facts are
+//	    unrelated.
+//	(2) It asked the wrong process. Measured on this host 2026-08-11:
+//	    :8100 is held by llm-verifier (HTTP 404 "404 page not found"),
+//	    while the real HelixAgent answers on :7061 with
+//	    {"service":"helixagent","status":"healthy"}. The probe named in
+//	    the log line "HelixAgent still running on :8100" never reached
+//	    HelixAgent at all. See helixagent_identity.go for the same
+//	    identity-blindness class already fixed on the assertion side.
+//
+// The consequence was a teardown that ran ComposeDown over the WHOLE
+// docker-compose.yml project — postgres, redis, ollama, cognee, chromadb,
+// neo4j, the helixagent service itself — whenever that unrelated port
+// happened not to answer, despite the harness having started nothing. The
+// live platform survived only because a foreign process kept the port
+// occupied; that is a coincidence, not a guard.
+//
+// Recording ownership makes the failure structurally unreachable: if the
+// harness did not start a project, there is no ownership record, and
+// Cleanup has nothing it is permitted to stop. Boot-time conditions may
+// still skip the ComposeUp for any reason they like — the teardown
+// consequence is identical and automatic, because skipping the ComposeUp
+// is exactly what leaves ownership unrecorded.
+type composeOwnership struct {
+	// composeFile + profile identify the project to tear down. They are
+	// the values THIS harness passed to ComposeUp, not values re-read
+	// from configuration at teardown time.
+	composeFile string
+	profile     string
+	// startedAt is when the successful ComposeUp returned.
+	startedAt time.Time
+}
+
+// teardownDecision is the closed set of verdicts decideTeardown can reach.
+type teardownDecision string
+
+const (
+	// teardownStopOwned: this harness started a project and may stop it.
+	teardownStopOwned teardownDecision = "stop-owned-project"
+	// teardownSkipNotOwned: this harness started nothing. Anything that
+	// happens to be running belongs to somebody else.
+	teardownSkipNotOwned teardownDecision = "skip-nothing-owned"
+)
+
+// decideTeardown is the SOLE authority on whether Cleanup may stop
+// containers. It is a pure function of the ownership record and consults
+// nothing else — no environment, no configuration file, no network probe.
+// Adding any such input back would re-open the defect this replaced.
+func decideTeardown(owned *composeOwnership) (teardownDecision, string) {
+	if owned == nil {
+		return teardownSkipNotOwned,
+			"harness started no containers — skipping ComposeDown " +
+				"(nothing running here was started by this harness, so none of it is ours to stop)"
+	}
+	return teardownStopOwned, fmt.Sprintf(
+		"tearing down the compose project this harness started at %s (file=%s profile=%q)",
+		owned.startedAt.Format(time.RFC3339), owned.composeFile, owned.profile)
 }
 
 // RequiredServices lists all services needed for integration tests
@@ -116,23 +204,65 @@ func newContainerHarness() (*ContainerHarness, error) {
 		servicesUp:  make(map[string]bool),
 		projectRoot: projectRoot,
 	}
+	h.composeDown = func(ctx context.Context, composeFile, profile string) error {
+		return h.Adapter.ComposeDown(ctx, composeFile, profile)
+	}
 
 	return h, nil
+}
+
+// markOwned records that this harness successfully started composeFile.
+// Called only on the ComposeUp success path.
+func (h *ContainerHarness) markOwned(composeFile, profile string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.owned = &composeOwnership{
+		composeFile: composeFile,
+		profile:     profile,
+		startedAt:   time.Now(),
+	}
+}
+
+// ownership returns the current ownership record, or nil when this
+// harness has not started a compose project.
+func (h *ContainerHarness) ownership() *composeOwnership {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.owned
+}
+
+// releaseOwnership clears the record after a successful teardown so a
+// second Cleanup cannot stop a project twice.
+func (h *ContainerHarness) releaseOwnership() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.owned = nil
 }
 
 // BootAllServices starts all required services using the container adapter.
 // This ensures tests have access to real containers, not mocks.
 //
-// The harness is a no-op in any of these situations, which match the
-// container-orchestration rule from CLAUDE.md ("the HelixAgent binary
+// The harness skips the ComposeUp in any of these situations, which match
+// the container-orchestration rule from CLAUDE.md ("the HelixAgent binary
 // orchestrates all containers"):
 //   - HELIX_SKIP_CONTAINER_HARNESS is set (explicit opt-out)
 //   - CONTAINERS_REMOTE_ENABLED=true in containers/.env
 //     (all containers live on remote hosts; a local ComposeUp would
-//     duplicate them and almost certainly fail)
-//   - HelixAgent's own health endpoint is reachable on :8100
-//     (the binary is already running, which means it has already
-//     booted every required container via its own adapter)
+//     duplicate them and almost certainly fail). NOTE: this submodule's
+//     project root has no containers/ directory — per CONST-051(C) that
+//     dependency lives at the CONSUMING PROJECT's root, not nested here —
+//     so isRemoteContainersEnabled always reads a missing file and always
+//     returns false when the harness runs standalone. Stated as an
+//     observed fact rather than repaired by guessing a path outside the
+//     submodule, which would couple it to one consumer (CONST-051(B)).
+//   - something accepts a TCP connection on :8100. This is a weak,
+//     advisory signal ONLY — see helixAgentPortOpen for what it does and
+//     does not establish; on this host :8100 is llm-verifier, not
+//     HelixAgent.
+//
+// Each of these skips a START. None of them grants permission to STOP
+// anything: skipping the ComposeUp leaves no ownership record, which is
+// exactly what makes the matching Cleanup a no-op. See Cleanup.
 func (h *ContainerHarness) BootAllServices() error {
 	h.Logger.Info("╔══════════════════════════════════════════════════════════════════╗")
 	h.Logger.Info("║       CONTAINER TEST HARNESS - Booting Real Services             ║")
@@ -182,6 +312,13 @@ func (h *ContainerHarness) BootAllServices() error {
 		return fmt.Errorf("failed to start containers: %w", err)
 	}
 
+	// Ownership is recorded HERE — the moment ComposeUp succeeds, and
+	// before the health wait. These containers are ours from the instant
+	// they start, so a subsequent health-check failure must still leave
+	// Cleanup able to tear down what we brought up. Recording ownership
+	// only after the health wait would leak containers on that path.
+	h.markOwned(composeFile, "default")
+
 	// Wait for all services to be healthy
 	if err := h.waitForServicesHealthy(ctx); err != nil {
 		return fmt.Errorf("services failed health checks: %w", err)
@@ -214,11 +351,48 @@ func isRemoteContainersEnabled(projectRoot string) bool {
 	return false
 }
 
-// helixAgentPortOpen does a 2-second TCP probe against HelixAgent's
-// default port. Used as a positive signal that the full container
-// fleet is already up (since HelixAgent refuses to bind :8100 until
-// its own health-check harness has cleared every required service).
-func helixAgentPortOpen() bool {
+// helixAgentPortOpen does a 2-second TCP probe of localhost:8100.
+//
+// SCOPE: BOOT ONLY, AND ADVISORY ONLY. Its single caller is
+// BootAllServices, where a true result suppresses a ComposeUp. The worst
+// outcome of a wrong answer here is that containers are not started —
+// never that running containers are stopped. Cleanup does NOT consult
+// it; teardown authority comes solely from the ownership record
+// (composeOwnership / decideTeardown), and MUST NOT be given this or any
+// other probe as an input.
+//
+// WHAT THIS PROBE DOES NOT ESTABLISH (§11.4.6, §11.4.111, §11.4.174).
+// An earlier revision of this comment claimed the probe was "a positive
+// signal that the full container fleet is already up, since HelixAgent
+// refuses to bind :8100 until its own health-check harness has cleared
+// every required service". Measured on this host 2026-08-11, that is
+// false in both halves:
+//
+//	ss -ltnpH 'sport = :8100'  ->  users:(("llm-verifier",pid=1827554))
+//	ss -ltnpH 'sport = :7061'  ->  users:(("helixagent",pid=1834487))
+//	curl localhost:8100/health ->  HTTP 404, "404 page not found"
+//	curl localhost:7061/health ->  HTTP 200, {"service":"helixagent",...}
+//
+// HelixAgent does not bind :8100 at all — :8100 is a sentinel constant
+// (cmd/helixagent/main.go appConfigDefaultServerPort) and, on this host,
+// a port held by a different service. So a true result here means "some
+// process accepted a connection", not "HelixAgent is up", and certainly
+// not "every required container is healthy".
+//
+// The wrong port is tracked separately (it spans two repositories) and is
+// deliberately NOT changed here: making this probe stricter would flip
+// boot from skipping ComposeUp to RUNNING it against whatever is already
+// on the host, which is a new hazard rather than a fix. Leaving it
+// advisory keeps that decision where it belongs while removing its
+// ability to cause a destructive teardown.
+//
+// It is a package-level var (matching findProjectRoot below) so tests can
+// force BOTH probe states. That matters for the teardown guard: whether
+// the probe answers true or false is ambient host state no test controls
+// — :8100 is occupied on this host and may be free on another — so a
+// guard that could only observe one state would silently stop protecting
+// anything on hosts where the other state holds.
+var helixAgentPortOpen = func() bool {
 	conn, err := net.DialTimeout("tcp", "localhost:8100", 2*time.Second)
 	if err != nil {
 		return false
@@ -312,37 +486,56 @@ func (h *ContainerHarness) GetServiceURLWithMode(service string, useTestPorts bo
 	}
 }
 
-// Cleanup stops all container services. When the boot path was a
-// no-op (caller already running HelixAgent / remote-enabled mode),
-// cleanup is also a no-op — tearing down containers we did not
-// start would kill the user's live environment.
+// Cleanup stops the container services THIS harness started, and only
+// those. When the boot path did not run a ComposeUp — for any reason,
+// including every reason BootAllServices may skip it — there is no
+// ownership record and Cleanup is a no-op.
+//
+// Cleanup deliberately consults NOTHING except the ownership record: not
+// HELIX_SKIP_CONTAINER_HARNESS, not containers/.env, and above all not a
+// liveness probe of any port. Those boot-time conditions decide whether
+// to START containers; re-deriving them at teardown to decide whether to
+// STOP containers is what allowed a teardown to run ComposeDown across a
+// live platform the harness had never touched (see composeOwnership).
+// A condition that is true at boot and false at teardown — a service that
+// exited, a port that a foreign process released, a file that changed —
+// used to flip this from "skip" to "destroy". It no longer can: skipping
+// the ComposeUp is precisely what leaves ownership unrecorded, so the
+// skip and the no-op teardown are now the same fact rather than two
+// independent judgements that can disagree.
 func (h *ContainerHarness) Cleanup() error {
-	if os.Getenv("HELIX_SKIP_CONTAINER_HARNESS") != "" {
-		h.cancel()
-		return nil
-	}
-	if isRemoteContainersEnabled(h.projectRoot) {
-		h.Logger.Info("CONTAINERS_REMOTE_ENABLED=true — skipping local ComposeDown (remote containers owned by HelixAgent binary)")
-		h.cancel()
-		return nil
-	}
-	if helixAgentPortOpen() {
-		h.Logger.Info("HelixAgent still running on :8100 — skipping ComposeDown (not our containers to stop)")
+	owned := h.ownership()
+	decision, reason := decideTeardown(owned)
+
+	// Fail-safe backstop. decideTeardown is the authority, but the
+	// destructive call is additionally gated on the ownership record
+	// being physically present, so no future edit to the decision logic
+	// can reach ComposeDown without one. This is the structural form of
+	// the rule: if the harness did not start it, the harness cannot stop
+	// it — not "should not". A disagreement here is a bug in the caller,
+	// so it refuses and says so rather than panicking on a nil record.
+	if decision == teardownSkipNotOwned || owned == nil {
+		if owned == nil && decision != teardownSkipNotOwned {
+			h.Logger.Warnf("refusing teardown: decision %q was reached with no ownership record; "+
+				"teardown requires a project this harness started", decision)
+		} else {
+			h.Logger.Info(reason)
+		}
 		h.cancel()
 		return nil
 	}
 
-	h.Logger.Info("Cleaning up container services...")
+	h.Logger.Info(reason)
 
-	composeFile := "docker-compose.yml"
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	if err := h.Adapter.ComposeDown(ctx, composeFile, "default"); err != nil {
+	if err := h.composeDown(ctx, owned.composeFile, owned.profile); err != nil {
 		h.Logger.WithError(err).Warn("Failed to stop containers during cleanup")
 		return err
 	}
 
+	h.releaseOwnership()
 	h.cancel()
 	h.Logger.Info("✓ Container services stopped")
 	return nil

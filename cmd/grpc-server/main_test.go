@@ -107,7 +107,7 @@ func TestRound29_NoFabricated085FallbackInStreamingPaths(t *testing.T) {
 // with the 0.85 fabricated value.
 func TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence(t *testing.T) {
 	t.Parallel()
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	stream := &captureCompletionStream{ctx: context.Background()}
 
 	req := &pb.CompletionRequest{
@@ -124,7 +124,7 @@ func TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence(t *testing.T) {
 }
 
 func TestGrpcServer_Complete(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("basic completion request", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestGrpcServer_Complete(t *testing.T) {
 }
 
 func TestGrpcServer_Complete_RequestConversion(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("verifies request is properly converted", func(t *testing.T) {
@@ -196,7 +196,7 @@ func TestGrpcServer_Complete_RequestConversion(t *testing.T) {
 }
 
 func TestGrpcServer_Complete_ResponseFields(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	req := &pb.CompletionRequest{
@@ -217,7 +217,7 @@ func TestGrpcServer_Complete_ResponseFields(t *testing.T) {
 
 func TestGrpcServerStruct(t *testing.T) {
 	// Verify LLMFacadeServer struct can be instantiated
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	require.NotNil(t, server)
 }
 
@@ -402,7 +402,7 @@ func TestLLMProviderServerStruct(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkGrpcServer_Complete(b *testing.B) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	req := &pb.CompletionRequest{
@@ -438,7 +438,7 @@ func BenchmarkLLMProviderServer_Complete(b *testing.B) {
 // =============================================================================
 
 func TestLLMFacadeServer_CreateSession(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("create session with defaults", func(t *testing.T) {
@@ -481,7 +481,7 @@ func TestLLMFacadeServer_CreateSession(t *testing.T) {
 }
 
 func TestLLMFacadeServer_GetSession(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	// First create a session
@@ -534,7 +534,7 @@ func TestLLMFacadeServer_GetSession(t *testing.T) {
 }
 
 func TestLLMFacadeServer_TerminateSession(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("terminate existing session gracefully", func(t *testing.T) {
@@ -598,7 +598,7 @@ func TestLLMFacadeServer_TerminateSession(t *testing.T) {
 // =============================================================================
 
 func TestLLMFacadeServer_ListProviders(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("list empty providers", func(t *testing.T) {
@@ -650,7 +650,7 @@ func TestLLMFacadeServer_ListProviders(t *testing.T) {
 }
 
 func TestLLMFacadeServer_AddProvider(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("add valid provider", func(t *testing.T) {
@@ -712,7 +712,7 @@ func TestLLMFacadeServer_AddProvider(t *testing.T) {
 }
 
 func TestLLMFacadeServer_UpdateProvider(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	// First add a provider
@@ -780,7 +780,7 @@ func TestLLMFacadeServer_UpdateProvider(t *testing.T) {
 }
 
 func TestLLMFacadeServer_RemoveProvider(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("remove disabled provider", func(t *testing.T) {
@@ -880,7 +880,7 @@ func TestLLMFacadeServer_RemoveProvider(t *testing.T) {
 // =============================================================================
 
 func TestLLMFacadeServer_HealthCheck(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("basic health check", func(t *testing.T) {
@@ -933,7 +933,7 @@ func TestLLMFacadeServer_HealthCheck(t *testing.T) {
 }
 
 func TestLLMFacadeServer_GetMetrics(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 	ctx := context.Background()
 
 	t.Run("get metrics default time range", func(t *testing.T) {
@@ -987,7 +987,7 @@ func TestLLMFacadeServer_GetMetrics(t *testing.T) {
 // =============================================================================
 
 func TestLLMFacadeServer_recordSuccess(t *testing.T) {
-	server := NewLLMFacadeServer()
+	server := NewLLMFacadeServer(nil)
 
 	// Record some successes
 	server.recordRequest()

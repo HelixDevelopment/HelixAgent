@@ -33,7 +33,28 @@ import (
 type LLMFacadeServer struct {
 	pb.UnimplementedLLMFacadeServer
 
-	// Provider management
+	// Provider registry — the live, credential-injected providers this
+	// server completes against. Held for exactly the same reason
+	// LLMProviderServer holds it, and supplied the same way: as a
+	// constructor parameter from main(), which builds ONE registry and
+	// hands the same instance to both services.
+	//
+	// Its absence was HXC-271. LLMFacade is the service the published
+	// interface presents first, so an integrator reaches for it
+	// naturally — and every Complete / CompleteStream / Chat it served
+	// failed on every machine, however well configured, because the
+	// handlers fell through to the package-level llm.RunEnsemble, which
+	// is hardcoded to pass a nil provider slice and refuses on an empty
+	// one. The refusal even blames the caller ("use
+	// services.ProviderRegistry for proper credential injection"), which
+	// is why the defect survived: it reads as misconfiguration at the
+	// far end rather than a missing wire at this one.
+	registry *services.ProviderRegistry
+
+	// Provider management — descriptive metadata registered over the
+	// wire via AddProvider. Distinct from `registry` above: this store
+	// records what a caller SAID about a provider, not the live
+	// credential-injected clients completions are routed to.
 	providers *safe.Store[string, *ProviderInfo]
 
 	// Session management
@@ -86,14 +107,60 @@ type ServerMetrics struct {
 	ActiveProviders    int64
 }
 
-// NewLLMFacadeServer creates a new gRPC server instance
-func NewLLMFacadeServer() *LLMFacadeServer {
+// NewLLMFacadeServer creates a new gRPC server instance.
+//
+// The signature mirrors NewLLMProviderServer deliberately. Both services are
+// completion front-ends over the same providers, so both take the registry the
+// same way; a reader comparing them can see at the call site whether each got
+// it. Passing nil is a registry-less server whose completion methods refuse —
+// the pre-HXC-271 behaviour, kept as an honest degenerate mode (and as the
+// RED baseline the wiring guard replays), never as the wiring main() uses.
+func NewLLMFacadeServer(registry *services.ProviderRegistry) *LLMFacadeServer {
 	return &LLMFacadeServer{
+		registry:  registry,
 		providers: safe.NewStore[string, *ProviderInfo](),
 		sessions:  safe.NewStore[string, *SessionInfo](),
 		metrics:   &ServerMetrics{},
 		startTime: time.Now(),
 	}
+}
+
+// runEnsembleVia routes one completion to the live providers.
+//
+// This is the single routing decision both gRPC services share. It existed
+// before HXC-271 too — but as a copy-pasted block inside LLMProviderServer's
+// two methods and nowhere inside LLMFacadeServer's three, which is precisely
+// how one family came to work and the other could not. Two services publishing
+// the same capability had two answers to "where do providers come from", and
+// only one of them was wired.
+//
+// Extracting it makes the recurrence structurally harder rather than merely
+// less likely: a future completion method routes providers by calling this, so
+// the way to write a broken one is to not call it at all — visible in review —
+// instead of to omit a field from a struct literal, which is invisible.
+//
+// The fallback to the package-level llm.RunEnsemble is preserved verbatim from
+// LLMProviderServer, degenerate result included: a nil result with a nil error
+// yields (nil, nil, nil), the empty-but-not-failed path the round-29 callers
+// already log rather than dress up with a fabricated confidence.
+func runEnsembleVia(
+	ctx context.Context,
+	registry *services.ProviderRegistry,
+	req *models.LLMRequest,
+) ([]*models.LLMResponse, *models.LLMResponse, error) {
+	if registry != nil {
+		if ensembleService := registry.GetEnsembleService(); ensembleService != nil {
+			result, err := ensembleService.RunEnsemble(ctx, req)
+			if err != nil {
+				return nil, nil, err
+			}
+			if result != nil {
+				return result.Responses, result.Selected, nil
+			}
+			return nil, nil, nil
+		}
+	}
+	return llm.RunEnsemble(req)
 }
 
 // Complete implements standard completion request
@@ -123,7 +190,7 @@ func (s *LLMFacadeServer) Complete(ctx context.Context, req *pb.CompletionReques
 		CreatedAt:      time.Now(),
 	}
 
-	responses, selected, err := llm.RunEnsemble(internal)
+	responses, selected, err := runEnsembleVia(ctx, s.registry, internal)
 	latency := time.Since(start).Milliseconds()
 
 	if err != nil {
@@ -172,7 +239,7 @@ func (s *LLMFacadeServer) CompleteStream(req *pb.CompletionRequest, stream grpc.
 	}
 
 	// Run the ensemble for the streaming completion.
-	responses, selected, err := llm.RunEnsemble(internal)
+	responses, selected, err := runEnsembleVia(stream.Context(), s.registry, internal)
 	if err != nil {
 		s.recordFailure(0)
 		return err
@@ -262,7 +329,7 @@ func (s *LLMFacadeServer) Chat(req *pb.ChatRequest, stream grpc.ServerStreamingS
 		CreatedAt:      time.Now(),
 	}
 
-	responses, selected, err := llm.RunEnsemble(internal)
+	responses, selected, err := runEnsembleVia(stream.Context(), s.registry, internal)
 	if err != nil {
 		s.recordFailure(0)
 		return err
@@ -800,27 +867,7 @@ func (s *LLMProviderServer) Complete(ctx context.Context, req *pb.CompletionRequ
 		CreatedAt:      time.Now(),
 	}
 
-	// Use provider registry if available, otherwise use ensemble
-	var responses []*models.LLMResponse
-	var selected *models.LLMResponse
-	var err error
-
-	if s.registry != nil {
-		ensembleService := s.registry.GetEnsembleService()
-		if ensembleService != nil {
-			result, execErr := ensembleService.RunEnsemble(ctx, internal)
-			if execErr != nil {
-				err = execErr
-			} else if result != nil {
-				responses = result.Responses
-				selected = result.Selected
-			}
-		} else {
-			responses, selected, err = llm.RunEnsemble(internal)
-		}
-	} else {
-		responses, selected, err = llm.RunEnsemble(internal)
-	}
+	responses, selected, err := runEnsembleVia(ctx, s.registry, internal)
 
 	latency := time.Since(start).Milliseconds()
 
@@ -870,27 +917,7 @@ func (s *LLMProviderServer) CompleteStream(req *pb.CompletionRequest, stream grp
 		CreatedAt:      time.Now(),
 	}
 
-	// Use provider registry if available
-	var responses []*models.LLMResponse
-	var selected *models.LLMResponse
-	var err error
-
-	if s.registry != nil {
-		ensembleService := s.registry.GetEnsembleService()
-		if ensembleService != nil {
-			result, execErr := ensembleService.RunEnsemble(stream.Context(), internal)
-			if execErr != nil {
-				err = execErr
-			} else if result != nil {
-				responses = result.Responses
-				selected = result.Selected
-			}
-		} else {
-			responses, selected, err = llm.RunEnsemble(internal)
-		}
-	} else {
-		responses, selected, err = llm.RunEnsemble(internal)
-	}
+	responses, selected, err := runEnsembleVia(stream.Context(), s.registry, internal)
 
 	if err != nil {
 		s.recordProviderFailure(0)
@@ -1225,6 +1252,30 @@ func startupBanner(addr string) string {
 	return fmt.Sprintf("HelixAgent gRPC server listening on %s", addr)
 }
 
+// registerGRPCServices wires every service this binary publishes onto srv,
+// against ONE provider registry.
+//
+// Extracted for the same reason startupBanner takes its address as an
+// argument: so the wiring cannot drift from what it is supposed to wire.
+// Previously main() constructed the registry and then passed it to one of the
+// two services it registered — nothing in the program stated that both were
+// meant to have it, so nothing noticed that one did not (HXC-271).
+//
+// Taking the registry ONCE, for all services, is the load-bearing part. There
+// is no longer a per-service decision to get wrong: a service registered here
+// is registered against this registry or it is not registered at all. It also
+// gives the wiring a behavioural test — a test can hand this function a
+// registry holding a known provider, serve the result, and ask both families
+// for a completion — where before, main()'s wiring could only be grepped, and
+// a grep for a field cannot tell a wired field from a wired-to-nothing one.
+//
+// srv is a grpc.ServiceRegistrar rather than a *grpc.Server so the test drives
+// the real registration path without owning a listener it does not need.
+func registerGRPCServices(srv grpc.ServiceRegistrar, registry *services.ProviderRegistry) {
+	pb.RegisterLLMFacadeServer(srv, NewLLMFacadeServer(registry))
+	pb.RegisterLLMProviderServer(srv, NewLLMProviderServer(registry))
+}
+
 func main() {
 	addr := grpcListenAddr()
 
@@ -1245,13 +1296,8 @@ func main() {
 	registryConfig := services.LoadRegistryConfigFromAppConfig(nil)
 	providerRegistry := services.NewProviderRegistry(registryConfig, nil)
 
-	// Create and register LLMFacade server
-	llmServer := NewLLMFacadeServer()
-	pb.RegisterLLMFacadeServer(grpcServer, llmServer)
-
-	// Create and register LLMProvider server
-	providerServer := NewLLMProviderServer(providerRegistry)
-	pb.RegisterLLMProviderServer(grpcServer, providerServer)
+	// Register every published service against that one registry.
+	registerGRPCServices(grpcServer, providerRegistry)
 
 	log.Println(startupBanner(addr))
 	log.Println("Registered services: LLMFacade, LLMProvider")

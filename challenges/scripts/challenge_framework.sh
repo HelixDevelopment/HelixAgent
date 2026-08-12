@@ -31,9 +31,50 @@ init_challenge() {
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-    # Create output directory with timestamp
+    # Create output directory with timestamp.
+    #
+    # HXC-272 defect 1 (shared results folder). TIMESTAMP used to be the
+    # WHOLE of OUTPUT_DIR's leaf component, with nothing appended for
+    # uniqueness — two challenges (or two runs of the same challenge) that
+    # started within the same wall-clock second computed the IDENTICAL
+    # OUTPUT_DIR and therefore shared one assertions.log. finalize_challenge()
+    # decides its verdict by grep -c'ing PASSED/FAILED/SKIPPED lines out of
+    # that log, so a same-second collision let one run inherit a neighbour's
+    # outcomes in BOTH directions: inherited FAILED lines could flip a
+    # healthy run red, and — the dangerous direction — inherited PASSED lines
+    # could flip a run that verified nothing into a reported success.
+    #
+    # Fix: TIMESTAMP itself is UNCHANGED (still the leading, human-readable,
+    # chronologically-sortable component every existing consumer relies on —
+    # the "Output directory:" log line, `ls -t`/`ls -td` recency listings,
+    # CATALOG.md's documented "find latest results directory" recipe); the
+    # directory `mkdir` actually creates is made collision-proof by
+    # CONSTRUCTION rather than by lower-probability entropy. `mkdir` (no -p
+    # on the leaf) either wins a path that provably did not exist a moment
+    # ago or fails with EEXIST — that is an OS-enforced guarantee, so two
+    # processes racing on the identical second can never both "win" the same
+    # directory. A PID + nanosecond + $RANDOM suffix makes collisions
+    # astronomically unlikely on the first attempt; the retry loop is what
+    # makes non-collision a certainty rather than a probability.
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    OUTPUT_DIR="$PROJECT_ROOT/challenges/results/${CHALLENGE_ID}/${TIMESTAMP}"
+    local _results_root="$PROJECT_ROOT/challenges/results/${CHALLENGE_ID}"
+    mkdir -p "$_results_root"
+    local _attempt=0
+    local _nanos _suffix _candidate
+    while :; do
+        _nanos=$(date +%N 2>/dev/null || echo 0)
+        _suffix="$$_${_nanos}_${RANDOM}${RANDOM}"
+        _candidate="${_results_root}/${TIMESTAMP}_${_suffix}"
+        if mkdir "$_candidate" 2>/dev/null; then
+            OUTPUT_DIR="$_candidate"
+            break
+        fi
+        _attempt=$((_attempt + 1))
+        if [[ $_attempt -ge 50 ]]; then
+            echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') could not allocate a unique challenge results directory under $_results_root after $_attempt attempts" >&2
+            return 1
+        fi
+    done
     mkdir -p "$OUTPUT_DIR/logs" "$OUTPUT_DIR/results"
 
     LOG_FILE="$OUTPUT_DIR/logs/${CHALLENGE_ID}.log"
@@ -469,9 +510,32 @@ EOF
 \`$OUTPUT_DIR\`
 EOF
 
-    # Create symlink to latest
+    # Update the "latest" convenience pointer.
+    #
+    # HXC-272 defect 2 (stale "latest" pointer). `ln -sf SRC DEST` does NOT
+    # unconditionally repoint DEST: when DEST already exists as a symlink to
+    # a directory, `ln` dereferences it, finds a directory, and creates a NEW
+    # link named basename(SRC) INSIDE that directory instead of replacing
+    # DEST. From the second run of a day onward this dropped every later
+    # run's pointer INSIDE the FIRST run's own results folder — `latest`
+    # never moved — and every one of those writes bumped that folder's
+    # mtime, so recency-by-mtime listings (e.g. `ls -td .../*/ | head -1`,
+    # CATALOG.md's documented "find latest results directory" recipe) also
+    # kept returning the first run forever. Both consumers of "the most
+    # recent run" were silently wrong.
+    #
+    # Fix: remove whatever currently occupies "latest" (absent, a stale
+    # symlink, or — defensively — a stray regular file) FIRST, then create
+    # the symlink fresh. There is then nothing for `ln -s` to dereference, so
+    # the replacement is unconditional regardless of what "latest" used to
+    # be. And because a finished run's own directory is never written into
+    # again by a later run, its mtime stops being disturbed — ordinary
+    # recency-by-mtime listings start returning the genuinely newest run too,
+    # with no separate fix needed for that consumer.
+    local _latest_link="$PROJECT_ROOT/challenges/results/${CHALLENGE_ID}/latest"
     mkdir -p "$PROJECT_ROOT/challenges/results/${CHALLENGE_ID}"
-    ln -sf "$OUTPUT_DIR" "$PROJECT_ROOT/challenges/results/${CHALLENGE_ID}/latest"
+    rm -f "$_latest_link"
+    ln -s "$OUTPUT_DIR" "$_latest_link"
 
     if [[ "$status" == "PASSED" ]]; then
         log_success "Challenge $CHALLENGE_NAME completed: $status (${duration}s)"

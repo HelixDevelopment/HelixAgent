@@ -72,8 +72,10 @@ func (c *captureChatStream) RecvMsg(any) error            { return nil }
 // This test reads the grpc-server main.go source and asserts no
 // `Confidence: 0.85` or `confidence float64 = 0.85` literal
 // resurfaces. It is a structural regression guard, NOT a wire-
-// evidence behavioural test — see TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence
-// for the behavioural counterpart.
+// evidence behavioural test — the behavioural counterparts live in
+// facade_stream_confidence_test.go
+// (TestHXC281_CompleteStreamChunksCarryOnlyProviderSuppliedConfidence
+// and TestHXC281_ChatChunksCarryOnlyProviderSuppliedConfidence).
 func TestRound29_NoFabricated085FallbackInStreamingPaths(t *testing.T) {
 	t.Parallel()
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -96,32 +98,16 @@ func TestRound29_NoFabricated085FallbackInStreamingPaths(t *testing.T) {
 	assert.True(t, strings.Contains(srcStr, "fabricated 0.85 fallback"), "round-29 anti-bluff log line removed from grpc-server/main.go; if the comment/log line is rewritten, update this assertion to track the new sentinel string")
 }
 
-// TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence
-// exercises the LLMFacadeServer.Chat streaming path with no
-// providers configured (so RunEnsemble returns an error) — the
-// fix's behavioural counterpart to the structural scan above. The
-// pre-round-29 code would have fabricated Confidence=0.85 on every
-// chunk; the round-29 code surfaces the error from RunEnsemble (no
-// chunks sent at all, since the function returns before the
-// chunking loop). This test pins that no chunk is ever emitted
-// with the 0.85 fabricated value.
-func TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence(t *testing.T) {
-	t.Parallel()
-	server := NewLLMFacadeServer(nil)
-	stream := &captureCompletionStream{ctx: context.Background()}
-
-	req := &pb.CompletionRequest{
-		SessionId: "sess",
-		Prompt:    "anything",
-	}
-	// CompleteStream returns the ensemble error (since no providers
-	// are wired) — chunks slice stays empty.
-	_ = server.CompleteStream(req, stream)
-
-	for i, ch := range stream.chunks {
-		require.NotEqual(t, 0.85, ch.Confidence, "chunk %d carried fabricated 0.85 confidence — round-29 §11.4 anti-bluff regression in the LLMFacadeServer.CompleteStream path", i)
-	}
-}
+// The behavioural round-29 guard that used to live here —
+// TestRound29_ChatStreamDegeneratePath_NoFabricatedConfidence — was
+// replaced under HXC-281, not deleted. It built the server with no
+// registry, so the method returned before the chunking loop and its
+// per-chunk assertion looped over a permanently empty slice; it was
+// also named for Chat while driving CompleteStream. Its coverage now
+// lives in facade_stream_confidence_test.go, split per streaming
+// method and driven by a registry-backed provider that actually
+// streams chunks. The capture streams above are the scaffolding those
+// guards use.
 
 func TestGrpcServer_Complete(t *testing.T) {
 	server := NewLLMFacadeServer(nil)

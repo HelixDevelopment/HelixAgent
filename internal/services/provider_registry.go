@@ -386,7 +386,37 @@ func newProviderRegistry(cfg *RegistryConfig, memory *MemoryService, enableAutoD
 	return registry
 }
 
-// initAutoDiscovery initializes the auto-discovery service and discovers providers from env vars
+// initAutoDiscovery initializes the auto-discovery service and discovers
+// providers from env vars.
+//
+// HXC-274: this function used to call r.discovery.DiscoverProviders(),
+// which — for every credential it found — invoked that provider's
+// GetCapabilities(), and for ~40 of the ~45 supported provider types that
+// method makes a real outbound HTTP call (the provider's own /v1/models
+// endpoint, then models.dev on failure; see
+// internal/llm/discovery.Discoverer.DiscoverModels and
+// ProviderDiscovery.DiscoverProviderCredentials's doc for the full chain).
+// Registry construction runs on every call to NewProviderRegistry —
+// including the one in cmd/grpc-server/main.go's main(), before the
+// listener is even serving — so a server start-up with live provider
+// credentials in the environment was silently spending API quota and
+// serially paying every provider's round-trip latency (observed ~18s
+// across seven live-credentialed providers) before accepting its first
+// request. DiscoverProviderCredentials returns the identical discovered-
+// provider set (same names, same constructed clients, same registration
+// behaviour below) with zero outbound calls; only Capabilities/
+// SupportsModels are left unpopulated, and nothing in this function reads
+// either field, so this is not a behavioural change for the caller.
+//
+// Do not change this back to DiscoverProviders() to "keep capabilities
+// available at start-up" — that is precisely the eager-network-call default
+// this fix removes. A caller that genuinely wants live capability/model
+// data gets it by calling GetCapabilities() on the specific provider it
+// cares about, or by driving the explicit, operator-triggered
+// POST /v1/providers/rediscover path (internal/handlers/provider_management
+// .go ReDiscoverProviders), which still calls DiscoverProviders() and is
+// exactly the "explicitly asked to" opt-in HXC-274's acceptance criteria
+// describes.
 func (r *ProviderRegistry) initAutoDiscovery(logger *logrus.Logger) {
 	if !r.autoDiscovery {
 		return
@@ -395,8 +425,9 @@ func (r *ProviderRegistry) initAutoDiscovery(logger *logrus.Logger) {
 	// Create discovery service (verify on startup disabled - we'll do it on-demand)
 	r.discovery = NewProviderDiscovery(logger, false)
 
-	// Discover providers from environment variables
-	discovered, err := r.discovery.DiscoverProviders()
+	// Discover which providers have credentials present in the environment
+	// WITHOUT making any outbound network call (HXC-274 — see doc above).
+	discovered, err := r.discovery.DiscoverProviderCredentials()
 	if err != nil {
 		logger.WithError(err).Warn("Provider auto-discovery failed")
 		return

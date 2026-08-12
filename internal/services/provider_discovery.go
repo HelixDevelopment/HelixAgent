@@ -68,10 +68,27 @@ type LLMsVerifierScoreProvider interface {
 // useDynamicScoring scalar fields; it no longer pairs with any bare
 // map/slice field.
 type ProviderDiscovery struct {
-	providers         *safe.Store[string, *DiscoveredProvider]
-	scores            *safe.Store[string, *ProviderScore]
-	configMu          sync.RWMutex
-	log               *logrus.Logger
+	providers *safe.Store[string, *DiscoveredProvider]
+	scores    *safe.Store[string, *ProviderScore]
+	configMu  sync.RWMutex
+	log       *logrus.Logger
+	// verifyOnStartup is stored but not read anywhere in this package (and
+	// has not been since this file entered this repository's history). Its
+	// name reads as though it gates the real "do you see my code?"
+	// verification pass (VerifyAllProviders / verifyProvider below) or the
+	// outbound capability/model-enumeration calls DiscoverProviders makes —
+	// it gates neither. HXC-274's own forensic note calls this out
+	// explicitly: a reader who takes the name at face value concludes
+	// discovery has no outbound side effect, which is false. The real gate
+	// for the outbound-call side effect is the fetchCapabilities parameter
+	// on discoverProvidersLocked, threaded through the two exported entry
+	// points below (DiscoverProviders / DiscoverProviderCredentials) — not
+	// this field. Left in place rather than removed because every call site
+	// (production and test) already passes it, none of them observe any
+	// behavioural difference from its value, and deleting the parameter
+	// would touch call sites outside this fix's scope for no behavioural
+	// gain; do not add new logic that reads it without re-verifying it
+	// still means nothing everywhere it is set.
 	verifyOnStartup   bool
 	verifierScores    LLMsVerifierScoreProvider // Dynamic LLMsVerifier score provider
 	useDynamicScoring bool                      // Use LLMsVerifier scores instead of hardcoded
@@ -406,8 +423,65 @@ func (pd *ProviderDiscovery) EnableDynamicScoring(enabled bool) {
 	pd.useDynamicScoring = enabled && pd.verifierScores != nil
 }
 
-// DiscoverProviders scans environment variables and discovers available providers
+// DiscoverProviders scans environment variables and discovers available
+// providers, ALSO fetching each discovered provider's live capabilities
+// (SupportedModels) via a real, credentialed outbound network call. See
+// discoverProvidersLocked for exactly why that call is expensive and
+// side-effecting (HXC-274).
+//
+// Use this when a caller deliberately wants fresh, live model data — e.g.
+// the operator-triggered POST /v1/providers/rediscover handler
+// (internal/handlers/provider_management.go ReDiscoverProviders), which is
+// precisely the "explicitly asked to" case HXC-274's acceptance criteria
+// carves out. Registry construction at process start-up MUST NOT use this
+// — use DiscoverProviderCredentials instead, which returns the identical
+// provider set with zero outbound calls.
 func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) {
+	return pd.discoverProvidersLocked(true)
+}
+
+// DiscoverProviderCredentials scans environment variables and constructs a
+// DiscoveredProvider for every credential it finds — IDENTICAL to
+// DiscoverProviders except that it never calls a discovered provider's
+// GetCapabilities() method, so it performs NO outbound network I/O of any
+// kind. Capabilities and SupportsModels are left nil/empty on every
+// returned entry. A caller that later wants a provider's live model list
+// gets it by calling GetCapabilities() on that specific *DiscoveredProvider
+// .Provider itself (or by calling DiscoverProviders explicitly) — a
+// deliberate, on-demand choice rather than an unconditional side effect of
+// discovery.
+//
+// HXC-274: this is what registry construction (NewProviderRegistry, via
+// initAutoDiscovery in provider_registry.go) MUST use, and does. A
+// provider's GetCapabilities() method reads like a cheap, static getter;
+// for every provider createProvider (below) wires through
+// internal/llm/discovery.Discoverer — currently ~40 of the ~45 supported
+// provider types, including every one of Anthropic/Claude, DeepSeek,
+// Gemini, Mistral, OpenAI, OpenRouter, Groq and most of the smaller
+// providers — it is not: GetCapabilities() calls Discoverer.DiscoverModels()
+// (internal/llm/discovery/discovery.go), which performs a real HTTP request
+// to the provider's own /v1/models-style endpoint using whatever credential
+// DiscoverProviders found in the environment (Tier 1), and — on failure or
+// an empty result — a real HTTP request to the models.dev model catalogue,
+// a third party (Tier 2). DiscoverProviders calls GetCapabilities for
+// every provider it discovers, so simply constructing a registry while live
+// credentials are present used to make that many real, ambient-credentialed
+// outbound calls, serially, before the server had served a single request.
+func (pd *ProviderDiscovery) DiscoverProviderCredentials() ([]*DiscoveredProvider, error) {
+	return pd.discoverProvidersLocked(false)
+}
+
+// discoverProvidersLocked is the single shared implementation behind
+// DiscoverProviders and DiscoverProviderCredentials. fetchCapabilities is
+// the ONLY difference between them: whether each discovered provider's
+// GetCapabilities() is invoked — the sole source of outbound network I/O in
+// this function (see the two exported wrappers' docs above). Keeping one
+// implementation with one gate, rather than two near-duplicate bodies, is
+// deliberate: a second hand-copied body is exactly how a future change to
+// the credential-scanning logic (a new provider mapping, a new OAuth
+// source) would silently reintroduce the eager-call defect in one path
+// while a reviewer's attention was on the other.
+func (pd *ProviderDiscovery) discoverProvidersLocked(fetchCapabilities bool) ([]*DiscoveredProvider, error) {
 	pd.configMu.Lock()
 	defer pd.configMu.Unlock()
 
@@ -456,7 +530,13 @@ func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) 
 			Verified:     false,
 		}
 
-		if provider != nil {
+		// HXC-274: this is the ONLY line in the whole function that can
+		// perform outbound network I/O — see discoverProvidersLocked's doc.
+		// It MUST stay gated by fetchCapabilities; do not hoist it out of
+		// the conditional "to simplify", and do not add a second,
+		// unconditional call to GetCapabilities() elsewhere in this
+		// function for a future provider source.
+		if fetchCapabilities && provider != nil {
 			dp.Capabilities = provider.GetCapabilities()
 			if dp.Capabilities != nil {
 				dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
@@ -469,7 +549,7 @@ func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) 
 	}
 
 	// Discover OAuth-based providers (Claude Code and Qwen Code CLI)
-	oauthProviders := pd.discoverOAuthProviders(seen)
+	oauthProviders := pd.discoverOAuthProviders(seen, fetchCapabilities)
 	for _, dp := range oauthProviders {
 		pd.providers.Put(dp.Name, dp)
 		discovered = append(discovered, dp)
@@ -480,8 +560,21 @@ func (pd *ProviderDiscovery) DiscoverProviders() ([]*DiscoveredProvider, error) 
 	return discovered, nil
 }
 
-// discoverOAuthProviders discovers providers using OAuth credentials from CLI agents
-func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*DiscoveredProvider {
+// discoverOAuthProviders discovers providers using OAuth credentials from
+// CLI agents. fetchCapabilities is threaded through from
+// discoverProvidersLocked purely for uniformity with the credentialed-
+// provider loop above: today, every GetCapabilities() implementation
+// reachable from here (ClaudeCLIProvider, QwenCLIProvider, and every Zen
+// variant) returns a hardcoded, static capability list with no network
+// call, so gating them changes no *current* outbound-call behaviour. It is
+// still gated, rather than left unconditional, so the credentials-only
+// contract stays simple and uniform ("fetchCapabilities=false never
+// populates Capabilities, from any source") instead of a partial rule a
+// future reader would have to rediscover is safe only by re-checking every
+// implementation — and so a future OAuth-discovered provider type that DOES
+// wire a network-calling GetCapabilities() (matching the other ~40) is
+// covered by the same gate from the day it is added, not exempt by omission.
+func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool, fetchCapabilities bool) []*DiscoveredProvider {
 	discovered := make([]*DiscoveredProvider, 0)
 	oauthReader := oauth_credentials.GetGlobalReader()
 
@@ -521,7 +614,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 						Verified:     false,
 					}
 
-					if cliProvider != nil {
+					if fetchCapabilities && cliProvider != nil {
 						dp.Capabilities = cliProvider.GetCapabilities()
 						if dp.Capabilities != nil {
 							dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
@@ -581,7 +674,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 						Verified:     false,
 					}
 
-					if cliProvider != nil {
+					if fetchCapabilities && cliProvider != nil {
 						dp.Capabilities = cliProvider.GetCapabilities()
 						if dp.Capabilities != nil {
 							dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)
@@ -664,7 +757,7 @@ func (pd *ProviderDiscovery) discoverOAuthProviders(seen map[string]bool) []*Dis
 				Verified:     false,
 			}
 
-			if provider != nil { //nolint:govet
+			if fetchCapabilities && provider != nil { //nolint:govet
 				dp.Capabilities = provider.GetCapabilities()
 				if dp.Capabilities != nil {
 					dp.SupportsModels = safe.NewSlice(dp.Capabilities.SupportedModels...)

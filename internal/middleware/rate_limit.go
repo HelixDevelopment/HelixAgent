@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -254,15 +255,82 @@ func (rl *RateLimiter) getConfig(path string) *RateLimitConfig {
 	return rl.defaultCfg
 }
 
-// defaultKeyFunc generates a default rate limit key based on IP address
+// defaultKeyFunc generates a default rate limit key based on IP address.
+//
+// HXC-283: the caller's identity MUST be taken apart with the standard
+// host/port routine (net.SplitHostPort), never a home-grown split and never
+// by trusting an unparsed fallback string, so one real caller always yields
+// exactly one rate-limit identity, regardless of the shape its address
+// happens to arrive in.
+//
+// gin.Context.ClientIP() already runs net.SplitHostPort internally and also
+// honours any configured trusted-proxy forwarding headers, so it is the
+// preferred path whenever it resolves to a bare numeric IP. It legitimately
+// returns "" not only for malformed input but also for entirely real
+// addresses it does not itself resolve to a bare IP: an RFC-4007
+// zone-qualified IPv6 literal such as "fe80::1%eth0" (net.ParseIP rejects
+// the zone suffix), or a hostname-shaped RemoteAddr. The PRE-FIX code fell
+// through to the raw, unparsed c.Request.RemoteAddr on that path, which
+// leaked the ephemeral source port (and, for a bracketed IPv6 literal, the
+// square brackets) into the identity — and since the source port differs on
+// every TCP connection, the SAME caller derived a brand-new identity (and
+// therefore a fresh, full token bucket) on every single request, bypassing
+// the limit entirely. This is closed below by applying net.SplitHostPort
+// ourselves whenever ClientIP() could not, rather than ever trusting the
+// unparsed string.
 func defaultKeyFunc(c *gin.Context) string {
-	// Try to get real IP
-	ip := c.ClientIP()
-	if ip == "" {
-		ip = c.Request.RemoteAddr
+	if ip := c.ClientIP(); ip != "" {
+		return "ip:" + ip
 	}
 
-	return "ip:" + ip
+	raw := c.Request.RemoteAddr
+
+	// ClientIP() failed. Take the address apart ourselves with the standard
+	// routine rather than falling through to the raw string. This succeeds
+	// for exactly the cases ClientIP() rejects but SplitHostPort itself can
+	// still split cleanly: hostnames and zone-qualified IPv6 literals, both
+	// with a port present. net.SplitHostPort always returns the host
+	// UNBRACKETED, so no extra bracket-stripping is needed here.
+	if host, _, err := net.SplitHostPort(raw); err == nil {
+		if host == "" {
+			// A port was present but the host portion was empty (e.g.
+			// ":54321"). There is no caller identity to extract here at
+			// all; see the "unknown" decision below for why this is
+			// deliberately merged rather than left to leak the port.
+			return "ip:unknown"
+		}
+		return "ip:" + host
+	}
+
+	// SplitHostPort itself failed: there is no ":port" suffix to remove at
+	// all. This is not automatically an error in the caller's identity —
+	// a bare host with no port needs nothing stripped from it — so it is
+	// used AS-IS, deliberately, rather than collapsed onto a shared
+	// placeholder that would merge it with every other malformed caller
+	// (that collapse would itself be a new bypass: an attacker could then
+	// share a bucket, and therefore a quota, with unrelated callers,
+	// starving them, or with themselves reduce their own bucket contention
+	// to one collective count in a way the limit was never sized for). The
+	// one exception this file still strips is a redundant pair of brackets
+	// around an otherwise-bare host ("[2001:db8::1]" with no port at all),
+	// so that degenerate shape still resolves to the same identity as its
+	// "[2001:db8::1]:<port>" sibling above, rather than a second, distinct
+	// one that would split the same real caller in two.
+	if raw == "" {
+		// A genuinely empty address carries no identity to extract at all.
+		// Rather than let that silently collapse onto the same blank
+		// string every other malformed caller happens to also produce
+		// (which is what the pre-fix fallback did by accident), every
+		// caller with no address information is deliberately, explicitly
+		// merged onto one shared, still-rate-limited "unknown" identity —
+		// fail CLOSED (still throttled as a group) rather than fail OPEN
+		// (no address, no limit).
+		return "ip:unknown"
+	}
+	if len(raw) >= 2 && raw[0] == '[' && raw[len(raw)-1] == ']' {
+		return "ip:" + raw[1:len(raw)-1]
+	}
+	return "ip:" + raw
 }
 
 // ByUserID generates rate limit key based on user ID

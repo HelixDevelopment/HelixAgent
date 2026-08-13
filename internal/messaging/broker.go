@@ -6,8 +6,9 @@ package messaging
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"time"
+
+	"dev.helix.agent/internal/netaddr"
 )
 
 // BrokerType represents the type of message broker.
@@ -373,15 +374,43 @@ func (c *BrokerConfig) Validate() error {
 }
 
 // ConnectionString returns the connection string for the broker.
+//
+// HXC-286: naive "Host + \":\" + strconv.Itoa(Port)" composition breaks the
+// authority's host:port splittability for an unbracketed IPv6 host (see
+// address_composition_red_test.go for the measured failure and the
+// reader-choice finding). RabbitMQ is a message broker HelixAgent does not
+// own, so this uses netaddr.DialAddressForURL — bracket-safe, RFC 6874
+// zone-encoded for URL embedding, no default-substitution.
+//
+// Userinfo escaping (Username/Password) is deliberately NOT changed here — a
+// distinct defect class, out of scope for HXC-286 and still OPEN. A password
+// containing "@" or ":" is spliced in raw below and will mis-parse; that is a
+// real gap, stated rather than implied fixed (§11.4.6). See
+// docs/research/address_composition_family_20260812/ANALYSIS.md IN THE
+// META-REPO (that path does not exist inside this repository) for the family
+// survey this scope decision came from.
+//
+// Reachability note (§11.4.6): this method currently has NO production
+// caller — measured module-wide, the only non-test reference to
+// ConnectionString() is an unrelated same-named method on
+// internal/vectordb/pgvector's Config. An earlier revision of this note added
+// that "the live AMQP path is internal/messaging/rabbitmq/connection.go's
+// buildURL, which is separately wired"; that consolation was FALSE and is
+// withdrawn — re-measured 2026-08-13, package internal/messaging/rabbitmq is
+// absent from ALL EIGHT ./cmd/* dependency closures, so buildURL is no more
+// wired than this method is. Both are corrected so a future caller inherits
+// the right behaviour; neither is evidence of user impact, and this RED test
+// proves a synthetic failure, not an end-user one.
 func (c *BrokerConfig) ConnectionString() string {
 	scheme := "amqp"
 	if c.TLS {
 		scheme = "amqps"
 	}
+	authority := netaddr.DialAddressForURL(c.Host, c.Port)
 	if c.Username != "" {
-		return scheme + "://" + c.Username + ":" + c.Password + "@" + c.Host + ":" + strconv.Itoa(c.Port) + c.VirtualHost
+		return scheme + "://" + c.Username + ":" + c.Password + "@" + authority + c.VirtualHost
 	}
-	return scheme + "://" + c.Host + ":" + strconv.Itoa(c.Port) + c.VirtualHost
+	return scheme + "://" + authority + c.VirtualHost
 }
 
 // generateMessageID generates a unique message ID.

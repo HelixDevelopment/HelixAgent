@@ -18,6 +18,7 @@ import (
 
 	"dev.helix.agent/internal/llm"
 	"dev.helix.agent/internal/models"
+	"dev.helix.agent/internal/netaddr"
 )
 
 const (
@@ -129,7 +130,16 @@ func resolveEndpoint(explicit string) string {
 		if port == "" {
 			port = defaultPort
 		}
-		return normalizeBase("http://" + host + ":" + port)
+		// HXC-286: naive "http://" + host + ":" + port breaks for an
+		// unbracketed IPv6 HELIX_LLM_HOST (see
+		// address_composition_red_test.go for the measured failure).
+		// HelixLLM is a submodule/service DISTINCT from HelixAgent (see
+		// this file's package doc), so this uses netaddr.BaseURLString —
+		// bracket-safe, no default-substitution — rather than
+		// helixendpoint.BaseURL, whose fallback host is documented
+		// specifically for HelixAgent's own endpoint and would be the
+		// wrong placeholder here.
+		return normalizeBase(netaddr.BaseURLString("http", host, port))
 	}
 	return DefaultEndpoint
 }

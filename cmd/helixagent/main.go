@@ -76,6 +76,7 @@ import (
 	"dev.helix.agent/internal/verifier"
 	appversion "dev.helix.agent/internal/version"
 	"digital.vasic.llmsverifier/pkg/cliagents"
+	"digital.vasic.llmsverifier/pkg/helixendpoint"
 
 	"dev.helix.agent/internal/containers"
 )
@@ -1945,7 +1946,21 @@ func helixAgentClientBaseURL(appCfg *AppConfig) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("http://%s:%d", helixAgentClientHost(), port), nil
+	// HXC-286: fmt.Sprintf("http://%s:%d", ...) breaks the moment
+	// helixAgentClientHost() names an IPv6 literal — an unbracketed one
+	// (the natural way to write a bare IP address) produces a string no
+	// reader can parse ("http://2001:db8::1:7061" — five colons in the URL,
+	// four in the authority "2001:db8::1:7061"; an earlier revision of this
+	// comment said "three", which matches neither count — and no port
+	// net/url can find), and a bracketed one would double-bracket
+	// under a naive net.JoinHostPort. helixendpoint.BaseURL brackets
+	// correctly either way and, because this composes HelixAgent's OWN
+	// endpoint, its default-substitution-on-malformed-host is the correct
+	// behaviour here — this is the SAME endpoint
+	// cliagents.DefaultHelixAgentExtensions / DefaultFormattersConfig
+	// (called on this exact host/port pair elsewhere in this file) already
+	// resolve through this same builder, so the two never disagree.
+	return helixendpoint.BaseURL(helixAgentClientHost(), port), nil
 }
 
 // run executes the main application logic with the given configuration
@@ -4457,7 +4472,13 @@ func handleGenerateCrush(appCfg *AppConfig) error {
 		return fmt.Errorf("cannot generate Crush config: %w", err)
 	}
 
-	baseURL := fmt.Sprintf("http://%s:%d/v1", host, crushPortInt)
+	// HXC-286: same defect + same fix as helixAgentClientBaseURL above —
+	// this composes the identical (host, crushPortInt) pair
+	// cliagents.DefaultHelixAgentExtensions/DefaultFormattersConfig below
+	// already resolve through helixendpoint.BaseURL, so using anything
+	// else here would let this one field silently disagree with them for
+	// a malformed host.
+	baseURL := helixendpoint.BaseURL(host, crushPortInt) + "/v1"
 
 	// Build the Crush configuration
 	// Crush uses a different structure than OpenCode - providers with models array
@@ -4505,7 +4526,7 @@ func handleGenerateCrush(appCfg *AppConfig) error {
 				Enabled: true,
 			},
 		},
-		Mcp:        getCrushMCPServers(fmt.Sprintf("http://%s:%d", host, crushPortInt), *workingMCPsOnly),
+		Mcp:        getCrushMCPServers(helixendpoint.BaseURL(host, crushPortInt), *workingMCPsOnly),
 		Plugins:    cliagents.DefaultPlugins(),
 		Extensions: cliagents.DefaultHelixAgentExtensions(host, crushPortInt),
 		Formatters: cliagents.DefaultFormattersConfig(host, crushPortInt),

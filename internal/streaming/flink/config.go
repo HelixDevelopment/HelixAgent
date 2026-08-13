@@ -3,6 +3,8 @@ package flink
 import (
 	"fmt"
 	"time"
+
+	"dev.helix.agent/internal/netaddr"
 )
 
 // Config holds Apache Flink connection and job configuration
@@ -119,12 +121,17 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// GetRESTURL returns the full REST API URL
+// GetRESTURL returns the full REST API URL.
+//
+// HXC-286: naive fmt.Sprintf("http://%s:%d", ...) breaks for an IPv6
+// JobManagerHost (see address_composition_red_test.go for the measured
+// failure). Flink is a stream processor HelixAgent does not own, so this
+// uses netaddr.BaseURL — bracket-safe, no default-substitution.
 func (c *Config) GetRESTURL() string {
 	if c.RESTURL != "" {
 		return c.RESTURL
 	}
-	return fmt.Sprintf("http://%s:%d", c.JobManagerHost, c.WebUIPort)
+	return netaddr.BaseURL("http", c.JobManagerHost, c.WebUIPort)
 }
 
 // JobConfig holds configuration for a specific Flink job

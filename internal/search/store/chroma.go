@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"dev.helix.agent/internal/netaddr"
 	"dev.helix.agent/internal/search/types"
 )
 
@@ -40,9 +41,13 @@ func NewChromaStore(host string, port int, collectionName string) (*ChromaStore,
 	}, nil
 }
 
-// baseURL returns the ChromaDB API base URL
+// baseURL returns the ChromaDB API base URL.
+//
+// HXC-286: same defect + same fix rationale as QdrantStore.baseURL — ChromaDB
+// is a service HelixAgent does not own, so this uses netaddr.BaseURL
+// (bracket-safe, no default-substitution).
 func (s *ChromaStore) baseURL() string {
-	return fmt.Sprintf("http://%s:%d/api/v1", s.host, s.port)
+	return netaddr.BaseURL("http", s.host, s.port) + "/api/v1"
 }
 
 // CreateCollection creates a new collection

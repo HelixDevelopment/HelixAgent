@@ -2,9 +2,9 @@ package qdrant
 
 import (
 	"fmt"
-	"net"
-	"strconv"
 	"time"
+
+	"dev.helix.agent/internal/netaddr"
 )
 
 // Config holds Qdrant connection configuration
@@ -69,36 +69,67 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// hostPort joins a host and a port into a valid network authority.
+// GetHTTPURL returns the HTTP API URL.
 //
-// It MUST be used instead of fmt.Sprintf("%s:%d", host, port): a bare IPv6
-// literal such as "::1" formatted that way yields "::1:6333", which
-// net/url rejects with `invalid port "::1:6333" after host`, so every request
-// built from it fails.
+// HXC-286 (BLOCKING 2 of a 2026-08-12 review): this and GetGRPCAddress used
+// to share a LOCAL hostPort helper that rolled its own bracket-strip plus
+// net.JoinHostPort. That helper was a SECOND, divergent definition of "the
+// host, unbracketed" living alongside internal/netaddr's, and it reproduced
+// BOTH defects that round had just fixed in netaddr — it omitted TrimSpace
+// and it had no RFC 6874 zone encoding. Measured against this repository's Go
+// toolchain (2026-08-12), every one of these produced a URL that url.Parse
+// rejects outright:
 //
-// net.JoinHostPort brackets any host containing a ":", so a host that the
-// operator already supplied in bracketed form ("[::1]") would be
-// double-bracketed into "[[::1]]:6333". The surrounding brackets are
-// therefore stripped first, making the function correct for BOTH the
-// bracketed and the unbracketed spelling of the same address.
+//	Host="  2001:db8::1  "  -> "http://[  2001:db8::1  ]:6333"  PARSE-FAIL
+//	Host=" [2001:db8::1] "  -> "http://[ [2001:db8::1] ]:6333"  PARSE-FAIL
+//	Host="fe80::1%eth0"     -> "http://[fe80::1%eth0]:6333"     PARSE-FAIL: invalid URL escape "%et"
 //
-// Hostnames and IPv4 literals contain no ":" and are returned byte-identical
-// to the previous fmt.Sprintf behaviour.
-func hostPort(host string, port int) string {
-	if len(host) >= 2 && host[0] == '[' && host[len(host)-1] == ']' {
-		host = host[1 : len(host)-1]
-	}
-	return net.JoinHostPort(host, strconv.Itoa(port))
-}
-
-// GetHTTPURL returns the HTTP API URL
+// Reachability (§11.4.6) — this is REFERENCE-ONLY, not a live user-facing
+// path, and an earlier revision of this comment claimed the opposite. It
+// asserted "This is LIVE, not theoretical: internal/rag/qdrant_retriever.go
+// reaches NewClient through internal/adapters/vectordb/qdrant/adapter.go";
+// every link in that chain is false, and the file's own package doc three
+// lines up already said so ("zero production imports ... retained only for
+// reference"). Measured against this tree (2026-08-13):
+//
+//   - This package is in 0 of the 8 ./cmd/* dependency closures
+//     (`go list -deps ./cmd/<x>` for each). The same instrument finds
+//     internal/cache in 4 of them, so that is a real negative rather than a
+//     tool limit.
+//   - It has ZERO non-test importers module-wide.
+//   - internal/adapters/vectordb/qdrant/adapter.go does not import this
+//     package at all: it imports the EXTERNAL submodule
+//     `digital.vasic.vectordb/pkg/qdrant` and calls extqdrant.NewClient.
+//   - internal/rag/qdrant_retriever.go contains no NewClient call.
+//
+// So the defect these accessors carried was never end-user-reachable, and no
+// closure note for this work may imply it was. What the fix IS worth: this
+// file held a SECOND, divergent definition of "the host, unbracketed" beside
+// internal/netaddr's, reproducing two defects netaddr had already fixed.
+// Routing both accessors through netaddr deletes that divergent definition,
+// so whoever later wires this package up (or reads it as the reference it is
+// retained to be) inherits the correct behaviour instead of copying a broken
+// pattern — the §11.4.74 "one definition, never two that can drift" property
+// made true of this file too. Its RED test therefore proves a synthetic
+// failure, not an end-user one.
+//
+// BaseURL is
+// correct here rather than DialAddress because the result is read by a URL
+// parser: it carries the zone encoding, and refuses rather than silently
+// redirects a host carrying a URL gen-delimiter. Qdrant is a service
+// HelixAgent does not own, so netaddr's no-default-substitution contract —
+// never swap a malformed host for a placeholder — is the right one.
 func (c *Config) GetHTTPURL() string {
-	return "http://" + hostPort(c.Host, c.HTTPPort)
+	return netaddr.BaseURL("http", c.Host, c.HTTPPort)
 }
 
-// GetGRPCAddress returns the gRPC address
+// GetGRPCAddress returns the gRPC address.
+//
+// Uses netaddr.DialAddress, NOT BaseURL: this value is handed to a gRPC
+// dialer rather than a URL parser, and net.Dial wants an IPv6 zone RAW. See
+// GetHTTPURL for the divergent-helper defect both accessors closed.
 func (c *Config) GetGRPCAddress() string {
-	return hostPort(c.Host, c.GRPCPort)
+	return netaddr.DialAddress(c.Host, c.GRPCPort)
 }
 
 // Distance represents the distance metric for vectors

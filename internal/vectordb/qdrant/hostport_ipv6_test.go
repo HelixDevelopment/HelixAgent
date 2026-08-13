@@ -157,7 +157,8 @@ func TestGetHTTPURL_IsAlwaysAParseableURL(t *testing.T) {
 			// happened to be correct here. A BARE net.JoinHostPort would
 			// break it, emitting "http://[[::1]]:6333", because
 			// JoinHostPort brackets any host containing ":". This case
-			// pins the bracket-stripping step in hostPort.
+			// pins the bracket-stripping step, now performed by
+			// internal/netaddr rather than by a package-local helper.
 			name:         "already-bracketed ipv6 must not be double-bracketed",
 			host:         "[::1]",
 			port:         6333,
@@ -236,22 +237,96 @@ func TestGetGRPCAddress_IsAlwaysASplittableAuthority(t *testing.T) {
 	}
 }
 
-// TestHostPortRoundTrip proves join and split are exact inverses, so a host
-// that survives one hop through Config cannot drift on the next.
-func TestHostPortRoundTrip(t *testing.T) {
+// TestGRPCAuthorityRoundTrip proves join and split are exact inverses, so a
+// host that survives one hop through Config cannot drift on the next.
+//
+// RECONCILED, not weakened (§11.4.120). This test previously called the
+// package-local hostPort helper directly. BLOCKING 2 of the 2026-08-12 review
+// established that helper WAS the defect — a second, divergent definition of
+// "the host, unbracketed" that had no TrimSpace and no zone encoding — so it
+// was removed and both accessors routed through internal/netaddr. Deleting
+// the helper made this test's call site vanish; the correct response is to
+// re-point the test at the mechanism that REPLACED it, never to delete the
+// test or to keep the helper alive purely so a test can call it.
+//
+// GetGRPCAddress is the exact successor: it is the raw-authority accessor
+// hostPort served, so every invariant asserted here (splittable, no host
+// drift, idempotent on the bracketed spelling) still means what it meant —
+// it is now asserted one layer up, against the API a gRPC dialer actually
+// consumes, which is strictly stronger than testing a private helper.
+func TestGRPCAuthorityRoundTrip(t *testing.T) {
 	for _, host := range []string{"localhost", "127.0.0.1", "::1", "2001:db8::1"} {
 		t.Run(host, func(t *testing.T) {
-			joined := hostPort(host, 6333)
+			joined := (&Config{Host: host, GRPCPort: 6333}).GetGRPCAddress()
 
 			gotHost, gotPort, err := net.SplitHostPort(joined)
-			require.NoError(t, err, "hostPort produced unsplittable authority %q", joined)
+			require.NoError(t, err, "GetGRPCAddress produced unsplittable authority %q", joined)
 			assert.Equal(t, host, gotHost, "host drifted across a join/split round trip")
 			assert.Equal(t, "6333", gotPort)
 
 			// Re-joining the bracketed spelling must be idempotent: this is
 			// what fails if the bracket-stripping step is ever removed.
-			assert.Equal(t, joined, hostPort(bracketed(host), 6333),
-				"hostPort is not idempotent on the bracketed spelling of %q", host)
+			bracketedJoined := (&Config{Host: bracketed(host), GRPCPort: 6333}).GetGRPCAddress()
+			assert.Equal(t, joined, bracketedJoined,
+				"GetGRPCAddress is not idempotent on the bracketed spelling of %q", host)
+		})
+	}
+}
+
+// TestConfig_DivergentLocalHelperDefects_Closed is the permanent guard for
+// BLOCKING 2 of the 2026-08-12 review: the package-local hostPort helper
+// reproduced BOTH defects that round had just fixed in internal/netaddr,
+// because it was a parallel definition rather than a call into the canonical
+// one.
+//
+// Each case below was MEASURED to produce a URL that url.Parse REJECTS while
+// the local helper was live (the RED baseline, §11.4.115); each must now
+// produce a URL that parses and round-trips. These are reachable from
+// operator config: Config.Host is populated from deployment configuration and
+// never trimmed, and internal/rag/qdrant_retriever.go drives real HTTP
+// requests built from GetHTTPURL().
+func TestConfig_DivergentLocalHelperDefects_Closed(t *testing.T) {
+	tests := []struct {
+		name         string
+		host         string
+		wantURL      string
+		wantHostname string
+		redBaseline  string
+	}{
+		{
+			name:         "whitespace-padded bare ipv6 is trimmed, not trapped inside the brackets",
+			host:         "  2001:db8::1  ",
+			wantURL:      "http://[2001:db8::1]:6333",
+			wantHostname: "2001:db8::1",
+			redBaseline:  `local helper emitted "http://[  2001:db8::1  ]:6333" — PARSE-FAIL`,
+		},
+		{
+			name:         "whitespace-padded bracketed ipv6 is trimmed before unbracketing",
+			host:         " [2001:db8::1] ",
+			wantURL:      "http://[2001:db8::1]:6333",
+			wantHostname: "2001:db8::1",
+			redBaseline:  `local helper emitted "http://[ [2001:db8::1] ]:6333" — PARSE-FAIL`,
+		},
+		{
+			name:         "ipv6 zone identifier is RFC 6874 percent-encoded for the URL reader",
+			host:         "fe80::1%eth0",
+			wantURL:      "http://[fe80::1%25eth0]:6333",
+			wantHostname: "fe80::1%eth0",
+			redBaseline:  `local helper emitted "http://[fe80::1%eth0]:6333" — PARSE-FAIL: invalid URL escape "%et"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := (&Config{Host: tt.host, HTTPPort: 6333}).GetHTTPURL()
+			assert.Equal(t, tt.wantURL, got, "RED baseline was: %s", tt.redBaseline)
+
+			parsed, err := url.Parse(got)
+			require.NoError(t, err,
+				"GetHTTPURL returned %q, which net/url cannot parse (RED baseline: %s)", got, tt.redBaseline)
+			assert.Equal(t, tt.wantHostname, parsed.Hostname(),
+				"the host must round-trip back to the exact configured value")
+			assert.Equal(t, "6333", parsed.Port())
 		})
 	}
 }

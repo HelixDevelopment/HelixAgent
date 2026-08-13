@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"dev.helix.agent/internal/netaddr"
 	"digital.vasic.concurrency/pkg/safe"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
@@ -151,18 +152,27 @@ func (c *Connection) dial(ctx context.Context) (*amqp.Connection, error) {
 	}
 }
 
-// buildURL constructs the AMQP URL
+// buildURL constructs the AMQP URL.
+//
+// HXC-286: naive fmt.Sprintf("%s://%s:%s@%s:%d/%s", ...) breaks the moment
+// c.config.Host is a zone-qualified IPv6 literal — measured directly
+// against amqp.ParseURI (the parser amqp.DialConfig calls on every real
+// connection this codebase makes; see address_composition_red_test.go for
+// the full finding, including why a PLAIN unbracketed IPv6 host is
+// tolerated by amqp091-go's own leniency but a zone-qualified one is not).
+// RabbitMQ is a message broker HelixAgent does not own, so this uses
+// netaddr.DialAddressForURL — RFC 6874 zone-encoded for URL embedding, no
+// default-substitution.
 func (c *Connection) buildURL() string {
 	scheme := "amqp"
 	if c.config.TLSEnabled {
 		scheme = "amqps"
 	}
-	return fmt.Sprintf("%s://%s:%s@%s:%d/%s",
+	return fmt.Sprintf("%s://%s:%s@%s/%s",
 		scheme,
 		c.config.Username,
 		c.config.Password,
-		c.config.Host,
-		c.config.Port,
+		netaddr.DialAddressForURL(c.config.Host, c.config.Port),
 		c.config.VHost)
 }
 

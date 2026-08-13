@@ -10,6 +10,7 @@ import (
 	cacheRedis "digital.vasic.cache/pkg/redis"
 
 	"dev.helix.agent/internal/config"
+	"dev.helix.agent/internal/netaddr"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
@@ -51,9 +52,17 @@ func NewRedisClient(cfg *config.Config) *RedisClient {
 		return &RedisClient{client: c}
 	}
 
+	// HXC-286: raw "Host + \":\" + Port" concatenation breaks the moment
+	// Host is an unbracketed IPv6 literal (net.SplitHostPort then rejects
+	// the result outright — "too many colons in address"; see the RED test
+	// in address_composition_red_test.go for the measured failure). Redis
+	// is a service HelixAgent does not own, so this uses
+	// netaddr.DialAddressString — bracket-safe, no default-substitution: a
+	// misconfigured host must fail loudly at dial time.
+	//
 	// Create the extracted module's Redis client
 	redisCfg := &cacheRedis.Config{
-		Addr:         cfg.Redis.Host + ":" + cfg.Redis.Port,
+		Addr:         netaddr.DialAddressString(cfg.Redis.Host, cfg.Redis.Port),
 		Password:     cfg.Redis.Password,
 		DB:           cfg.Redis.DB,
 		PoolSize:     10,

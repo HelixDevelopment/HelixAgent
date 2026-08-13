@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"dev.helix.agent/internal/netaddr"
 	"dev.helix.agent/internal/search/types"
 )
 
@@ -41,9 +42,17 @@ func NewQdrantStore(host string, port int, collection string) (*QdrantStore, err
 	}, nil
 }
 
-// baseURL returns the Qdrant API base URL
+// baseURL returns the Qdrant API base URL.
+//
+// HXC-286: naive fmt.Sprintf("http://%s:%d", ...) breaks for an IPv6 host
+// (an unbracketed literal produces an address no HTTP client can parse; see
+// the RED test in address_composition_red_test.go for the measured
+// failure). Qdrant is a service HelixAgent does not own, so this uses
+// netaddr.BaseURL — bracket-safe, and deliberately WITHOUT
+// default-substitution: a misconfigured host must fail loudly at dial time,
+// never silently redirect to a different machine.
 func (s *QdrantStore) baseURL() string {
-	return fmt.Sprintf("http://%s:%d", s.host, s.port)
+	return netaddr.BaseURL("http", s.host, s.port)
 }
 
 // CreateCollection creates a new collection

@@ -332,3 +332,52 @@ func TestEnvVarNames_AllStartWithHelixAgentPrefix(t *testing.T) {
 			"Service %q must start with HELIXAGENT_PORT_", svc)
 	}
 }
+
+// TestHelpers_HonourRegistryEnvOverride is the round-10 sibling-sweep guard
+// for the fixture pattern F1 exposed in redis_test.go: a test that pins an env
+// var to the value the subject would fall back to ANYWAY cannot see whether
+// the subject reads the env at all.
+//
+// The same shape was live here, on a different axis. TestHelpers_FormatsAreCorrect
+// (above) deliberately UNSETS HELIXAGENT_PORT_HTTP (the env var HelixAgentHTTP
+// names) in order to pin the DEFAULT formats, and no other test exercised
+// Addr / HostPort / HTTPURL / HTTPSURL under an override — so all four
+// resolving through Default(svc), which IGNORES the env, instead of Get(svc),
+// which honours it, produced byte-identical output in every fixture.
+//
+// Measured 2026-08-13, this repository's Go toolchain, with ALL FOUR composed
+// helpers' bodies mutated Get(svc) -> Default(svc). Four, not three: Addr,
+// HostPort, HTTPURL and HTTPSURL are the only four Get(svc) call sites in
+// ports.go (cited by symbol, not by line, because those line numbers move).
+//
+//	whole package -> 35 PASS / 1 FAIL: this guard is the ONLY death, so
+//	                 every pre-existing test survives the mutation — the
+//	                 shipped suite was GREEN before this guard existed
+//	this guard    -> Addr = ":8100", want ":9876" (the FIRST of four
+//	                 assertion failures; HostPort, HTTPURL and HTTPSURL
+//	                 report "localhost:8100"-shaped misses right after it)
+//
+// TestGet_EnvOverrideWins proves Get() honours the override in ISOLATION;
+// this proves the four composed helpers actually USE it. The registry
+// override is the operator-facing contract, so a helper that silently ignores
+// it points every one of its callers at the wrong port.
+func TestHelpers_HonourRegistryEnvOverride(t *testing.T) {
+	setPrefix(t, "8")
+
+	const custom = 9876
+	require.NotEqual(t, custom, Default(HelixAgentHTTP),
+		"degenerate fixture: the override equals the default, so this test "+
+			"could not tell Get(svc) from Default(svc)")
+
+	require.NoError(t, os.Setenv(string(HelixAgentHTTP), strconv.Itoa(custom)))
+	t.Cleanup(func() { _ = os.Unsetenv(string(HelixAgentHTTP)) })
+
+	assert.Equal(t, ":9876", Addr(HelixAgentHTTP),
+		"Addr must resolve its port through Get(svc), which honours the registry override")
+	assert.Equal(t, "localhost:9876", HostPort(HelixAgentHTTP, "localhost"),
+		"HostPort must resolve its port through Get(svc), which honours the registry override")
+	assert.Equal(t, "http://localhost:9876", HTTPURL(HelixAgentHTTP, "localhost"),
+		"HTTPURL must resolve its port through Get(svc), which honours the registry override")
+	assert.Equal(t, "https://localhost:9876", HTTPSURL(HelixAgentHTTP, "localhost"),
+		"HTTPSURL must resolve its port through Get(svc), which honours the registry override")
+}

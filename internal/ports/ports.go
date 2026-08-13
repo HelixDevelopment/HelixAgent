@@ -52,6 +52,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"dev.helix.agent/internal/netaddr"
 )
 
 // Service is a logical identifier for a port-using service.
@@ -430,18 +432,51 @@ func Addr(svc Service) string {
 }
 
 // HostPort returns "<host>:<port>" for svc, suitable for dialing.
+//
+// HXC-286: naive fmt.Sprintf("%s:%d", ...) breaks for an IPv6 host (see
+// address_composition_red_test.go for the measured failure).
+//
+// netaddr.DialAddress is used here, and an earlier revision of this comment
+// justified that by contrasting it with helixendpoint.DialAddress ("no
+// default-substitution, since substituting HelixAgent's own placeholder
+// would be wrong"). That contrast was fabricated: the two are the SAME
+// function. netaddr.DialAddress's whole body is
+// `return helixendpoint.DialAddress(host, port)`, and
+// helixendpoint.DialAddress is `net.JoinHostPort(unbracket(host),
+// strconv.Itoa(port))` — it substitutes nothing, so there was never a
+// behavioural difference to choose between. netaddr's own doc says as much
+// ("a thin, verbatim re-export ... share the exact same contract by
+// construction"). The real reason to call it through netaddr is naming, not
+// behaviour: every site in this family reaches its builder through the one
+// package, so the family stays greppable and a future divergence has a
+// single place to appear.
+//
+// The default-substitution argument IS valid — but for the two URL builders
+// below, not for this one. See HTTPURL.
 func HostPort(svc Service, host string) string {
-	return fmt.Sprintf("%s:%d", host, Get(svc))
+	return netaddr.DialAddress(host, Get(svc))
 }
 
 // HTTPURL returns "http://<host>:<port>" for svc.
+//
+// HXC-286: this uses netaddr.BaseURL rather than helixendpoint.BaseURL, and
+// here the default-substitution argument genuinely holds — unlike for
+// HostPort above, the two BaseURLs really do differ.
+// helixendpoint.BaseURL substitutes DefaultHost ("localhost") when
+// normalizeHost rejects its input, and DefaultPort when the port is out of
+// range. That default is meant for HelixAgent's OWN endpoint. This package
+// is a GENERIC utility — svc identifies the port, but host is always the
+// caller's, for whatever service the caller means — so substituting
+// HelixAgent's placeholder would silently point a caller at the wrong
+// machine on the right port. netaddr.BaseURL never substitutes.
 func HTTPURL(svc Service, host string) string {
-	return fmt.Sprintf("http://%s:%d", host, Get(svc))
+	return netaddr.BaseURL("http", host, Get(svc))
 }
 
-// HTTPSURL returns "https://<host>:<port>" for svc.
+// HTTPSURL returns "https://<host>:<port>" for svc. Same
+// no-default-substitution reasoning as HTTPURL.
 func HTTPSURL(svc Service, host string) string {
-	return fmt.Sprintf("https://%s:%d", host, Get(svc))
+	return netaddr.BaseURL("https", host, Get(svc))
 }
 
 // All returns every registered service. Stable ordering is not

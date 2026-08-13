@@ -38,7 +38,8 @@ type mockServer struct {
 // "http://[:80" and every request went nowhere near the mock server.
 //
 // net.SplitHostPort understands bracketed IPv6 authorities and returns the
-// host UNBRACKETED ("::1"); Config.GetHTTPURL re-brackets it via hostPort.
+// host UNBRACKETED ("::1"); Config.GetHTTPURL re-brackets it via
+// internal/netaddr.
 // Every error is returned, never discarded.
 func parseServerURL(rawURL string) (string, int, error) {
 	u, err := url.Parse(rawURL)

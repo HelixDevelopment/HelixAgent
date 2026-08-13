@@ -1,10 +1,11 @@
 package ports
 
 import (
-	"net"
 	"os"
 	"strconv"
 	"strings"
+
+	"dev.helix.agent/internal/netaddr"
 )
 
 // Redis endpoint resolution — the single source of truth for "where is Redis".
@@ -94,8 +95,54 @@ func RedisPortString() string {
 }
 
 // RedisAddr returns the dialable "host:port" for the canonical Redis.
+//
+// HXC-286 / F2 (2026-08-13): this composes through netaddr rather than
+// net.JoinHostPort directly, because JoinHostPort is NOT safe on an
+// ALREADY-BRACKETED host — it brackets a second time. Measured against this
+// repository's Go toolchain:
+//
+//	net.JoinHostPort("[::1]", "6379") = "[[::1]]:6379"
+//	  net.SplitHostPort -> address [[::1]]:6379: missing port in address
+//	  url.Parse         -> invalid IP-literal
+//
+// RedisHost reads REDIS_HOST with no bracket handling (it trims, guards
+// non-empty, and otherwise falls back to DefaultRedisHost — see its own doc),
+// so `REDIS_HOST=[::1]` — the form an operator copies straight out of a URL —
+// reached JoinHostPort already bracketed and produced that unsplittable
+// double-bracket address. netaddr.DialAddress strips one layer of brackets
+// first and only then joins, so both spellings of an IPv6 literal compose to
+// the same dialable authority.
+//
+// WHY DialAddress AND NOT DialAddressString (round-8 review finding 4). An
+// earlier revision of this fix routed through netaddr.DialAddressString with
+// RedisPortString(). Both spellings are provably identical in behaviour —
+// netaddr.stripBracket and helixendpoint.unbracket are byte-identical bodies,
+// so the two entry points differ only in where strconv.Itoa runs — but
+// DialAddressString was the WRONG entry point on its OWN documented contract:
+// it exists for a caller "whose port is already a string (a config field typed
+// `Port string`)", because forcing such a caller through Atoi-then-DialAddress
+// is LOSSY on a malformed value. RedisAddr is the exact opposite case. Its
+// port originates as a VALIDATED int from RedisPort() (bounds-checked
+// 0 < n < 65536, otherwise the registry default), and RedisPortString() is
+// literally strconv.Itoa(RedisPort()) — so there is no malformed string to
+// preserve and the Itoa round-trip bought nothing. Routing through DialAddress
+// also puts this call on the SAME underlying bracket primitive as its sibling
+// HostPort (which reaches helixendpoint.unbracket via netaddr.DialAddress),
+// giving this package one primitive on this path rather than two — the
+// "a future divergence has a single place to appear" rationale HostPort's own
+// doc in ports.go states.
+//
+// This is on the LIVE dial path, not a synthetic one: cmd/helixagent/main.go
+// passes RedisAddr() as the go-redis client's Addr (:842) and as the "redis"
+// entry of the dependency health-probe map (:630) — worktree lines.
+//
+// It also removes a disagreement INSIDE this package: HostPort (ports.go)
+// already routed through netaddr, so ports.HostPort and ports.RedisAddr
+// answered differently for the identical bracketed input — the "two builders
+// privately disagreeing about the same logical endpoint" defect netaddr's own
+// doc names as this family's core.
 func RedisAddr() string {
-	return net.JoinHostPort(RedisHost(), RedisPortString())
+	return netaddr.DialAddress(RedisHost(), RedisPort())
 }
 
 // RedisPassword returns the configured Redis password, or "" when unset.

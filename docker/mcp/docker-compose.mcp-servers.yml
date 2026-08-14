@@ -34,11 +34,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_FETCH:-8200}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   mcp-git:
     build:
@@ -54,13 +61,19 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_GIT:-8201}:9000"
     volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
       - ${HOME}:/home/user:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   mcp-time:
     build:
@@ -76,11 +89,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_TIME:-8202}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   mcp-filesystem:
     build:
@@ -96,13 +116,19 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_FILESYSTEM:-8203}:9000"
     volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
       - ${HOME}:/home/user
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   mcp-memory:
     build:
@@ -118,11 +144,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_MEMORY:-8204}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   mcp-everything:
     build:
@@ -138,11 +171,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_EVERYTHING:-8205}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   mcp-sequentialthinking:
     build:
@@ -158,11 +198,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_SEQUENTIAL_THINKING:-8206}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9000"]
-      interval: 10s
-      timeout: 5s
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Database MCP Servers - Ports 9201-9299
@@ -184,6 +231,18 @@ services:
     depends_on:
       - mcp-redis-backend
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-redis-backend:
     image: redis:7-alpine
@@ -215,6 +274,18 @@ services:
     depends_on:
       - mcp-mongodb-backend
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-mongodb-backend:
     image: mongo:7
@@ -250,6 +321,18 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Vector Database MCP Servers - Ports 9301-9399
@@ -275,6 +358,18 @@ services:
     depends_on:
       - mcp-qdrant-backend
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-qdrant-backend:
     image: qdrant/qdrant:latest
@@ -322,7 +417,31 @@ services:
       - "${HELIXAGENT_PORT_MCP_GITLAB:-8221}:9000"
     environment:
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_TOKEN}
+    # HXC-334 argv fix: Dockerfile.mcp-go's /entrypoint.sh runs the first
+    # executable in /app/bin with NO arguments. `github-mcp-server` is a cobra
+    # CLI whose server lives behind the `stdio` subcommand, so a bare invocation
+    # printed root help ("A GitHub MCP server that handles various tools and
+    # resources.") to the socket and exited 0 -- which is what clients saw on
+    # port 8221 instead of MCP.
+    # NOTE: this alone does NOT make the server work. Measured 2026-08-13:
+    # `github-mcp-server stdio` still exits with "authentication required: set
+    # GITHUB_PERSONAL_ACCESS_TOKEN, or pass --oauth-client-id" while GITHUB_TOKEN
+    # is unset. The fix converts a confusing usage-text reply into an explicit,
+    # visible credential error, and is the correct invocation once a token exists.
+    command: ["sh", "-c", "exec socat TCP-LISTEN:9000,reuseaddr,fork SYSTEM:'/app/bin/github-mcp-server stdio'"]
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-cloudflare:
     profiles:
@@ -344,6 +463,18 @@ services:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-heroku:
     build:
@@ -359,6 +490,18 @@ services:
     environment:
       - HEROKU_API_KEY=${HEROKU_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-sentry:
     # Per-submodule Dockerfile (BUGFIXES Issue #54): turbo monorepo;
@@ -379,6 +522,18 @@ services:
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
       - SENTRY_ORG=${SENTRY_ORG}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Browser Automation MCP Servers - Ports 9501-9599
@@ -401,6 +556,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_PLAYWRIGHT:-8234}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-browserbase:
     build:
@@ -417,6 +584,18 @@ services:
       - BROWSERBASE_API_KEY=${BROWSERBASE_API_KEY}
       - BROWSERBASE_PROJECT_ID=${BROWSERBASE_PROJECT_ID}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-firecrawl:
     build:
@@ -432,6 +611,18 @@ services:
     environment:
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Communication MCP Servers - Ports 9601-9699
@@ -452,6 +643,18 @@ services:
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
       - SLACK_TEAM_ID=${SLACK_TEAM_ID}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-telegram:
     build:
@@ -467,6 +670,18 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Productivity MCP Servers - Ports 9701-9799
@@ -490,6 +705,18 @@ services:
     environment:
       - NOTION_API_KEY=${NOTION_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-trello:
     build:
@@ -506,6 +733,18 @@ services:
       - TRELLO_API_KEY=${TRELLO_API_KEY}
       - TRELLO_TOKEN=${TRELLO_TOKEN}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-airtable:
     build:
@@ -521,6 +760,18 @@ services:
     environment:
       - AIRTABLE_API_KEY=${AIRTABLE_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-obsidian:
     build:
@@ -534,8 +785,19 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_ASANA:-8253}:9000"
     volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
       - ${HOME}/Obsidian:/vault:ro
     restart: unless-stopped
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-atlassian:
     # Per-submodule Dockerfile (BUGFIXES Issue #54): atlassian-mcp
@@ -557,6 +819,18 @@ services:
       - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL}
       - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Search/AI MCP Servers - Ports 9801-9899
@@ -576,6 +850,18 @@ services:
     environment:
       - BRAVE_API_KEY=${BRAVE_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-perplexity:
     build:
@@ -591,6 +877,18 @@ services:
     environment:
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-omnisearch:
     build:
@@ -604,6 +902,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_TAVILY:-8262}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-context7:
     # Per-submodule Dockerfile (BUGFIXES Issue #54): pnpm monorepo;
@@ -620,6 +930,18 @@ services:
     ports:
       - "${HELIXAGENT_PORT_MCP_PERPLEXITY:-8263}:9000"
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   mcp-llamaindex:
     profiles:
@@ -640,6 +962,18 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # Cloud Provider MCP Servers - Ports 9901-9999
@@ -660,6 +994,18 @@ services:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
     restart: unless-stopped
+    volumes:
+      - ./mcp_healthcheck.sh:/mcp_healthcheck.sh:ro
+    healthcheck:
+      # HXC-334: real MCP `initialize` round-trip. The previous
+      # ["CMD","nc","-z","localhost","9000"] reported healthy for servers that
+      # crash on every connection, because socat accepts the TCP connection
+      # regardless of whether the wrapped server works.
+      test: ["CMD", "sh", "/mcp_healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   mcp-redis-data:

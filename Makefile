@@ -461,7 +461,29 @@ test-challenges:
 	@./challenges/scripts/event_driven_challenge.sh
 	@./challenges/scripts/mcp_connectivity_challenge.sh
 	@./challenges/scripts/stress_resilience_challenge.sh
+	@$(MAKE) --no-print-directory test-mcp-healthcheck-guard
 	@echo "✅ All performance challenges passed"
+
+# HXC-334 standing regression guard (Constitution §11.4.135). Runs the MCP
+# healthcheck's GREEN polarity: every fixture must get the same verdict from
+# every transport/validator combination, and the two historical false-PASS
+# defects must stay absent. Hermetic — loopback fixture server only, no
+# container, no provider, no credential.
+.PHONY: test-mcp-healthcheck-guard test-mcp-healthcheck-guard-red test-mcp-healthcheck-guard-mutation
+test-mcp-healthcheck-guard:
+	@echo "🛡️  HXC-334 MCP healthcheck regression guard (GREEN)..."
+	@RED_MODE=0 ./docker/mcp/mcp_healthcheck_test.sh
+
+# RED polarity: proves the guard is not blind by reproducing both historical
+# defects on the real broken artifacts. Expected to PASS (defects present).
+test-mcp-healthcheck-guard-red:
+	@echo "🔴 HXC-334 guard RED baseline (defects must reproduce)..."
+	@RED_MODE=1 ./docker/mcp/mcp_healthcheck_test.sh
+
+# Paired §1.1 mutation: an always-`exit 0` checker MUST make the guard FAIL.
+test-mcp-healthcheck-guard-mutation:
+	@echo "🧬 HXC-334 guard paired mutation ('exit 0' must kill it)..."
+	@./docker/mcp/mcp_healthcheck_test.sh --prove-mutation
 
 test-unit:
 	@echo "🧪 Running unit tests..."

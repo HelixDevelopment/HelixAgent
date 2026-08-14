@@ -504,22 +504,29 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 	})
 
 	r.GET("/v1/health", func(c *gin.Context) {
-		// Enhanced health check with provider status
+		// Enhanced health check with provider status.
+		//
+		// The verdict lives in healthVerdict() (health_verdict.go) so it is
+		// unit-testable without booting the whole router — see the note there
+		// about why the pre-existing /health tests could never have caught a
+		// defect in this handler.
+		//
+		// The HTTP code stays 200 deliberately: testutil.checkHelixAgentHealth
+		// (internal/testutil/infra.go:352) REQUIRES StatusOK and rejects the
+		// agent outright otherwise, so emitting 5xx here would make every
+		// integration run treat a provider-less dev agent as absent. The
+		// truthful signal is carried in the body's "status" field, which that
+		// consumer does not read while "service" is present (infra.go:377-379).
 		health := providerRegistry.HealthCheck()
-		healthyCount := 0
-		for _, err := range health {
-			if err == nil {
-				healthyCount++
-			}
-		}
+		status, healthyCount, unhealthyCount := healthVerdict(health)
 
 		c.JSON(200, gin.H{
-			"status":  "healthy",
+			"status":  status,
 			"service": "helixagent",
 			"providers": map[string]any{
 				"total":     len(health),
 				"healthy":   healthyCount,
-				"unhealthy": len(health) - healthyCount,
+				"unhealthy": unhealthyCount,
 			},
 			"timestamp": time.Now().Unix(),
 		})

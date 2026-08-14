@@ -200,14 +200,43 @@ func TestSetupRouter_HealthEndpoints(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		assert.Equal(t, "healthy", response["status"])
 		assert.Contains(t, response, "providers")
 		assert.Contains(t, response, "timestamp")
 
-		providers := response["providers"].(map[string]interface{})
+		providers, ok := response["providers"].(map[string]interface{})
+		require.True(t, ok, "providers must be an object")
 		assert.Contains(t, providers, "total")
 		assert.Contains(t, providers, "healthy")
 		assert.Contains(t, providers, "unhealthy")
+
+		// HXC-244 reconciliation (§11.4.120). This assertion previously
+		// demanded the literal "healthy". That is exactly what let the
+		// pre-fix endpoint pass: it hard-coded "healthy" and discarded the
+		// counts it had just computed, so the assertion agreed with a
+		// constant rather than testing anything. The shared router boots
+		// standalone with no provider credentials, so zero providers are
+		// healthy here and the honest verdict is "unhealthy" — the old
+		// expectation was asserting the defect as the specification.
+		//
+		// Assert instead that the verdict AGREES with the reported counts.
+		// A constant verdict cannot satisfy this in every arm, and the
+		// assertion stays valid whatever the environment provisions.
+		healthyN, ok := providers["healthy"].(float64)
+		require.True(t, ok, "providers.healthy must be a number")
+		unhealthyN, ok := providers["unhealthy"].(float64)
+		require.True(t, ok, "providers.unhealthy must be a number")
+
+		want := "healthy"
+		switch {
+		case healthyN == 0:
+			want = "unhealthy"
+		case unhealthyN > 0:
+			want = "degraded"
+		}
+		assert.Equal(t, want, response["status"],
+			"verdict must be derived from the provider counts "+
+				"(healthy=%v unhealthy=%v), never a constant",
+			healthyN, unhealthyN)
 	})
 }
 

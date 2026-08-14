@@ -1,7 +1,19 @@
 # Dockerfile for Go MCP servers from git submodules
 # Builds and runs Go-based MCP servers with TCP wrapper
 
-FROM golang:1.25-alpine AS builder
+# HXC-337/HXC-333 toolchain fix. The builder was `golang:1.25-alpine`
+# (go1.25.12), but `MCP/submodules/kubernetes-mcp/go.mod` requires `go 1.26.3`.
+# The official golang images pin GOTOOLCHAIN=local, so Go does NOT auto-download
+# a newer toolchain — it hard-errors:
+#   go: go.mod requires go >= 1.26.3 (running go 1.25.12; GOTOOLCHAIN=local)
+# ...which the `2>/dev/null || true` below used to discard, yielding an image
+# with an EMPTY /app/bin. Pinned to a base that satisfies the highest go.mod
+# among this Dockerfile's consumers (kubernetes-mcp 1.26.3 > github-mcp-server
+# 1.25.0 > slack-mcp 1.25); Go builds older `go` directives fine, so one base
+# serves all three. A fixed base is preferred over GOTOOLCHAIN=auto: auto would
+# download a toolchain at build time, making the build network-dependent and
+# non-reproducible.
+FROM golang:1.26-alpine AS builder
 
 
 # Install build dependencies
@@ -15,18 +27,53 @@ COPY . .
 # Ensure /app/bin exists before building
 RUN mkdir -p /app/bin
 
-# Build the Go binary
-RUN if [ -f "Makefile" ]; then make build 2>/dev/null || true; fi && \
-    if [ -f "go.mod" ]; then \
-        go mod download && \
-        if [ -d "cmd" ]; then \
-            for cmd_dir in cmd/*/; do \
-                cmd_name=$(basename "$cmd_dir"); \
-                go build -o "/app/bin/$cmd_name" "./$cmd_dir" 2>/dev/null || true; \
-            done; \
-        fi && \
-        go build -o /app/bin/server . 2>/dev/null || true; \
+# Build the Go binary.
+#
+# HXC-337: this step previously discarded BOTH stderr AND the exit code on every
+# build invocation (`2>/dev/null || true` x3), so a compile that produced NO
+# binary still yielded a "successful" image. Combined with the `mkdir -p
+# /app/bin` above, the runtime `COPY --from=builder /app/bin/ /app/bin/` then
+# copied an EMPTY directory and ALSO succeeded — shipping an image with no
+# program in it. HXC-333 is that image reaching production:
+# helixagent-mcp-kubernetes crash-looped 291,505 times on the entrypoint's
+# "ERROR: No Go binary found!" because `restart: unless-stopped` restarted it
+# forever.
+#
+# `set -eux` makes every failure loud and fatal. The `make build` attempt was
+# also dropped: the binaries in the working sibling images (github-mcp-server +
+# mcpcurl) correspond exactly to that repo's two `cmd/` dirs, proving the cmd
+# loop — not `make` — is the path that actually produces output. All three
+# consumers have `cmd/<name>/` and ZERO root-level .go files, so the old
+# `go build .` at module root could never succeed for any of them.
+RUN set -eux; \
+    test -f go.mod; \
+    go mod download; \
+    built=0; \
+    if [ -d cmd ]; then \
+        for cmd_dir in cmd/*/; do \
+            [ -d "$cmd_dir" ] || continue; \
+            cmd_name=$(basename "$cmd_dir"); \
+            echo "==> building ./$cmd_dir -> /app/bin/$cmd_name"; \
+            go build -o "/app/bin/$cmd_name" "./$cmd_dir"; \
+            built=1; \
+        done; \
+    fi; \
+    if [ "$built" -eq 0 ]; then \
+        echo "==> no cmd/ targets; building module root -> /app/bin/server"; \
+        go build -o /app/bin/server .; \
     fi
+
+# HXC-337 builder-side artifact assertion (§11.4.108 layer 2 shifted left).
+# Even if some future edit reintroduces an error-swallowing path, an image that
+# contains no program can no longer be produced: the BUILD fails here, loudly,
+# instead of the container failing forever at runtime.
+RUN set -eu; \
+    if [ -z "$(find /app/bin -maxdepth 1 -type f -perm -u+x -print -quit)" ]; then \
+        echo "FATAL: build produced no executable in /app/bin" >&2; \
+        ls -la /app/bin >&2; \
+        exit 1; \
+    fi; \
+    echo "OK: /app/bin contains:"; ls -la /app/bin
 
 # Runtime stage
 FROM alpine:3.19
@@ -38,6 +85,19 @@ WORKDIR /app
 
 # Copy built binaries
 COPY --from=builder /app/bin/ /app/bin/
+
+# HXC-337 runtime-stage artifact assertion. `COPY <dir>/ <dir>/` succeeds even
+# when the source directory is EMPTY — that silent success is exactly how an
+# empty /app/bin reached production. This is an INDEPENDENT check on the FINAL
+# image (the artifact that actually ships), not on the builder stage: if the
+# program is not in the shipped image, the build fails here.
+RUN set -eu; \
+    if [ -z "$(find /app/bin -maxdepth 1 -type f -perm -u+x -print -quit)" ]; then \
+        echo "FATAL: shipped image has no executable in /app/bin" >&2; \
+        ls -la /app/bin >&2; \
+        exit 1; \
+    fi; \
+    echo "OK: shipped /app/bin contains:"; ls -la /app/bin
 
 # Create entrypoint script
 # CRITICAL: MCP uses newline-delimited JSON (NDJSON) - must use raw pipes, NOT pty

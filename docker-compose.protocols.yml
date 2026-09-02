@@ -391,25 +391,6 @@ services:
       - helixagent-network
     restart: unless-stopped
 
-  # GitMCP - Git operations via MCP
-  mcp-gitmcp:
-    build:
-      context: ./mcp-servers/GitMCP
-      dockerfile: Dockerfile
-    container_name: helixagent-mcp-gitmcp
-    mem_limit: 1g
-    memswap_limit: 1g
-    pids_limit: 1024
-    oom_score_adj: 500
-    environment:
-      - MCP_SERVER_NAME=gitmcp
-      - REPOS_DIR=/repos
-    volumes:
-      - mcp_git_repos:/repos:rw
-    networks:
-      - helixagent-network
-    restart: unless-stopped
-
   # HuggingFace MCP
   mcp-huggingface:
     build:

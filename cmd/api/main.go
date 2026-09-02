@@ -1,33 +1,47 @@
 // ===========================================================================
-// DEMO IMPLEMENTATION - NOT FOR PRODUCTION USE
+// HelixAgent Protocol Enhancement REST API Server
 // ===========================================================================
 //
-// HelixAgent Protocol Enhancement REST API Server (DEMO)
+// This server exposes the protocol API surface for MCP, LSP, and ACP.
 //
-// This is a DEMONSTRATION server that showcases the protocol API structure.
-// It returns HARDCODED/MOCK responses and does NOT connect to real backends.
+// ACP endpoints (/api/v1/acp/*) delegate to the REAL ACP dispatcher used by
+// the production router -- internal/handlers.ACPHandler, the same handler
+// internal/router/router.go wires at /v1/acp/*. Agent existence is
+// genuinely validated against the ACP agent registry, tasks are genuinely
+// executed via that handler, and broadcast delivery counts reflect real
+// per-target outcomes rather than an assumed 100% success rate. See
+// internal/handlers/acp_handler.go for the agent registry and dispatch
+// logic these endpoints delegate to.
 //
-// For production use, see:
+// MCP and LSP endpoints in this file remain DEMONSTRATION handlers that
+// return HARDCODED/MOCK responses and do NOT connect to real backends. They
+// are useful for API structure exploration, client development, and
+// documentation examples, but MUST NOT be relied on for production MCP/LSP
+// behaviour.
+//
+// For the full production entry point (every protocol wired to real
+// backends), see:
 //   - cmd/helixagent/main.go - Main production entry point
 //   - internal/router/router.go - Production API router with real implementations
 //
-// This demo server is useful for:
-//   - API structure exploration
-//   - Client development and testing
-//   - Documentation examples
-//
-// DO NOT deploy this server in production environments.
+// DO NOT deploy the MCP/LSP demo endpoints of this server in production
+// environments. The ACP endpoints (/api/v1/acp/*) are real and safe to use.
 // ===========================================================================
 
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"time"
 
 	"digital.vasic.concurrency/pkg/safe"
 
+	"dev.helix.agent/internal/handlers"
 	"dev.helix.agent/internal/services"
 	"dev.helix.agent/internal/version"
 	"github.com/gin-gonic/gin"
@@ -150,6 +164,7 @@ type APIServer struct {
 	port           string
 	logger         *logrus.Logger
 	unifiedManager *services.UnifiedProtocolManager
+	acpHandler     *handlers.ACPHandler
 	analytics      *analyticsStore
 }
 
@@ -161,10 +176,19 @@ func NewAPIServer(port string) *APIServer {
 	// Initialize core services
 	unifiedManager := services.NewUnifiedProtocolManager(nil, nil, logger)
 
+	// ACP dispatch delegates to the same real ACP handler the production
+	// router wires up (internal/router/router.go: handlers.NewACPHandler +
+	// acpHandler.RegisterRoutes). The provider registry is stored on the
+	// handler but never read by any of its exported methods today, so nil
+	// here mirrors the unused-field pattern already used for
+	// unifiedManager above -- it is not a shortcut around real dispatch.
+	acpHandler := handlers.NewACPHandler(nil, logger)
+
 	return &APIServer{
 		port:           port,
 		logger:         logger,
 		unifiedManager: unifiedManager,
+		acpHandler:     acpHandler,
 		analytics:      newAnalyticsStore(),
 	}
 }
@@ -367,26 +391,25 @@ func (s *APIServer) handleLSPDiagnostics(c *gin.Context) {
 	})
 }
 
+// handleACPExecute delegates the entire request to the real ACP dispatcher
+// (internal/handlers.ACPHandler.Execute) -- the same handler
+// internal/router/router.go wires at the production /v1/acp/execute route.
+// The dispatcher genuinely validates that the requested agent exists (404
+// when it does not) and genuinely executes the task against that agent's
+// real handler, rather than unconditionally reporting success for any
+// input.
 func (s *APIServer) handleACPExecute(c *gin.Context) {
-	var req struct {
-		Action  string                 `json:"action"`
-		AgentID string                 `json:"agent_id"`
-		Params  map[string]interface{} `json:"params"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"result":    "Action executed successfully",
-		"action":    req.Action,
-		"agent_id":  req.AgentID,
-		"timestamp": time.Now().Unix(),
-	})
+	s.acpHandler.Execute(c)
 }
 
+// handleACPBroadcast delivers a message to each requested target agent by
+// delegating to the real ACP dispatcher's Execute method once per target --
+// it does not reimplement agent validation or task execution. A target is
+// only counted in delivered_to when the underlying dispatch genuinely
+// succeeds; a nonexistent target agent, or one whose task execution fails,
+// is reported as a per-target failure and excluded from the delivered
+// count. This replaces the previous behaviour of unconditionally claiming
+// 100% delivery for every requested target.
 func (s *APIServer) handleACPBroadcast(c *gin.Context) {
 	var req struct {
 		Message string   `json:"message"`
@@ -398,23 +421,91 @@ func (s *APIServer) handleACPBroadcast(c *gin.Context) {
 		return
 	}
 
+	results := make(map[string]broadcastTargetOutcome, len(req.Targets))
+	delivered := 0
+
+	for _, target := range req.Targets {
+		outcome := s.dispatchACPBroadcastTarget(target, req.Message)
+		results[target] = outcome
+		if outcome.Success {
+			delivered++
+		}
+	}
+
 	c.JSON(200, gin.H{
-		"broadcast_id": fmt.Sprintf("broadcast-%d", time.Now().Unix()),
-		"delivered_to": len(req.Targets),
-		"timestamp":    time.Now().Unix(),
+		"broadcast_id":  fmt.Sprintf("broadcast-%d", time.Now().Unix()),
+		"delivered_to":  delivered,
+		"total_targets": len(req.Targets),
+		"results":       results,
+		"timestamp":     time.Now().Unix(),
 	})
 }
 
+// broadcastTargetOutcome captures the real, per-target result of delegating
+// one broadcast delivery to the ACP dispatcher.
+type broadcastTargetOutcome struct {
+	Success bool        `json:"success"`
+	Result  interface{} `json:"result,omitempty"`
+	Error   string      `json:"error,omitempty"`
+}
+
+// dispatchACPBroadcastTarget delivers one broadcast message to one target
+// agent by invoking the real ACP dispatcher's Execute handler in an
+// isolated request/response pair, and reports the genuine outcome. No
+// agent-existence check or task-execution logic is duplicated here -- both
+// are performed by handlers.ACPHandler.Execute.
+func (s *APIServer) dispatchACPBroadcastTarget(target, message string) broadcastTargetOutcome {
+	execReq := handlers.ACPExecuteRequest{
+		AgentID: target,
+		Task:    message,
+	}
+	body, err := json.Marshal(execReq)
+	if err != nil {
+		return broadcastTargetOutcome{Success: false, Error: err.Error()}
+	}
+
+	httpReq, err := http.NewRequest(http.MethodPost, "/v1/acp/execute", bytes.NewReader(body))
+	if err != nil {
+		return broadcastTargetOutcome{Success: false, Error: err.Error()}
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	recorder := httptest.NewRecorder()
+	execCtx, _ := gin.CreateTestContext(recorder)
+	execCtx.Request = httpReq
+
+	s.acpHandler.Execute(execCtx)
+
+	if recorder.Code == http.StatusOK {
+		var execResp handlers.ACPExecuteResponse
+		if err := json.Unmarshal(recorder.Body.Bytes(), &execResp); err != nil {
+			return broadcastTargetOutcome{Success: false, Error: "malformed dispatcher response"}
+		}
+		return broadcastTargetOutcome{Success: true, Result: execResp.Result}
+	}
+
+	errMsg := fmt.Sprintf("delivery failed with status %d", recorder.Code)
+	var errBody map[string]interface{}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &errBody); err == nil {
+		if e, ok := errBody["error"].(string); ok && e != "" {
+			errMsg = e
+		}
+	}
+	return broadcastTargetOutcome{Success: false, Error: errMsg}
+}
+
+// handleACPStatus delegates to the real ACP agent registry
+// (internal/handlers.ACPHandler.GetAgent). GetAgent reads the agent id from
+// the URL's :agent_id path parameter, so the query-string value this
+// endpoint accepts is forwarded as a path parameter before delegating -- no
+// agent-lookup logic is reimplemented here. A nonexistent (or empty)
+// agent_id now honestly reports 404 with the real agent registry's error
+// body, instead of unconditionally reporting "active" for any input
+// including invented agent ids.
 func (s *APIServer) handleACPStatus(c *gin.Context) {
 	agentID := c.Query("agent_id")
-
-	c.JSON(200, gin.H{
-		"agent_id":     agentID,
-		"status":       "active",
-		"last_seen":    time.Now().Unix(),
-		"version":      version.Version,
-		"capabilities": []string{"execute_action", "broadcast", "status"},
-	})
+	c.Params = append(c.Params, gin.Param{Key: "agent_id", Value: agentID})
+	s.acpHandler.GetAgent(c)
 }
 
 // System Handlers

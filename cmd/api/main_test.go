@@ -24,6 +24,11 @@ func TestNewAPIServer(t *testing.T) {
 	assert.Equal(t, "8080", server.port)
 	assert.NotNil(t, server.logger)
 	assert.NotNil(t, server.unifiedManager)
+	// The ACP endpoints delegate to the real ACP dispatcher
+	// (internal/handlers.ACPHandler) -- it must be constructed, not left
+	// nil, or every ACP handler call below would panic instead of
+	// genuinely dispatching.
+	assert.NotNil(t, server.acpHandler)
 }
 
 func TestNewAPIServer_DefaultPort(t *testing.T) {
@@ -288,15 +293,30 @@ func TestHandleLSPDiagnostics(t *testing.T) {
 }
 
 // ACP Protocol Tests
+//
+// These endpoints delegate to the real ACP dispatcher
+// (internal/handlers.ACPHandler -- the same handler
+// internal/router/router.go wires at the production /v1/acp/* routes), so
+// the tests below exercise the REAL, fixed set of built-in agents that
+// handler registers (see internal/handlers/acp_handler.go:initializeAgents):
+// code-reviewer, bug-finder, refactor-assistant, documentation-generator,
+// test-generator, security-scanner. A test that asserted only the old
+// fabricated shape (arbitrary agent_id always "active", every broadcast
+// "delivered" 100%) would pass on a stub with zero real dispatch -- these
+// assertions instead require genuine agent-existence validation and
+// genuine per-target execution, and would FAIL again if the handlers were
+// ever reverted to canned responses.
+
+// knownACPAgentID is a real, always-registered built-in ACP agent id.
+const knownACPAgentID = "code-reviewer"
 
 func TestHandleACPExecute(t *testing.T) {
 	_, router := setupTestServer()
 
-	t.Run("successful execute", func(t *testing.T) {
+	t.Run("successful execute dispatches to the real agent", func(t *testing.T) {
 		body := map[string]interface{}{
-			"action":   "test_action",
-			"agent_id": "agent-1",
-			"params":   map[string]interface{}{"key": "value"},
+			"agent_id": knownACPAgentID,
+			"task":     "Review this function for bugs",
 		}
 		jsonBody, _ := json.Marshal(body)
 
@@ -306,12 +326,59 @@ func TestHandleACPExecute(t *testing.T) {
 
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 		var response map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.Equal(t, "test_action", response["action"])
-		assert.Equal(t, "agent-1", response["agent_id"])
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.Equal(t, "completed", response["status"])
+		assert.Equal(t, knownACPAgentID, response["agent_id"])
+		// The real dispatcher returns a structured per-agent result (e.g.
+		// executeCodeReview's findings/summary map) -- a stub could only
+		// ever echo back the request fields, never produce this.
+		assert.NotNil(t, response["result"])
+		require.Contains(t, response, "metadata")
+		metadata, ok := response["metadata"].(map[string]interface{})
+		require.True(t, ok, "metadata should be an object")
+		assert.Equal(t, "Code Reviewer", metadata["agent_name"])
+		// Anti-fabrication: the old stub always returned this exact
+		// literal regardless of agent/task. It must never reappear.
+		assert.NotEqual(t, "Action executed successfully", response["result"])
+	})
+
+	t.Run("nonexistent agent is honestly rejected, never claimed successful", func(t *testing.T) {
+		body := map[string]interface{}{
+			"agent_id": "totally-nonexistent-agent",
+			"task":     "do something",
+		}
+		jsonBody, _ := json.Marshal(body)
+
+		req, _ := http.NewRequest("POST", "/api/v1/acp/execute", bytes.NewBuffer(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+
+		var response map[string]interface{}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.Equal(t, "agent not found", response["error"])
+		assert.Equal(t, "totally-nonexistent-agent", response["agent_id"])
+	})
+
+	t.Run("missing required task field is rejected", func(t *testing.T) {
+		body := map[string]interface{}{
+			"agent_id": knownACPAgentID,
+		}
+		jsonBody, _ := json.Marshal(body)
+
+		req, _ := http.NewRequest("POST", "/api/v1/acp/execute", bytes.NewBuffer(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
@@ -328,10 +395,10 @@ func TestHandleACPExecute(t *testing.T) {
 func TestHandleACPBroadcast(t *testing.T) {
 	_, router := setupTestServer()
 
-	t.Run("successful broadcast", func(t *testing.T) {
+	t.Run("broadcast to real agents delivers to each of them", func(t *testing.T) {
 		body := map[string]interface{}{
 			"message": "test message",
-			"targets": []string{"agent-1", "agent-2"},
+			"targets": []string{"code-reviewer", "bug-finder"},
 		}
 		jsonBody, _ := json.Marshal(body)
 
@@ -341,12 +408,56 @@ func TestHandleACPBroadcast(t *testing.T) {
 
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 		var response map[string]interface{}
-		_ = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 		assert.Contains(t, response, "broadcast_id")
+		assert.Equal(t, float64(2), response["total_targets"])
 		assert.Equal(t, float64(2), response["delivered_to"])
+
+		results, ok := response["results"].(map[string]interface{})
+		require.True(t, ok, "results should be an object keyed by target")
+		for _, target := range []string{"code-reviewer", "bug-finder"} {
+			entry, ok := results[target].(map[string]interface{})
+			require.True(t, ok, "missing result for target %s", target)
+			assert.Equal(t, true, entry["success"])
+		}
+	})
+
+	t.Run("broadcast never claims delivery to nonexistent targets", func(t *testing.T) {
+		body := map[string]interface{}{
+			"message": "test message",
+			"targets": []string{"code-reviewer", "no-such-agent"},
+		}
+		jsonBody, _ := json.Marshal(body)
+
+		req, _ := http.NewRequest("POST", "/api/v1/acp/broadcast", bytes.NewBuffer(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+		var response map[string]interface{}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.Equal(t, float64(2), response["total_targets"])
+		// Anti-fabrication: exactly one of the two targets is real, so
+		// delivered_to must reflect that -- never "2 of 2" (the old
+		// unconditional len(targets) behaviour).
+		assert.Equal(t, float64(1), response["delivered_to"])
+
+		results, ok := response["results"].(map[string]interface{})
+		require.True(t, ok)
+		okEntry, ok := results["code-reviewer"].(map[string]interface{})
+		require.True(t, ok)
+		assert.Equal(t, true, okEntry["success"])
+
+		failEntry, ok := results["no-such-agent"].(map[string]interface{})
+		require.True(t, ok)
+		assert.Equal(t, false, failEntry["success"])
+		assert.NotEmpty(t, failEntry["error"])
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
@@ -363,17 +474,37 @@ func TestHandleACPBroadcast(t *testing.T) {
 func TestHandleACPStatus(t *testing.T) {
 	_, router := setupTestServer()
 
-	req, _ := http.NewRequest("GET", "/api/v1/acp/status?agent_id=agent-1", nil)
-	w := httptest.NewRecorder()
+	t.Run("known agent reports its real status", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/acp/status?agent_id="+knownACPAgentID, nil)
+		w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-	var response map[string]interface{}
-	_ = json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "agent-1", response["agent_id"])
-	assert.Equal(t, "active", response["status"])
+		var response map[string]interface{}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.Equal(t, knownACPAgentID, response["id"])
+		assert.Equal(t, "active", response["status"])
+		assert.Contains(t, response, "capabilities")
+	})
+
+	t.Run("nonexistent agent is honestly reported as not found, never active", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/acp/status?agent_id=agent-that-does-not-exist", nil)
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		// Anti-fabrication: the old stub returned 200 + "status":"active"
+		// for ANY agent_id, including invented ones. A nonexistent agent
+		// must now be a real 404, never a claimed-active 200.
+		require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+
+		var response map[string]interface{}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.NotEqual(t, "active", response["status"])
+		assert.Equal(t, "agent not found", response["error"])
+	})
 }
 
 // Analytics Tests
@@ -873,6 +1004,7 @@ func TestAPIServer_Components(t *testing.T) {
 
 	assert.NotNil(t, server.logger)
 	assert.NotNil(t, server.unifiedManager)
+	assert.NotNil(t, server.acpHandler)
 }
 
 // =============================================================================
@@ -1074,11 +1206,10 @@ func TestHandleLSPCompletion_EdgeCases(t *testing.T) {
 func TestHandleACPExecute_EdgeCases(t *testing.T) {
 	_, router := setupTestServer()
 
-	t.Run("empty action", func(t *testing.T) {
+	t.Run("empty task is rejected, not silently accepted", func(t *testing.T) {
 		body := map[string]interface{}{
-			"action":   "",
-			"agent_id": "agent-1",
-			"params":   map[string]interface{}{},
+			"agent_id": knownACPAgentID,
+			"task":     "",
 		}
 		jsonBody, _ := json.Marshal(body)
 
@@ -1088,7 +1219,10 @@ func TestHandleACPExecute_EdgeCases(t *testing.T) {
 
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		// The real dispatcher requires a non-empty task; the old stub
+		// echoed back whatever was sent (including an empty action) as a
+		// 200 "success". An empty required field must now be a real 400.
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
@@ -1113,9 +1247,10 @@ func TestHandleACPBroadcast_EdgeCases(t *testing.T) {
 		var response map[string]interface{}
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.Equal(t, float64(0), response["delivered_to"])
+		assert.Equal(t, float64(0), response["total_targets"])
 	})
 
-	t.Run("many targets", func(t *testing.T) {
+	t.Run("many nonexistent targets are never counted as delivered", func(t *testing.T) {
 		targets := make([]string, 100)
 		for i := 0; i < 100; i++ {
 			targets[i] = fmt.Sprintf("agent-%d", i)
@@ -1137,15 +1272,24 @@ func TestHandleACPBroadcast_EdgeCases(t *testing.T) {
 
 		var response map[string]interface{}
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.Equal(t, float64(100), response["delivered_to"])
+		assert.Equal(t, float64(100), response["total_targets"])
+		// Anti-fabrication: none of "agent-0".."agent-99" are real
+		// registered agents, so genuine delivery is zero -- the old stub
+		// would have claimed all 100 "delivered".
+		assert.Equal(t, float64(0), response["delivered_to"])
 	})
-}
 
-func TestHandleACPStatus_EdgeCases(t *testing.T) {
-	_, router := setupTestServer()
+	t.Run("mix of real and fake targets delivers only to the real ones", func(t *testing.T) {
+		targets := []string{"code-reviewer", "bug-finder", "refactor-assistant", "not-a-real-agent"}
 
-	t.Run("empty agent_id", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/acp/status?agent_id=", nil)
+		body := map[string]interface{}{
+			"message": "broadcast to a mix",
+			"targets": targets,
+		}
+		jsonBody, _ := json.Marshal(body)
+
+		req, _ := http.NewRequest("POST", "/api/v1/acp/broadcast", bytes.NewBuffer(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		router.ServeHTTP(w, req)
@@ -1154,16 +1298,39 @@ func TestHandleACPStatus_EdgeCases(t *testing.T) {
 
 		var response map[string]interface{}
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.Equal(t, "", response["agent_id"])
+		assert.Equal(t, float64(len(targets)), response["total_targets"])
+		assert.Equal(t, float64(3), response["delivered_to"])
+	})
+}
+
+func TestHandleACPStatus_EdgeCases(t *testing.T) {
+	_, router := setupTestServer()
+
+	t.Run("empty agent_id is honestly not found", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/acp/status?agent_id=", nil)
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		// Anti-fabrication: the old stub returned 200 + "status":"active"
+		// even for an empty agent_id. There is no registered agent with
+		// an empty id, so this must be a real 404.
+		assert.Equal(t, http.StatusNotFound, w.Code)
+
+		var response map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NotEqual(t, "active", response["status"])
 	})
 
-	t.Run("special characters in agent_id", func(t *testing.T) {
+	t.Run("special characters in agent_id are looked up honestly", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/acp/status?agent_id=agent%2Ftest%3Aid", nil)
 		w := httptest.NewRecorder()
 
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		// No registered agent has this id, so the real registry must
+		// report 404 rather than fabricating an "active" status for it.
+		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 }
 

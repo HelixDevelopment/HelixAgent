@@ -8,6 +8,18 @@
 
 GIT_PUSH_SUMMARY.txt
 
+# TLS certs (dev) — CONST-053 / §11.4.30: private keys/certs are never
+# versioned. Regeneration mechanism (§11.4.77): certs/gen_dev_certs.sh
+# (self-signed, CN=localhost, dev-only). See certs/README.md.
+# NOTE: intentionally file-glob (*.pem / *.key), not a `certs/` directory
+# ignore — a directory-level ignore would also hide the regeneration
+# script/doc below it from git, and negation cannot re-include a file
+# whose parent directory is itself excluded.
+*.pem
+*.key
+!certs/gen_dev_certs.sh
+!certs/README.md
+
 # Built binaries
 /helixagent
 /api

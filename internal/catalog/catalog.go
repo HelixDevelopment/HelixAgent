@@ -66,7 +66,28 @@ type Entry struct {
 	// OverallScore is the verifier score for a verified model (0 otherwise).
 	OverallScore float64 `json:"overall_score,omitempty"`
 	// Enabled reports whether the underlying provider is enabled/registered.
+	// For an option-sourced HelixLLM model it additionally requires the option
+	// to be SERVING, so no field on the entry says "usable" about a model the
+	// serving layer is not running.
 	Enabled bool `json:"enabled"`
+
+	// ModelIdentity is the human-readable `helixllm/<host>/<model>[:<variant>]`
+	// identity of a HelixLLM-served option (FR-014). It is a VALUE — a label —
+	// and is never an identifier: Model carries the identifier. Empty for every
+	// entry the serving layer did not supply one for.
+	ModelIdentity string `json:"model_identity,omitempty"`
+	// Host is the machine serving the model (FR-023). Empty when unreported.
+	Host string `json:"host,omitempty"`
+	// OwnedBy is provenance as the serving layer reports it.
+	OwnedBy string `json:"owned_by,omitempty"`
+	// Availability lets a consuming tool tell a served model from a withheld
+	// one (FR-019). Its zero value means the serving layer reported nothing,
+	// which is NOT a serving claim.
+	Availability Availability `json:"availability,omitempty"`
+	// WithheldReason is why a withheld option is not being served. The three
+	// reasons are distinct and are never collapsed into a generic
+	// unavailability: each implies a different remedy.
+	WithheldReason WithheldReason `json:"withheld_reason,omitempty"`
 }
 
 // ProviderInfo is the minimal projection of a registered provider that the
@@ -112,6 +133,7 @@ type CatalogService struct {
 	ensemblePresets []string
 	helixLLMEnabled bool
 	helixLLMModels  []string
+	helixLLM        HelixLLMSource // nilable
 }
 
 // Options configures a CatalogService.
@@ -127,8 +149,16 @@ type Options struct {
 	// HelixLLMEnabled promotes HelixLLM to a first-class root entry when true.
 	HelixLLMEnabled bool
 	// HelixLLMModels are the HelixLLM model ids to expose as helixllm/<model>
-	// (only emitted when HelixLLMEnabled).
+	// (only emitted when HelixLLMEnabled). It is a bare id list carrying no
+	// identity, no host and no serving report, so its entries make no
+	// availability claim. HelixLLM supersedes it when both are supplied.
 	HelixLLMModels []string
+	// HelixLLM is the serving layer's model option set — the real propagation
+	// path (FR-016/FR-019/FR-023). It MAY be nil → no option entries are
+	// emitted, rather than a fabricated set. When non-nil it REPLACES
+	// HelixLLMModels, so a hardcoded id never sits beside a reported option
+	// where the two would be indistinguishable (CONST-036).
+	HelixLLM HelixLLMSource
 }
 
 // New constructs a CatalogService.
@@ -139,6 +169,7 @@ func New(opts Options) *CatalogService {
 		ensemblePresets: opts.EnsemblePresets,
 		helixLLMEnabled: opts.HelixLLMEnabled,
 		helixLLMModels:  opts.HelixLLMModels,
+		helixLLM:        opts.HelixLLM,
 	}
 }
 
@@ -174,17 +205,25 @@ func (s *CatalogService) Build() []Entry {
 			Provider: NameHelixLLM,
 			Enabled:  true,
 		})
-		for _, m := range dedupSorted(normalizeAll(s.helixLLMModels)) {
-			if m == "" {
-				continue
+		// The serving layer's reported option set is the source of truth when
+		// it is wired: it carries each option's identity, its serving host and
+		// its availability. The bare id list is the fallback for a deployment
+		// where nothing reports them, and is superseded rather than merged.
+		if opts := helixLLMEntries(s.helixLLM); s.helixLLM != nil {
+			entries = append(entries, opts...)
+		} else {
+			for _, m := range dedupSorted(normalizeAll(s.helixLLMModels)) {
+				if m == "" {
+					continue
+				}
+				entries = append(entries, Entry{
+					Name:     NameHelixLLM + "/" + m,
+					Kind:     KindModel,
+					Provider: NameHelixLLM,
+					Model:    m,
+					Enabled:  true,
+				})
 			}
-			entries = append(entries, Entry{
-				Name:     NameHelixLLM + "/" + m,
-				Kind:     KindModel,
-				Provider: NameHelixLLM,
-				Model:    m,
-				Enabled:  true,
-			})
 		}
 	}
 

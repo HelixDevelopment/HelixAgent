@@ -138,13 +138,33 @@ type ModelsResponse struct {
 	Data   []ModelInfo `json:"data"`
 }
 
-// ModelInfo represents a single model's information
+// ModelInfo represents a single model's information as GET /v1/models reports
+// it.
+//
+// The first five fields are the OpenAI-compatible shape. The four below them
+// are the model-listing contract's additions, which let a consumer name the
+// serving host and tell a served model from a withheld one. They are all
+// omitempty and every one of them is optional on the wire: a serving layer
+// that publishes only the OpenAI shape decodes cleanly here, and the resulting
+// zero values mean "not reported" — which is never read as a serving claim.
 type ModelInfo struct {
 	ID           string          `json:"id"`
 	Object       string          `json:"object"`
 	Created      int64           `json:"created"`
 	OwnedBy      string          `json:"owned_by"`
 	Capabilities map[string]bool `json:"capabilities,omitempty"`
+
+	// ModelIdentity is the human-readable `helixllm/<host>/<model>[:<variant>]`
+	// identity VALUE. ID remains the identifier; this is never used as one.
+	ModelIdentity string `json:"model_identity,omitempty"`
+	// Host is the machine serving the model.
+	Host string `json:"host,omitempty"`
+	// Availability is the reported serving state ("serving" | "withheld").
+	// Empty means the serving layer reported nothing.
+	Availability string `json:"availability,omitempty"`
+	// WithheldReason is why a withheld model is not being served, as one of the
+	// three recorded machine keys.
+	WithheldReason string `json:"withheld_reason,omitempty"`
 }
 
 // ServiceStatus represents the status of HelixLLM services

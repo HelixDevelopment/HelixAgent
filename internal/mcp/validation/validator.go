@@ -254,12 +254,16 @@ func (v *MCPValidator) loadRequirements() {
 		Enabled:        true,
 		Priority:       80,
 	}
+	// Fixed 2026-09-03. `mcp-server-redis` is an npm SECURITY HOLDING package
+	// (resolves, installs nothing). Real package:
+	// @modelcontextprotocol/server-redis, which reads the URL from
+	// process.argv[2] — so it is passed positionally and RequiredEnvs is now
+	// empty rather than naming a variable the server never reads.
 	v.requirements["redis"] = &MCPRequirement{
 		Name:           "redis",
 		Type:           "local",
-		Package:        "mcp-server-redis",
-		Command:        []string{"npx", "-y", "mcp-server-redis"},
-		RequiredEnvs:   []string{"REDIS_URL"},
+		Package:        "@modelcontextprotocol/server-redis",
+		Command:        []string{"npx", "-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"},
 		Description:    "Redis cache operations",
 		Category:       "database",
 		LocalServices:  []string{"redis"},

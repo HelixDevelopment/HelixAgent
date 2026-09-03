@@ -3575,9 +3575,14 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "@notionhq/notion-mcp-server"},
 			Environment: map[string]string{"NOTION_API_KEY": "{env:NOTION_API_KEY}"},
 		},
+		// `--stdio` added 2026-09-03. figma-developer-mcp defines a boolean
+		// `stdio` flag ("Run in stdio transport mode for MCP clients", read
+		// from the published tarball's own CLI definition); without it the
+		// binary starts an HTTP server and never speaks stdio MCP — the same
+		// right-name/wrong-invocation failure the sqlite entry had.
 		"figma": {
 			Type:        "local",
-			Command:     []string{"npx", "-y", "figma-developer-mcp"},
+			Command:     []string{"npx", "-y", "figma-developer-mcp", "--stdio"},
 			Environment: map[string]string{"FIGMA_API_KEY": "{env:FIGMA_API_KEY}"},
 		},
 		"todoist": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
@@ -3626,10 +3631,15 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-kubernetes"},
 			Environment: map[string]string{"KUBECONFIG": "{env:KUBECONFIG}"},
 		},
+		// Fixed 2026-09-03. `mcp-server-redis` is an npm SECURITY HOLDING
+		// package — it resolves with HTTP 200 but publishes only
+		// 0.0.1-security and installs nothing. The real package is
+		// @modelcontextprotocol/server-redis (the seized bare name is its
+		// `bin` name), and it reads the URL from process.argv[2], so the
+		// REDIS_URL env this entry set was never consulted by the server.
 		"redis": {
-			Type:        "local",
-			Command:     []string{"npx", "-y", "mcp-server-redis"},
-			Environment: map[string]string{"REDIS_URL": "redis://localhost:6379"},
+			Type:    "local",
+			Command: []string{"npx", "-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"},
 		},
 		"mongodb": {
 			Type:        "local",
@@ -3666,10 +3676,17 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "mcp-server-weaviate"},
 			Environment: map[string]string{"WEAVIATE_URL": "http://localhost:8080"},
 		},
-		"supabase": {
+		// Fixed 2026-09-03. `mcp-server-supabase` is an npm SECURITY HOLDING
+		// package. Replacement @supabase/mcp-server-supabase v0.11.0 is
+		// published by Supabase (repo github.com/supabase/mcp -> HTTP 200,
+		// ~102k downloads/week). Its flags and env were read from the
+		// published tarball's CLI parser: it accepts --read-only /
+		// --project-ref / --access-token and reads SUPABASE_ACCESS_TOKEN — it
+		// does NOT read SUPABASE_URL or SUPABASE_KEY.
+		"supabase": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
-			Command:     []string{"npx", "-y", "mcp-server-supabase"},
-			Environment: map[string]string{"SUPABASE_URL": "{env:SUPABASE_URL}", "SUPABASE_KEY": "{env:SUPABASE_KEY}"},
+			Command:     []string{"npx", "-y", "@supabase/mcp-server-supabase", "--read-only"},
+			Environment: map[string]string{"SUPABASE_ACCESS_TOKEN": "{env:SUPABASE_ACCESS_TOKEN}"},
 		},
 
 		// =============================================================================
@@ -3944,7 +3961,7 @@ func buildOpenCodeMCPServersOld(baseURL string) map[string]OpenCodeMCPServerDefO
 		"exa":                 {Type: "local", Command: []string{"npx", "-y", "exa-mcp-server"}},
 		"sentry":              {Type: "local", Command: []string{"npx", "-y", "@sentry/mcp-server"}},
 		"notion":              {Type: "local", Command: []string{"npx", "-y", "@notionhq/notion-mcp-server"}},
-		"figma":               {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp"}},
+		"figma":               {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp", "--stdio"}},
 		"aws-kb-retrieval":    {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-aws-kb-retrieval"}},
 		// Restored 2026-09-03 — each replaces a name ce9c4eb9 removed as a
 		// verified npm 404. Every replacement was re-verified live against
@@ -3961,7 +3978,7 @@ func buildOpenCodeMCPServersOld(baseURL string) map[string]OpenCodeMCPServerDefO
 		// HelixAgent Remote MCP - endpoint is /v1/mcp
 		"helixagent":    {Type: "remote", URL: baseURL + "/v1/mcp"}, // Note: OLD format doesn't support headers
 		"kubernetes":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-kubernetes"}},
-		"redis":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-redis"}},
+		"redis":         {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"}},
 		"mongodb":       {Type: "local", Command: []string{"npx", "-y", "mongodb-mcp-server"}},
 		"elasticsearch": {Type: "local", Command: []string{"npx", "-y", "mcp-server-elasticsearch"}},
 		"qdrant":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-qdrant"}},
@@ -4718,7 +4735,7 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"time":                {Type: "local", Command: []string{"npx", "-y", "@theo.foobar/mcp-time"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"git":                 {Type: "local", Command: []string{"npx", "-y", "mcp-git"}, Enabled: true},
 		"sqlite":              {Type: "local", Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"}, Enabled: true},
-		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres"}, Env: map[string]string{"POSTGRES_URL": "postgresql://helixagent:helixagent123@localhost:8101/helixagent_db"}, Enabled: true},
+		"postgres":            {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-postgres", "postgresql://helixagent:helixagent123@localhost:8101/helixagent_db"}, Enabled: true},
 		"puppeteer":           {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-puppeteer"}, Enabled: true},
 		"sequential-thinking": {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-sequential-thinking"}, Enabled: true},
 		"everything":          {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"}, Enabled: true},                                                                              // #nosec G101 -- not a credential (map key / config label / env-var reference)
@@ -4734,14 +4751,14 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		// Additional Anthropic & Community MCPs - LOCAL
 		"exa":        {Type: "local", Command: []string{"npx", "-y", "exa-mcp-server"}, Env: map[string]string{"EXA_API_KEY": "{env:EXA_API_KEY}"}, Enabled: true},
 		"notion":     {Type: "local", Command: []string{"npx", "-y", "@notionhq/notion-mcp-server"}, Env: map[string]string{"NOTION_API_KEY": "{env:NOTION_API_KEY}"}, Enabled: true},
-		"figma":      {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp"}, Env: map[string]string{"FIGMA_API_KEY": "{env:FIGMA_API_KEY}"}, Enabled: true},
+		"figma":      {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp", "--stdio"}, Env: map[string]string{"FIGMA_API_KEY": "{env:FIGMA_API_KEY}"}, Enabled: true},
 		"todoist":    {Type: "local", Command: []string{"npx", "-y", "@doist/todoist-mcp"}, Env: map[string]string{"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"obsidian":   {Type: "local", Command: []string{"npx", "-y", "mcp-obsidian"}, Env: map[string]string{"OBSIDIAN_VAULT_PATH": "{env:OBSIDIAN_VAULT_PATH}"}, Enabled: true},   // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"cloudflare": {Type: "local", Command: []string{"npx", "-y", "@cloudflare/mcp-server-cloudflare"}, Env: map[string]string{"CLOUDFLARE_API_TOKEN": "{env:CLOUDFLARE_API_TOKEN}"}, Enabled: true},
 		"neon":       {Type: "local", Command: []string{"npx", "-y", "@neondatabase/mcp-server-neon"}, Env: map[string]string{"NEON_API_KEY": "{env:NEON_API_KEY}"}, Enabled: true},
 
 		"kubernetes":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-kubernetes"}, Env: map[string]string{"KUBECONFIG": "{env:KUBECONFIG}"}, Enabled: true},
-		"redis":         {Type: "local", Command: []string{"npx", "-y", "mcp-server-redis"}, Env: map[string]string{"REDIS_URL": "redis://localhost:6379"}, Enabled: true},
+		"redis":         {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"}, Enabled: true},
 		"mongodb":       {Type: "local", Command: []string{"npx", "-y", "mongodb-mcp-server"}, Env: map[string]string{"MONGODB_URI": "mongodb://localhost:27017"}, Enabled: true},
 		"elasticsearch": {Type: "local", Command: []string{"npx", "-y", "mcp-server-elasticsearch"}, Env: map[string]string{"ELASTICSEARCH_URL": "http://localhost:9200"}, Enabled: true},
 		"qdrant":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-qdrant"}, Env: map[string]string{"QDRANT_URL": "http://localhost:6333"}, Enabled: true},
@@ -4749,7 +4766,7 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"pinecone":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-pinecone"}, Env: map[string]string{"PINECONE_API_KEY": "{env:PINECONE_API_KEY}"}, Enabled: true},
 		"milvus":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-milvus"}, Env: map[string]string{"MILVUS_HOST": "localhost"}, Enabled: true},
 		"weaviate":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-weaviate"}, Env: map[string]string{"WEAVIATE_URL": "http://localhost:8080"}, Enabled: true},
-		"supabase":      {Type: "local", Command: []string{"npx", "-y", "mcp-server-supabase"}, Env: map[string]string{"SUPABASE_URL": "{env:SUPABASE_URL}"}, Enabled: true},
+		"supabase":      {Type: "local", Command: []string{"npx", "-y", "@supabase/mcp-server-supabase", "--read-only"}, Env: map[string]string{"SUPABASE_ACCESS_TOKEN": "{env:SUPABASE_ACCESS_TOKEN}"}, Enabled: true},
 		"trello":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-trello"}, Env: map[string]string{"TRELLO_API_KEY": "{env:TRELLO_API_KEY}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
 		"monday":        {Type: "local", Command: []string{"npx", "-y", "mcp-server-monday"}, Env: map[string]string{"MONDAY_API_KEY": "{env:MONDAY_API_KEY}"}, Enabled: true},
 		"clickup":       {Type: "local", Command: []string{"npx", "-y", "mcp-server-clickup"}, Env: map[string]string{"CLICKUP_API_KEY": "{env:CLICKUP_API_KEY}"}, Enabled: true},     // #nosec G101 -- not a credential (map key / config label / env-var reference)

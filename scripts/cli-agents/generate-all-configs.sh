@@ -566,7 +566,7 @@ generate_opencode_config() {
     },
     "figma": {
       "command": "npx",
-      "args": ["-y", "figma-developer-mcp"],
+      "args": ["-y", "figma-developer-mcp", "--stdio"],
       "env": ["FIGMA_API_KEY=${FIGMA_API_KEY}"]
     },
     "aws-kb-retrieval": {
@@ -606,8 +606,7 @@ generate_opencode_config() {
     },
     "redis": {
       "command": "npx",
-      "args": ["-y", "mcp-server-redis"],
-      "env": ["REDIS_URL=redis://localhost:6379"]
+      "args": ["-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"]
     },
     "mongodb": {
       "command": "npx",
@@ -737,7 +736,7 @@ generate_crush_config() {
     "linear": {"command": "npx", "args": ["-y", "mcp-linear"], "env": {"LINEAR_API_KEY": "${LINEAR_API_KEY}"}, "enabled": true},
     "sentry": {"command": "npx", "args": ["-y", "@sentry/mcp-server"], "env": {"SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}", "SENTRY_ORG": "${SENTRY_ORG}"}, "enabled": true},
     "notion": {"command": "npx", "args": ["-y", "@notionhq/notion-mcp-server"], "env": {"NOTION_API_KEY": "${NOTION_API_KEY}"}, "enabled": true},
-    "figma": {"command": "npx", "args": ["-y", "figma-developer-mcp"], "env": {"FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"}, "enabled": true},
+    "figma": {"command": "npx", "args": ["-y", "figma-developer-mcp", "--stdio"], "env": {"FIGMA_API_KEY": "${FIGMA_API_KEY}"}, "enabled": true},
     "aws-kb-retrieval": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"], "env": {"AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}"}, "enabled": true},
     "gitlab": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-gitlab"], "env": {"GITLAB_TOKEN": "${GITLAB_TOKEN}"}, "enabled": true},
     "helixagent": {"command": "curl", "args": ["-s", "-X", "POST", "HELIX_URL_PLACEHOLDER/v1/mcp", "-H", "Content-Type: application/json"], "enabled": true},
@@ -746,12 +745,12 @@ generate_crush_config() {
     "helixagent-memory": {"command": "curl", "args": ["-s", "-X", "POST", "HELIX_URL_PLACEHOLDER/v1/memory", "-H", "Content-Type: application/json"], "enabled": true},
     "docker": {"command": "npx", "args": ["-y", "mcp-server-docker"], "enabled": true},
     "kubernetes": {"command": "npx", "args": ["-y", "mcp-server-kubernetes"], "env": {"KUBECONFIG": "${KUBECONFIG:-$HOME/.kube/config}"}, "enabled": true},
-    "redis": {"command": "npx", "args": ["-y", "mcp-server-redis"], "env": {"REDIS_URL": "${REDIS_URL:-redis://localhost:6379}"}, "enabled": true},
+    "redis": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-redis", "${REDIS_URL:-redis://localhost:6379}"], "enabled": true},
     "mongodb": {"command": "npx", "args": ["-y", "mongodb-mcp-server"], "env": {"MONGODB_URI": "${MONGODB_URI:-mongodb://localhost:27017}"}, "enabled": true},
     "elasticsearch": {"command": "npx", "args": ["-y", "mcp-server-elasticsearch"], "env": {"ELASTICSEARCH_URL": "${ELASTICSEARCH_URL:-http://localhost:9200}"}, "enabled": true},
     "qdrant": {"command": "npx", "args": ["-y", "mcp-server-qdrant"], "env": {"QDRANT_URL": "${QDRANT_URL:-http://localhost:6333}"}, "enabled": true},
     "chroma": {"command": "npx", "args": ["-y", "mcp-server-chroma"], "env": {"CHROMA_URL": "${CHROMA_URL:-http://localhost:8001}"}, "enabled": true},
-    "jira": {"command": "npx", "args": ["-y", "mcp-server-jira"], "env": {"JIRA_URL": "${JIRA_URL}", "JIRA_EMAIL": "${JIRA_EMAIL}", "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"}, "enabled": true},
+    "jira": {"command": "npx", "args": ["-y", "@aashari/mcp-server-atlassian-jira"], "env": {"ATLASSIAN_SITE_NAME": "${ATLASSIAN_SITE_NAME}", "ATLASSIAN_USER_EMAIL": "${ATLASSIAN_USER_EMAIL}", "ATLASSIAN_API_TOKEN": "${ATLASSIAN_API_TOKEN}"}, "enabled": true},
     "asana": {"command": "npx", "args": ["-y", "@roychri/mcp-server-asana"], "env": {"ASANA_ACCESS_TOKEN": "${ASANA_ACCESS_TOKEN}"}, "enabled": true},
     "google-drive": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-gdrive"], "env": {"GOOGLE_CREDENTIALS_PATH": "${GOOGLE_CREDENTIALS_PATH}"}, "enabled": true},
     "aws-s3": {"command": "npx", "args": ["-y", "mcp-server-s3"], "env": {"AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}"}, "enabled": true},

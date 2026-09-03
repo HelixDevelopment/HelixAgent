@@ -110,12 +110,20 @@ var ExtendedMCPPackages = []MCPPackage{
 	// ==========================================================================
 	// DESIGN & UI SERVERS
 	// ==========================================================================
+	// Fixed 2026-09-03. `mcp-server-figma` RESOLVES (HTTP 200) but is an npm
+	// SECURITY HOLDING package: single version 0.0.1-security, description
+	// "security holding package", repository "npm/security-holder" — a name
+	// npm seized. Every existence check passed it while it installed nothing.
+	// Replacement verified live: figma-developer-mcp v0.13.2 (Framelink),
+	// repo github.com/GLips/Figma-Context-MCP -> HTTP 200, ~81586
+	// downloads/week, community publisher. It reads FIGMA_API_KEY, not the
+	// FIGMA_ACCESS_TOKEN this entry declared.
 	{
 		Name:        "figma",
-		NPM:         "mcp-server-figma",
+		NPM:         "figma-developer-mcp",
 		Description: "MCP server for Figma design operations",
 		Category:    CategoryDesign,
-		RequiresEnv: []string{"FIGMA_ACCESS_TOKEN"},
+		RequiresEnv: []string{"FIGMA_API_KEY"},
 	},
 
 	// Restored 2026-09-03. ce9c4eb9 removed "miro" because `mcp-miro` 404s.
@@ -157,12 +165,25 @@ var ExtendedMCPPackages = []MCPPackage{
 	// ==========================================================================
 	// DEVELOPMENT TOOL SERVERS
 	// ==========================================================================
+	// Fixed 2026-09-03. `mcp-server-postgres` RESOLVES but is an npm SECURITY
+	// HOLDING package (single version 0.0.1-security). Notably it is EXACTLY
+	// the `bin` name of the real scoped package below — the seized bare name
+	// was a squat on the binary name, which is why it looked plausible.
+	// Replacement: @modelcontextprotocol/server-postgres v0.6.2, ~100745
+	// downloads/week, MCP-org scope sharing the control package's maintainers
+	// — VENDOR, though ARCHIVED upstream (its source is vendored in-tree at
+	// external/mcp-servers/servers-archived/src/postgres, whose package.json
+	// declares `bin: {"mcp-server-postgres": ...}`, confirming the mapping).
+	//
+	// It takes the connection URL POSITIONALLY (index.ts: process.argv.slice(2))
+	// and reads NO env var — the POSTGRES_URL this entry declared was never
+	// consulted by the package. The catalogue records only the package name;
+	// the positional URL is supplied by the generators.
 	{
 		Name:        "postgres",
-		NPM:         "mcp-server-postgres",
-		Description: "MCP server for PostgreSQL database operations",
+		NPM:         "@modelcontextprotocol/server-postgres",
+		Description: "MCP server for PostgreSQL database operations (connection URL passed positionally)",
 		Category:    CategoryDev,
-		RequiresEnv: []string{"POSTGRES_URL"},
 	},
 	{
 		Name:        "mongodb",
@@ -171,12 +192,22 @@ var ExtendedMCPPackages = []MCPPackage{
 		Category:    CategoryDev,
 		RequiresEnv: []string{"MONGODB_URL"},
 	},
+	// Fixed 2026-09-03. `mcp-server-redis` RESOLVES but is an npm SECURITY
+	// HOLDING package (single version 0.0.1-security), and like the postgres
+	// case is exactly the `bin` name of the real scoped package.
+	// Replacement: @modelcontextprotocol/server-redis v2025.4.25, ~2165
+	// downloads/week, MCP-org scope — VENDOR, ARCHIVED upstream (source
+	// vendored in-tree at external/mcp-servers/servers-archived/src/redis).
+	//
+	// It takes the Redis URL POSITIONALLY — src/index.ts line 13 is literally
+	// `const REDIS_URL = process.argv[2] || "redis://localhost:6379"`, so the
+	// REDIS_URL env var this entry declared is IGNORED by the package. Every
+	// config in this repo was setting an env var the server never reads.
 	{
 		Name:        "redis",
-		NPM:         "mcp-server-redis",
-		Description: "MCP server for Redis operations",
+		NPM:         "@modelcontextprotocol/server-redis",
+		Description: "MCP server for Redis operations (connection URL passed positionally)",
 		Category:    CategoryDev,
-		RequiresEnv: []string{"REDIS_URL"},
 	},
 	{
 		Name:        "docker",

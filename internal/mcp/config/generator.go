@@ -179,12 +179,14 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 			g.getEnvOrDefault("REDIS_HOST", "localhost"),
 			g.getEnvOrDefault("REDIS_PORT", "16379"),
 		))
+		// Fixed 2026-09-03. `mcp-server-redis` is an npm SECURITY HOLDING
+		// package — it resolves but installs nothing. The real package is
+		// @modelcontextprotocol/server-redis (the seized bare name is its
+		// `bin` name), and it reads the URL from process.argv[2], NOT from
+		// REDIS_URL. Passing the URL positionally is what actually connects.
 		mcps["redis"] = MCPServerConfig{
 			Type:    "local",
-			Command: []string{"npx", "-y", "mcp-server-redis"},
-			Environment: map[string]string{
-				"REDIS_URL": redisURL,
-			},
+			Command: []string{"npx", "-y", "@modelcontextprotocol/server-redis", redisURL},
 			Enabled: true,
 		}
 	}

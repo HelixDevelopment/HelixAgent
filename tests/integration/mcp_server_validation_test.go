@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -103,10 +104,110 @@ var knownNonexistentMCPPackages = []string{
 	"mcp-tinybird",
 }
 
+// knownUnusableMCPPackages are npm package names that RESOLVE (HTTP 200) but
+// are not installable — a class distinct from the 404s above, and the reason
+// this list exists separately rather than being folded into them.
+//
+// Every existence check in this repo passed all five: they return a package
+// document, so "does it exist?" answers yes. Four are npm SECURITY HOLDING
+// packages (a single 0.0.1-security version, description "security holding
+// package", repository "npm/security-holder") — names npm SEIZED, typically
+// after malicious use or squatting. The fifth resolves with ZERO published
+// versions: an empty registry shell.
+//
+// Verified against registry.npmjs.org on 2026-09-03, control-probed so a
+// finding is an answer rather than a network artefact.
+//
+// Note the pattern in three of the four seized names: `mcp-server-postgres`,
+// `mcp-server-redis` and `mcp-server-figma` are exactly the `bin` names of
+// real packages (@modelcontextprotocol/server-postgres declares
+// `bin: {"mcp-server-postgres": ...}`). The squats targeted the binary name,
+// which is precisely why they looked like the right package to configure.
+var knownUnusableMCPPackages = map[string]string{
+	"mcp-server-figma":    "npm security holding package (0.0.1-security) - use figma-developer-mcp --stdio",
+	"mcp-server-postgres": "npm security holding package (0.0.1-security) - use @modelcontextprotocol/server-postgres with the URL passed positionally",
+	"mcp-server-redis":    "npm security holding package (0.0.1-security) - use @modelcontextprotocol/server-redis with the URL passed positionally",
+	"mcp-server-supabase": "npm security holding package (0.0.1-security) - use @supabase/mcp-server-supabase --read-only with SUPABASE_ACCESS_TOKEN",
+	"mcp-server-jira":     "resolves with ZERO published versions - use @aashari/mcp-server-atlassian-jira with the ATLASSIAN_* env triple",
+}
+
 // npmRegistryControlPackage is a package known to exist. It is probed first so
 // a total network/registry outage is reported as a SKIP rather than being
 // mistaken for "every package we ship is broken".
 const npmRegistryControlPackage = "@modelcontextprotocol/server-filesystem"
+
+// TestMCPConfigsAvoidKnownUnusablePackages is the network-free regression
+// guard for the resolves-but-unusable class.
+//
+// TestMCPConfigsAvoidKnownNonexistentPackages covers names that 404. These do
+// not 404 — that is the entire point of the defect — so re-introducing one
+// would sail past that guard. This closes it without needing the network.
+func TestMCPConfigsAvoidKnownUnusablePackages(t *testing.T) {
+	root := getProjectRoot(t)
+
+	packages, err := collectConfiguredNpmPackages(root)
+	require.NoError(t, err)
+	require.NotEmpty(t, packages, "Config scan must find npm packages")
+
+	configured := make(map[string]bool, len(packages))
+	for _, p := range packages {
+		configured[p] = true
+	}
+
+	for bad, why := range knownUnusableMCPPackages {
+		assert.False(t, configured[bad],
+			"Config references %s, which resolves in the npm registry but installs nothing: %s", bad, why)
+	}
+}
+
+// TestNpmPackageHealthDetectsUnusablePackages validates the DETECTOR itself
+// against known-bad and known-good fixtures, so the guard cannot silently stop
+// guarding.
+//
+// It asserts BOTH halves of the defect, which is what makes it meaningful:
+//
+//  1. every known-unusable name still RESOLVES — proving an existence-only
+//     check would pass it, so this is a real blind spot and not a hypothetical;
+//  2. the health check nonetheless judges it NOT usable.
+//
+// Assertion (1) is what stops this test from decaying into a tautology: if npm
+// ever un-seizes one of these names it will start resolving differently and
+// this test says so, rather than quietly agreeing with whatever the code does.
+//
+// Neuter isSecurityHoldingVersion (or the zero-version branch) and this fails —
+// that is the paired mutation.
+func TestNpmPackageHealthDetectsUnusablePackages(t *testing.T) {
+	if testing.Short() {
+		t.Logf("Short mode - skipping npm package health detector test (acceptable)")
+		return
+	}
+
+	if !checkNpmPackageExists(npmRegistryControlPackage) {
+		t.Skipf("npm registry unreachable - control package %s did not resolve; cannot distinguish a seized package from a network failure (SKIP-OK: #npm-registry-unreachable)", npmRegistryControlPackage)
+	}
+
+	// Golden-good: a healthy package must be judged resolvable AND usable, so a
+	// detector that simply rejected everything would fail here.
+	t.Run("golden-good/"+npmRegistryControlPackage, func(t *testing.T) {
+		h := npmPackageHealthOf(npmRegistryControlPackage)
+		assert.True(t, h.Resolved, "control package must resolve")
+		assert.True(t, h.Usable, "control package must be judged usable, got reason: %s", h.Reason)
+		assert.False(t, isSecurityHoldingVersion(h.Latest),
+			"control package latest %q must not look like a seized-name marker", h.Latest)
+	})
+
+	for pkg, why := range knownUnusableMCPPackages {
+		t.Run("golden-bad/"+pkg, func(t *testing.T) {
+			h := npmPackageHealthOf(pkg)
+			assert.True(t, h.Resolved,
+				"%s is expected to RESOLVE - that is precisely why an existence-only check missed it. "+
+					"If it no longer resolves, this entry has changed class and its comment needs updating", pkg)
+			assert.False(t, h.Usable,
+				"%s must be judged NOT usable (%s) - it resolves, so only the version-shape / zero-version "+
+					"checks can catch it", pkg, why)
+		})
+	}
+}
 
 // TestMCPPackageExistence verifies that EVERY npm package this repo writes into
 // a CLI-agent MCP config actually exists in the npm registry.
@@ -136,8 +237,10 @@ func TestMCPPackageExistence(t *testing.T) {
 
 	for _, pkg := range packages {
 		t.Run(pkg, func(t *testing.T) {
-			assert.True(t, checkNpmPackageExists(pkg),
-				"Package %s is referenced by a shipped CLI-agent config but does not exist in the npm registry - a user taking that config gets an MCP server that fails to start on an npm 404", pkg)
+			h := npmPackageHealthOf(pkg)
+			assert.True(t, h.Usable,
+				"Package %s is referenced by a shipped CLI-agent config but is NOT installable: %s - a user taking that config gets an MCP server that fails to start",
+				pkg, h.Reason)
 		})
 	}
 }
@@ -552,18 +655,132 @@ func TestOpenCodeConfiguration(t *testing.T) {
 	}
 }
 
-// checkNpmPackageExists checks if a package exists in npm registry
-func checkNpmPackageExists(packageName string) bool {
+// npmPackageHealth is the verdict of one registry lookup.
+//
+// Resolving is NOT the same as being installable, and the difference is a whole
+// class of defect an existence-only check cannot see (see npmPackageHealthOf).
+type npmPackageHealth struct {
+	Resolved bool   // registry returned HTTP 200 for the package document
+	Usable   bool   // ...and it publishes something a user can actually install
+	Reason   string // why not usable; empty when Usable
+	Latest   string // dist-tags.latest, for the failure message
+	Versions int    // number of published versions
+}
+
+// securityHoldingVersion is the version npm stamps on a name it has SEIZED —
+// typically because the name was used maliciously or squatted. The package
+// document still returns HTTP 200, so every existence check passes, but
+// installing it yields nothing.
+const securityHoldingVersion = "0.0.1-security"
+
+// npmPackageHealthOf resolves a package and judges whether it is installable.
+//
+// # WHY THIS IS NOT JUST AN HTTP 200 CHECK
+//
+// Four names shipped in this repo — mcp-server-figma, mcp-server-postgres,
+// mcp-server-redis, mcp-server-supabase — resolve with HTTP 200 while being
+// npm security holding packages: a single version 0.0.1-security, description
+// "security holding package", repository "npm/security-holder". A fifth,
+// mcp-server-jira, resolves with ZERO published versions. The existence check
+// passed all five, so the configs pointed at names npm had to quarantine and
+// the guard was structurally blind to it.
+//
+// SIGNAL CHOICE (measured, not assumed)
+//
+// All 123 package names this repo references were probed against the live
+// registry on 2026-09-03 and the candidate signals compared on the 101 that
+// are healthy:
+//
+//   - version STRING (chosen, primary): 0 of 101 healthy packages have a
+//     latest version carrying a `-security` prerelease. npm itself stamps this
+//     when it seizes a name, so it is not publisher-controlled text.
+//   - description substring: also 0 of 101 here, but it is free text the
+//     publisher writes, so it can drift or be imitated. Kept only as a
+//     SECONDARY trigger, and only for a single-version package, so a genuine
+//     security tool that merely describes itself cannot trip it.
+//   - version COUNT: REJECTED as a signal. 8+ healthy packages this repo
+//     depends on publish exactly one version (mcp-server-airtable 0.0.1,
+//     mcp-server-brave-search 1.0.0, mcp-obsidian 1.0.0, ...), so "only one
+//     version" would false-positive on shipping dependencies. Zero versions is
+//     a different matter and is caught below.
+func npmPackageHealthOf(packageName string) npmPackageHealth {
 	url := "https://registry.npmjs.org/" + strings.ReplaceAll(packageName, "/", "%2f")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
-		return false
+		return npmPackageHealth{Reason: "registry request failed: " + err.Error()}
 	}
 	defer resp.Body.Close()
 
-	return resp.StatusCode == http.StatusOK
+	if resp.StatusCode != http.StatusOK {
+		return npmPackageHealth{Reason: fmt.Sprintf("registry returned HTTP %d", resp.StatusCode)}
+	}
+
+	var doc struct {
+		Description string `json:"description"`
+		DistTags    struct {
+			Latest string `json:"latest"`
+		} `json:"dist-tags"`
+		Versions map[string]json.RawMessage `json:"versions"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		return npmPackageHealth{Resolved: true, Reason: "registry document is not valid JSON: " + err.Error()}
+	}
+
+	h := npmPackageHealth{
+		Resolved: true,
+		Latest:   doc.DistTags.Latest,
+		Versions: len(doc.Versions),
+	}
+
+	// Resolves but publishes nothing installable (mcp-server-jira,
+	// zendesk-mcp-server). An empty registry shell, not a package.
+	if h.Versions == 0 {
+		h.Reason = "resolves but publishes ZERO versions - an empty registry shell that installs nothing"
+		return h
+	}
+
+	// Primary signal: npm's own seized-name marker.
+	if isSecurityHoldingVersion(h.Latest) {
+		h.Reason = fmt.Sprintf("npm SECURITY HOLDING package (latest version %q) - npm seized this name, "+
+			"typically because it was used maliciously or squatted; it resolves but installs nothing", h.Latest)
+		return h
+	}
+	for v := range doc.Versions {
+		if isSecurityHoldingVersion(v) && h.Versions == 1 {
+			h.Reason = fmt.Sprintf("npm SECURITY HOLDING package (only version %q)", v)
+			return h
+		}
+	}
+
+	// Secondary signal, deliberately narrow: publisher-controlled text, so it
+	// only fires when the package also publishes just one version.
+	if h.Versions == 1 && strings.Contains(strings.ToLower(doc.Description), "security holding package") {
+		h.Reason = fmt.Sprintf("npm SECURITY HOLDING package (description %q, single version %q)", doc.Description, h.Latest)
+		return h
+	}
+
+	h.Usable = true
+	return h
+}
+
+// isSecurityHoldingVersion reports whether a version string is npm's
+// seized-name marker. The canonical value is 0.0.1-security; the suffix is
+// matched rather than the exact string so a differently-numbered holding
+// release is caught too.
+func isSecurityHoldingVersion(version string) bool {
+	return version == securityHoldingVersion || strings.HasSuffix(version, "-security")
+}
+
+// checkNpmPackageExists reports whether a package is present AND installable.
+//
+// The name is kept for its existing call sites, but the contract is now
+// stricter than "the registry returned 200": a seized or empty name is NOT a
+// package a user can run, so treating it as existing is what let four
+// quarantined names ship.
+func checkNpmPackageExists(packageName string) bool {
+	return npmPackageHealthOf(packageName).Usable
 }
 
 // findBinaryPath finds the HelixAgent binary path

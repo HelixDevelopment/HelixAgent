@@ -85,9 +85,10 @@ func TestGoSourceMCPPackageExistence(t *testing.T) {
 
 	for _, pkg := range packages {
 		t.Run(pkg, func(t *testing.T) {
-			assert.True(t, checkNpmPackageExists(pkg),
-				"Package %s is written into an MCP config by Go source (%s) but does not exist in the npm registry - a user running the generator gets an MCP server that fails to start on an npm 404",
-				pkg, formatSites(byPackage[pkg]))
+			h := npmPackageHealthOf(pkg)
+			assert.True(t, h.Usable,
+				"Package %s is written into an MCP config by Go source (%s) but is NOT installable: %s - a user running the generator gets an MCP server that fails to start",
+				pkg, formatSites(byPackage[pkg]), h.Reason)
 		})
 	}
 }
@@ -111,6 +112,33 @@ func TestGoSourceAvoidsKnownNonexistentPackages(t *testing.T) {
 		assert.Empty(t, referenced[bad],
 			"Go source references %s, which does not exist in the npm registry (verified 404) - at %s",
 			bad, formatSites(referenced[bad]))
+	}
+}
+
+// TestGoSourceAvoidsKnownUnusablePackages is the Go-source half of the
+// resolves-but-unusable guard.
+//
+// The 404 list above cannot catch these: a security holding package and an
+// empty registry shell both answer HTTP 200, so they are "existing" names that
+// install nothing. Five of them shipped in this repo's generators until
+// 2026-09-03 precisely because every check only asked whether the name
+// resolved.
+func TestGoSourceAvoidsKnownUnusablePackages(t *testing.T) {
+	root := getProjectRoot(t)
+
+	sites, err := collectGoSourceNpmPackages(root)
+	require.NoError(t, err)
+	require.NotEmpty(t, sites, "Go-source scan must find npm packages")
+
+	referenced := map[string][]npxPackageSite{}
+	for _, s := range sites {
+		referenced[s.Package] = append(referenced[s.Package], s)
+	}
+
+	for bad, why := range knownUnusableMCPPackages {
+		assert.Empty(t, referenced[bad],
+			"Go source references %s, which resolves in the npm registry but installs nothing: %s - at %s",
+			bad, why, formatSites(referenced[bad]))
 	}
 }
 

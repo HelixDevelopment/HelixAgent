@@ -617,15 +617,26 @@ func TestSpecificPackages(t *testing.T) {
 		}
 	})
 
-	t.Run("Figma package requires access token", func(t *testing.T) {
+	// Reconciled 2026-09-03. This asserted FIGMA_ACCESS_TOKEN, which is the
+	// variable the OLD entry declared while pointing at `mcp-server-figma` — an
+	// npm security holding package that installs nothing, so nothing ever read
+	// it. The real package, figma-developer-mcp, reads FIGMA_API_KEY (confirmed
+	// in its published tarball). Keeping the old name would assert a variable
+	// no server consults, which is how the entry looked correct while being
+	// unusable.
+	t.Run("Figma package requires its API key", func(t *testing.T) {
 		t.Parallel()
 		packages := GetDesignPackages()
+		found := false
 		for _, pkg := range packages {
 			if pkg.Name == "figma" {
-				assert.Contains(t, pkg.RequiresEnv, "FIGMA_ACCESS_TOKEN")
+				found = true
+				assert.Contains(t, pkg.RequiresEnv, "FIGMA_API_KEY")
 				break
 			}
 		}
+		// The old loop asserted nothing at all if the entry went missing.
+		assert.True(t, found, "figma must be present in the design category")
 	})
 
 	t.Run("Brave search requires API key", func(t *testing.T) {

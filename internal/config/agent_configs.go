@@ -375,10 +375,14 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 			Args:    []string{"-y", "mcp-server-kubernetes"},
 			Env:     []string{"KUBECONFIG=${KUBECONFIG}"},
 		},
+		// Fixed 2026-09-03. `mcp-server-redis` is an npm SECURITY HOLDING
+		// package (resolves, installs nothing). Real package:
+		// @modelcontextprotocol/server-redis, which reads the URL from
+		// process.argv[2] — REDIS_URL was never consulted by the server, so
+		// the URL moves into the argv where it is actually read.
 		"redis": {
 			Command: "npx",
-			Args:    []string{"-y", "mcp-server-redis"},
-			Env:     []string{"REDIS_URL=redis://localhost:6379"},
+			Args:    []string{"-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"},
 		},
 		"mongodb": {
 			Command: "npx",

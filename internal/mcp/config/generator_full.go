@@ -215,16 +215,19 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 		}),
 		Enabled: g.hasAnyEnvVar("POSTGRES_URL", "POSTGRES_HOST"),
 	}
+	// Fixed 2026-09-03. `mcp-server-redis` is an npm SECURITY HOLDING package
+	// (resolves, installs nothing). Real package:
+	// @modelcontextprotocol/server-redis, which reads the URL from
+	// process.argv[2] — the REDIS_URL env this block set was never consulted,
+	// so the URL is now passed positionally.
 	mcps["redis"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-redis"},
-		Environment: g.expandEnvMap(map[string]string{
-			"REDIS_URL": g.getEnvOrDefault("REDIS_URL", fmt.Sprintf("redis://:%s@%s:%s",
+		Type: "local",
+		Command: []string{"npx", "-y", "@modelcontextprotocol/server-redis",
+			g.getEnvOrDefault("REDIS_URL", fmt.Sprintf("redis://:%s@%s:%s",
 				os.Getenv("REDIS_PASSWORD"),
 				g.getEnvOrDefault("REDIS_HOST", "localhost"),
 				g.getEnvOrDefault("REDIS_PORT", "16379"),
-			)),
-		}),
+			))},
 		Enabled: g.hasAnyEnvVar("REDIS_URL", "REDIS_HOST"),
 	}
 	mcps["mongodb"] = MCPServerConfigFull{
@@ -386,15 +389,24 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 		}),
 		Enabled: g.hasEnvVar("NOTION_API_KEY"),
 	}
+	// Fixed 2026-09-03. `mcp-server-jira` was NOT in the reported seized set —
+	// the sweep of all 123 referenced package names found it independently.
+	// It RESOLVES with HTTP 200 while publishing ZERO versions: an empty
+	// registry shell that installs nothing. An existence-only check passed it
+	// for the same reason it passed the four security-holding names.
+	// Replacement: @aashari/mcp-server-atlassian-jira v3.3.0, repo
+	// github.com/aashari/mcp-server-atlassian-jira -> HTTP 200, ~14799
+	// downloads/week, community publisher. It reads the ATLASSIAN_* triple,
+	// not the JIRA_* variables this block set.
 	mcps["jira"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-jira"},
+		Command: []string{"npx", "-y", "@aashari/mcp-server-atlassian-jira"},
 		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-			"JIRA_URL":       "{env:JIRA_URL}",
-			"JIRA_EMAIL":     "{env:JIRA_EMAIL}",
-			"JIRA_API_TOKEN": "{env:JIRA_API_TOKEN}",
+			"ATLASSIAN_SITE_NAME":  "{env:ATLASSIAN_SITE_NAME}",
+			"ATLASSIAN_USER_EMAIL": "{env:ATLASSIAN_USER_EMAIL}",
+			"ATLASSIAN_API_TOKEN":  "{env:ATLASSIAN_API_TOKEN}",
 		}),
-		Enabled: g.hasAllEnvVars("JIRA_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"),
+		Enabled: g.hasAllEnvVars("ATLASSIAN_SITE_NAME", "ATLASSIAN_USER_EMAIL", "ATLASSIAN_API_TOKEN"),
 	}
 	mcps["trello"] = MCPServerConfigFull{
 		Type:    "local",
@@ -503,14 +515,25 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 		}),
 		Enabled: g.hasEnvVar("GOOGLE_APPLICATION_CREDENTIALS"),
 	}
+	// Fixed 2026-09-03. `mcp-server-supabase` is an npm SECURITY HOLDING
+	// package (resolves, installs nothing). Replacement verified live:
+	// @supabase/mcp-server-supabase v0.11.0, repo github.com/supabase/mcp ->
+	// HTTP 200, ~102077 downloads/week, published by Supabase — VENDOR.
+	//
+	// Its npm README is empty, so the flags were read from the published
+	// tarball's own CLI parser (dist/transports/stdio.js), which accepts
+	// --access-token / --api-url / --content-api-url / --features /
+	// --project-ref / --read-only and reads SUPABASE_ACCESS_TOKEN from the
+	// environment. It does NOT read SUPABASE_URL or SUPABASE_KEY, which is
+	// what this block was setting. --read-only is the safe default for an
+	// agent-driven server.
 	mcps["supabase"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-supabase"},
-		Environment: g.expandEnvMap(map[string]string{
-			"SUPABASE_URL": "{env:SUPABASE_URL}",
-			"SUPABASE_KEY": "{env:SUPABASE_KEY}",
+		Command: []string{"npx", "-y", "@supabase/mcp-server-supabase", "--read-only"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"SUPABASE_ACCESS_TOKEN": "{env:SUPABASE_ACCESS_TOKEN}",
 		}),
-		Enabled: g.hasAllEnvVars("SUPABASE_URL", "SUPABASE_KEY"),
+		Enabled: g.hasEnvVar("SUPABASE_ACCESS_TOKEN"),
 	}
 
 	// ==========================================================================

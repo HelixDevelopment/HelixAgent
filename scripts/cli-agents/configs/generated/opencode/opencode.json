@@ -106,7 +106,7 @@
     },
     "figma": {
       "command": "npx",
-      "args": ["-y", "figma-developer-mcp"],
+      "args": ["-y", "figma-developer-mcp", "--stdio"],
       "env": ["FIGMA_API_KEY=${FIGMA_API_KEY}"]
     },
     "aws-kb-retrieval": {
@@ -146,8 +146,7 @@
     },
     "redis": {
       "command": "npx",
-      "args": ["-y", "mcp-server-redis"],
-      "env": ["REDIS_URL=redis://localhost:6379"]
+      "args": ["-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"]
     },
     "mongodb": {
       "command": "npx",

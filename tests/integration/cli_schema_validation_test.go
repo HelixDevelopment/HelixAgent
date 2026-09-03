@@ -161,15 +161,79 @@ func GetSupportedCLIAgents() []CLIAgent {
 	}
 }
 
-// TestOpenCodeSchemaValidation validates the OpenCode configuration against the schema
-func TestOpenCodeSchemaValidation(t *testing.T) {
-	configPath := filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
+// openCodeReferenceConfigRelPath is the OpenCode-schema config artifact THIS
+// REPOSITORY owns and ships: the reference config that cmd/helixagent's
+// handleGenerateOpenCode names as the canonical form its output must match.
+// It is tracked, so it is present in every checkout and identical in all of them.
+const openCodeReferenceConfigRelPath = "configs/cli-agents/opencode.json"
 
-	// Read the configuration
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatalf("Failed to read OpenCode config: %v", err)
+// historicalOperatorHomeConfigPath rebuilds the path these tests used to treat as
+// their subject: the OPERATOR'S personal OpenCode config, in their real home
+// directory. It is the generator's DESTINATION (see handleGenerateOpenCode:
+// "saved as opencode.json ... in ~/.config/opencode/"), never a project artifact —
+// so a PASS asserted that this machine's config happened to be schema-valid, a
+// fact about the developer's laptop rather than about this codebase.
+//
+// It is retained ONLY to build a string for the RED_MODE=1 polarity switch
+// (§11.4.115), which asserts the subject is outside the repository. Neither
+// polarity ever opens this path: the guard rejects it before any read.
+func historicalOperatorHomeConfigPath() string {
+	return filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
+}
+
+// openCodeSubjectPath resolves the config artifact under test and PROVES it
+// belongs to this repository.
+//
+// RED_MODE=1 restores the historical operator-home path so the guard can show it
+// still rejects a subject outside the checkout; the default resolves the tracked
+// reference config. The guard — not the caller — is what makes a drift back to
+// $HOME impossible to land silently.
+func openCodeSubjectPath(t *testing.T) string {
+	t.Helper()
+
+	repoRoot := findProjectRootForOpenCode(t)
+
+	path := filepath.Join(repoRoot, openCodeReferenceConfigRelPath)
+	if os.Getenv("RED_MODE") == "1" {
+		path = historicalOperatorHomeConfigPath()
 	}
+
+	// A subject outside the repository is a fact about the machine, not about
+	// this codebase. Refuse it before reading a single byte.
+	rel, err := filepath.Rel(repoRoot, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		t.Fatalf("config under test must live inside the repository %s, got %s "+
+			"(a config outside the checkout describes the operator's machine, not this project)",
+			repoRoot, path)
+	}
+	return path
+}
+
+// readOpenCodeSubject returns the bytes of the repository's OpenCode config artifact.
+// Absence is a hard failure, not a skip: the file is tracked, so it is missing only
+// if this repository is broken — which is exactly what a test here should report.
+func readOpenCodeSubject(t *testing.T) []byte {
+	t.Helper()
+
+	path := openCodeSubjectPath(t)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is repo-rooted and guarded above
+	if err != nil {
+		t.Fatalf("Failed to read the repository's OpenCode config %s: %v", path, err)
+	}
+	t.Logf("subject under test: %s (%d bytes)", path, len(data))
+	return data
+}
+
+// TestOpenCodeSchemaValidation validates the OpenCode config artifact THIS
+// REPOSITORY ships against the OpenCode schema.
+//
+// It used to read $HOME/.config/opencode/opencode.json — the operator's personal
+// config — so a PASS meant "this machine's OpenCode install is schema-valid" and a
+// FAIL meant "the operator has not installed OpenCode". Neither outcome said
+// anything about the code under test. The subject is now the tracked reference
+// config, so the same assertions describe this project on every checkout.
+func TestOpenCodeSchemaValidation(t *testing.T) {
+	data := readOpenCodeSubject(t)
 
 	// Parse as generic JSON to check for invalid fields
 	var rawConfig map[string]interface{}
@@ -338,6 +402,23 @@ func generatorWorkDir(t *testing.T) string {
 	return findProjectRootForOpenCode(t)
 }
 
+// buildGeneratorBinary compiles cmd/helixagent from this checkout into the test's
+// own temp directory and returns the path. Nothing is written inside the
+// repository, and t.TempDir() is removed when the test finishes.
+func buildGeneratorBinary(t *testing.T) string {
+	t.Helper()
+
+	repoRoot := findProjectRootForOpenCode(t)
+	binaryPath := filepath.Join(t.TempDir(), "helixagent")
+
+	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/helixagent")
+	build.Dir = repoRoot
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("failed to build the generator from %s: %v\n%s", repoRoot, err, out)
+	}
+	return binaryPath
+}
+
 // TestGeneratedConfigHasNoInvalidFields ensures the generator doesn't produce invalid configs
 func TestGeneratedConfigHasNoInvalidFields(t *testing.T) {
 	if testing.Short() {
@@ -347,8 +428,17 @@ func TestGeneratedConfigHasNoInvalidFields(t *testing.T) {
 	// Per-test output path: a shared /tmp filename races concurrent runs on a shared host.
 	outputPath := filepath.Join(t.TempDir(), "test_opencode_config.json")
 
+	// Build the generator from THIS checkout's source rather than invoking a
+	// prebuilt ./bin/helixagent. The prebuilt path was a second dependency on
+	// something outside the repository's control: `make build` had to have been
+	// run first, so the test failed with "fork/exec ./bin/helixagent: no such
+	// file or directory" on any clean checkout. Building from source means the
+	// test carries its own subject and exercises the code as committed, not
+	// whatever binary happened to be lying in bin/.
+	binaryPath := buildGeneratorBinary(t)
+
 	// Generate a fresh config
-	cmd := exec.Command("./bin/helixagent", "-generate-opencode-config", "-opencode-output", outputPath)
+	cmd := exec.Command(binaryPath, "-generate-opencode-config", "-opencode-output", outputPath)
 	cmd.Dir = generatorWorkDir(t)
 	output, err := cmd.CombinedOutput()
 
@@ -385,6 +475,11 @@ func TestGeneratedConfigHasNoInvalidFields(t *testing.T) {
 		}
 	}
 
+	// The generated artifact earns the same field-whitelist scrutiny as the
+	// shipped reference config: a substring search for two known-bad names
+	// cannot catch a field nobody has thought to blacklist yet.
+	assertMCPFieldWhitelist(t, "generated config", data)
+
 	// Parse and validate structure
 	var config OpenCodeSchemaConfig
 	if err := json.Unmarshal(data, &config); err != nil {
@@ -409,34 +504,32 @@ func TestGeneratedConfigHasNoInvalidFields(t *testing.T) {
 	// t.TempDir() is removed automatically when the test finishes.
 }
 
-// TestMCPServerFieldValidation tests that all MCP servers have only valid fields
-func TestMCPServerFieldValidation(t *testing.T) {
-	configPath := filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatalf("Failed to read config: %v", err)
-	}
+// assertMCPFieldWhitelist checks every MCP server entry in an OpenCode-schema
+// config against the whitelist for its type. Extracted so the SAME assertion runs
+// against both artifacts this repository owns: the shipped reference config and
+// the generator's freshly produced output.
+func assertMCPFieldWhitelist(t *testing.T, subject string, data []byte) {
+	t.Helper()
 
 	var rawConfig map[string]interface{}
 	if err := json.Unmarshal(data, &rawConfig); err != nil {
-		t.Fatalf("Failed to parse config: %v", err)
+		t.Fatalf("[%s] Failed to parse config: %v", subject, err)
 	}
 
 	mcpRaw, ok := rawConfig["mcp"]
 	if !ok {
-		t.Fatal("No MCP section in config")
+		t.Fatalf("[%s] No MCP section in config", subject)
 	}
 
 	mcpMap, ok := mcpRaw.(map[string]interface{})
 	if !ok {
-		t.Fatal("MCP section is not a map")
+		t.Fatalf("[%s] MCP section is not a map", subject)
 	}
 
 	for serverName, serverRaw := range mcpMap {
 		serverMap, ok := serverRaw.(map[string]interface{})
 		if !ok {
-			t.Errorf("MCP server %s is not a map", serverName)
+			t.Errorf("[%s] MCP server %s is not a map", subject, serverName)
 			continue
 		}
 
@@ -447,7 +540,7 @@ func TestMCPServerFieldValidation(t *testing.T) {
 		} else if serverType == "remote" {
 			validFields = ValidMCPRemoteFields
 		} else {
-			t.Errorf("MCP server %s has invalid type: %s", serverName, serverType)
+			t.Errorf("[%s] MCP server %s has invalid type: %s", subject, serverName, serverType)
 			continue
 		}
 
@@ -461,11 +554,23 @@ func TestMCPServerFieldValidation(t *testing.T) {
 				}
 			}
 			if !isValid {
-				t.Errorf("MCP server %s (%s) has invalid field '%s'. Valid fields for %s servers: %v",
-					serverName, serverType, field, serverType, validFields)
+				t.Errorf("[%s] MCP server %s (%s) has invalid field '%s'. Valid fields for %s servers: %v",
+					subject, serverName, serverType, field, serverType, validFields)
 			}
 		}
 	}
+
+	t.Logf("[%s] field whitelist passed for %d MCP servers", subject, len(mcpMap))
+}
+
+// TestMCPServerFieldValidation tests that every MCP server in the OpenCode config
+// artifact THIS REPOSITORY ships carries only fields the OpenCode schema allows.
+//
+// Same subject correction as TestOpenCodeSchemaValidation: this read the
+// operator's personal ~/.config/opencode/opencode.json, so it graded the
+// developer's machine rather than this codebase.
+func TestMCPServerFieldValidation(t *testing.T) {
+	assertMCPFieldWhitelist(t, "reference config", readOpenCodeSubject(t))
 }
 
 // TestMCPRemoteServerConnectivity tests that all remote MCP servers respond within timeout
@@ -479,6 +584,16 @@ func TestMCPRemoteServerConnectivity(t *testing.T) {
 	}
 	resp.Body.Close()
 
+	// SAME SUBJECT DEFECT as TestOpenCodeSchemaValidation once had: this reads the
+	// operator's personal config rather than an artifact this repository owns.
+	// NOT repointed to openCodeSubjectPath() here, because that is not a
+	// plumbing change: the reference config's 12 remote entries include three
+	// THIRD-PARTY endpoints (cloudflare-docs, context7, deepwiki), so repointing
+	// turns this into a test that fails when someone else's service is down. The
+	// gate above is also stale — it probes :8100 while the server binds :7061 per
+	// helixAgentServePort — so the body has not run in a long time. Both need a
+	// product decision (which endpoints are in scope for a connectivity gate),
+	// not a subject swap. Tracked, deliberately left alone, not overlooked.
 	configPath := filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
 
 	data, err := os.ReadFile(configPath)
@@ -554,6 +669,14 @@ func TestNoLocalNpxServers(t *testing.T) {
 		return
 	}
 
+	// SAME SUBJECT DEFECT as TestOpenCodeSchemaValidation once had: the operator's
+	// personal config, not an artifact this repository owns. NOT repointed to
+	// openCodeSubjectPath() here because the swap is not neutral — it would flip
+	// this test red: the shipped reference config declares NINE local npx servers
+	// (everything, fetch, filesystem, git, memory, puppeteer, sequential-thinking,
+	// sqlite, time), which this test asserts "MUST NOT be in config". Either the
+	// assertion or the reference config is wrong, and deciding which is a product
+	// call. Tracked, deliberately left alone, not overlooked.
 	configPath := filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json")
 
 	data, err := os.ReadFile(configPath)

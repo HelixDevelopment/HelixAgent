@@ -13,11 +13,106 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// specKitSubmodulePath is the spec-kit submodule's path RELATIVE TO the
+// repository whose .gitmodules declares it.
+const specKitSubmodulePath = "cli_agents/spec-kit"
+
+// specKitHostRoot returns the absolute path of the repository that DECLARES the
+// spec-kit submodule.
+//
+// helix_agent is itself a submodule of a meta-repo, and spec-kit is declared by
+// that META-repo — not by helix_agent. Go runs a test from its own package
+// directory, so a bare relative path such as "cli_agents/spec-kit" resolves to
+// tests/integration/cli_agents/spec-kit and never finds it.
+//
+// The search walks UP from the test's working directory looking for a
+// .gitmodules that declares the submodule. Keying on that MARKER rather than
+// counting "../" levels means the lookup keeps working if this test file moves
+// to a different depth.
+//
+// helix_agent may also be cloned standalone, with no meta-repo above it. Then
+// the submodule genuinely is not part of the checkout and there is nothing to
+// verify, so the test SKIPs and names what is absent: a silent pass would claim
+// a verification that never ran, and a failure would misreport a perfectly
+// correct standalone checkout as a broken submodule.
+func specKitHostRoot(t testing.TB) string {
+	t.Helper()
+
+	dir, err := os.Getwd()
+	require.NoError(t, err, "Failed to determine working directory")
+
+	start := dir
+	for {
+		if gitmodulesDeclaresSubmodule(filepath.Join(dir, ".gitmodules"), specKitSubmodulePath) {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Skipf("no repository above %s declares the %q submodule in .gitmodules - "+
+				"expected in the meta-repo that embeds helix_agent; this is a standalone "+
+				"helix_agent checkout, where the submodule is genuinely absent "+
+				"(SKIP-OK: #speckit-standalone-checkout)", start, specKitSubmodulePath)
+		}
+		dir = parent
+	}
+}
+
+// gitmodulesDeclaresSubmodule reports whether the .gitmodules file at path has a
+// `path = <submodule>` entry. It matches the whole declared path so a sibling
+// such as "cli_agents/spec-kit-extras" cannot satisfy the lookup.
+func gitmodulesDeclaresSubmodule(gitmodulesPath, submodule string) bool {
+	data, err := os.ReadFile(gitmodulesPath) // #nosec G304 - repo-local .gitmodules
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.SplitN(strings.TrimSpace(line), "=", 2)
+		if len(fields) != 2 || strings.TrimSpace(fields[0]) != "path" {
+			continue
+		}
+		if strings.TrimSpace(fields[1]) == submodule {
+			return true
+		}
+	}
+	return false
+}
+
+// gitmodulesURLFor returns the url declared for the given submodule path in the
+// .gitmodules file, or "" when the path is not declared there.
+func gitmodulesURLFor(gitmodulesPath, submodule string) string {
+	data, err := os.ReadFile(gitmodulesPath) // #nosec G304 - repo-local .gitmodules
+	if err != nil {
+		return ""
+	}
+
+	inSection := false
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[submodule ") {
+			inSection = false
+			continue
+		}
+		fields := strings.SplitN(trimmed, "=", 2)
+		if len(fields) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(fields[0])
+		value := strings.TrimSpace(fields[1])
+		switch key {
+		case "path":
+			inSection = value == submodule
+		case "url":
+			if inSection {
+				return value
+			}
+		}
+	}
+	return ""
+}
+
 // TestGitHubSpecKitSubmoduleVerification verifies that GitHub SpecKit submodule is properly configured
 func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
-	projectRoot := getProjectRoot(t)
-	err := os.Chdir(projectRoot)
-	require.NoError(t, err, "Failed to change to project root")
+	hostRoot := specKitHostRoot(t)
 
 	tests := []struct {
 		name      string
@@ -26,7 +121,7 @@ func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
 		{
 			name: "Submodule directory exists",
 			checkFunc: func(t *testing.T) {
-				path := "cli_agents/spec-kit"
+				path := filepath.Join(hostRoot, specKitSubmodulePath)
 				info, err := os.Stat(path)
 				require.NoError(t, err, "SpecKit submodule directory must exist")
 				assert.True(t, info.IsDir(), "SpecKit path must be a directory")
@@ -35,7 +130,7 @@ func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
 		{
 			name: "Submodule is initialized",
 			checkFunc: func(t *testing.T) {
-				cmd := exec.Command("git", "submodule", "status", "cli_agents/spec-kit")
+				cmd := exec.Command("git", "-C", hostRoot, "submodule", "status", specKitSubmodulePath)
 				output, err := cmd.CombinedOutput()
 				require.NoError(t, err, "Git submodule command must succeed")
 
@@ -51,19 +146,33 @@ func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
 		{
 			name: "Submodule remote URL is correct",
 			checkFunc: func(t *testing.T) {
-				// Check .gitmodules
-				content, err := os.ReadFile(".gitmodules")
+				gitmodules := filepath.Join(hostRoot, ".gitmodules")
+				_, err := os.Stat(gitmodules)
 				require.NoError(t, err, ".gitmodules must exist")
 
-				contentStr := string(content)
-				assert.Contains(t, contentStr, "cli_agents/spec-kit", "Must contain spec-kit path")
-				assert.Contains(t, contentStr, "git@github.com:github/spec-kit.git", "Must have correct remote URL")
+				// Read the URL declared for THIS submodule path rather than
+				// grepping the whole file, so an unrelated entry carrying a
+				// spec-kit URL cannot satisfy the assertion.
+				url := gitmodulesURLFor(gitmodules, specKitSubmodulePath)
+				require.NotEmpty(t, url, "%s must declare a url for %s", gitmodules, specKitSubmodulePath)
+
+				// SSH-only per the project's Git remote policy.
+				assert.True(t, strings.HasPrefix(url, "git@"),
+					"spec-kit remote must be an SSH URL, got: %s", url)
+
+				// The declared remote must be a spec-kit repository. Both the
+				// upstream (github/spec-kit) and the organisation's own fork
+				// (vasic-digital/caf-spec-kit, part of the cli_agents/caf-*
+				// fork family) are accepted; anything else means the submodule
+				// points at the wrong project entirely.
+				assert.Contains(t, url, "spec-kit",
+					"spec-kit remote must reference a spec-kit repository, got: %s", url)
 			},
 		},
 		{
 			name: "Submodule has git repository",
 			checkFunc: func(t *testing.T) {
-				gitDir := filepath.Join("cli_agents", "spec-kit", ".git")
+				gitDir := filepath.Join(hostRoot, specKitSubmodulePath, ".git")
 				_, err := os.Stat(gitDir)
 				require.NoError(t, err, "Submodule must have .git directory")
 			},
@@ -71,7 +180,7 @@ func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
 		{
 			name: "Submodule README exists and is valid",
 			checkFunc: func(t *testing.T) {
-				readmePath := filepath.Join("cli_agents", "spec-kit", "README.md")
+				readmePath := filepath.Join(hostRoot, specKitSubmodulePath, "README.md")
 				content, err := os.ReadFile(readmePath)
 				require.NoError(t, err, "README.md must exist")
 
@@ -84,7 +193,7 @@ func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
 		{
 			name: "Submodule version is tagged",
 			checkFunc: func(t *testing.T) {
-				cmd := exec.Command("git", "submodule", "status", "cli_agents/spec-kit")
+				cmd := exec.Command("git", "-C", hostRoot, "submodule", "status", specKitSubmodulePath)
 				output, err := cmd.CombinedOutput()
 				require.NoError(t, err)
 
@@ -110,10 +219,9 @@ func TestGitHubSpecKitSubmoduleVerification(t *testing.T) {
 
 // TestGitHubSpecKitInstallation verifies that Specify CLI can be installed and used
 func TestGitHubSpecKitInstallation(t *testing.T) {
-	projectRoot := getProjectRoot(t)
-	err := os.Chdir(projectRoot)
-	require.NoError(t, err, "Failed to change to project root")
-
+	// This test exercises the host-installed Specify CLI only; it never reads
+	// the submodule tree, so it needs no repository root and works the same in
+	// a standalone helix_agent checkout.
 	if testing.Short() {
 		t.Skip("Skipping installation test in short mode") // SKIP-OK: #short-mode
 	}
@@ -173,9 +281,11 @@ func TestGitHubSpecKitInstallation(t *testing.T) {
 
 // TestGitHubSpecKitAgentRegistry verifies integration with HelixAgent's agent registry
 func TestGitHubSpecKitAgentRegistry(t *testing.T) {
-	projectRoot := getProjectRoot(t)
-	err := os.Chdir(projectRoot)
-	require.NoError(t, err, "Failed to change to project root")
+	// The registry lives in helix_agent itself, NOT in the meta-repo that
+	// declares the spec-kit submodule, so this test anchors on the Go module
+	// root rather than on specKitHostRoot.
+	agentRoot := getProjectRoot(t)
+	registryPath := filepath.Join(agentRoot, "internal", "agents", "registry.go")
 
 	tests := []struct {
 		name      string
@@ -184,15 +294,14 @@ func TestGitHubSpecKitAgentRegistry(t *testing.T) {
 		{
 			name: "Agent registry file exists",
 			checkFunc: func(t *testing.T) {
-				path := "internal/agents/registry.go"
-				_, err := os.Stat(path)
+				_, err := os.Stat(registryPath)
 				require.NoError(t, err, "Agent registry must exist")
 			},
 		},
 		{
 			name: "Registry contains spec-kit entry",
 			checkFunc: func(t *testing.T) {
-				content, err := os.ReadFile("internal/agents/registry.go")
+				content, err := os.ReadFile(registryPath)
 				require.NoError(t, err)
 
 				contentStr := string(content)
@@ -203,7 +312,7 @@ func TestGitHubSpecKitAgentRegistry(t *testing.T) {
 		{
 			name: "Config location is defined",
 			checkFunc: func(t *testing.T) {
-				content, err := os.ReadFile("internal/agents/registry.go")
+				content, err := os.ReadFile(registryPath)
 				require.NoError(t, err)
 
 				contentStr := string(content)
@@ -222,11 +331,9 @@ func TestGitHubSpecKitAgentRegistry(t *testing.T) {
 
 // TestGitHubSpecKitFileStructure verifies that all expected files exist
 func TestGitHubSpecKitFileStructure(t *testing.T) {
-	projectRoot := getProjectRoot(t)
-	err := os.Chdir(projectRoot)
-	require.NoError(t, err, "Failed to change to project root")
+	hostRoot := specKitHostRoot(t)
 
-	basePath := "cli_agents/spec-kit"
+	basePath := filepath.Join(hostRoot, specKitSubmodulePath)
 
 	requiredFiles := []string{
 		"README.md",
@@ -267,9 +374,7 @@ func TestGitHubSpecKitFileStructure(t *testing.T) {
 
 // TestGitHubSpecKitSubmoduleUpdate verifies submodule can be updated
 func TestGitHubSpecKitSubmoduleUpdate(t *testing.T) {
-	projectRoot := getProjectRoot(t)
-	err := os.Chdir(projectRoot)
-	require.NoError(t, err, "Failed to change to project root")
+	hostRoot := specKitHostRoot(t)
 
 	if testing.Short() {
 		t.Skip("Skipping submodule update test in short mode") // SKIP-OK: #short-mode
@@ -279,7 +384,7 @@ func TestGitHubSpecKitSubmoduleUpdate(t *testing.T) {
 	defer cancel()
 
 	t.Run("Can fetch submodule updates", func(t *testing.T) {
-		cmd := exec.CommandContext(ctx, "git", "submodule", "update", "--remote", "--init", "cli_agents/spec-kit")
+		cmd := exec.CommandContext(ctx, "git", "-C", hostRoot, "submodule", "update", "--remote", "--init", specKitSubmodulePath)
 		output, err := cmd.CombinedOutput()
 
 		// This might fail if already up to date, which is fine
@@ -288,7 +393,7 @@ func TestGitHubSpecKitSubmoduleUpdate(t *testing.T) {
 		}
 
 		// Verify submodule is still valid after update attempt
-		cmd = exec.CommandContext(ctx, "git", "submodule", "status", "cli_agents/spec-kit")
+		cmd = exec.CommandContext(ctx, "git", "-C", hostRoot, "submodule", "status", specKitSubmodulePath)
 		output, err = cmd.CombinedOutput()
 		require.NoError(t, err, "Submodule must be in valid state after update")
 		assert.NotEmpty(t, output, "Submodule status must not be empty")
@@ -297,11 +402,9 @@ func TestGitHubSpecKitSubmoduleUpdate(t *testing.T) {
 
 // TestGitHubSpecKitNoModifications verifies submodule hasn't been modified locally
 func TestGitHubSpecKitNoModifications(t *testing.T) {
-	projectRoot := getProjectRoot(t)
-	err := os.Chdir(projectRoot)
-	require.NoError(t, err, "Failed to change to project root")
+	hostRoot := specKitHostRoot(t)
 
-	submodulePath := filepath.Join(projectRoot, "cli_agents", "spec-kit")
+	submodulePath := filepath.Join(hostRoot, specKitSubmodulePath)
 
 	t.Run("Submodule has no uncommitted changes", func(t *testing.T) {
 		// Check for unstaged changes within the submodule
@@ -318,8 +421,10 @@ func TestGitHubSpecKitNoModifications(t *testing.T) {
 
 // BenchmarkGitHubSpecKitSubmoduleStatus benchmarks submodule status check
 func BenchmarkGitHubSpecKitSubmoduleStatus(b *testing.B) {
+	hostRoot := specKitHostRoot(b)
+
 	for i := 0; i < b.N; i++ {
-		cmd := exec.Command("git", "submodule", "status", "cli_agents/spec-kit")
+		cmd := exec.Command("git", "-C", hostRoot, "submodule", "status", specKitSubmodulePath)
 		_, err := cmd.CombinedOutput()
 		if err != nil {
 			b.Fatal(err)

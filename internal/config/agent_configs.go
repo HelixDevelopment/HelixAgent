@@ -253,7 +253,7 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 		},
 		"sqlite": {
 			Command: "npx",
-			Args:    []string{"-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/helixagent.db"},
+			Args:    []string{"-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"},
 		},
 		"postgres": {
 			Command: "npx",
@@ -302,14 +302,9 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 			Args:    []string{"-y", "exa-mcp-server"},
 			Env:     []string{"EXA_API_KEY=${EXA_API_KEY}"},
 		},
-		"linear": {
-			Command: "npx",
-			Args:    []string{"-y", "@modelcontextprotocol/server-linear"},
-			Env:     []string{"LINEAR_API_KEY=${LINEAR_API_KEY}"},
-		},
 		"sentry": {
 			Command: "npx",
-			Args:    []string{"-y", "@modelcontextprotocol/server-sentry"},
+			Args:    []string{"-y", "@sentry/mcp-server"},
 			Env:     []string{"SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}", "SENTRY_ORG=${SENTRY_ORG}"},
 		},
 		"notion": {
@@ -344,11 +339,6 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 			Type: "sse",
 			URL:  baseURL + "/v1/mcp/memory/sse",
 		},
-		// Community/Infrastructure MCPs
-		"docker": {
-			Command: "npx",
-			Args:    []string{"-y", "@modelcontextprotocol/server-docker"},
-		},
 		"kubernetes": {
 			Command: "npx",
 			Args:    []string{"-y", "mcp-server-kubernetes"},
@@ -361,7 +351,7 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 		},
 		"mongodb": {
 			Command: "npx",
-			Args:    []string{"-y", "mcp-server-mongodb"},
+			Args:    []string{"-y", "mongodb-mcp-server"},
 			Env:     []string{"MONGODB_URI=mongodb://localhost:27017"},
 		},
 		"elasticsearch": {
@@ -379,31 +369,10 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 			Args:    []string{"-y", "mcp-server-chroma"},
 			Env:     []string{"CHROMA_URL=http://localhost:8001"},
 		},
-		// Productivity MCPs
-		"jira": {
-			Command: "npx",
-			Args:    []string{"-y", "mcp-server-atlassian"},
-			Env:     []string{"JIRA_URL=${JIRA_URL}", "JIRA_EMAIL=${JIRA_EMAIL}", "JIRA_API_TOKEN=${JIRA_API_TOKEN}"},
-		},
-		"asana": {
-			Command: "npx",
-			Args:    []string{"-y", "mcp-server-asana"},
-			Env:     []string{"ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN}"},
-		},
-		"google-drive": {
-			Command: "npx",
-			Args:    []string{"-y", "@anthropic/mcp-server-gdrive"},
-			Env:     []string{"GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH}"},
-		},
 		"aws-s3": {
 			Command: "npx",
 			Args:    []string{"-y", "mcp-server-s3"},
 			Env:     []string{"AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"},
-		},
-		"datadog": {
-			Command: "npx",
-			Args:    []string{"-y", "mcp-server-datadog"},
-			Env:     []string{"DD_API_KEY=${DD_API_KEY}", "DD_APP_KEY=${DD_APP_KEY}"},
 		},
 	}
 }

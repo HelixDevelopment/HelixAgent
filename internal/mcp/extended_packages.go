@@ -117,68 +117,14 @@ var ExtendedMCPPackages = []MCPPackage{
 		Category:    CategoryDesign,
 		RequiresEnv: []string{"FIGMA_ACCESS_TOKEN"},
 	},
-	{
-		Name:        "figma-framelink",
-		NPM:         "framelink-figma-mcp",
-		Description: "MCP server for fetching and simplifying Figma file data",
-		Category:    CategoryDesign,
-		RequiresEnv: []string{"FIGMA_ACCESS_TOKEN"},
-	},
-	{
-		Name:        "miro",
-		NPM:         "mcp-miro",
-		Description: "MCP server for Miro whiteboard operations",
-		Category:    CategoryDesign,
-		RequiresEnv: []string{"MIRO_OAUTH_TOKEN"},
-	},
-	{
-		Name:        "svgmaker",
-		NPM:         "mcp-server-svgmaker",
-		Description: "MCP server for AI-powered SVG generation and editing",
-		Category:    CategoryDesign,
-		RequiresEnv: []string{"SVGMAKER_API_KEY"},
-	},
 
 	// ==========================================================================
 	// IMAGE GENERATION SERVERS
 	// ==========================================================================
-	{
-		Name:        "replicate",
-		NPM:         "mcp-server-replicate",
-		Description: "MCP server for Replicate image generation (Flux models)",
-		Category:    CategoryImage,
-		RequiresEnv: []string{"REPLICATE_API_TOKEN"},
-	},
-	{
-		Name:        "stable-diffusion",
-		NPM:         "mcp-server-stable-diffusion",
-		Description: "MCP server for local Stable Diffusion WebUI",
-		Category:    CategoryImage,
-		RequiresEnv: []string{"SD_WEBUI_URL"},
-	},
-	{
-		Name:        "imagesorcery",
-		NPM:         "mcp-imagesorcery",
-		Description: "MCP server for local image processing (crop, resize, OCR)",
-		Category:    CategoryImage,
-	},
-	{
-		Name:        "flux",
-		NPM:         "mcp-server-flux",
-		Description: "MCP server for Black Forest Lab FLUX image generation",
-		Category:    CategoryImage,
-		RequiresEnv: []string{"BFL_API_KEY"},
-	},
 
 	// ==========================================================================
 	// DEVELOPMENT TOOL SERVERS
 	// ==========================================================================
-	{
-		Name:        "lsp-tools",
-		NPM:         "lsp-tools-mcp",
-		Description: "MCP server providing regex-based code search tools",
-		Category:    CategoryDev,
-	},
 	{
 		Name:        "postgres",
 		NPM:         "mcp-server-postgres",
@@ -188,7 +134,7 @@ var ExtendedMCPPackages = []MCPPackage{
 	},
 	{
 		Name:        "mongodb",
-		NPM:         "mcp-server-mongodb",
+		NPM:         "mongodb-mcp-server",
 		Description: "MCP server for MongoDB database operations",
 		Category:    CategoryDev,
 		RequiresEnv: []string{"MONGODB_URL"},
@@ -226,16 +172,10 @@ var ExtendedMCPPackages = []MCPPackage{
 	},
 	{
 		Name:        "tavily",
-		NPM:         "mcp-server-tavily",
+		NPM:         "tavily-mcp",
 		Description: "MCP server for Tavily search API",
 		Category:    CategorySearch,
 		RequiresEnv: []string{"TAVILY_API_KEY"},
-	},
-	{
-		Name:        "duckduckgo",
-		NPM:         "mcp-server-duckduckgo",
-		Description: "MCP server for DuckDuckGo search",
-		Category:    CategorySearch,
 	},
 
 	// ==========================================================================
@@ -247,20 +187,6 @@ var ExtendedMCPPackages = []MCPPackage{
 		Description: "MCP server for AWS S3 operations",
 		Category:    CategoryCloud,
 		RequiresEnv: []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
-	},
-	{
-		Name:        "gcs",
-		NPM:         "mcp-server-gcs",
-		Description: "MCP server for Google Cloud Storage operations",
-		Category:    CategoryCloud,
-		RequiresEnv: []string{"GOOGLE_APPLICATION_CREDENTIALS"},
-	},
-	{
-		Name:        "google-drive",
-		NPM:         "mcp-server-google-drive",
-		Description: "MCP server for Google Drive operations",
-		Category:    CategoryCloud,
-		RequiresEnv: []string{"GOOGLE_OAUTH_TOKEN"},
 	},
 }
 

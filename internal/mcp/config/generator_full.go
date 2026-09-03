@@ -184,12 +184,12 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["everything"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "@anthropic-ai/mcp-server-everything"},
+		Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"},
 		Enabled: true,
 	}
 	mcps["sqlite"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/helixagent.db"},
+		Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"},
 		Enabled: true,
 	}
 	mcps["puppeteer"] = MCPServerConfigFull{
@@ -229,7 +229,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["mongodb"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-mongodb"},
+		Command: []string{"npx", "-y", "mongodb-mcp-server"},
 		Environment: g.expandEnvMap(map[string]string{
 			"MONGODB_URI": g.getEnvOrDefault("MONGODB_URI", fmt.Sprintf("mongodb://%s:%s@%s:%s/%s?authSource=admin",
 				g.getEnvOrDefault("MONGODB_USER", "helixagent"),
@@ -316,11 +316,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 		}),
 		Enabled: g.hasEnvVar("KUBECONFIG"),
 	}
-	mcps["ansible"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-ansible"},
-		Enabled: true, // Works with local ansible
-	}
 
 	// ==========================================================================
 	// CATEGORY 6: Development Platforms
@@ -343,17 +338,12 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["sentry"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
+		Command: []string{"npx", "-y", "@sentry/mcp-server"},
 		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}",
 			"SENTRY_ORG":        "{env:SENTRY_ORG}",
 		}),
 		Enabled: g.hasAllEnvVars("SENTRY_AUTH_TOKEN", "SENTRY_ORG"),
-	}
-	mcps["jetbrains"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-jetbrains"},
-		Enabled: true, // Works locally
 	}
 
 	// ==========================================================================
@@ -396,14 +386,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 		}),
 		Enabled: g.hasEnvVar("NOTION_API_KEY"),
 	}
-	mcps["linear"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "@modelcontextprotocol/server-linear"},
-		Environment: g.expandEnvMap(map[string]string{
-			"LINEAR_API_KEY": "{env:LINEAR_API_KEY}",
-		}),
-		Enabled: g.hasEnvVar("LINEAR_API_KEY"),
-	}
 	mcps["jira"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-jira"},
@@ -413,14 +395,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 			"JIRA_API_TOKEN": "{env:JIRA_API_TOKEN}",
 		}),
 		Enabled: g.hasAllEnvVars("JIRA_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"),
-	}
-	mcps["asana"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-asana"},
-		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-			"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}",
-		}),
-		Enabled: g.hasEnvVar("ASANA_ACCESS_TOKEN"),
 	}
 	mcps["trello"] = MCPServerConfigFull{
 		Type:    "local",
@@ -433,7 +407,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["todoist"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "@modelcontextprotocol/server-todoist"},
+		Command: []string{"npx", "-y", "@doist/todoist-mcp"},
 		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"TODOIST_API_TOKEN": "{env:TODOIST_API_TOKEN}",
 		}),
@@ -469,7 +443,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["tavily"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-tavily"},
+		Command: []string{"npx", "-y", "tavily-mcp"},
 		Environment: g.expandEnvMap(map[string]string{
 			"TAVILY_API_KEY": "{env:TAVILY_API_KEY}",
 		}),
@@ -482,14 +456,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 			"PERPLEXITY_API_KEY": "{env:PERPLEXITY_API_KEY}",
 		}),
 		Enabled: g.hasEnvVar("PERPLEXITY_API_KEY"),
-	}
-	mcps["kagi"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-kagi"},
-		Environment: g.expandEnvMap(map[string]string{
-			"KAGI_API_KEY": "{env:KAGI_API_KEY}",
-		}),
-		Enabled: g.hasEnvVar("KAGI_API_KEY"),
 	}
 
 	// ==========================================================================
@@ -550,15 +516,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	// ==========================================================================
 	// CATEGORY 11: Google Services
 	// ==========================================================================
-	mcps["google-drive"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-gdrive"},
-		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-			"GOOGLE_CLIENT_ID":     "{env:GOOGLE_CLIENT_ID}",
-			"GOOGLE_CLIENT_SECRET": "{env:GOOGLE_CLIENT_SECRET}",
-		}),
-		Enabled: g.hasAllEnvVars("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
-	}
 	mcps["google-calendar"] = MCPServerConfigFull{
 		Type:    "local",
 		Command: []string{"npx", "-y", "mcp-server-google-calendar"},
@@ -597,32 +554,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	// ==========================================================================
 	// CATEGORY 12: Monitoring & Observability
 	// ==========================================================================
-	mcps["datadog"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-datadog"},
-		Environment: g.expandEnvMap(map[string]string{
-			"DD_API_KEY": "{env:DD_API_KEY}",
-			"DD_APP_KEY": "{env:DD_APP_KEY}",
-		}),
-		Enabled: g.hasAllEnvVars("DD_API_KEY", "DD_APP_KEY"),
-	}
-	mcps["grafana"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-grafana"},
-		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-			"GRAFANA_URL":   "{env:GRAFANA_URL}",
-			"GRAFANA_TOKEN": "{env:GRAFANA_TOKEN}",
-		}),
-		Enabled: g.hasAllEnvVars("GRAFANA_URL", "GRAFANA_TOKEN"),
-	}
-	mcps["prometheus"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-prometheus"},
-		Environment: g.expandEnvMap(map[string]string{
-			"PROMETHEUS_URL": g.getEnvOrDefault("PROMETHEUS_URL", "http://localhost:9090"),
-		}),
-		Enabled: g.hasEnvVar("PROMETHEUS_URL"),
-	}
 
 	// ==========================================================================
 	// CATEGORY 13: Finance & Business
@@ -637,21 +568,11 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["hubspot"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-hubspot"},
+		Command: []string{"npx", "-y", "@hubspot/mcp-server"},
 		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			"HUBSPOT_ACCESS_TOKEN": "{env:HUBSPOT_ACCESS_TOKEN}",
 		}),
 		Enabled: g.hasEnvVar("HUBSPOT_ACCESS_TOKEN"),
-	}
-	mcps["zendesk"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-zendesk"},
-		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
-			"ZENDESK_SUBDOMAIN": "{env:ZENDESK_SUBDOMAIN}",
-			"ZENDESK_EMAIL":     "{env:ZENDESK_EMAIL}",
-			"ZENDESK_TOKEN":     "{env:ZENDESK_TOKEN}",
-		}),
-		Enabled: g.hasAllEnvVars("ZENDESK_SUBDOMAIN", "ZENDESK_EMAIL", "ZENDESK_TOKEN"),
 	}
 
 	// ==========================================================================
@@ -659,7 +580,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	// ==========================================================================
 	mcps["browserbase"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-browserbase"},
+		Command: []string{"npx", "-y", "@browserbasehq/mcp"},
 		Environment: g.expandEnvMap(map[string]string{
 			"BROWSERBASE_API_KEY": "{env:BROWSERBASE_API_KEY}",
 		}),
@@ -667,12 +588,7 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	}
 	mcps["playwright"] = MCPServerConfigFull{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-playwright"},
-		Enabled: true, // Works locally
-	}
-	mcps["crawl4ai"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-crawl4ai"},
+		Command: []string{"npx", "-y", "@playwright/mcp"},
 		Enabled: true, // Works locally
 	}
 
@@ -703,14 +619,6 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	// ==========================================================================
 	// CATEGORY 17: Notes & Knowledge
 	// ==========================================================================
-	mcps["obsidian"] = MCPServerConfigFull{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-obsidian"},
-		Environment: g.expandEnvMap(map[string]string{
-			"OBSIDIAN_VAULT_PATH": g.getEnvOrDefault("OBSIDIAN_VAULT_PATH", g.homeDir+"/Documents/Obsidian"),
-		}),
-		Enabled: g.hasEnvVar("OBSIDIAN_VAULT_PATH"),
-	}
 
 	return mcps
 }

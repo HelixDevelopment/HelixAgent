@@ -344,7 +344,7 @@ func GenerateHelixAgentKiloConfig(host string, port int, debateMembers []DebateG
 			},
 			"sqlite": {
 				Type:    "local",
-				Command: []string{"npx", "-y", "@modelcontextprotocol/server-sqlite"},
+				Command: []string{"npx", "-y", "mcp-server-sqlite-npx"},
 				Enabled: true,
 			},
 		},

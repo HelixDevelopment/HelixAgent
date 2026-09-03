@@ -218,8 +218,8 @@ func (v *MCPValidator) loadRequirements() {
 	v.requirements["everything"] = &MCPRequirement{
 		Name:           "everything",
 		Type:           "local",
-		Package:        "@anthropic-ai/mcp-server-everything",
-		Command:        []string{"npx", "-y", "@anthropic-ai/mcp-server-everything"},
+		Package:        "@modelcontextprotocol/server-everything",
+		Command:        []string{"npx", "-y", "@modelcontextprotocol/server-everything"},
 		Description:    "Test MCP server with all features",
 		Category:       "core",
 		CanWorkLocally: true,
@@ -233,8 +233,8 @@ func (v *MCPValidator) loadRequirements() {
 	v.requirements["sqlite"] = &MCPRequirement{
 		Name:           "sqlite",
 		Type:           "local",
-		Package:        "@modelcontextprotocol/server-sqlite",
-		Command:        []string{"npx", "-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/helixagent.db"},
+		Package:        "mcp-server-sqlite-npx",
+		Command:        []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"},
 		Description:    "SQLite database operations",
 		Category:       "database",
 		CanWorkLocally: true,
@@ -270,8 +270,8 @@ func (v *MCPValidator) loadRequirements() {
 	v.requirements["mongodb"] = &MCPRequirement{
 		Name:           "mongodb",
 		Type:           "local",
-		Package:        "mcp-server-mongodb",
-		Command:        []string{"npx", "-y", "mcp-server-mongodb"},
+		Package:        "mongodb-mcp-server",
+		Command:        []string{"npx", "-y", "mongodb-mcp-server"},
 		RequiredEnvs:   []string{"MONGODB_URI"},
 		Description:    "MongoDB database operations",
 		Category:       "database",
@@ -351,8 +351,8 @@ func (v *MCPValidator) loadRequirements() {
 	v.requirements["sentry"] = &MCPRequirement{
 		Name:           "sentry",
 		Type:           "local",
-		Package:        "@modelcontextprotocol/server-sentry",
-		Command:        []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
+		Package:        "@sentry/mcp-server",
+		Command:        []string{"npx", "-y", "@sentry/mcp-server"},
 		RequiredEnvs:   []string{"SENTRY_AUTH_TOKEN", "SENTRY_ORG"},
 		Description:    "Sentry error tracking",
 		Category:       "development",
@@ -432,23 +432,11 @@ func (v *MCPValidator) loadRequirements() {
 		Enabled:        false, // Disabled - no Notion API key
 		Priority:       75,
 	}
-	v.requirements["linear"] = &MCPRequirement{
-		Name:           "linear",
-		Type:           "local",
-		Package:        "@modelcontextprotocol/server-linear",
-		Command:        []string{"npx", "-y", "@modelcontextprotocol/server-linear"},
-		RequiredEnvs:   []string{"LINEAR_API_KEY"},
-		Description:    "Linear issue tracking",
-		Category:       "productivity",
-		CanWorkLocally: false,
-		Enabled:        false, // Disabled - no Linear API key
-		Priority:       75,
-	}
 	v.requirements["todoist"] = &MCPRequirement{
 		Name:           "todoist",
 		Type:           "local",
-		Package:        "@modelcontextprotocol/server-todoist",
-		Command:        []string{"npx", "-y", "@modelcontextprotocol/server-todoist"},
+		Package:        "@doist/todoist-mcp",
+		Command:        []string{"npx", "-y", "@doist/todoist-mcp"},
 		RequiredEnvs:   []string{"TODOIST_API_TOKEN"},
 		Description:    "Todoist task management",
 		Category:       "productivity",
@@ -482,18 +470,6 @@ func (v *MCPValidator) loadRequirements() {
 		Category:       "cloud",
 		CanWorkLocally: false,
 		Enabled:        false, // Disabled - no Cloudflare API token
-		Priority:       70,
-	}
-	v.requirements["aws-s3"] = &MCPRequirement{
-		Name:           "aws-s3",
-		Type:           "local",
-		Package:        "mcp-server-aws-s3",
-		Command:        []string{"npx", "-y", "mcp-server-aws-s3"},
-		RequiredEnvs:   []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
-		Description:    "AWS S3 storage",
-		Category:       "cloud",
-		CanWorkLocally: false,
-		Enabled:        false, // Disabled - no AWS keys
 		Priority:       70,
 	}
 }

@@ -141,7 +141,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 	}
 	mcps["everything"] = MCPServerConfig{
 		Type:    "local",
-		Command: []string{"npx", "-y", "@anthropic-ai/mcp-server-everything"},
+		Command: []string{"npx", "-y", "@modelcontextprotocol/server-everything"},
 		Enabled: true,
 	}
 
@@ -150,7 +150,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 	// ==========================================================================
 	mcps["sqlite"] = MCPServerConfig{
 		Type:    "local",
-		Command: []string{"npx", "-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/helixagent.db"},
+		Command: []string{"npx", "-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"},
 		Enabled: true,
 	}
 
@@ -200,7 +200,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		))
 		mcps["mongodb"] = MCPServerConfig{
 			Type:    "local",
-			Command: []string{"npx", "-y", "mcp-server-mongodb"},
+			Command: []string{"npx", "-y", "mongodb-mcp-server"},
 			Environment: map[string]string{
 				"MONGODB_URI": mongoURI,
 			},
@@ -253,12 +253,7 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 	}
 	mcps["playwright"] = MCPServerConfig{
 		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-playwright"},
-		Enabled: true,
-	}
-	mcps["ansible"] = MCPServerConfig{
-		Type:    "local",
-		Command: []string{"npx", "-y", "mcp-server-ansible"},
+		Command: []string{"npx", "-y", "@playwright/mcp"},
 		Enabled: true,
 	}
 
@@ -339,23 +334,11 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		}
 	}
 
-	// Linear - enabled if LINEAR_API_KEY is set
-	if g.hasEnvVar("LINEAR_API_KEY") {
-		mcps["linear"] = MCPServerConfig{
-			Type:    "local",
-			Command: []string{"npx", "-y", "@modelcontextprotocol/server-linear"},
-			Environment: g.expandEnvMap(map[string]string{
-				"LINEAR_API_KEY": "{env:LINEAR_API_KEY}",
-			}),
-			Enabled: true,
-		}
-	}
-
 	// Sentry - enabled if SENTRY_AUTH_TOKEN is set
 	if g.hasEnvVar("SENTRY_AUTH_TOKEN") {
 		mcps["sentry"] = MCPServerConfig{
 			Type:    "local",
-			Command: []string{"npx", "-y", "@modelcontextprotocol/server-sentry"},
+			Command: []string{"npx", "-y", "@sentry/mcp-server"},
 			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
 				"SENTRY_AUTH_TOKEN": "{env:SENTRY_AUTH_TOKEN}",
 				"SENTRY_ORG":        "{env:SENTRY_ORG}",

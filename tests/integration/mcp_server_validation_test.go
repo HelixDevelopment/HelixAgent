@@ -62,6 +62,45 @@ var knownNonexistentMCPPackages = []string{
 	"mcp-server-datadog",
 	"mcp-server-google-drive",
 	"mcp-server-mongodb",
+
+	// Added 2026-09-03: proven 404 against registry.npmjs.org while auditing
+	// the npm package names held as Go string literals, which the
+	// config-derived scan above cannot see. Every one of these shipped in a
+	// generator, the validator, or the CLI.
+	"@anthropic-ai/mcp-server-everything",
+	"@modelcontextprotocol/server-todoist",
+	"@raycast/mcp-server-raycast",
+	"framelink-figma-mcp",
+	"lsp-tools-mcp",
+	"mcp-imagesorcery",
+	"mcp-miro",
+	"mcp-server-ansible",
+	"mcp-server-aws-lambda",
+	"mcp-server-aws-s3",
+	"mcp-server-browserbase",
+	"mcp-server-circleci",
+	"mcp-server-crawl4ai",
+	"mcp-server-duckduckgo",
+	"mcp-server-flux",
+	"mcp-server-gcs",
+	"mcp-server-gdrive",
+	"mcp-server-grafana",
+	"mcp-server-hubspot",
+	"mcp-server-jetbrains",
+	"mcp-server-kagi",
+	"mcp-server-langchain",
+	"mcp-server-llamaindex",
+	"mcp-server-obsidian",
+	"mcp-server-playwright",
+	"mcp-server-prometheus",
+	"mcp-server-replicate",
+	"mcp-server-stable-diffusion",
+	"mcp-server-svgmaker",
+	"mcp-server-tavily",
+	"mcp-server-teams",
+	"mcp-server-zendesk",
+	"mcp-server-zoom",
+	"mcp-tinybird",
 }
 
 // npmRegistryControlPackage is a package known to exist. It is probed first so

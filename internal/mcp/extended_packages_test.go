@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,38 @@ func TestExtendedMCPPackages(t *testing.T) {
 	t.Parallel()
 	t.Run("ExtendedMCPPackages is not empty", func(t *testing.T) {
 		assert.NotEmpty(t, ExtendedMCPPackages)
-		assert.GreaterOrEqual(t, len(ExtendedMCPPackages), 30, "Should have at least 30 packages")
+	})
+
+	// Reconciled 2026-09-03. This used to assert `len >= 30`. The catalogue
+	// dropped to 23 when eleven entries naming npm packages that do not exist
+	// (mcp-server-replicate, mcp-server-stable-diffusion, mcp-miro,
+	// framelink-figma-mcp, lsp-tools-mcp, ...) were removed.
+	//
+	// A raw size floor is the wrong invariant: the only way to satisfy it is to
+	// add entries, and it does not care whether those entries are real. It
+	// would have been satisfied by the very fictional packages that made this
+	// catalogue unusable. What the catalogue actually owes its callers is that
+	// each entry is distinct and names a well-formed npm package — asserted
+	// here, with registry existence covered by
+	// tests/integration.TestGoSourceMCPPackageExistence.
+	t.Run("Entries are distinct and name well-formed npm packages", func(t *testing.T) {
+		t.Parallel()
+		seen := make(map[string]bool, len(ExtendedMCPPackages))
+		for _, pkg := range ExtendedMCPPackages {
+			assert.False(t, seen[pkg.Name], "Duplicate package name %q", pkg.Name)
+			seen[pkg.Name] = true
+
+			assert.NotContains(t, pkg.NPM, " ", "NPM name %q must not contain spaces", pkg.NPM)
+			assert.False(t, strings.HasPrefix(pkg.NPM, "-"),
+				"NPM name %q must not start with a flag dash", pkg.NPM)
+			if strings.HasPrefix(pkg.NPM, "@") {
+				assert.Len(t, strings.Split(pkg.NPM, "/"), 2,
+					"Scoped NPM name %q must be exactly @scope/name", pkg.NPM)
+			} else {
+				assert.NotContains(t, pkg.NPM, "/",
+					"Unscoped NPM name %q must not contain a slash", pkg.NPM)
+			}
+		}
 	})
 
 	t.Run("All packages have required fields", func(t *testing.T) {
@@ -94,18 +126,16 @@ func TestGetPackagesByCategory(t *testing.T) {
 		for _, pkg := range packages {
 			names[pkg.Name] = true
 		}
+		// Reconciled 2026-09-03: `mcp-miro` is a proven npm 404 and its
+		// catalogue entry was removed.
 		assert.True(t, names["figma"], "Should include figma")
-		assert.True(t, names["miro"], "Should include miro")
 	})
 
 	t.Run("Returns image packages", func(t *testing.T) {
 		t.Parallel()
-		packages := GetPackagesByCategory(CategoryImage)
-		assert.NotEmpty(t, packages)
-
-		for _, pkg := range packages {
-			assert.Equal(t, CategoryImage, pkg.Category)
-		}
+		// Reconciled 2026-09-03: see TestGetImagePackages. The category is empty
+		// because every package in it was a proven npm 404.
+		assert.Empty(t, GetPackagesByCategory(CategoryImage))
 	})
 
 	t.Run("Returns dev packages", func(t *testing.T) {
@@ -227,32 +257,45 @@ func TestGetDesignPackages(t *testing.T) {
 			names[pkg.Name] = true
 		}
 
+		// Reconciled 2026-09-03: the "miro" entry named `mcp-miro`, which
+		// returns HTTP 404 from registry.npmjs.org, and was removed. figma
+		// remains because it names `figma-developer-mcp`, which resolves.
 		assert.True(t, names["figma"], "Should include figma")
-		assert.True(t, names["miro"], "Should include miro")
 	})
 }
 
+// TestGetImagePackages was reconciled 2026-09-03.
+//
+// It previously asserted that GetImagePackages() was non-empty and contained
+// "replicate" and "stable-diffusion". Every package the image category listed
+// — mcp-server-replicate, mcp-server-stable-diffusion, mcp-server-flux,
+// mcp-imagesorcery, mcp-server-svgmaker — returned HTTP 404 from
+// registry.npmjs.org, so the category was entirely fictional and was removed.
+// No image-generation MCP server is published under a vendor-owned npm scope
+// (checked: @replicate/*, @stability/*, @blackforestlabs/*), so nothing
+// verifiable replaced them.
+//
+// Asserting the old names would now require re-adding packages that cannot be
+// installed. The reconciled invariant is the function's real contract: it
+// returns exactly the catalogue entries in its category — which is falsifiable
+// (break the filter and this fails) even while the category is empty.
 func TestGetImagePackages(t *testing.T) {
 	t.Parallel()
-	t.Run("Returns only image packages", func(t *testing.T) {
-		packages := GetImagePackages()
-		assert.NotEmpty(t, packages)
-
-		for _, pkg := range packages {
-			assert.Equal(t, CategoryImage, pkg.Category)
+	t.Run("Returns exactly the image-category entries", func(t *testing.T) {
+		var want []MCPPackage
+		for _, pkg := range ExtendedMCPPackages {
+			if pkg.Category == CategoryImage {
+				want = append(want, pkg)
+			}
 		}
+		assert.Equal(t, want, GetImagePackages())
 	})
 
-	t.Run("Contains expected image tools", func(t *testing.T) {
+	t.Run("Returns only image packages", func(t *testing.T) {
 		t.Parallel()
-		packages := GetImagePackages()
-		names := make(map[string]bool)
-		for _, pkg := range packages {
-			names[pkg.Name] = true
+		for _, pkg := range GetImagePackages() {
+			assert.Equal(t, CategoryImage, pkg.Category)
 		}
-
-		assert.True(t, names["replicate"], "Should include replicate")
-		assert.True(t, names["stable-diffusion"], "Should include stable-diffusion")
 	})
 }
 
@@ -272,13 +315,18 @@ func TestGetAllExtendedPackages(t *testing.T) {
 			categories[pkg.Category] = true
 		}
 
+		// Reconciled 2026-09-03: CategoryImage is deliberately absent. Every
+		// package it listed returned HTTP 404 from registry.npmjs.org and was
+		// removed; no vendor-published replacement exists. Re-adding it here
+		// would require re-introducing packages that cannot be installed.
 		assert.True(t, categories[CategoryCore])
 		assert.True(t, categories[CategoryVectorDB])
 		assert.True(t, categories[CategoryDesign])
-		assert.True(t, categories[CategoryImage])
 		assert.True(t, categories[CategoryDev])
 		assert.True(t, categories[CategorySearch])
 		assert.True(t, categories[CategoryCloud])
+		assert.False(t, categories[CategoryImage],
+			"CategoryImage must stay empty until a package that actually resolves is found")
 	})
 }
 

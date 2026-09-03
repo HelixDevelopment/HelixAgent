@@ -124,8 +124,29 @@ var MCPContainerPorts = []MCPContainerPort{
 	{"hubspot", 8279, "finance"},
 	{"zendesk", 8280, "finance"},
 
-	// TIER 12: Design (8281)
+	// TIER 12: Design (8281-8282)
 	{"figma", 8281, "design"},
+	{"miro", 8282, "design"},
+
+	// TIER 13: Growth blocks (8283-8290) — added 2026-09-03 alongside the
+	// catalogue restore.
+	//
+	// Every pre-existing band above was allocated EXACTLY full (core 10/10,
+	// devops 14/14, search 10/10, design 1/1, ...), so there was no free slot
+	// anywhere for a newly restored integration. TestCompareWithNPXGenerator
+	// requires every MCP the NPX generator emits to have a container
+	// counterpart, so these needed real port allocations rather than being
+	// left unlisted (resolveContainerEndpoints silently skips unallocated
+	// names, which would have produced a remote entry with no URL).
+	//
+	// Each growth block is a contiguous per-category extension into previously
+	// unallocated space, with headroom for the next addition. The band table
+	// in generator_container_test.go is extended to match — the categories
+	// stay bounded, they are just no longer bounded by a single range.
+	{"duckduckgo", 8283, "search"}, // search growth block 8283-8284
+	{"circleci", 8285, "devops"},   // devops growth block 8285-8286
+	{"gcs", 8287, "cloud"},         // cloud block 8287-8288
+	{"replicate", 8289, "ai"},      // ai block 8289-8290
 }
 
 // ContainerMCPConfigGenerator generates containerized MCP configurations
@@ -656,6 +677,36 @@ func (g *ContainerMCPConfigGenerator) GenerateContainerMCPs() map[string]Contain
 		Type:     "remote",
 		Enabled:  g.hasEnvVar("FIGMA_API_KEY"),
 		Category: "design",
+	}
+
+	// Restored 2026-09-03 — container counterparts for the integrations
+	// restored in the NPX generator. Each gates on the env var its verified
+	// replacement package actually reads (see the annotated NPX entries);
+	// duckduckgo needs no credential, so it is unconditionally enabled.
+	mcps["miro"] = ContainerMCPServerConfig{
+		Type:     "remote",
+		Enabled:  g.hasEnvVar("MIRO_ACCESS_TOKEN"),
+		Category: "design",
+	}
+	mcps["duckduckgo"] = ContainerMCPServerConfig{
+		Type:     "remote",
+		Enabled:  true,
+		Category: "search",
+	}
+	mcps["gcs"] = ContainerMCPServerConfig{
+		Type:     "remote",
+		Enabled:  g.hasEnvVar("GOOGLE_CLOUD_PROJECT"),
+		Category: "cloud",
+	}
+	mcps["circleci"] = ContainerMCPServerConfig{
+		Type:     "remote",
+		Enabled:  g.hasEnvVar("CIRCLECI_TOKEN"),
+		Category: "devops",
+	}
+	mcps["replicate"] = ContainerMCPServerConfig{
+		Type:     "remote",
+		Enabled:  g.hasEnvVar("REPLICATE_API_TOKEN"),
+		Category: "ai",
 	}
 
 	g.resolveContainerEndpoints(mcps)

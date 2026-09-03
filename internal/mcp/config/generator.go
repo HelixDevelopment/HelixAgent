@@ -322,6 +322,28 @@ func (g *MCPConfigGenerator) GenerateOpenCodeMCPs() map[string]MCPServerConfig {
 		}
 	}
 
+	// Linear - restored 2026-09-03, enabled if LINEAR_API_TOKEN is set.
+	//
+	// ce9c4eb9 removed this because @modelcontextprotocol/server-linear 404s,
+	// and it correctly refused `linear-mcp-server`, whose declared repository
+	// (modelcontextprotocol/linear-server) 404s — name similarity is not
+	// provenance. Replacement verified live 2026-09-03:
+	// @tacticlaunch/mcp-linear v1.4.3, repo github.com/tacticlaunch/mcp-linear
+	// -> HTTP 200 (npm scope matches the repo owner), ~4856 downloads/week,
+	// community publisher. The env is LINEAR_API_TOKEN per the package's own
+	// README — NOT the LINEAR_API_KEY the removed entry gated on, so gating on
+	// the old name would have left the server permanently un-emitted.
+	if g.hasEnvVar("LINEAR_API_TOKEN") {
+		mcps["linear"] = MCPServerConfig{
+			Type:    "local",
+			Command: []string{"npx", "-y", "@tacticlaunch/mcp-linear"},
+			Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+				"LINEAR_API_TOKEN": "{env:LINEAR_API_TOKEN}",
+			}),
+			Enabled: true,
+		}
+	}
+
 	// Notion - enabled if NOTION_API_KEY is set
 	if g.hasEnvVar("NOTION_API_KEY") {
 		mcps["notion"] = MCPServerConfig{

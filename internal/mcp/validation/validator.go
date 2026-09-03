@@ -420,6 +420,25 @@ func (v *MCPValidator) loadRequirements() {
 	// ============================================================================
 	// Category: Productivity (API keys required)
 	// ============================================================================
+	// Restored 2026-09-03. ce9c4eb9 removed this because
+	// @modelcontextprotocol/server-linear 404s, and correctly refused
+	// `linear-mcp-server` whose declared repository 404s. Replacement verified
+	// live: @tacticlaunch/mcp-linear v1.4.3, repo
+	// github.com/tacticlaunch/mcp-linear -> HTTP 200, ~4856 downloads/week,
+	// community publisher. RequiredEnvs names LINEAR_API_TOKEN — the variable
+	// the package actually reads, not the removed entry's LINEAR_API_KEY.
+	v.requirements["linear"] = &MCPRequirement{
+		Name:           "linear",
+		Type:           "local",
+		Package:        "@tacticlaunch/mcp-linear",
+		Command:        []string{"npx", "-y", "@tacticlaunch/mcp-linear"},
+		RequiredEnvs:   []string{"LINEAR_API_TOKEN"},
+		Description:    "Linear issue tracking",
+		Category:       "productivity",
+		CanWorkLocally: false,
+		Enabled:        false, // Disabled - no Linear API token
+		Priority:       75,
+	}
 	v.requirements["notion"] = &MCPRequirement{
 		Name:           "notion",
 		Type:           "local",

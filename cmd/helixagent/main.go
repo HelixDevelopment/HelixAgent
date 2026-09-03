@@ -3556,6 +3556,20 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Command:     []string{"npx", "-y", "exa-mcp-server"},
 			Environment: map[string]string{"EXA_API_KEY": "{env:EXA_API_KEY}"},
 		},
+		// Restored 2026-09-03. ce9c4eb9 removed "linear" because
+		// @modelcontextprotocol/server-linear 404s, and correctly refused
+		// `linear-mcp-server` whose declared repository (modelcontextprotocol/
+		// linear-server) 404s - name similarity is not provenance.
+		// Replacement verified live: @tacticlaunch/mcp-linear v1.4.3
+		// (2026-08-29), repo github.com/tacticlaunch/mcp-linear -> HTTP 200
+		// (npm scope matches the repo owner), ~4856 downloads/week, community
+		// publisher. Env is LINEAR_API_TOKEN per the package's own README,
+		// NOT the LINEAR_API_KEY the removed entry declared.
+		"linear": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:        "local",
+			Command:     []string{"npx", "-y", "@tacticlaunch/mcp-linear"},
+			Environment: map[string]string{"LINEAR_API_TOKEN": "{env:LINEAR_API_TOKEN}"},
+		},
 		"notion": {
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@notionhq/notion-mcp-server"},
@@ -3585,6 +3599,19 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Type:        "local",
 			Command:     []string{"npx", "-y", "@neondatabase/mcp-server-neon"},
 			Environment: map[string]string{"NEON_API_KEY": "{env:NEON_API_KEY}"},
+		},
+		// Restored 2026-09-03. ce9c4eb9 removed "gdrive" because
+		// @anthropic/mcp-server-gdrive 404s (that scope never existed).
+		// Replacement verified live: @modelcontextprotocol/server-gdrive
+		// v2025.1.14, ~6700 downloads/week, MCP-org scope with the same
+		// maintainer set as the control package - VENDOR, but ARCHIVED
+		// upstream (source vendored in-tree under
+		// external/mcp-servers/servers-archived/src/gdrive). Env
+		// GDRIVE_CREDENTIALS_PATH per that README, not GOOGLE_CREDENTIALS_PATH.
+		"gdrive": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:        "local",
+			Command:     []string{"npx", "-y", "@modelcontextprotocol/server-gdrive"},
+			Environment: map[string]string{"GDRIVE_CREDENTIALS_PATH": "{env:GDRIVE_CREDENTIALS_PATH}"},
 		},
 
 		// =============================================================================
@@ -3648,6 +3675,34 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 		// =============================================================================
 		// Productivity/Collaboration MCPs - LOCAL
 		// =============================================================================
+		// Restored 2026-09-03. ce9c4eb9 removed "jira" because
+		// `mcp-server-atlassian` 404s. Replacement verified live:
+		// @aashari/mcp-server-atlassian-jira v3.3.0, repo
+		// github.com/aashari/mcp-server-atlassian-jira -> HTTP 200,
+		// ~14799 downloads/week, community publisher (aashari).
+		// Env is the ATLASSIAN_* triple the package actually reads, NOT the
+		// JIRA_URL / JIRA_EMAIL / JIRA_API_TOKEN the removed entry declared.
+		"jira": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:    "local",
+			Command: []string{"npx", "-y", "@aashari/mcp-server-atlassian-jira"},
+			Environment: map[string]string{
+				"ATLASSIAN_SITE_NAME":  "{env:ATLASSIAN_SITE_NAME}",
+				"ATLASSIAN_USER_EMAIL": "{env:ATLASSIAN_USER_EMAIL}",
+				"ATLASSIAN_API_TOKEN":  "{env:ATLASSIAN_API_TOKEN}",
+			},
+		},
+		// Restored 2026-09-03. ce9c4eb9 removed "asana" because
+		// `mcp-server-asana` 404s. Replacement verified live:
+		// @roychri/mcp-server-asana v1.8.0, repo
+		// github.com/roychri/mcp-server-asana -> HTTP 200 (npm scope matches
+		// the repo owner), ~3169 downloads/week, community publisher (roychri).
+		// The package's own README documents exactly this invocation with
+		// ASANA_ACCESS_TOKEN - same env the removed entry used.
+		"asana": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:        "local",
+			Command:     []string{"npx", "-y", "@roychri/mcp-server-asana"},
+			Environment: map[string]string{"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}"},
+		},
 		"trello": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
 			Type:        "local",
 			Command:     []string{"npx", "-y", "mcp-server-trello"},
@@ -3701,10 +3756,61 @@ func buildOpenCodeMCPServersFiltered(baseURL string, filterWorking bool) map[str
 			Type:    "local",
 			Command: []string{"npx", "-y", "mcp-server-terraform"},
 		},
+		// Restored 2026-09-03. ce9c4eb9 removed "datadog" because
+		// `mcp-server-datadog` 404s. Replacement verified live:
+		// @winor30/mcp-server-datadog v1.8.0, repo
+		// github.com/winor30/mcp-server-datadog -> HTTP 200 (npm scope matches
+		// the repo owner), ~28570 downloads/week, community publisher
+		// (winor30). Env is the DATADOG_* pair the package actually reads,
+		// NOT the DD_API_KEY / DD_APP_KEY the removed entry declared.
+		"datadog": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:    "local",
+			Command: []string{"npx", "-y", "@winor30/mcp-server-datadog"},
+			Environment: map[string]string{
+				"DATADOG_API_KEY": "{env:DATADOG_API_KEY}",
+				"DATADOG_APP_KEY": "{env:DATADOG_APP_KEY}",
+			},
+		},
+		// Restored 2026-09-03. ce9c4eb9 removed "prometheus" because
+		// `mcp-server-prometheus` 404s. Replacement verified live:
+		// prometheus-mcp v1.1.3, repo github.com/idanfishman/prometheus-mcp
+		// -> HTTP 200, ~4823 downloads/week, community publisher (idanfishman).
+		// The `stdio` POSITIONAL subcommand is REQUIRED - the package's own
+		// README config block is `npx prometheus-mcp@latest stdio`; without it
+		// the binary does not speak stdio MCP (the sqlite-class failure mode).
+		"prometheus": {
+			Type:        "local",
+			Command:     []string{"npx", "-y", "prometheus-mcp", "stdio"},
+			Environment: map[string]string{"PROMETHEUS_URL": "{env:PROMETHEUS_URL}"},
+		},
+		// Restored 2026-09-03. ce9c4eb9 removed "circleci" because
+		// `mcp-server-circleci` 404s. Replacement verified live:
+		// @circleci/mcp-server-circleci v0.20.0, repo
+		// github.com/CircleCI-Public/mcp-server-circleci -> HTTP 200,
+		// ~34017 downloads/week, published by CircleCI themselves - VENDOR.
+		// CircleCI's own README documents exactly this invocation with
+		// CIRCLECI_TOKEN - same env the removed entry used.
+		"circleci": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:        "local",
+			Command:     []string{"npx", "-y", "@circleci/mcp-server-circleci"},
+			Environment: map[string]string{"CIRCLECI_TOKEN": "{env:CIRCLECI_TOKEN}"},
+		},
 
 		// =============================================================================
 		// AI/ML Integration MCPs - LOCAL
 		// =============================================================================
+		// Restored 2026-09-03. ce9c4eb9 removed "replicate" because
+		// `mcp-server-replicate` 404s. Replacement verified live:
+		// replicate-mcp v0.9.0 (90 versions), ~2000 downloads/week, published
+		// by Replicate themselves (maintainer `replicatebot`, homepage
+		// replicate.com/docs/reference/mcp -> HTTP 200) - VENDOR. The npm
+		// README is empty, so the invocation + REPLICATE_API_TOKEN come from
+		// Replicate's own docs page rather than from the package itself.
+		"replicate": { // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			Type:        "local",
+			Command:     []string{"npx", "-y", "replicate-mcp"},
+			Environment: map[string]string{"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}"},
+		},
 
 		// =============================================================================
 		// Utility MCPs - LOCAL (no API keys required, all verified working)
@@ -3781,11 +3887,22 @@ func filterWorkingMCPs(allMCPs map[string]OpenCodeMCPServerDefNew) map[string]Op
 		"brave-search": "BRAVE_API_KEY",
 		"slack":        "SLACK_BOT_TOKEN",
 		"sentry":       "SENTRY_AUTH_TOKEN",
-		"linear":       "LINEAR_API_KEY",
-		"notion":       "NOTION_API_KEY",
+		// @tacticlaunch/mcp-linear reads LINEAR_API_TOKEN, not LINEAR_API_KEY —
+		// the gate must name the variable the restored package actually reads,
+		// or the server is silently never emitted.
+		"linear": "LINEAR_API_TOKEN",
+		"notion": "NOTION_API_KEY",
 		// NOTE: huggingface MCP removed — npm package "mcp-server-huggingface" does not exist
 		"replicate": "REPLICATE_API_TOKEN",
 		"exa":       "EXA_API_KEY",
+		// Restored 2026-09-03 alongside their server entries; each names the
+		// env var its verified replacement package actually reads.
+		"jira":       "ATLASSIAN_API_TOKEN",
+		"asana":      "ASANA_ACCESS_TOKEN",
+		"datadog":    "DATADOG_API_KEY",
+		"prometheus": "PROMETHEUS_URL",
+		"circleci":   "CIRCLECI_TOKEN",
+		"gdrive":     "GDRIVE_CREDENTIALS_PATH",
 	}
 
 	for name, mcpConfig := range allMCPs {
@@ -3829,6 +3946,18 @@ func buildOpenCodeMCPServersOld(baseURL string) map[string]OpenCodeMCPServerDefO
 		"notion":              {Type: "local", Command: []string{"npx", "-y", "@notionhq/notion-mcp-server"}},
 		"figma":               {Type: "local", Command: []string{"npx", "-y", "figma-developer-mcp"}},
 		"aws-kb-retrieval":    {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-aws-kb-retrieval"}},
+		// Restored 2026-09-03 — each replaces a name ce9c4eb9 removed as a
+		// verified npm 404. Every replacement was re-verified live against
+		// registry.npmjs.org with its declared repository URL confirmed to
+		// resolve; see the annotated entries in buildOpenCodeMCPServersFiltered
+		// for the per-package version / adoption / publisher-class evidence.
+		// This OLD format carries no env block, so credentials come from the
+		// process environment the same way they did before removal.
+		"linear":       {Type: "local", Command: []string{"npx", "-y", "@tacticlaunch/mcp-linear"}},
+		"jira":         {Type: "local", Command: []string{"npx", "-y", "@aashari/mcp-server-atlassian-jira"}},
+		"asana":        {Type: "local", Command: []string{"npx", "-y", "@roychri/mcp-server-asana"}},
+		"google-drive": {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-gdrive"}},
+		"datadog":      {Type: "local", Command: []string{"npx", "-y", "@winor30/mcp-server-datadog"}},
 		// HelixAgent Remote MCP - endpoint is /v1/mcp
 		"helixagent":    {Type: "remote", URL: baseURL + "/v1/mcp"}, // Note: OLD format doesn't support headers
 		"kubernetes":    {Type: "local", Command: []string{"npx", "-y", "mcp-server-kubernetes"}},
@@ -4633,6 +4762,30 @@ func buildCrushMCPServers(baseURL string) map[string]CrushMcpConfig {
 		"azure":     {Type: "local", Command: []string{"npx", "-y", "mcp-server-azure"}, Env: map[string]string{"AZURE_SUBSCRIPTION_ID": "{env:AZURE_SUBSCRIPTION_ID}"}, Enabled: true},
 		"gcp":       {Type: "local", Command: []string{"npx", "-y", "mcp-server-gcp"}, Env: map[string]string{"GOOGLE_APPLICATION_CREDENTIALS": "{env:GOOGLE_APPLICATION_CREDENTIALS}"}, Enabled: true},
 		"terraform": {Type: "local", Command: []string{"npx", "-y", "mcp-server-terraform"}, Enabled: true},
+
+		// Restored 2026-09-03 — each replaces a name ce9c4eb9 removed as a
+		// verified npm 404, with the package the vendor or a verifiable
+		// community maintainer actually publishes. Every replacement was
+		// re-verified live against registry.npmjs.org and its declared
+		// repository URL confirmed to resolve; the per-package version /
+		// adoption / publisher-class evidence is recorded on the annotated
+		// entries in buildOpenCodeMCPServersFiltered. Env names are the ones
+		// each package actually reads, which for several differ from the ones
+		// the removed entries declared.
+		"linear":     {Type: "local", Command: []string{"npx", "-y", "@tacticlaunch/mcp-linear"}, Env: map[string]string{"LINEAR_API_TOKEN": "{env:LINEAR_API_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"jira":       {Type: "local", Command: []string{"npx", "-y", "@aashari/mcp-server-atlassian-jira"}, Env: map[string]string{"ATLASSIAN_API_TOKEN": "{env:ATLASSIAN_API_TOKEN}"}, Enabled: true},
+		"asana":      {Type: "local", Command: []string{"npx", "-y", "@roychri/mcp-server-asana"}, Env: map[string]string{"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}"}, Enabled: true},
+		"gdrive":     {Type: "local", Command: []string{"npx", "-y", "@modelcontextprotocol/server-gdrive"}, Env: map[string]string{"GDRIVE_CREDENTIALS_PATH": "{env:GDRIVE_CREDENTIALS_PATH}"}, Enabled: true},
+		"datadog":    {Type: "local", Command: []string{"npx", "-y", "@winor30/mcp-server-datadog"}, Env: map[string]string{"DATADOG_API_KEY": "{env:DATADOG_API_KEY}", "DATADOG_APP_KEY": "{env:DATADOG_APP_KEY}"}, Enabled: true},
+		"circleci":   {Type: "local", Command: []string{"npx", "-y", "@circleci/mcp-server-circleci"}, Env: map[string]string{"CIRCLECI_TOKEN": "{env:CIRCLECI_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"replicate":  {Type: "local", Command: []string{"npx", "-y", "replicate-mcp"}, Env: map[string]string{"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}"}, Enabled: true},       // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"jetbrains":  {Type: "local", Command: []string{"npx", "-y", "@jetbrains/mcp-proxy"}, Env: map[string]string{"IDE_PORT": "{env:IDE_PORT}"}, Enabled: true},
+		"miro":       {Type: "local", Command: []string{"npx", "-y", "@k-jarzyna/mcp-miro"}, Env: map[string]string{"MIRO_ACCESS_TOKEN": "{env:MIRO_ACCESS_TOKEN}"}, Enabled: true}, // #nosec G101 -- not a credential (map key / config label / env-var reference)
+		"duckduckgo": {Type: "local", Command: []string{"npx", "-y", "duckduckgo-mcp-server"}, Enabled: true},
+		// prometheus-mcp REQUIRES the positional `stdio` subcommand — without
+		// it the binary does not speak stdio MCP (the sqlite-class failure).
+		"prometheus": {Type: "local", Command: []string{"npx", "-y", "prometheus-mcp", "stdio"}, Env: map[string]string{"PROMETHEUS_URL": "{env:PROMETHEUS_URL}"}, Enabled: true},
+		"gcs":        {Type: "local", Command: []string{"npx", "-y", "@google-cloud/storage-mcp"}, Env: map[string]string{"GOOGLE_CLOUD_PROJECT": "{env:GOOGLE_CLOUD_PROJECT}"}, Enabled: true},
 	}
 }
 

@@ -307,6 +307,37 @@ func (g *ConfigGenerator) generateMCPServers() map[string]OpenCodeMCPServer {
 			Args:    []string{"-y", "@sentry/mcp-server"},
 			Env:     []string{"SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}", "SENTRY_ORG=${SENTRY_ORG}"},
 		},
+		// Restored 2026-09-03 — each replaces a name ce9c4eb9 removed as a
+		// verified npm 404. Every replacement was re-verified live against
+		// registry.npmjs.org with its declared repository URL confirmed to
+		// resolve; per-package version / adoption / publisher-class evidence
+		// is recorded on the annotated entries in
+		// cmd/helixagent/main.go's buildOpenCodeMCPServersFiltered.
+		// The env names below are the ones each package actually reads.
+		"linear": {
+			Command: "npx",
+			Args:    []string{"-y", "@tacticlaunch/mcp-linear"},
+			Env:     []string{"LINEAR_API_TOKEN=${LINEAR_API_TOKEN}"},
+		},
+		"jira": {
+			Command: "npx",
+			Args:    []string{"-y", "@aashari/mcp-server-atlassian-jira"},
+			Env: []string{
+				"ATLASSIAN_SITE_NAME=${ATLASSIAN_SITE_NAME}",
+				"ATLASSIAN_USER_EMAIL=${ATLASSIAN_USER_EMAIL}",
+				"ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN}",
+			},
+		},
+		"asana": {
+			Command: "npx",
+			Args:    []string{"-y", "@roychri/mcp-server-asana"},
+			Env:     []string{"ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN}"},
+		},
+		"google-drive": {
+			Command: "npx",
+			Args:    []string{"-y", "@modelcontextprotocol/server-gdrive"},
+			Env:     []string{"GDRIVE_CREDENTIALS_PATH=${GDRIVE_CREDENTIALS_PATH}"},
+		},
 		"notion": {
 			Command: "npx",
 			Args:    []string{"-y", "@notionhq/notion-mcp-server"},

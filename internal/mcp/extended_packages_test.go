@@ -126,16 +126,29 @@ func TestGetPackagesByCategory(t *testing.T) {
 		for _, pkg := range packages {
 			names[pkg.Name] = true
 		}
-		// Reconciled 2026-09-03: `mcp-miro` is a proven npm 404 and its
-		// catalogue entry was removed.
+		// Re-reconciled 2026-09-03: "miro" is back. Its old package `mcp-miro`
+		// is a proven npm 404, but @k-jarzyna/mcp-miro is real and its declared
+		// repository resolves, so the entry was restored under that name.
 		assert.True(t, names["figma"], "Should include figma")
+		assert.True(t, names["miro"], "Should include miro")
 	})
 
 	t.Run("Returns image packages", func(t *testing.T) {
 		t.Parallel()
-		// Reconciled 2026-09-03: see TestGetImagePackages. The category is empty
-		// because every package in it was a proven npm 404.
-		assert.Empty(t, GetPackagesByCategory(CategoryImage))
+		// Re-reconciled 2026-09-03. This asserted Empty() while every image
+		// package was a proven npm 404. "replicate" has since been restored on
+		// `replicate-mcp` — published by Replicate themselves — so Empty() now
+		// asserts the OLD state and would only pass if the restore were undone.
+		//
+		// Per the fix-breaks-its-own-gate rule it is reconciled to the real
+		// contract rather than deleted or weakened to a tautology: the category
+		// is non-empty AND contains only its own members. Break the filter in
+		// GetPackagesByCategory and this still fails.
+		packages := GetPackagesByCategory(CategoryImage)
+		assert.NotEmpty(t, packages)
+		for _, pkg := range packages {
+			assert.Equal(t, CategoryImage, pkg.Category)
+		}
 	})
 
 	t.Run("Returns dev packages", func(t *testing.T) {
@@ -264,21 +277,23 @@ func TestGetDesignPackages(t *testing.T) {
 	})
 }
 
-// TestGetImagePackages was reconciled 2026-09-03.
+// TestGetImagePackages was reconciled 2026-09-03 and re-reconciled the same
+// day after the restore.
 //
-// It previously asserted that GetImagePackages() was non-empty and contained
-// "replicate" and "stable-diffusion". Every package the image category listed
-// — mcp-server-replicate, mcp-server-stable-diffusion, mcp-server-flux,
+// It originally asserted GetImagePackages() contained "replicate" and
+// "stable-diffusion". Every package the image category listed —
+// mcp-server-replicate, mcp-server-stable-diffusion, mcp-server-flux,
 // mcp-imagesorcery, mcp-server-svgmaker — returned HTTP 404 from
-// registry.npmjs.org, so the category was entirely fictional and was removed.
-// No image-generation MCP server is published under a vendor-owned npm scope
-// (checked: @replicate/*, @stability/*, @blackforestlabs/*), so nothing
-// verifiable replaced them.
+// registry.npmjs.org, so those name-based assertions were replaced with the
+// function's real contract: it returns exactly the catalogue entries in its
+// category, which is falsifiable (break the filter and this fails) whether the
+// category is empty or not.
 //
-// Asserting the old names would now require re-adding packages that cannot be
-// installed. The reconciled invariant is the function's real contract: it
-// returns exactly the catalogue entries in its category — which is falsifiable
-// (break the filter and this fails) even while the category is empty.
+// "replicate" is now restored on `replicate-mcp` (published by Replicate
+// themselves; see the catalogue entry for the verification), so the category
+// is populated again. The contract assertion below is deliberately left as-is:
+// it held while the category was empty and still holds now, which is the point
+// of asserting a contract rather than a membership list.
 func TestGetImagePackages(t *testing.T) {
 	t.Parallel()
 	t.Run("Returns exactly the image-category entries", func(t *testing.T) {
@@ -315,18 +330,21 @@ func TestGetAllExtendedPackages(t *testing.T) {
 			categories[pkg.Category] = true
 		}
 
-		// Reconciled 2026-09-03: CategoryImage is deliberately absent. Every
-		// package it listed returned HTTP 404 from registry.npmjs.org and was
-		// removed; no vendor-published replacement exists. Re-adding it here
-		// would require re-introducing packages that cannot be installed.
+		// Re-reconciled 2026-09-03. The previous revision asserted
+		// CategoryImage was ABSENT, with the explicit exit condition "until a
+		// package that actually resolves is found". That condition is now met:
+		// `replicate-mcp` resolves, is published by Replicate themselves, and
+		// its invocation is documented on replicate.com — so the category is
+		// populated again and the old assertion would now only pass if the
+		// restore were undone.
 		assert.True(t, categories[CategoryCore])
 		assert.True(t, categories[CategoryVectorDB])
 		assert.True(t, categories[CategoryDesign])
 		assert.True(t, categories[CategoryDev])
 		assert.True(t, categories[CategorySearch])
 		assert.True(t, categories[CategoryCloud])
-		assert.False(t, categories[CategoryImage],
-			"CategoryImage must stay empty until a package that actually resolves is found")
+		assert.True(t, categories[CategoryImage],
+			"CategoryImage is populated again by the restored replicate entry")
 	})
 }
 

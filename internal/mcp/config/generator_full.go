@@ -619,6 +619,172 @@ func (g *FullMCPConfigGenerator) GenerateAllMCPs() map[string]MCPServerConfigFul
 	// ==========================================================================
 	// CATEGORY 17: Notes & Knowledge
 	// ==========================================================================
+	// Restored 2026-09-03. ce9c4eb9 removed "obsidian" here because
+	// `mcp-server-obsidian` 404s. Replacement verified live:
+	// obsidian-mcp-server v3.5.0 (2026-08-22, 57 published versions),
+	// repo github.com/cyanheads/obsidian-mcp-server -> HTTP 200,
+	// ~5784 downloads/week, community publisher (cyanheads).
+	//
+	// NOTE (honest divergence, not an oversight): cmd/helixagent/main.go still
+	// configures obsidian as `mcp-obsidian` — a different, weaker package
+	// (single version, published 2024-11-29, ~1444/week, declares NO
+	// repository). This generator is a separate surface from the OpenCode
+	// generator that TestGeneratorAndShippedConfigAgree pins, so the two do
+	// not currently have to agree; unifying them is a follow-up, deliberately
+	// not folded into a restore commit.
+	mcps["obsidian"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "obsidian-mcp-server"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"OBSIDIAN_API_KEY":  "{env:OBSIDIAN_API_KEY}",
+			"OBSIDIAN_BASE_URL": "{env:OBSIDIAN_BASE_URL}",
+		}),
+		Enabled: g.hasEnvVar("OBSIDIAN_API_KEY"),
+	}
+
+	// ==========================================================================
+	// CATEGORY 18: Restored integrations (2026-09-03)
+	// ==========================================================================
+	// Each entry below replaces a name ce9c4eb9 removed as a verified npm 404.
+	// Every replacement was re-verified live against registry.npmjs.org on
+	// 2026-09-03, with its declared repository URL fetched and confirmed to
+	// resolve — name similarity alone is never accepted as provenance. Where a
+	// package declares no repository (replicate-mcp, @modelcontextprotocol/*),
+	// provenance rests on the publishing account plus a vendor-domain homepage
+	// or a scope shared with a known-good control package. Env names are the
+	// ones each package actually reads; several differ from the variables the
+	// removed entries declared, which is exactly the class of defect that made
+	// the old sqlite entry unusable.
+
+	// @jetbrains/mcp-proxy v1.8.0, repo github.com/JetBrains/mcp-jetbrains ->
+	// HTTP 200, ~1454 downloads/week, published by JetBrains — VENDOR.
+	mcps["jetbrains"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@jetbrains/mcp-proxy"},
+		Enabled: true, // Talks to a locally running IDE; no credential needed.
+	}
+
+	// @tacticlaunch/mcp-linear v1.4.3, repo github.com/tacticlaunch/mcp-linear
+	// -> HTTP 200, ~4856 downloads/week, community publisher.
+	mcps["linear"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@tacticlaunch/mcp-linear"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"LINEAR_API_TOKEN": "{env:LINEAR_API_TOKEN}",
+		}),
+		Enabled: g.hasEnvVar("LINEAR_API_TOKEN"),
+	}
+
+	// @roychri/mcp-server-asana v1.8.0, repo
+	// github.com/roychri/mcp-server-asana -> HTTP 200, ~3169 downloads/week,
+	// community publisher.
+	mcps["asana"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@roychri/mcp-server-asana"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"ASANA_ACCESS_TOKEN": "{env:ASANA_ACCESS_TOKEN}",
+		}),
+		Enabled: g.hasEnvVar("ASANA_ACCESS_TOKEN"),
+	}
+
+	// @modelcontextprotocol/server-gdrive v2025.1.14, ~6700 downloads/week,
+	// MCP-org scope sharing the control package's maintainers — VENDOR, but
+	// ARCHIVED upstream. Its README's env is GDRIVE_CREDENTIALS_PATH.
+	mcps["google-drive"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@modelcontextprotocol/server-gdrive"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"GDRIVE_CREDENTIALS_PATH": "{env:GDRIVE_CREDENTIALS_PATH}",
+		}),
+		Enabled: g.hasEnvVar("GDRIVE_CREDENTIALS_PATH"),
+	}
+
+	// @winor30/mcp-server-datadog v1.8.0, repo
+	// github.com/winor30/mcp-server-datadog -> HTTP 200, ~28570
+	// downloads/week, community publisher. Reads DATADOG_*, not DD_*.
+	mcps["datadog"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@winor30/mcp-server-datadog"},
+		Environment: g.expandEnvMap(map[string]string{
+			"DATADOG_API_KEY": "{env:DATADOG_API_KEY}",
+			"DATADOG_APP_KEY": "{env:DATADOG_APP_KEY}",
+		}),
+		Enabled: g.hasAllEnvVars("DATADOG_API_KEY", "DATADOG_APP_KEY"),
+	}
+
+	// @circleci/mcp-server-circleci v0.20.0, repo
+	// github.com/CircleCI-Public/mcp-server-circleci -> HTTP 200, ~34017
+	// downloads/week, published by CircleCI — VENDOR.
+	mcps["circleci"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@circleci/mcp-server-circleci"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"CIRCLECI_TOKEN": "{env:CIRCLECI_TOKEN}",
+		}),
+		Enabled: g.hasEnvVar("CIRCLECI_TOKEN"),
+	}
+
+	// prometheus-mcp v1.1.3, repo github.com/idanfishman/prometheus-mcp ->
+	// HTTP 200, ~4823 downloads/week, community publisher. The positional
+	// `stdio` subcommand is REQUIRED — the package's own README config block
+	// is `npx prometheus-mcp@latest stdio`; without it the binary does not
+	// speak stdio MCP at all.
+	mcps["prometheus"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "prometheus-mcp", "stdio"},
+		Environment: g.expandEnvMap(map[string]string{
+			"PROMETHEUS_URL": "{env:PROMETHEUS_URL}",
+		}),
+		Enabled: g.hasEnvVar("PROMETHEUS_URL"),
+	}
+
+	// replicate-mcp v0.9.0 (90 versions), ~2000 downloads/week, published by
+	// Replicate (maintainer `replicatebot`, homepage
+	// replicate.com/docs/reference/mcp -> HTTP 200) — VENDOR. The npm README
+	// is empty; the invocation and env come from Replicate's own docs page.
+	mcps["replicate"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "replicate-mcp"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"REPLICATE_API_TOKEN": "{env:REPLICATE_API_TOKEN}",
+		}),
+		Enabled: g.hasEnvVar("REPLICATE_API_TOKEN"),
+	}
+
+	// @k-jarzyna/mcp-miro v1.0.11, repo github.com/k-jarzyna/mcp-miro ->
+	// HTTP 200, community publisher (scope matches the repo owner).
+	// Adoption is low (~229 downloads/week) — the resolving repository, not
+	// the download count, is what carries provenance for this one.
+	mcps["miro"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@k-jarzyna/mcp-miro"},
+		Environment: g.expandEnvMap(map[string]string{ // #nosec G101 -- not a credential (map key / config label / env-var reference)
+			"MIRO_ACCESS_TOKEN": "{env:MIRO_ACCESS_TOKEN}",
+		}),
+		Enabled: g.hasEnvVar("MIRO_ACCESS_TOKEN"),
+	}
+
+	// duckduckgo-mcp-server v0.1.2, repo
+	// github.com/zhsama/duckduckgo-mcp-server -> HTTP 200, ~3445
+	// downloads/week, community publisher. No credential required.
+	mcps["duckduckgo"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "duckduckgo-mcp-server"},
+		Enabled: true,
+	}
+
+	// @google-cloud/storage-mcp v0.6.0, repo github.com/googleapis/gcloud-mcp
+	// -> HTTP 200, ~20919 downloads/week, published by Google — VENDOR.
+	// Auth is Application Default Credentials; the package's own variable is
+	// GOOGLE_CLOUD_PROJECT.
+	mcps["gcs"] = MCPServerConfigFull{
+		Type:    "local",
+		Command: []string{"npx", "-y", "@google-cloud/storage-mcp"},
+		Environment: g.expandEnvMap(map[string]string{
+			"GOOGLE_CLOUD_PROJECT": "{env:GOOGLE_CLOUD_PROJECT}",
+		}),
+		Enabled: g.hasEnvVar("GOOGLE_CLOUD_PROJECT"),
+	}
 
 	return mcps
 }

@@ -64,57 +64,84 @@ func TestContainerMCPConfigGenerator_PortAllocationUnique(t *testing.T) {
 	}
 }
 
+// containerPortBands is the declared address map for MCPContainerPorts: every
+// category's ports must fall inside one of its ranges.
+//
+// Reconciled 2026-09-03. This was a `switch` with one hard-coded range per
+// category, and every band was allocated EXACTLY full — so the first genuinely
+// new integration could not be given a port without editing this check. The
+// restore of five removed integrations was that first addition.
+//
+// Two things changed, both of which TIGHTEN rather than relax the check:
+//   - a category may now declare more than one range, so growth blocks can be
+//     allocated in previously unallocated space instead of overflowing a
+//     neighbouring band;
+//   - "cloud" and "ai" are now bounded too. The old `switch` had no case for
+//     them, so any port at all passed — an unbounded category is a hole, and
+//     the restored `gcs`/`replicate` entries would have slipped through it.
+//
+// The invariant is unchanged and still falsifiable: move any entry outside its
+// category's declared ranges and this fails.
+var containerPortBands = map[string][][2]int{
+	"core":          {{8200, 8209}},
+	"database":      {{8210, 8214}},
+	"vector":        {{8215, 8218}},
+	"devops":        {{8220, 8233}, {8285, 8286}},
+	"browser":       {{8234, 8237}},
+	"communication": {{8238, 8240}},
+	"productivity":  {{8250, 8259}},
+	"search":        {{8260, 8269}, {8283, 8284}},
+	"google":        {{8270, 8274}},
+	"monitoring":    {{8275, 8277}},
+	"finance":       {{8278, 8280}},
+	"design":        {{8281, 8282}},
+	"cloud":         {{8287, 8288}},
+	"ai":            {{8289, 8290}},
+}
+
 func TestContainerMCPConfigGenerator_PortRanges(t *testing.T) {
 	// Verify ports are in expected ranges
 	for _, p := range MCPContainerPorts {
-		switch p.Category {
-		case "core":
-			if p.Port < 8200 || p.Port > 8209 {
-				t.Errorf("Core MCP %s port %d out of range 8200-8209", p.Name, p.Port)
+		ranges, known := containerPortBands[p.Category]
+		if !known {
+			t.Errorf("MCP %s has category %q with no declared port band — an "+
+				"unbounded category lets any port through, so a new category "+
+				"must be given a band here", p.Name, p.Category)
+			continue
+		}
+		inBand := false
+		for _, r := range ranges {
+			if p.Port >= r[0] && p.Port <= r[1] {
+				inBand = true
+				break
 			}
-		case "database":
-			if p.Port < 8210 || p.Port > 8214 {
-				t.Errorf("Database MCP %s port %d out of range 8210-8214", p.Name, p.Port)
+		}
+		if !inBand {
+			t.Errorf("%s MCP %s port %d is outside the declared band(s) %v for its category",
+				p.Category, p.Name, p.Port, ranges)
+		}
+	}
+}
+
+// TestContainerPortBandsDoNotOverlap guards the address map itself: the
+// per-category ranges are only a meaningful bound if no two categories claim
+// the same port. Without this, a growth block could be widened into a
+// neighbour's band and TestContainerMCPConfigGenerator_PortRanges would still
+// pass while two categories fought over the same address.
+func TestContainerPortBandsDoNotOverlap(t *testing.T) {
+	owner := map[int]string{}
+	for category, ranges := range containerPortBands {
+		for _, r := range ranges {
+			if r[0] > r[1] {
+				t.Errorf("category %q declares an inverted range %v", category, r)
+				continue
 			}
-		case "vector":
-			if p.Port < 8215 || p.Port > 8218 {
-				t.Errorf("Vector MCP %s port %d out of range 8215-8218", p.Name, p.Port)
-			}
-		case "devops":
-			if p.Port < 8220 || p.Port > 8233 {
-				t.Errorf("DevOps MCP %s port %d out of range 8220-8233", p.Name, p.Port)
-			}
-		case "browser":
-			if p.Port < 8234 || p.Port > 8237 {
-				t.Errorf("Browser MCP %s port %d out of range 8234-8237", p.Name, p.Port)
-			}
-		case "communication":
-			if p.Port < 8238 || p.Port > 8240 {
-				t.Errorf("Communication MCP %s port %d out of range 8238-8240", p.Name, p.Port)
-			}
-		case "productivity":
-			if p.Port < 8250 || p.Port > 8259 {
-				t.Errorf("Productivity MCP %s port %d out of range 8250-8259", p.Name, p.Port)
-			}
-		case "search":
-			if p.Port < 8260 || p.Port > 8269 {
-				t.Errorf("Search MCP %s port %d out of range 8260-8269", p.Name, p.Port)
-			}
-		case "google":
-			if p.Port < 8270 || p.Port > 8274 {
-				t.Errorf("Google MCP %s port %d out of range 8270-8274", p.Name, p.Port)
-			}
-		case "monitoring":
-			if p.Port < 8275 || p.Port > 8277 {
-				t.Errorf("Monitoring MCP %s port %d out of range 8275-8277", p.Name, p.Port)
-			}
-		case "finance":
-			if p.Port < 8278 || p.Port > 8280 {
-				t.Errorf("Finance MCP %s port %d out of range 8278-8280", p.Name, p.Port)
-			}
-		case "design":
-			if p.Port < 8281 || p.Port > 8281 {
-				t.Errorf("Design MCP %s port %d out of range 8281-8281", p.Name, p.Port)
+			for port := r[0]; port <= r[1]; port++ {
+				if prev, taken := owner[port]; taken {
+					t.Errorf("port %d is claimed by both %q and %q", port, prev, category)
+					continue
+				}
+				owner[port] = category
 			}
 		}
 	}

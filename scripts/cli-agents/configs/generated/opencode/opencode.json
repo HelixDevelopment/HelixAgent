@@ -42,7 +42,7 @@
     },
     "sqlite": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/helixagent.db"]
+      "args": ["-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"]
     },
     "puppeteer": {
       "command": "npx",
@@ -91,12 +91,12 @@
     },
     "linear": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-linear"],
+      "args": ["-y", "mcp-linear"],
       "env": ["LINEAR_API_KEY=${LINEAR_API_KEY}"]
     },
     "sentry": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sentry"],
+      "args": ["-y", "@sentry/mcp-server"],
       "env": ["SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}", "SENTRY_ORG=${SENTRY_ORG}"]
     },
     "notion": {
@@ -137,7 +137,7 @@
     },
     "docker": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-docker"]
+      "args": ["-y", "mcp-server-docker"]
     },
     "kubernetes": {
       "command": "npx",
@@ -151,7 +151,7 @@
     },
     "mongodb": {
       "command": "npx",
-      "args": ["-y", "mcp-server-mongodb"],
+      "args": ["-y", "mongodb-mcp-server"],
       "env": ["MONGODB_URI=mongodb://localhost:27017"]
     },
     "elasticsearch": {
@@ -171,17 +171,17 @@
     },
     "jira": {
       "command": "npx",
-      "args": ["-y", "mcp-server-atlassian"],
+      "args": ["-y", "mcp-atlassian"],
       "env": ["JIRA_URL=${JIRA_URL}", "JIRA_EMAIL=${JIRA_EMAIL}", "JIRA_API_TOKEN=${JIRA_API_TOKEN}"]
     },
     "asana": {
       "command": "npx",
-      "args": ["-y", "mcp-server-asana"],
+      "args": ["-y", "@roychri/mcp-server-asana"],
       "env": ["ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN}"]
     },
     "google-drive": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-gdrive"],
+      "args": ["-y", "@modelcontextprotocol/server-gdrive"],
       "env": ["GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH}"]
     },
     "aws-s3": {
@@ -191,7 +191,7 @@
     },
     "datadog": {
       "command": "npx",
-      "args": ["-y", "mcp-server-datadog"],
+      "args": ["-y", "datadog-mcp-server"],
       "env": ["DD_API_KEY=${DD_API_KEY}", "DD_APP_KEY=${DD_APP_KEY}"]
     }
   },

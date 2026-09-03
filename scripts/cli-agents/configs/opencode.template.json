@@ -63,7 +63,7 @@
     },
     "sqlite": {
       "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-sqlite", "${HOME}/.helixagent/data/opencode.db"]
+      "command": ["npx", "-y", "mcp-server-sqlite-npx", "${HOME}/.helixagent/data/opencode.db"]
     },
     "postgres": {
       "type": "local",

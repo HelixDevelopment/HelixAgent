@@ -502,7 +502,7 @@ generate_opencode_config() {
     },
     "sqlite": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/helixagent.db"]
+      "args": ["-y", "mcp-server-sqlite-npx", "/tmp/helixagent.db"]
     },
     "puppeteer": {
       "command": "npx",
@@ -551,12 +551,12 @@ generate_opencode_config() {
     },
     "linear": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-linear"],
+      "args": ["-y", "mcp-linear"],
       "env": ["LINEAR_API_KEY=${LINEAR_API_KEY}"]
     },
     "sentry": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sentry"],
+      "args": ["-y", "@sentry/mcp-server"],
       "env": ["SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}", "SENTRY_ORG=${SENTRY_ORG}"]
     },
     "notion": {
@@ -597,7 +597,7 @@ generate_opencode_config() {
     },
     "docker": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-docker"]
+      "args": ["-y", "mcp-server-docker"]
     },
     "kubernetes": {
       "command": "npx",
@@ -611,7 +611,7 @@ generate_opencode_config() {
     },
     "mongodb": {
       "command": "npx",
-      "args": ["-y", "mcp-server-mongodb"],
+      "args": ["-y", "mongodb-mcp-server"],
       "env": ["MONGODB_URI=mongodb://localhost:27017"]
     },
     "elasticsearch": {
@@ -631,17 +631,17 @@ generate_opencode_config() {
     },
     "jira": {
       "command": "npx",
-      "args": ["-y", "mcp-server-atlassian"],
+      "args": ["-y", "mcp-atlassian"],
       "env": ["JIRA_URL=${JIRA_URL}", "JIRA_EMAIL=${JIRA_EMAIL}", "JIRA_API_TOKEN=${JIRA_API_TOKEN}"]
     },
     "asana": {
       "command": "npx",
-      "args": ["-y", "mcp-server-asana"],
+      "args": ["-y", "@roychri/mcp-server-asana"],
       "env": ["ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN}"]
     },
     "google-drive": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-gdrive"],
+      "args": ["-y", "@modelcontextprotocol/server-gdrive"],
       "env": ["GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH}"]
     },
     "aws-s3": {
@@ -651,7 +651,7 @@ generate_opencode_config() {
     },
     "datadog": {
       "command": "npx",
-      "args": ["-y", "mcp-server-datadog"],
+      "args": ["-y", "datadog-mcp-server"],
       "env": ["DD_API_KEY=${DD_API_KEY}", "DD_APP_KEY=${DD_APP_KEY}"]
     }
   },
@@ -719,27 +719,27 @@ generate_crush_config() {
     }
   },
   "mcp": {
-    "filesystem": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-filesystem", "$HOME"], "enabled": true},
+    "filesystem": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "$HOME"], "enabled": true},
     "fetch": {"command": "npx", "args": ["-y", "mcp-fetch-server"], "enabled": true},
-    "github": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-github"], "env": {"GITHUB_TOKEN": "${GITHUB_TOKEN}"}, "enabled": true},
-    "memory": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-memory"], "enabled": true},
-    "sqlite": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-sqlite", "--db-path", "$HOME/.helixagent/data/helixagent.db"], "enabled": true},
-    "puppeteer": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-puppeteer"], "enabled": true},
+    "github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"], "env": {"GITHUB_TOKEN": "${GITHUB_TOKEN}"}, "enabled": true},
+    "memory": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"], "enabled": true},
+    "sqlite": {"command": "npx", "args": ["-y", "mcp-server-sqlite-npx", "$HOME/.helixagent/data/helixagent.db"], "enabled": true},
+    "puppeteer": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-puppeteer"], "enabled": true},
     "time": {"command": "npx", "args": ["-y", "@theo.foobar/mcp-time"], "enabled": true},
-    "brave-search": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-brave-search"], "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}, "enabled": true},
-    "google-maps": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-google-maps"], "env": {"GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"}, "enabled": true},
+    "brave-search": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-brave-search"], "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}, "enabled": true},
+    "google-maps": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-google-maps"], "env": {"GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"}, "enabled": true},
     "git": {"command": "npx", "args": ["-y", "mcp-git"], "enabled": true},
-    "postgres": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-postgres"], "env": {"POSTGRES_CONNECTION_STRING": "${POSTGRES_CONNECTION_STRING:-postgresql://localhost:5432/helixagent}"}, "enabled": true},
-    "slack": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-slack"], "env": {"SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}", "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"}, "enabled": true},
-    "sequential-thinking": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-sequential-thinking"], "enabled": true},
-    "everart": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-everart"], "env": {"EVERART_API_KEY": "${EVERART_API_KEY}"}, "enabled": true},
+    "postgres": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-postgres"], "env": {"POSTGRES_CONNECTION_STRING": "${POSTGRES_CONNECTION_STRING:-postgresql://localhost:5432/helixagent}"}, "enabled": true},
+    "slack": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-slack"], "env": {"SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}", "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"}, "enabled": true},
+    "sequential-thinking": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"], "enabled": true},
+    "everart": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-everart"], "env": {"EVERART_API_KEY": "${EVERART_API_KEY}"}, "enabled": true},
     "exa": {"command": "npx", "args": ["-y", "exa-mcp-server"], "env": {"EXA_API_KEY": "${EXA_API_KEY}"}, "enabled": true},
-    "linear": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-linear"], "env": {"LINEAR_API_KEY": "${LINEAR_API_KEY}"}, "enabled": true},
-    "sentry": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-sentry"], "env": {"SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}", "SENTRY_ORG": "${SENTRY_ORG}"}, "enabled": true},
-    "notion": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-notion"], "env": {"NOTION_API_KEY": "${NOTION_API_KEY}"}, "enabled": true},
-    "figma": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-figma"], "env": {"FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"}, "enabled": true},
-    "aws-kb-retrieval": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-aws-kb-retrieval"], "env": {"AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}"}, "enabled": true},
-    "gitlab": {"command": "npx", "args": ["-y", "@anthropic-ai/mcp-server-gitlab"], "env": {"GITLAB_TOKEN": "${GITLAB_TOKEN}"}, "enabled": true},
+    "linear": {"command": "npx", "args": ["-y", "mcp-linear"], "env": {"LINEAR_API_KEY": "${LINEAR_API_KEY}"}, "enabled": true},
+    "sentry": {"command": "npx", "args": ["-y", "@sentry/mcp-server"], "env": {"SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}", "SENTRY_ORG": "${SENTRY_ORG}"}, "enabled": true},
+    "notion": {"command": "npx", "args": ["-y", "@notionhq/notion-mcp-server"], "env": {"NOTION_API_KEY": "${NOTION_API_KEY}"}, "enabled": true},
+    "figma": {"command": "npx", "args": ["-y", "figma-developer-mcp"], "env": {"FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"}, "enabled": true},
+    "aws-kb-retrieval": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"], "env": {"AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}"}, "enabled": true},
+    "gitlab": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-gitlab"], "env": {"GITLAB_TOKEN": "${GITLAB_TOKEN}"}, "enabled": true},
     "helixagent": {"command": "curl", "args": ["-s", "-X", "POST", "HELIX_URL_PLACEHOLDER/v1/mcp", "-H", "Content-Type: application/json"], "enabled": true},
     "helixagent-debate": {"command": "curl", "args": ["-s", "-X", "POST", "HELIX_URL_PLACEHOLDER/v1/debates", "-H", "Content-Type: application/json"], "enabled": true},
     "helixagent-rag": {"command": "curl", "args": ["-s", "-X", "POST", "HELIX_URL_PLACEHOLDER/v1/rag/search", "-H", "Content-Type: application/json"], "enabled": true},
@@ -747,15 +747,15 @@ generate_crush_config() {
     "docker": {"command": "npx", "args": ["-y", "mcp-server-docker"], "enabled": true},
     "kubernetes": {"command": "npx", "args": ["-y", "mcp-server-kubernetes"], "env": {"KUBECONFIG": "${KUBECONFIG:-$HOME/.kube/config}"}, "enabled": true},
     "redis": {"command": "npx", "args": ["-y", "mcp-server-redis"], "env": {"REDIS_URL": "${REDIS_URL:-redis://localhost:6379}"}, "enabled": true},
-    "mongodb": {"command": "npx", "args": ["-y", "mcp-server-mongodb"], "env": {"MONGODB_URI": "${MONGODB_URI:-mongodb://localhost:27017}"}, "enabled": true},
+    "mongodb": {"command": "npx", "args": ["-y", "mongodb-mcp-server"], "env": {"MONGODB_URI": "${MONGODB_URI:-mongodb://localhost:27017}"}, "enabled": true},
     "elasticsearch": {"command": "npx", "args": ["-y", "mcp-server-elasticsearch"], "env": {"ELASTICSEARCH_URL": "${ELASTICSEARCH_URL:-http://localhost:9200}"}, "enabled": true},
     "qdrant": {"command": "npx", "args": ["-y", "mcp-server-qdrant"], "env": {"QDRANT_URL": "${QDRANT_URL:-http://localhost:6333}"}, "enabled": true},
     "chroma": {"command": "npx", "args": ["-y", "mcp-server-chroma"], "env": {"CHROMA_URL": "${CHROMA_URL:-http://localhost:8001}"}, "enabled": true},
     "jira": {"command": "npx", "args": ["-y", "mcp-server-jira"], "env": {"JIRA_URL": "${JIRA_URL}", "JIRA_EMAIL": "${JIRA_EMAIL}", "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"}, "enabled": true},
-    "asana": {"command": "npx", "args": ["-y", "mcp-server-asana"], "env": {"ASANA_ACCESS_TOKEN": "${ASANA_ACCESS_TOKEN}"}, "enabled": true},
-    "google-drive": {"command": "npx", "args": ["-y", "mcp-server-google-drive"], "env": {"GOOGLE_CREDENTIALS_PATH": "${GOOGLE_CREDENTIALS_PATH}"}, "enabled": true},
+    "asana": {"command": "npx", "args": ["-y", "@roychri/mcp-server-asana"], "env": {"ASANA_ACCESS_TOKEN": "${ASANA_ACCESS_TOKEN}"}, "enabled": true},
+    "google-drive": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-gdrive"], "env": {"GOOGLE_CREDENTIALS_PATH": "${GOOGLE_CREDENTIALS_PATH}"}, "enabled": true},
     "aws-s3": {"command": "npx", "args": ["-y", "mcp-server-s3"], "env": {"AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}"}, "enabled": true},
-    "datadog": {"command": "npx", "args": ["-y", "mcp-server-datadog"], "env": {"DD_API_KEY": "${DD_API_KEY}", "DD_APP_KEY": "${DD_APP_KEY}"}, "enabled": true}
+    "datadog": {"command": "npx", "args": ["-y", "datadog-mcp-server"], "env": {"DD_API_KEY": "${DD_API_KEY}", "DD_APP_KEY": "${DD_APP_KEY}"}, "enabled": true}
   },
   "lsp": {
     "helixagent-lsp": {"command": "curl", "args": ["-X", "POST", "HELIX_URL_PLACEHOLDER/v1/lsp", "-H", "Authorization: Bearer HELIX_API_KEY_PLACEHOLDER"], "enabled": true}

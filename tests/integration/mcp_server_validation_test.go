@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -16,46 +17,229 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMCPPackageExistence verifies all MCP packages exist in npm registry
+// knownNonexistentMCPPackages are npm package names that were shipped in this
+// repo's CLI-agent configs but do NOT exist in the npm registry — every one
+// verified as HTTP 404 against registry.npmjs.org on 2026-09-03.
+//
+// A user who copied such a config got an MCP server that fails to start on an
+// npm 404. They are recorded here so a regression that re-introduces any of
+// them is caught WITHOUT needing network access.
+//
+// The `@anthropic-ai/mcp-server-*` scope in particular has never existed: the
+// official reference servers are published under `@modelcontextprotocol/`.
+var knownNonexistentMCPPackages = []string{
+	"@anthropic-ai/mcp-server-aws-kb-retrieval",
+	"@anthropic-ai/mcp-server-brave-search",
+	"@anthropic-ai/mcp-server-everart",
+	"@anthropic-ai/mcp-server-figma",
+	"@anthropic-ai/mcp-server-filesystem",
+	"@anthropic-ai/mcp-server-github",
+	"@anthropic-ai/mcp-server-gitlab",
+	"@anthropic-ai/mcp-server-google-maps",
+	"@anthropic-ai/mcp-server-linear",
+	"@anthropic-ai/mcp-server-memory",
+	"@anthropic-ai/mcp-server-notion",
+	"@anthropic-ai/mcp-server-postgres",
+	"@anthropic-ai/mcp-server-puppeteer",
+	"@anthropic-ai/mcp-server-sentry",
+	"@anthropic-ai/mcp-server-sequential-thinking",
+	"@anthropic-ai/mcp-server-slack",
+	"@anthropic-ai/mcp-server-sqlite",
+	"@anthropic/mcp-server-gdrive",
+	// Archived or never-published under the official scope.
+	// server-sqlite in particular was the PYTHON reference server
+	// (`mcp-server-sqlite` on PyPI, `uvx ... --db-path <p>`), archived to
+	// modelcontextprotocol/servers-archived. It was never an npm package.
+	// The Node equivalent is `mcp-server-sqlite-npx`, which takes the DB
+	// path POSITIONALLY (no --db-path flag).
+	"@modelcontextprotocol/server-docker",
+	"@modelcontextprotocol/server-linear",
+	"@modelcontextprotocol/server-sentry",
+	"@modelcontextprotocol/server-sqlite",
+	// Invented bare names with no npm publication.
+	"mcp-server-asana",
+	"mcp-server-atlassian",
+	"mcp-server-datadog",
+	"mcp-server-google-drive",
+	"mcp-server-mongodb",
+}
+
+// npmRegistryControlPackage is a package known to exist. It is probed first so
+// a total network/registry outage is reported as a SKIP rather than being
+// mistaken for "every package we ship is broken".
+const npmRegistryControlPackage = "@modelcontextprotocol/server-filesystem"
+
+// TestMCPPackageExistence verifies that EVERY npm package this repo writes into
+// a CLI-agent MCP config actually exists in the npm registry.
+//
+// The package list is DERIVED FROM THE CONFIGS rather than hand-maintained, so
+// a config that adds a new (or misspelled) package name is covered
+// automatically. A hardcoded subset would pass while shipping a broken config —
+// that gap is exactly how @modelcontextprotocol/server-sqlite reached users.
 func TestMCPPackageExistence(t *testing.T) {
 	if testing.Short() {
 		t.Logf("Short mode - skipping MCP package existence test (acceptable)")
 		return
 	}
 
-	packages := []struct {
-		name     string
-		expected bool
-	}{
-		// Official @modelcontextprotocol packages that EXIST
-		{"@modelcontextprotocol/server-filesystem", true},
-		{"@modelcontextprotocol/server-github", true},
-		{"@modelcontextprotocol/server-memory", true},
-		{"@modelcontextprotocol/server-puppeteer", true},
-		{"@modelcontextprotocol/server-brave-search", true},
-		{"@modelcontextprotocol/server-everything", true},
-		{"@modelcontextprotocol/server-sequential-thinking", true},
-		{"@modelcontextprotocol/sdk", true},
-		{"@modelcontextprotocol/inspector", true},
-		{"@modelcontextprotocol/server-sqlite", true},
+	root := getProjectRoot(t)
 
-		// Working replacement packages for broken/unpublished ones
-		{"mcp-fetch-server", true},
-		{"@theo.foobar/mcp-time", true},
-		{"mcp-git", true},
-		{"mcp-sqlite", true},
+	packages, err := collectConfiguredNpmPackages(root)
+	require.NoError(t, err, "Must be able to scan CLI-agent configs for npm packages")
+	require.NotEmpty(t, packages, "Config scan must find npm packages - an empty result means the scanner broke, not that configs are clean")
+
+	// Instrument sanity check: if a package we KNOW exists cannot be resolved,
+	// the registry or the network is unavailable and every subsequent 404 would
+	// be a false negative.
+	if !checkNpmPackageExists(npmRegistryControlPackage) {
+		t.Skipf("npm registry unreachable - control package %s did not resolve; cannot distinguish a missing package from a network failure (SKIP-OK: #npm-registry-unreachable)", npmRegistryControlPackage)
 	}
 
 	for _, pkg := range packages {
-		t.Run(pkg.name, func(t *testing.T) {
-			exists := checkNpmPackageExists(pkg.name)
-			if pkg.expected {
-				assert.True(t, exists, "Package %s should exist in npm registry", pkg.name)
-			} else {
-				assert.False(t, exists, "Package %s should NOT exist in npm registry (use alternative)", pkg.name)
-			}
+		t.Run(pkg, func(t *testing.T) {
+			assert.True(t, checkNpmPackageExists(pkg),
+				"Package %s is referenced by a shipped CLI-agent config but does not exist in the npm registry - a user taking that config gets an MCP server that fails to start on an npm 404", pkg)
 		})
 	}
+}
+
+// TestMCPConfigsAvoidKnownNonexistentPackages is the network-free regression
+// guard: no shipped config may reference a package name already proven absent
+// from the npm registry.
+func TestMCPConfigsAvoidKnownNonexistentPackages(t *testing.T) {
+	root := getProjectRoot(t)
+
+	packages, err := collectConfiguredNpmPackages(root)
+	require.NoError(t, err)
+	require.NotEmpty(t, packages, "Config scan must find npm packages")
+
+	configured := make(map[string]bool, len(packages))
+	for _, p := range packages {
+		configured[p] = true
+	}
+
+	for _, bad := range knownNonexistentMCPPackages {
+		assert.False(t, configured[bad],
+			"Config references %s, which does not exist in the npm registry (verified 404)", bad)
+	}
+}
+
+// collectConfiguredNpmPackages walks the CLI-agent config trees and returns the
+// sorted, de-duplicated set of npm package names passed to npx.
+//
+// Two invocation shapes are recognised:
+//
+//	{"command": ["npx", "-y", "<pkg>", ...]}
+//	{"command": "npx", "args": ["-y", "<pkg>", ...]}
+func collectConfiguredNpmPackages(root string) ([]string, error) {
+	configRoots := []string{
+		filepath.Join(root, "scripts", "cli-agents", "configs"),
+		filepath.Join(root, "configs", "cli-agents"),
+	}
+
+	found := map[string]bool{}
+	for _, dir := range configRoots {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			continue
+		}
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() || !strings.HasSuffix(path, ".json") {
+				return nil
+			}
+			data, readErr := os.ReadFile(path) // #nosec G304 - repo-local config scan
+			if readErr != nil {
+				return readErr
+			}
+			var doc interface{}
+			// A malformed or non-config JSON file is skipped rather than
+			// failing the scan; TestOpenCodeConfiguration covers validity.
+			if json.Unmarshal(data, &doc) != nil {
+				return nil
+			}
+			collectNpxPackages(doc, found)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	packages := make([]string, 0, len(found))
+	for p := range found {
+		packages = append(packages, p)
+	}
+	sort.Strings(packages)
+	return packages, nil
+}
+
+// collectNpxPackages recursively finds npx invocations and records the package
+// name each one installs.
+func collectNpxPackages(node interface{}, found map[string]bool) {
+	switch v := node.(type) {
+	case map[string]interface{}:
+		if pkg := npxPackageFromNode(v); pkg != "" {
+			found[pkg] = true
+		}
+		for _, child := range v {
+			collectNpxPackages(child, found)
+		}
+	case []interface{}:
+		for _, child := range v {
+			collectNpxPackages(child, found)
+		}
+	}
+}
+
+// npxPackageFromNode extracts the npm package name from a single MCP-server
+// node, or "" when the node is not an npx invocation.
+func npxPackageFromNode(node map[string]interface{}) string {
+	var tokens []string
+
+	switch cmd := node["command"].(type) {
+	case []interface{}:
+		tokens = toStringSlice(cmd)
+	case string:
+		if filepath.Base(cmd) != "npx" {
+			return ""
+		}
+		args, ok := node["args"].([]interface{})
+		if !ok {
+			return ""
+		}
+		tokens = append([]string{cmd}, toStringSlice(args)...)
+	default:
+		return ""
+	}
+
+	if len(tokens) == 0 || filepath.Base(tokens[0]) != "npx" {
+		return ""
+	}
+
+	// The package is the first token that is not a flag and not a path or
+	// variable reference (those are the server's own arguments).
+	for _, tok := range tokens[1:] {
+		if strings.HasPrefix(tok, "-") {
+			continue
+		}
+		if strings.HasPrefix(tok, "/") || strings.HasPrefix(tok, "$") || strings.HasPrefix(tok, "~") {
+			return ""
+		}
+		return tok
+	}
+	return ""
+}
+
+func toStringSlice(in []interface{}) []string {
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		if s, ok := v.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // TestMCPLocalServerStartup verifies local MCP servers can start
@@ -294,12 +478,24 @@ func TestOpenCodeConfiguration(t *testing.T) {
 				cmdStr[i] = v.(string)
 			}
 			joined := strings.Join(cmdStr, " ")
-			// Accept official, community, or alternative sqlite server packages
-			hasMCPSQLite := strings.Contains(joined, "@modelcontextprotocol/server-sqlite") ||
-				strings.Contains(joined, "mcp-sqlite") ||
-				strings.Contains(joined, "mcp-server-sqlite")
+			// Accept only sqlite packages that actually EXIST on npm.
+			// @modelcontextprotocol/server-sqlite is deliberately NOT accepted:
+			// it 404s (the official reference sqlite server is the archived
+			// PYTHON package `mcp-server-sqlite` on PyPI). Accepting it here
+			// would let a config that cannot start pass this gate.
+			hasMCPSQLite := strings.Contains(joined, "mcp-server-sqlite-npx") ||
+				strings.Contains(joined, "mcp-sqlite")
 			assert.True(t, hasMCPSQLite,
-				"sqlite should use a recognized MCP sqlite server package, got: %s", joined)
+				"sqlite should use an MCP sqlite server package that exists on npm, got: %s", joined)
+
+			// mcp-server-sqlite-npx takes the database path POSITIONALLY.
+			// --db-path is the Python/uvx reference server's flag and is not
+			// accepted here, so a config carrying it is broken even though the
+			// package name resolves.
+			if strings.Contains(joined, "mcp-server-sqlite-npx") {
+				assert.NotContains(t, joined, "--db-path",
+					"mcp-server-sqlite-npx takes the DB path positionally; --db-path is the Python/uvx flag, got: %s", joined)
+			}
 		}
 	}
 

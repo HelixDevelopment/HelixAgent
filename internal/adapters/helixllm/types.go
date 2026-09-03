@@ -163,7 +163,9 @@ type ModelInfo struct {
 	// Empty means the serving layer reported nothing.
 	Availability string `json:"availability,omitempty"`
 	// WithheldReason is why a withheld model is not being served, as one of the
-	// three recorded machine keys.
+	// recorded machine keys (catalog.WithheldReason). Anything outside that
+	// closed set is discarded rather than carried, because a consumer acting on
+	// a reason the contract cannot give a remedy for is acting on nothing.
 	WithheldReason string `json:"withheld_reason,omitempty"`
 }
 

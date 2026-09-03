@@ -55,21 +55,32 @@ func TestOptionsFromModels_CarriesEveryContractField(t *testing.T) {
 	}
 }
 
-// TestOptionsFromModels_CarriesWithheldReason proves the reason survives the
-// wire, still distinguishable from the other two.
+// TestOptionsFromModels_CarriesWithheldReason proves every recorded reason
+// survives the wire, still distinguishable from the others.
+//
+// The set was three when this test was written and is five now: the serving
+// layer began publishing withheld options and needed to say WHY it was not
+// serving them, which the original three could not express — they are about
+// what a host can RUN, not about whether the serving layer is UP. This case is
+// the reason the two ends have to move together: an unrecognised reason is
+// discarded by reasonFromWire, so had this side not been extended, the producer
+// would have emitted `provider_unavailable` and the consumer would have carried
+// a withheld option with no reason at all — the failure mode is silent.
 func TestOptionsFromModels_CarriesWithheldReason(t *testing.T) {
 	resp := decodeModels(t, `{
 	  "object": "list",
 	  "data": [
 	    {"id":"helixllm-a-000000000001","host":"h1","availability":"withheld","withheld_reason":"insufficient_resources"},
 	    {"id":"helixllm-b-000000000002","host":"h1","availability":"withheld","withheld_reason":"unsupported_configuration"},
-	    {"id":"helixllm-c-000000000003","host":"h1","availability":"withheld","withheld_reason":"excluded_by_usage_terms"}
+	    {"id":"helixllm-c-000000000003","host":"h1","availability":"withheld","withheld_reason":"excluded_by_usage_terms"},
+	    {"id":"helixllm-d-000000000004","host":"h1","availability":"withheld","withheld_reason":"provider_unavailable"},
+	    {"id":"helixllm-e-000000000005","host":"h1","availability":"withheld","withheld_reason":"identifier_conflict"}
 	  ]
 	}`)
 
 	opts := OptionsFromModels(resp)
-	if len(opts) != 3 {
-		t.Fatalf("got %d options, want 3", len(opts))
+	if len(opts) != 5 {
+		t.Fatalf("got %d options, want 5", len(opts))
 	}
 	seen := map[WithheldReason]bool{}
 	for _, o := range opts {
@@ -77,12 +88,58 @@ func TestOptionsFromModels_CarriesWithheldReason(t *testing.T) {
 			t.Fatalf("option %q: Availability = %q, want withheld", o.ID, o.Availability)
 		}
 		if !o.WithheldReason.Known() {
-			t.Fatalf("option %q: reason %q was not carried as one of the three recorded reasons", o.ID, o.WithheldReason)
+			t.Fatalf("option %q: reason %q was not carried as one of the recorded reasons; "+
+				"an unrecognised reason is dropped, leaving the user a withheld option with "+
+				"nothing to act on", o.ID, o.WithheldReason)
+		}
+		if o.Availability.Usable() {
+			t.Fatalf("option %q is withheld but reports itself usable", o.ID)
 		}
 		seen[o.WithheldReason] = true
 	}
-	if len(seen) != 3 {
-		t.Fatalf("the three reasons collapsed to %d on the way in: %v", len(seen), seen)
+	if len(seen) != 5 {
+		t.Fatalf("the five reasons collapsed to %d on the way in: %v", len(seen), seen)
+	}
+}
+
+// TestWithheldReason_ClosedSetMatchesTheServingLayers is the cross-repo contract
+// check.
+//
+// The producer and this validator are in different repositories, so nothing
+// mechanical stops one from moving without the other — and the failure is
+// asymmetric and silent in the direction that matters: a producer emitting a
+// key this side does not admit loses the reason entirely, with the option still
+// arriving as withheld, so no error is raised anywhere. This pins the set as a
+// literal so that widening it on one side without the other is a visible edit
+// here rather than a field that quietly stops arriving.
+//
+// The mirror of this list lives in the serving layer's own wire contract; the
+// two are the same five keys, spelled identically.
+func TestWithheldReason_ClosedSetMatchesTheServingLayers(t *testing.T) {
+	// Exactly what the serving layer's /v1/models may put in withheld_reason.
+	servingLayerKeys := []string{
+		"insufficient_resources",
+		"unsupported_configuration",
+		"excluded_by_usage_terms",
+		"provider_unavailable",
+		"identifier_conflict",
+	}
+	for _, key := range servingLayerKeys {
+		if !WithheldReason(key).Known() {
+			t.Errorf("the serving layer may publish withheld_reason %q, and this consumer "+
+				"does not admit it: reasonFromWire will discard it and the option arrives "+
+				"withheld with no actionable reason", key)
+		}
+	}
+
+	// And the set is genuinely closed the other way: an invented reason is not
+	// admitted, or the validation would be decorative.
+	for _, bogus := range []string{"", "unavailable", "provider-unavailable", "PROVIDER_UNAVAILABLE"} {
+		if WithheldReason(bogus).Known() {
+			t.Errorf("%q was admitted as a recorded reason; the set must stay closed, and "+
+				"note that the hyphenated spelling is the serving layer's INTERNAL "+
+				"vocabulary for a different field, not a wire key", bogus)
+		}
 	}
 }
 

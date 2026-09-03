@@ -61,7 +61,7 @@ func availabilityFromWire(s string) Availability {
 }
 
 // reasonFromWire admits a reason only on a withheld option, and only when it is
-// one of the three recorded keys. A reason attached to anything else states a
+// one of the recorded keys. A reason attached to anything else states a
 // withholding that did not happen; a reason outside the set is not actionable.
 func reasonFromWire(availability, reason string) WithheldReason {
 	if availabilityFromWire(availability) != AvailabilityWithheld {

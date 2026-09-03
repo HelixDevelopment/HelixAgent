@@ -45,13 +45,23 @@ func (a Availability) Usable() bool { return a == AvailabilityServing }
 
 // WithheldReason is why one option was not offered.
 //
-// There are exactly three and they are NOT interchangeable: each implies a
-// different remedy — a different host or a smaller option; a different approach
-// entirely; a different model or a different declared usage. Collapsing them
-// into one generic "unavailable" destroys the only part of the answer a user
-// can act on, so this set is closed and the values are carried through
-// unaltered. The user-facing wording is composed from these keys downstream,
-// never stored here (CONST-046).
+// The values are NOT interchangeable: each implies a different remedy, and
+// collapsing them into one generic "unavailable" destroys the only part of the
+// answer a user can act on. The set is closed and the values are carried
+// through unaltered. The user-facing wording is composed from these keys
+// downstream, never stored here (CONST-046).
+//
+// The set has two halves. The first three describe why a host CANNOT RUN an
+// option — the answer is about the option's demands against the machine. The
+// last two describe why an option that could otherwise run IS NOT BEING SERVED
+// — the answer is about the serving layer's own state, and they are not
+// reducible to the first three (see ReasonProviderUnavailable).
+//
+// This set is one half of a wire contract; the serving layer states the same
+// closed set on its side. Admitting a value here that no producer emits, or
+// failing to admit one a producer does emit, breaks the contract in opposite
+// directions — the second silently, because an unrecognised reason is discarded
+// and the option arrives withheld with nothing to act on.
 type WithheldReason string
 
 const (
@@ -64,13 +74,31 @@ const (
 	// ReasonExcludedByUsageTerms: the host could serve it, but the model's terms
 	// forbid the declared usage. The remedy is never hardware.
 	ReasonExcludedByUsageTerms WithheldReason = "excluded_by_usage_terms"
+
+	// ReasonProviderUnavailable: the provider offering the option is not serving
+	// right now — starting, loading, restarting, or unreachable. The option is
+	// expected back and nothing about it has been withdrawn.
+	//
+	// This one is why the set could not stay at three. It is the distinction a
+	// consuming tool needs in order to leave a restarting host's configuration
+	// alone: mapped onto ReasonUnsupportedConfiguration it would say "more
+	// memory does not help" about a backend that is simply still loading, which
+	// is the opposite of the truth, and a tool acting on it would delete a
+	// configuration that was about to become valid again.
+	ReasonProviderUnavailable WithheldReason = "provider_unavailable"
+	// ReasonIdentifierConflict: the identifier the serving layer derived for
+	// this option is already bound to a DIFFERENT identity. Astronomically
+	// unlikely, but it must surface as a withheld option rather than as an
+	// option that silently replaced another one.
+	ReasonIdentifierConflict WithheldReason = "identifier_conflict"
 )
 
-// Known reports whether r is one of the three recorded reasons. The set is
-// closed: a generic "unavailable" invented downstream is not a reason.
+// Known reports whether r is one of the recorded reasons. The set is closed: a
+// generic "unavailable" invented downstream is not a reason.
 func (r WithheldReason) Known() bool {
 	switch r {
-	case ReasonInsufficientResources, ReasonUnsupportedConfiguration, ReasonExcludedByUsageTerms:
+	case ReasonInsufficientResources, ReasonUnsupportedConfiguration, ReasonExcludedByUsageTerms,
+		ReasonProviderUnavailable, ReasonIdentifierConflict:
 		return true
 	default:
 		return false

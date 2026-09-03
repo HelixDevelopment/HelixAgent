@@ -14,9 +14,15 @@ func WiredEnsemblePresets() []string {
 	}
 }
 
-// DefaultHelixLLMModels returns the HelixLLM model ids exposed as
-// helixllm/<model> when HelixLLM is enabled. Mirrors the registry default
-// (provider_registry.go helixllm config, model id "helixllm-default").
-func DefaultHelixLLMModels() []string {
-	return []string{"helixllm-default"}
-}
+// NOTE: there is deliberately no DefaultHelixLLMModels() here.
+//
+// A fixed HelixLLM model-id list used to be fed straight into the catalog, so a
+// deployment advertised `helixllm/helixllm-default` whether or not anything was
+// serving it — a model id with no identity, no host and no serving report,
+// presented as a selectable target (BLUFF-002, CONST-036). The catalog's
+// HelixLLM section is now sourced from the serving layer's live GET /v1/models
+// (see helixllm_source.go); when that listing is unavailable the section is
+// honestly empty, which is the only claim the evidence supports.
+//
+// Options.HelixLLMModels remains as a CALLER-SUPPLIED fallback for a deployment
+// that has its own list to offer; nothing in this package supplies one.

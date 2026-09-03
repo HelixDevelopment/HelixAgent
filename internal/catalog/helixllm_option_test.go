@@ -10,9 +10,9 @@ import (
 // losing any of the four invariants that travel with the data.
 //
 // Polarity switch per §11.4.115: RED_MODE=1 asserts the defect is present on
-// the pre-fix artifact (no propagation layer existed — a hardcoded
-// DefaultHelixLLMModels() string list with no identity, no host and no
-// availability); RED_MODE=0 (the default) is the standing regression guard.
+// the pre-fix artifact (no propagation layer existed — a hardcoded model-id
+// string list with no identity, no host and no availability); RED_MODE=0
+// (the default) is the standing regression guard.
 
 // fakeHelixLLMSource is a unit-test-only double (CONST-050(A)).
 type fakeHelixLLMSource struct{ options []HelixLLMOption }
@@ -288,7 +288,7 @@ func TestHelixLLMOptions_LegacyModelListStillWorks(t *testing.T) {
 	svc := New(Options{
 		Providers:       &fakeProviderSource{},
 		HelixLLMEnabled: true,
-		HelixLLMModels:  DefaultHelixLLMModels(),
+		HelixLLMModels:  []string{"helixllm-default"}, // caller-supplied fallback fixture
 	})
 	entries := svc.Build()
 
@@ -313,7 +313,7 @@ func TestHelixLLMOptions_TakePrecedenceOverLegacyList(t *testing.T) {
 	svc := New(Options{
 		Providers:       &fakeProviderSource{},
 		HelixLLMEnabled: true,
-		HelixLLMModels:  DefaultHelixLLMModels(),
+		HelixLLMModels:  []string{"helixllm-default"}, // caller-supplied fallback fixture
 		HelixLLM:        &fakeHelixLLMSource{options: []HelixLLMOption{opt}},
 	})
 	entries := svc.Build()

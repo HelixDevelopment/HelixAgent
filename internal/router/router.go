@@ -10,6 +10,7 @@ import (
 
 	authadapter "dev.helix.agent/internal/adapters/auth"
 	containeradapter "dev.helix.agent/internal/adapters/containers"
+	helixllmadapter "dev.helix.agent/internal/adapters/helixllm"
 	helixqaadapter "dev.helix.agent/internal/adapters/helixqa"
 	"dev.helix.agent/internal/background"
 	"dev.helix.agent/internal/benchmark"
@@ -850,13 +851,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 		// the StartupVerifier is not wired (GetStartupVerifier() == nil),
 		// CONST-036.
 		{
-			catalogSvc := catalog.New(catalog.Options{
-				Providers:       catalog.NewRegistryProviderSource(providerRegistry),
-				Verified:        catalog.NewStartupVerifierSource(providerRegistry.GetStartupVerifier()),
-				EnsemblePresets: catalog.WiredEnsemblePresets(),
-				HelixLLMEnabled: os.Getenv("USE_HELIX_LLM") == "true",
-				HelixLLMModels:  catalog.DefaultHelixLLMModels(),
-			})
+			catalogSvc := catalog.New(newCatalogOptions(providerRegistry, logger))
 			catalogHandler := catalog.NewHandler(catalogSvc)
 			protected.GET("/catalog", catalogHandler.List)
 		}
@@ -1669,6 +1664,109 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 }
 
 // initializeSearchService initializes the semantic search service with configuration
+// newCatalogOptions assembles exactly the catalog the live GET /v1/catalog
+// route serves.
+//
+// It exists as a named function rather than a literal inside the route so the
+// composition itself is testable: the guard in this package builds the real
+// options and asserts what the catalog does and does not advertise. A literal
+// buried in a route is reachable only by booting the whole router, which is why
+// the hardcoded HelixLLM id list this function no longer supplies went
+// unnoticed for as long as it did.
+//
+// Note what is ABSENT: Options.HelixLLMModels. The HelixLLM section is sourced
+// from the serving layer's live GET /v1/models and from nothing else. Supplying
+// a fixed id here would put `helixllm/<id>` in front of users whether or not
+// anything was serving it (BLUFF-002, CONST-036).
+func newCatalogOptions(providerRegistry *services.ProviderRegistry, logger *logrus.Logger) catalog.Options {
+	helixLLMEnabled := os.Getenv("USE_HELIX_LLM") == "true"
+
+	opts := catalog.Options{
+		Providers:       catalog.NewRegistryProviderSource(providerRegistry),
+		EnsemblePresets: catalog.WiredEnsemblePresets(),
+		HelixLLMEnabled: helixLLMEnabled,
+		HelixLLM:        newHelixLLMCatalogSource(helixLLMEnabled, logger),
+	}
+	if providerRegistry != nil {
+		opts.Verified = catalog.NewStartupVerifierSource(providerRegistry.GetStartupVerifier())
+	}
+	return opts
+}
+
+// HelixLLM catalog-source wiring.
+//
+// These two budgets are the whole of the failure policy for the live listing,
+// and each answers a specific way an in-request network call can go wrong.
+
+const (
+	// helixLLMListTimeout caps ONE listing call. /v1/catalog is a JSON handler
+	// a user waits on, and the serving layer is a local or LAN service, so a
+	// listing that has not answered in this long is not going to answer usefully.
+	// Exceeding it fails the fetch, which contributes NO options — never a
+	// remembered or invented list.
+	helixLLMListTimeout = 3 * time.Second
+
+	// helixLLMListTTL caps how OLD any served listing may be. It is set inside
+	// the CONST-038 60s accuracy window rather than picked for convenience: a
+	// model that stops being served is dropped from the catalog within this
+	// bound. Raising it past 60s would put the catalog outside that window.
+	helixLLMListTTL = 30 * time.Second
+)
+
+// newHelixLLMCatalogSource wires the serving layer's live GET /v1/models into
+// the catalog, and returns nil whenever it cannot.
+//
+// nil is a load-bearing return value, not an error swallow: catalog.Options
+// treats a nil HelixLLMSource as "nothing reported", which emits no model
+// entries. That is the correct answer in every case this function declines —
+// the integration is off, or no adapter could be built — because in none of
+// them has anything confirmed that a model is running.
+//
+// The failure policy, stated once:
+//
+//   - SLOW: each listing is bounded by helixLLMListTimeout, so an unreachable
+//     HelixLLM costs a catalog request that long ONCE per TTL window, never the
+//     adapter's full transport timeout and never per request.
+//   - FAILED: a failed listing yields no options AND discards the cached one
+//     (see catalog.CachedLister). A catalog answered from a listing that just
+//     failed would assert models are running on no evidence.
+//   - CACHED: successes are reused for at most helixLLMListTTL, so the answer
+//     is cheap but never older than the CONST-038 window.
+func newHelixLLMCatalogSource(enabled bool, logger *logrus.Logger) catalog.HelixLLMSource {
+	if !enabled {
+		return nil
+	}
+
+	adapter, err := helixllmadapter.NewAdapter(helixllmadapter.Config{
+		Enabled: true,
+		// Bound the transport itself as well as the context. Either alone
+		// would do; both together mean no configuration path can leave a
+		// catalog request waiting on the adapter's 30s default.
+		Timeout: helixLLMListTimeout,
+	})
+	if err != nil {
+		// Report it and contribute nothing. Falling back to a fixed id list
+		// here is precisely the defect this wiring removes.
+		if logger != nil {
+			logger.WithError(err).Warn(
+				"HelixLLM catalog source unavailable: adapter could not be built; " +
+					"the catalog will list no HelixLLM models rather than assume any")
+		}
+		return nil
+	}
+
+	lister := func(ctx context.Context) (*helixllmadapter.ModelsResponse, error) {
+		fetchCtx, cancel := context.WithTimeout(ctx, helixLLMListTimeout)
+		defer cancel()
+		return adapter.GetModels(fetchCtx)
+	}
+
+	return catalog.NewHelixLLMSource(
+		context.Background(),
+		catalog.CachedLister(lister, helixLLMListTTL),
+	)
+}
+
 func initializeSearchService(cfg *config.Config, logger *logrus.Logger, containerAdapter *containeradapter.Adapter) (*search.Service, error) {
 	chromadbPort, _ := strconv.Atoi(cfg.Services.ChromaDB.Port)
 	if chromadbPort == 0 {

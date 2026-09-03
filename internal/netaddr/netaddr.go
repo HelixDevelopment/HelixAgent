@@ -158,13 +158,58 @@
 //
 // The failure surfaces at the first http.NewRequest / url.Parse the caller
 // performs, quoting the offending bytes back, and the port is preserved in
-// the string rather than silently displaced. No legitimate host is affected:
-// hostnames, IPv4 literals, IPv6 literals (bracketed or not) and zone IDs
-// contain none of these four bytes. This treatment is applied ONLY on the
-// URL-composing path (BaseURL, BaseURLString, DialAddressForURL). DialAddress
-// keeps the raw pass-through, because there the pass-through genuinely does
-// fail loudly and an encoded byte would corrupt the net.Dial call it exists
-// to serve.
+// the string rather than silently displaced. This treatment is applied ONLY on
+// the URL-composing path (BaseURL, BaseURLString, DialAddressForURL).
+// DialAddress keeps the raw pass-through, because there the pass-through
+// genuinely does fail loudly and an encoded byte would corrupt the net.Dial
+// call it exists to serve.
+//
+// # The audit above missed "[" — it measured the host, not the authority (HXC-286-B)
+//
+// The four-byte set was closed with "bytes that make url.Parse FAIL on their
+// own are already loud", and "[" was placed in that already-loud list. Measured
+// 2026-09-03 against go1.26, that is FALSE for "[", and the reason is a scope
+// error worth stating plainly, because it is the kind that recurs: the audit
+// was run on the RAW HOST, but what ships to a URL reader is the COMPOSED
+// AUTHORITY, and composition CHANGES the verdict.
+//
+// A bare "[" really is loud by itself — "http://a[b:6379" is refused with
+// `missing ']' in host`, because there is no "]" anywhere. But every builder
+// in this package ends in net.JoinHostPort, which brackets any host containing
+// a colon — and so MANUFACTURES the "]" whose absence was doing all the
+// rejecting. url.Parse then finds the IP-literal with
+// strings.LastIndex(host, "[") (go1.26 net/url/url.go:550), which silently
+// DISCARDS everything before the last "[" instead of refusing it:
+//
+//	"[::1"                 -> "http://[[::1]:6379"                 PARSES, hostname "::1"
+//	"[2001:db8::5"         -> "http://[[2001:db8::5]:6379"         PARSES, hostname "2001:db8::5"
+//	"db.prod.internal[::1" -> "http://[db.prod.internal[::1]:6379" PARSES, hostname "::1"
+//
+// The third row is the one that breaks the promise outright, and it is the
+// same shape as the "@" row above: the operator NAMED "db.prod.internal", and
+// what came back points at loopback with the name thrown away — an invented
+// destination, reached from an ordinary typo (one bracket where two were
+// meant) in exactly the operator-supplied config fields listed above. Measured
+// end-to-end through a real caller, flink Config.GetRESTURL with
+// jobmanager_host: "[::1", before the fix: "http://[[::1]:8082", hostname
+// "::1".
+//
+// The dial side was never affected — net.SplitHostPort("[[::1]:6379") errors
+// with `unexpected '[' in address`, so net.Dial refuses it. The hole was
+// URL-side only, which is why the fix is URL-side only.
+//
+// So "[" and "]" join the encoded set, by the SAME mechanism and for the same
+// reason as the original four (see encodeGenDelims for the ordering argument
+// that keeps a well-formed "[::1]" untouched):
+//
+//	"[::1"                 -> "http://[%5B::1]:6379"                 invalid URL escape "%5B"
+//	"db.prod.internal[::1" -> "http://[db.prod.internal%5B::1]:6379" invalid URL escape "%5B"
+//	"::1]"                 -> "http://[::1%5D]:6379"                 invalid URL escape "%5D"
+//
+// No legitimate host is affected: hostnames, IPv4 literals, IPv6 literals
+// (bare, or bracketed and unwrapped by urlEncodeZone before encodeGenDelims
+// runs) and zone IDs contain none of these six bytes where this guard sees
+// them.
 //
 // # Zone-identifier splitting (research finding, carried forward honestly)
 //
@@ -678,14 +723,16 @@ func BaseURLString(scheme, host, port string) string {
 // DialAddress alone does not do this, because DialAddress's callers hand the
 // result to net.Dial, which wants the zone raw.
 //
-// A host carrying one of the four RFC 3986 gen-delims that END the host
-// component ("/", "?", "#", "@") is likewise percent-encoded, so a URL
-// parser cannot re-read it as a path, query, fragment or userinfo boundary.
-// That is what makes this function's no-substitution contract actually hold
-// for a URL reader rather than only for a dialer: without it, "hx@yz" parses
-// cleanly as host "yz" and connects to a machine the caller never named. See
-// the package doc's "'Fail loudly' is not the same guarantee on both sides"
-// section for the measured evidence.
+// A host carrying one of the six RFC 3986 gen-delims that END or RE-DELIMIT
+// the host component ("/", "?", "#", "@", and an unpaired or interior "[",
+// "]") is likewise percent-encoded, so a URL parser cannot re-read it as a
+// path, query, fragment, userinfo or IP-literal boundary. That is what makes
+// this function's no-substitution contract actually hold for a URL reader
+// rather than only for a dialer: without it, "hx@yz" parses cleanly as host
+// "yz", and "db.prod.internal[::1" parses cleanly as host "::1" — each
+// connecting to a machine the caller never named. See the package doc's
+// "'Fail loudly' is not the same guarantee on both sides" section and the
+// "[" subsection that follows it for the measured evidence.
 func BaseURL(scheme, host string, port int) string {
 	return scheme + "://" + DialAddressForURL(host, port)
 }
@@ -723,9 +770,10 @@ func urlSafeHost(host string) string {
 	return encodeGenDelims(urlEncodeZone(host))
 }
 
-// encodeGenDelims percent-encodes the four RFC 3986 gen-delims that terminate
-// the host component of a URL, so a host carrying one cannot be re-read by a
-// parser as a path, query, fragment or userinfo boundary.
+// encodeGenDelims percent-encodes the six RFC 3986 gen-delims that can
+// terminate or re-delimit the host component of a URL, so a host carrying one
+// cannot be re-read by a parser as a path, query, fragment, userinfo boundary,
+// or IP-literal boundary.
 //
 // This is the URL-side expression of "reject" for a function that has nowhere
 // to return an error and must never substitute a different host: the offending
@@ -733,20 +781,63 @@ func urlSafeHost(host string) string {
 // refuses the result, quoting them back — see the package doc's BLOCKING-1
 // section for the measured before/after.
 //
-// Only these four bytes are touched. They are the complete set that
-// helixendpoint.normalizeHost rejects, and the complete set MEASURED there over
-// the whole printable-ASCII range as producing a URL that still PARSES while
-// being silently wrong. Bytes that make url.Parse FAIL on their own (space,
-// "[", "\\", "^", "`", "{", "|", "}") are already loud and are deliberately
-// left alone — encoding them would convert an honest parse error into a
-// different honest parse error and buy nothing.
+// The rejection is ONE mechanism, not six special cases. net/url's own
+// unescape() refuses ANY percent-escape of an ASCII byte inside a host, with
+// "%25" (the RFC 6874 zone marker) as the single exception — go1.26
+// net/url/url.go:127, `mode == encodeHost && unhex(s[i+1]) < 8 &&
+// s[i:i+3] != "%25"` -> EscapeError. Every escape this function emits has a
+// leading hex digit below 8, so each one lands on that same branch:
+//
+//	"%2F" "%3F" "%23" "%40" "%5B" "%5D"  ->  invalid URL escape "%XX"
+//
+// # "[" was WRONGLY classified as self-loud (measured 2026-09-03, go1.26)
+//
+// An earlier revision touched only four bytes and justified excluding "["
+// like this: *Bytes that make url.Parse FAIL on their own (space, "[", "\\",
+// "^", "`", "{", "|", "}") are already loud and are deliberately left alone.*
+//
+// That claim is FALSE for "[", and the error was one of scope: it was measured
+// against the RAW host, never against the COMPOSED authority this package
+// actually emits. A bare "[" IS loud on its own ("http://a[b:6379" ->
+// `missing ']' in host`) — but net.JoinHostPort, which every builder here ends
+// in, BRACKETS any host containing a colon and thereby SUPPLIES the very "]"
+// whose absence was doing the rejecting. url.Parse then locates the literal
+// with strings.LastIndex(host, "[") (url.go:550), so everything before the
+// LAST "[" is silently DISCARDED rather than refused:
+//
+//	host "[::1"                 -> "http://[[::1]:6379"                 hostname "::1"
+//	host "db.prod.internal[::1" -> "http://[db.prod.internal%5B::1"...  hostname "::1"
+//
+// The second row is the severe one and is the reason this is a correctness fix
+// rather than tidying: the operator NAMED "db.prod.internal", and the address
+// that came back points at loopback with the name thrown away. That is the
+// invented destination this package exists to refuse, reached from an ordinary
+// typo — a configured host with one bracket where two were meant.
+//
+// With "[" and "]" encoded, every one of those inputs now REFUSES, and the
+// operator's bytes are still quoted back verbatim in the error.
+//
+// Interior/unpaired only — the well-formed literal is never touched. This
+// function runs SECOND inside urlSafeHost, after urlEncodeZone, which returns
+// stripBracket()'s output on every one of its branches. So a correctly
+// bracketed "[::1]" has already had its one legitimate pair REMOVED by the
+// time this function sees it, and arrives here as "::1" with no bracket to
+// encode. Any bracket still present at this point is therefore unpaired or
+// interior — malformed by construction. That ordering is load-bearing; see
+// urlSafeHost, which owns it.
 //
 // No legitimate host is affected: hostnames, IPv4 literals, IPv6 literals
-// (bracketed or bare) and RFC 6874 zone IDs contain none of these four bytes.
+// (bare, or bracketed and already unwrapped upstream) and RFC 6874 zone IDs
+// contain none of these six bytes at this point in the pipeline.
+//
+// The remaining self-loud bytes (space, "\\", "^", "`", "{", "|", "}") stay
+// untouched, on the original and still-correct reasoning: they are rejected on
+// their own merits and encoding them would swap one honest parse error for
+// another. Unlike "[", none of them is manufactured a partner by JoinHostPort.
 func encodeGenDelims(host string) string {
 	// Fast path: the overwhelmingly common case is a host with none of them,
 	// which must come back byte-identical.
-	if !strings.ContainsAny(host, "/?#@") {
+	if !strings.ContainsAny(host, "/?#@[]") {
 		return host
 	}
 	return genDelimEscaper.Replace(host)
@@ -759,6 +850,11 @@ var genDelimEscaper = strings.NewReplacer(
 	"?", "%3F",
 	"#", "%23",
 	"@", "%40",
+	// "[" and "]" reach here only when unpaired or interior — urlEncodeZone
+	// has already removed the one legitimate pair. See encodeGenDelims's
+	// `"[" was WRONGLY classified as self-loud` section.
+	"[", "%5B",
+	"]", "%5D",
 )
 
 // urlEncodeZone rewrites host so any IPv6 zone identifier it carries is

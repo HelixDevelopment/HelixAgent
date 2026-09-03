@@ -691,18 +691,45 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 		wantAddr string
 		// wantURL is BaseURL("http", host, 6379).
 		wantURL string
-		// urlHost is the hostname url.Parse recovers from wantURL, or "" when
-		// wantURL refuses to parse (urlRefuses).
+		// urlRefuses records the MEASURED go1.26 verdict for wantURL.
+		//
+		// READ THIS BEFORE EDITING THIS FIELD. It is a record of what the
+		// toolchain was observed to do — NOT the invariant this test exists to
+		// defend. An earlier revision inverted that, asserting a url.Parse
+		// refusal as though the refusal were the guarantee; the assertion was
+		// simply false (measured 2026-09-03, go1.26: "http://[[::1]:6379"
+		// PARSES, yielding hostname "::1"), and the test failed on committed
+		// code while the DEFECT it was pointing at was real and unguarded.
+		//
+		// The invariant is asserted separately, below, and is the one that
+		// matters:
+		//
+		//	a malformed host must never become a WORKING DESTINATION
+		//
+		// which permits exactly two outcomes and forbids a third:
+		//
+		//	REFUSE            the parser rejects it outright, or
+		//	PRESERVE          it parses and yields the operator's own host
+		//	(forbidden)       it parses and yields a DIFFERENT host
+		//
+		// If a future toolchain changes a verdict here, update this field to
+		// the measured truth. Do NOT weaken the invariant assertion to match.
 		urlRefuses bool
-		urlHost    string
 		explain    string
 	}{
 		{
-			name:       "open_bracket_ipv6_no_close",
-			host:       "[::1",
-			wantStrip:  "[::1",
-			wantAddr:   "[[::1]:6379",
-			wantURL:    "http://[[::1]:6379",
+			name:      "open_bracket_ipv6_no_close",
+			host:      "[::1",
+			wantStrip: "[::1",
+			wantAddr:  "[[::1]:6379",
+			// THE ROW THE 2026-09-03 FIX EXISTS FOR. Before it, the composed
+			// URL was "http://[[::1]:6379" and url.Parse ACCEPTED it, handing
+			// back hostname "::1" — a real, connectable destination built from
+			// a host the operator never wrote. net.JoinHostPort brackets any
+			// colon-bearing host and so supplied the "]" that was the only
+			// thing making a stray "[" loud; url.Parse then located the
+			// literal with LastIndex("[") and discarded the prefix.
+			wantURL:    "http://[%5B::1]:6379",
 			urlRefuses: true,
 			explain:    "M15 (drop `== ']'`) turns this into the dialable WILDCARD [::]:6379",
 		},
@@ -711,7 +738,7 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			host:       "[localhost",
 			wantStrip:  "[localhost",
 			wantAddr:   "[localhost:6379",
-			wantURL:    "http://[localhost:6379",
+			wantURL:    "http://%5Blocalhost:6379",
 			urlRefuses: true,
 			explain:    "M15 truncates the last byte and yields the dialable localhos:6379",
 		},
@@ -720,7 +747,7 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			host:       "::1]",
 			wantStrip:  "::1]",
 			wantAddr:   "[::1]]:6379",
-			wantURL:    "http://[::1]]:6379",
+			wantURL:    "http://[::1%5D]:6379",
 			urlRefuses: true,
 			explain:    "M16 (drop `host[0]=='['`) yields [:1]:6379 — also unparseable, so only the exact string kills it",
 		},
@@ -729,18 +756,38 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			host:      "host]",
 			wantStrip: "host]",
 			wantAddr:  "host]:6379",
-			wantURL:   "http://host]:6379",
-			urlHost:   "host]",
-			explain:   "M16 yields ost:6379 — parses cleanly as a DIFFERENT host, the dangerous row",
+			// STRENGTHENED by the same fix. This row previously PARSED as host
+			// "host]" — acceptable under the invariant (the operator's bytes
+			// survived verbatim), but only ever a near miss. Encoding "]"
+			// upgrades it from PRESERVE to REFUSE.
+			wantURL:    "http://host%5D:6379",
+			urlRefuses: true,
+			explain:    "M16 yields ost:6379 — parses cleanly as a DIFFERENT host, the dangerous row",
 		},
 		{
-			name:      "close_bracket_single_char_host",
-			host:      "a]",
-			wantStrip: "a]",
-			wantAddr:  "a]:6379",
-			wantURL:   "http://a]:6379",
-			urlHost:   "a]",
-			explain:   "M16 yields :6379 — the host is lost entirely",
+			name:       "close_bracket_single_char_host",
+			host:       "a]",
+			wantStrip:  "a]",
+			wantAddr:   "a]:6379",
+			wantURL:    "http://a%5D:6379",
+			urlRefuses: true,
+			explain:    "M16 yields :6379 — the host is lost entirely",
+		},
+		{
+			// THE SEVERE SHAPE, and the reason this is a correctness fix
+			// rather than tidying. The two rows above are typos whose
+			// discarded prefix was itself a bracket; here the discarded prefix
+			// is a REAL HOSTNAME the operator deliberately configured.
+			// Measured before the fix: "http://[db.prod.internal[::1]:6379"
+			// PARSED, hostname "::1" — the named production host silently
+			// replaced by loopback.
+			name:       "interior_bracket_discards_named_host",
+			host:       "db.prod.internal[::1",
+			wantStrip:  "db.prod.internal[::1",
+			wantAddr:   "[db.prod.internal[::1]:6379",
+			wantURL:    "http://[db.prod.internal%5B::1]:6379",
+			urlRefuses: true,
+			explain:    "url.Parse locates the literal with LastIndex('['), so an unencoded '[' throws the operator's hostname away",
 		},
 		// Controls: a WELL-FORMED pair MUST still be stripped, so this test
 		// cannot be satisfied by a mutation that simply never strips.
@@ -750,7 +797,6 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			wantStrip: "::1",
 			wantAddr:  "[::1]:6379",
 			wantURL:   "http://[::1]:6379",
-			urlHost:   "::1",
 			explain:   "the pairing condition holds, so exactly one layer comes off",
 		},
 		{
@@ -759,7 +805,6 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			wantStrip: "::1",
 			wantAddr:  "[::1]:6379",
 			wantURL:   "http://[::1]:6379",
-			urlHost:   "::1",
 			explain:   "nothing to strip; JoinHostPort adds the brackets",
 		},
 		{
@@ -768,7 +813,6 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			wantStrip: "redis.internal",
 			wantAddr:  "redis.internal:6379",
 			wantURL:   "http://redis.internal:6379",
-			urlHost:   "redis.internal",
 			explain:   "neither conjunct fires",
 		},
 	}
@@ -794,16 +838,43 @@ func TestStripBracket_UnpairedBracketIsNotStripped(t *testing.T) {
 			require.Equal(t, DialAddress(tc.host, 6379), DialAddressString(tc.host, "6379"),
 				"DialAddressString(%q) must not drift from DialAddress(%q)", tc.host, tc.host)
 
-			// The user-visible consequence: refuse, or preserve the host.
-			u, err := url.Parse(tc.wantURL)
+			// Killer 4 — THE INVARIANT. Deliberately stated WITHOUT reference to
+			// whether url.Parse errors, because that is the mistake this
+			// assertion replaces (see urlRefuses's field comment):
+			//
+			//	a malformed host must never become a WORKING DESTINATION.
+			//
+			// Refusing is one way to satisfy that. Parsing is the other — but
+			// ONLY while the host handed back is the operator's own. A parse
+			// that yields some OTHER host is the invented destination this
+			// whole package exists to refuse, and no amount of stdlib
+			// behaviour makes it acceptable.
+			//
+			// Note it parses the ACTUAL builder output, not tc.wantURL, so it
+			// still holds if a future edit makes the two disagree.
+			gotURL := BaseURL("http", tc.host, 6379)
+			if u, err := url.Parse(gotURL); err == nil {
+				require.Equal(t, tc.wantStrip, u.Hostname(),
+					"BaseURL(%q) = %q, which a URL reader accepts as host %q — but the "+
+						"operator wrote %q. A composed URL that PARSES into a host the "+
+						"caller never named is an invented destination (%s)",
+					tc.host, gotURL, u.Hostname(), tc.wantStrip, tc.explain)
+			}
+
+			// The MEASURED go1.26 verdict, recorded so a toolchain change that
+			// makes a malformed host quieter is noticed rather than absorbed.
+			// Subordinate to Killer 4: if these two ever conflict, Killer 4 is
+			// the one describing the guarantee, and this field is the one to
+			// re-measure.
+			_, err := url.Parse(tc.wantURL)
 			if tc.urlRefuses {
 				require.Error(t, err,
-					"%q must REFUSE to parse — a mutant that makes it parse invents a destination", tc.wantURL)
+					"%q was measured to REFUSE (go1.26); it now parses. Either the fix "+
+						"that encodes an unpaired bracket regressed, or the toolchain "+
+						"changed — re-measure before touching this row", tc.wantURL)
 				return
 			}
-			require.NoError(t, err)
-			require.Equal(t, tc.urlHost, u.Hostname(),
-				"the operator's host must survive verbatim, never be truncated to a different machine")
+			require.NoError(t, err, "%q was measured to parse cleanly", tc.wantURL)
 		})
 	}
 }

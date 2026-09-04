@@ -581,6 +581,7 @@ func (h *CompletionHandler) convertToInternalRequest(req *CompletionRequest, c *
 }
 
 func (h *CompletionHandler) convertToAPIResponse(resp *models.LLMResponse) *CompletionResponse {
+	promptTokens, completionTokens, totalTokens := resp.TokenSplit()
 	return &CompletionResponse{
 		ID:      resp.ID,
 		Object:  "text_completion",
@@ -596,10 +597,13 @@ func (h *CompletionHandler) convertToAPIResponse(resp *models.LLMResponse) *Comp
 				FinishReason: resp.FinishReason,
 			},
 		},
+		// REAL provider-supplied split via LLMResponse.TokenSplit —
+		// never a fabricated 50/50 halving of the total (see
+		// internal/handlers/usage_token_split_red_test.go).
 		Usage: &CompletionUsage{
-			PromptTokens:     resp.TokensUsed / 2, // Estimate
-			CompletionTokens: resp.TokensUsed / 2, // Estimate
-			TotalTokens:      resp.TokensUsed,
+			PromptTokens:     promptTokens,
+			CompletionTokens: completionTokens,
+			TotalTokens:      totalTokens,
 		},
 		SystemFingerprint: "helixagent-v1.0",
 	}
@@ -633,6 +637,7 @@ func (h *CompletionHandler) convertToStreamingResponse(resp *models.LLMResponse)
 }
 
 func (h *CompletionHandler) convertToChatResponse(resp *models.LLMResponse) map[string]any {
+	promptTokens, completionTokens, totalTokens := resp.TokenSplit()
 	return map[string]any{
 		"id":      resp.ID,
 		"object":  "chat.completion",
@@ -648,10 +653,12 @@ func (h *CompletionHandler) convertToChatResponse(resp *models.LLMResponse) map[
 				"finish_reason": resp.FinishReason,
 			},
 		},
+		// REAL provider-supplied split via LLMResponse.TokenSplit —
+		// never a fabricated 50/50 halving of the total.
 		"usage": map[string]any{
-			"prompt_tokens":     resp.TokensUsed / 2,
-			"completion_tokens": resp.TokensUsed / 2,
-			"total_tokens":      resp.TokensUsed,
+			"prompt_tokens":     promptTokens,
+			"completion_tokens": completionTokens,
+			"total_tokens":      totalTokens,
 		},
 	}
 }

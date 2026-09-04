@@ -173,11 +173,33 @@ func TestConvertToAPIResponse(t *testing.T) {
 	assert.Equal(t, "assistant", apiResp.Choices[0].Message.Role)
 	assert.Equal(t, "Test response content", apiResp.Choices[0].Message.Content)
 	assert.Equal(t, "stop", apiResp.Choices[0].FinishReason)
+	// RECONCILED 2026-09-03 (§11.4.120). Previously asserted 50 / 50 /
+	// 100 — codifying the fabricated 50/50 usage split now removed (see
+	// usage_token_split_red_test.go). Stale gate asserting removed
+	// behaviour, not a regression catch: this fixture carries no
+	// Metadata, so the provider reported no per-direction split and the
+	// honest values are 0 / 0 / 100 (§11.4.6).
 	assert.NotNil(t, apiResp.Usage)
-	assert.Equal(t, 50, apiResp.Usage.PromptTokens)
-	assert.Equal(t, 50, apiResp.Usage.CompletionTokens)
+	assert.Equal(t, 0, apiResp.Usage.PromptTokens,
+		"provider reported no prompt_tokens — must be 0, never an invented half")
+	assert.Equal(t, 0, apiResp.Usage.CompletionTokens,
+		"provider reported no completion_tokens — must be 0, never an invented half")
 	assert.Equal(t, 100, apiResp.Usage.TotalTokens)
 	assert.Equal(t, "helixagent-v1.0", apiResp.SystemFingerprint)
+
+	// Provider-reported split MUST reach the wire verbatim (asymmetric,
+	// odd total — the removed halving cannot satisfy it by accident).
+	resp.TokensUsed = 41
+	resp.Metadata = map[string]interface{}{
+		"prompt_tokens":     7,
+		"completion_tokens": 34,
+		"total_tokens":      41,
+	}
+	withSplit := handler.convertToAPIResponse(resp)
+	assert.NotNil(t, withSplit.Usage)
+	assert.Equal(t, 7, withSplit.Usage.PromptTokens)
+	assert.Equal(t, 34, withSplit.Usage.CompletionTokens)
+	assert.Equal(t, 41, withSplit.Usage.TotalTokens)
 }
 
 // TestConvertToChatResponse tests conversion to chat response format
@@ -1031,6 +1053,48 @@ func TestCompletionHandler_ConvertToChatResponse_WithZeroTokens(t *testing.T) {
 	assert.Equal(t, 0, usage["total_tokens"])
 	assert.Equal(t, 0, usage["prompt_tokens"])
 	assert.Equal(t, 0, usage["completion_tokens"])
+}
+
+// TestCompletionHandler_ConvertToChatResponse_RealSplitSurvives is the
+// §1.1 guard for convertToChatResponse's usage envelope.
+//
+// It exists because the all-zero fixture above is satisfied IDENTICALLY
+// by the fabricated `TokensUsed / 2` split this code path used to emit
+// (0/2 == 0), so that test alone could not detect a reinstated halving
+// — an independent review proved the mutation survived it. This case
+// uses an ODD total with an ASYMMETRIC provider-reported split so the
+// fabricated and correct behaviours cannot coincide: halving 41 yields
+// 20/20/41, which fails every assertion below.
+func TestCompletionHandler_ConvertToChatResponse_RealSplitSurvives(t *testing.T) {
+	t.Parallel()
+	handler := &CompletionHandler{}
+
+	resp := &models.LLMResponse{
+		ID:           "test-id",
+		Content:      "Test response",
+		TokensUsed:   41,
+		FinishReason: "stop",
+		CreatedAt:    time.Now(),
+		Metadata: map[string]interface{}{
+			"prompt_tokens":     7,
+			"completion_tokens": 34,
+			"total_tokens":      41,
+		},
+	}
+
+	chatResp := handler.convertToChatResponse(resp)
+
+	usage, ok := chatResp["usage"].(map[string]any)
+	if !ok {
+		t.Fatal("chat response carried no usage envelope")
+	}
+	assert.Equal(t, 7, usage["prompt_tokens"],
+		"provider-reported prompt_tokens must reach the wire verbatim")
+	assert.Equal(t, 34, usage["completion_tokens"],
+		"provider-reported completion_tokens must reach the wire verbatim")
+	assert.Equal(t, 41, usage["total_tokens"])
+	assert.NotEqual(t, usage["prompt_tokens"], usage["completion_tokens"],
+		"equal directions on an asymmetric fixture is the fabricated-split signature")
 }
 
 // TestCompletionHandler_ConvertToStreamingResponse_LargeResponse tests large response

@@ -822,11 +822,7 @@ func SetupRouterWithContext(cfg *config.Config) *RouterContext {
 						"finish_reason": result.Selected.FinishReason,
 					},
 				},
-				"usage": gin.H{
-					"prompt_tokens":     result.Selected.TokensUsed / 2,
-					"completion_tokens": result.Selected.TokensUsed / 2,
-					"total_tokens":      result.Selected.TokensUsed,
-				},
+				"usage": ensembleUsage(result.Selected),
 				"ensemble": gin.H{
 					"voting_method":     result.VotingMethod,
 					"responses_count":   len(result.Responses),
@@ -1854,4 +1850,28 @@ func initializeFormattersSystem(logger *logrus.Logger) (*formatters.FormatterReg
 	}).Info("Formatters system initialized successfully")
 
 	return registry, executor, health
+}
+
+// ensembleUsage builds the `usage` envelope for the ensemble endpoint
+// from the selected response's REAL provider-reported token counts.
+//
+// Extracted from the inline handler closure so it is directly
+// unit-testable. That matters for more than tidiness: while the
+// envelope was built inline, the only coverage of it was an
+// `assert.Contains(response, "usage")` presence check, and an
+// independent review demonstrated that reinstating the old fabricated
+// `TokensUsed / 2` split at this site went completely undetected. A
+// named function gets a real §1.1 guard (see TestEnsembleUsage).
+//
+// Never fabricates: models.LLMResponse.TokenSplit reports the
+// provider's measured split, or honest zeros when the provider
+// reported none, and its nil-receiver branch keeps a nil selection
+// from panicking here.
+func ensembleUsage(selected *models.LLMResponse) gin.H {
+	promptTokens, completionTokens, totalTokens := selected.TokenSplit()
+	return gin.H{
+		"prompt_tokens":     promptTokens,
+		"completion_tokens": completionTokens,
+		"total_tokens":      totalTokens,
+	}
 }

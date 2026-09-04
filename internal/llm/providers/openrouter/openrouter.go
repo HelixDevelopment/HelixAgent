@@ -343,6 +343,14 @@ func (p *SimpleOpenRouterProvider) Complete(ctx context.Context, req *models.LLM
 
 		if orResp.Usage != nil {
 			response.TokensUsed = orResp.Usage.TotalTokens
+			// Record the REAL per-direction split, not just the total.
+			// These are the keys models.LLMResponse.TokenSplit reads to
+			// build the OpenAI-compatible `usage` envelope; without
+			// them the wire response reports 0 for both directions even
+			// though OpenRouter measured and returned them here.
+			response.Metadata["prompt_tokens"] = orResp.Usage.PromptTokens
+			response.Metadata["completion_tokens"] = orResp.Usage.CompletionTokens
+			response.Metadata["total_tokens"] = orResp.Usage.TotalTokens
 		}
 
 		return response, nil

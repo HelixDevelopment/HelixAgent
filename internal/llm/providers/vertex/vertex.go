@@ -137,6 +137,17 @@ func (p *Provider) Complete(ctx context.Context, req *models.LLMRequest) (*model
 		TokensUsed:   result.UsageMetadata.TotalTokenCount,
 		ProviderID:   "vertex",
 		ProviderName: "Google Vertex AI",
+		// Record the REAL per-direction split, not just the total.
+		// Vertex names these promptTokenCount / candidatesTokenCount;
+		// they are mapped onto the canonical prompt_tokens /
+		// completion_tokens keys that models.LLMResponse.TokenSplit
+		// reads, so the OpenAI-compatible `usage` envelope reports what
+		// Vertex actually measured instead of 0 for both directions.
+		Metadata: map[string]any{
+			"prompt_tokens":     result.UsageMetadata.PromptTokenCount,
+			"completion_tokens": result.UsageMetadata.CandidatesTokenCount,
+			"total_tokens":      result.UsageMetadata.TotalTokenCount,
+		},
 	}, nil
 }
 

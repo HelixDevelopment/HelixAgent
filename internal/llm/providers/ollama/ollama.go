@@ -63,6 +63,15 @@ type OllamaResponse struct {
 	Response string `json:"response"`
 	Done     bool   `json:"done"`
 	Context  []int  `json:"context,omitempty"`
+	// Real token counts from Ollama's final (done) response object.
+	// Ollama names the input side prompt_eval_count and the generated
+	// side eval_count — verified against the current official API
+	// reference (github.com/ollama/ollama docs/api.md, POST
+	// /api/generate, accessed 2026-09-03). These were previously not
+	// parsed at all, which is why the response fell back to estimating
+	// token usage from the reply's character length.
+	PromptEvalCount int `json:"prompt_eval_count,omitempty"`
+	EvalCount       int `json:"eval_count,omitempty"`
 }
 
 // NewOllamaProvider creates a new Ollama provider instance
@@ -252,6 +261,23 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 			}
 
 			if streamResp.Done {
+				// The done-chunk carries Ollama's real token counts;
+				// prefer them over the character-length estimate, and
+				// record the split under the canonical keys so a
+				// consumer of this final chunk sees measured numbers
+				// rather than a guess. Falls back to the estimate only
+				// when Ollama reported no counts.
+				finalTokens := len(fullContent) / 4
+				var finalMeta map[string]interface{}
+				if streamResp.PromptEvalCount > 0 || streamResp.EvalCount > 0 {
+					finalTokens = streamResp.PromptEvalCount + streamResp.EvalCount
+					finalMeta = map[string]interface{}{
+						"prompt_tokens":     streamResp.PromptEvalCount,
+						"completion_tokens": streamResp.EvalCount,
+						"total_tokens":      finalTokens,
+					}
+				}
+
 				// Send final response
 				finalResp := &models.LLMResponse{
 					RequestID:      req.ID,
@@ -259,9 +285,10 @@ func (o *OllamaProvider) CompleteStream(ctx context.Context, req *models.LLMRequ
 					ProviderName:   "Ollama",
 					Content:        "",
 					Confidence:     0.8,
-					TokensUsed:     len(fullContent) / 4,
+					TokensUsed:     finalTokens,
 					ResponseTime:   time.Now().UnixMilli(),
 					FinishReason:   "stop",
+					Metadata:       finalMeta,
 					Selected:       false,
 					SelectionScore: 0.0,
 					CreatedAt:      time.Now(),
@@ -350,20 +377,39 @@ func (o *OllamaProvider) ValidateConfig(config map[string]interface{}) (bool, []
 
 // convertResponse converts Ollama API response to internal format
 func (o *OllamaProvider) convertResponse(resp *OllamaResponse, requestID string) (*models.LLMResponse, error) {
+	metadata := map[string]interface{}{
+		"model":   resp.Model,
+		"context": len(resp.Context),
+	}
+
+	// Prefer Ollama's REAL token counts over a character-length guess.
+	// TokensUsed previously held len(response)/4 — an estimate of the
+	// OUTPUT side only, presented as a total. Now it is the true total
+	// when Ollama reported the counts, and the per-direction split is
+	// recorded under the canonical keys models.LLMResponse.TokenSplit
+	// reads, so the OpenAI-compatible `usage` envelope carries measured
+	// numbers. When Ollama reports nothing (older versions, or a
+	// non-final chunk) the estimate remains as the only figure
+	// available and no split is claimed.
+	tokensUsed := len(resp.Response) / 4
+	if resp.PromptEvalCount > 0 || resp.EvalCount > 0 {
+		tokensUsed = resp.PromptEvalCount + resp.EvalCount
+		metadata["prompt_tokens"] = resp.PromptEvalCount
+		metadata["completion_tokens"] = resp.EvalCount
+		metadata["total_tokens"] = tokensUsed
+	}
+
 	return &models.LLMResponse{
-		ID:           fmt.Sprintf("ollama-%d", time.Now().Unix()),
-		RequestID:    requestID,
-		ProviderID:   "ollama",
-		ProviderName: "Ollama",
-		Content:      resp.Response,
-		Confidence:   0.8,                    // Ollama doesn't provide confidence scores
-		TokensUsed:   len(resp.Response) / 4, // Rough estimate
-		ResponseTime: time.Now().UnixMilli(),
-		FinishReason: "stop",
-		Metadata: map[string]interface{}{
-			"model":   resp.Model,
-			"context": len(resp.Context),
-		},
+		ID:             fmt.Sprintf("ollama-%d", time.Now().Unix()),
+		RequestID:      requestID,
+		ProviderID:     "ollama",
+		ProviderName:   "Ollama",
+		Content:        resp.Response,
+		Confidence:     0.8, // Ollama doesn't provide confidence scores
+		TokensUsed:     tokensUsed,
+		ResponseTime:   time.Now().UnixMilli(),
+		FinishReason:   "stop",
+		Metadata:       metadata,
 		Selected:       false,
 		SelectionScore: 0.0,
 		CreatedAt:      time.Now(),

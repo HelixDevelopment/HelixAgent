@@ -486,11 +486,28 @@ func TestClaudeProvider_ConvertResponse(t *testing.T) {
 	assert.Equal(t, "Claude", resp.ProviderName)
 	assert.Equal(t, "Hello there!", resp.Content)
 	assert.Equal(t, "end_turn", resp.FinishReason)
-	assert.Equal(t, 5, resp.TokensUsed)
+	// RECONCILED 2026-09-03 (§11.4.120). This previously asserted
+	// TokensUsed == 5, i.e. the OUTPUT count alone — codifying a real
+	// defect an independent review surfaced. TokensUsed is a TOTAL
+	// everywhere else in this package (and in the sibling `anthropic`
+	// provider, which reports the same upstream shape correctly), so
+	// every consumer that reads it as one — analytics, the DB
+	// repository, the OpenAI-compatible usage envelope — was
+	// under-reporting each Claude response by the entire input side.
+	// It is now InputTokens + OutputTokens. This is a stale gate
+	// asserting removed-and-wrong behaviour, not a regression catch.
+	assert.Equal(t, 15, resp.TokensUsed, "TokensUsed must be the TOTAL (10 input + 5 output)")
 	assert.Greater(t, resp.Confidence, 0.0)
 	assert.NotNil(t, resp.Metadata)
 	assert.Equal(t, "claude-3-sonnet-20240229", resp.Metadata["model"])
+	// BOTH directions must be recorded. output_tokens was previously
+	// omitted, so the real completion count was discarded even though
+	// the upstream reported it, leaving response shapers to publish
+	// completion_tokens=0 for a measured, available value
+	// (models.LLMResponse.TokenSplit reads these two keys).
 	assert.Equal(t, 10, resp.Metadata["input_tokens"])
+	assert.Equal(t, 5, resp.Metadata["output_tokens"],
+		"output_tokens must be recorded, not discarded")
 }
 
 func TestClaudeProvider_ConvertResponse_EmptyContent(t *testing.T) {

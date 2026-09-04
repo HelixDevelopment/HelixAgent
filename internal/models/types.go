@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"math"
+	"time"
+)
 
 // User represents a user in the system
 type User struct {
@@ -86,6 +90,252 @@ type LLMResponse struct {
 	CreatedAt      time.Time              `json:"created_at" db:"created_at"`
 	// ToolCalls returned by the LLM when it wants to use tools
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+}
+
+// TokenSplit returns the REAL per-direction token counts the upstream
+// provider reported, plus the total.
+//
+// Why this exists: LLMResponse carries only an aggregate TokensUsed,
+// while MOST providers under internal/llm/providers also record the
+// genuine per-direction counts in Metadata. Response shapers used to
+// synthesise the split as TokensUsed/2 for BOTH directions, which
+// (a) discarded those real numbers, (b) made prompt_tokens always
+// equal completion_tokens, and (c) produced self-contradicting
+// envelopes on odd totals (20 + 20 != 41). That is invented telemetry,
+// not an estimate.
+//
+// Two metadata naming conventions are in use, and BOTH are read here —
+// reading only the first would return honest-looking zeros while a real
+// split sat available in the map, which is a subtler form of the same
+// defect:
+//   - OpenAI-shaped: "prompt_tokens" / "completion_tokens" — the large
+//     majority (deepseek, mistral, groq, codestral, cerebras,
+//     huggingface, helixllm, openrouter, azure, lmstudio, generic,
+//     vertex, gemini_api, ollama, …).
+//   - Anthropic-shaped: "input_tokens" / "output_tokens" — anthropic,
+//     anthropic_cu, claude, cohere.
+//
+// Coverage caveats, so this comment does not overclaim:
+//   - A provider that receives no usage object from its upstream
+//     records no split, and this accessor then reports zeros for both
+//     directions. That is the honest answer; the remedy is to record
+//     the split in the provider, never to invent one here.
+//   - Some CLI-backed providers (junie_cli, zen_cli, qwen_cli) write
+//     character-length ESTIMATES under these same keys. This accessor
+//     cannot distinguish an estimate from a measurement — it faithfully
+//     reports whatever the provider recorded. "Real" below means "what
+//     the provider recorded", not "independently measured by us".
+//
+// Contract (§11.4.6 — report what was reported, never invent):
+//   - BOTH directions reported ⇒ return them verbatim. The parts are
+//     authoritative, so total is the provider's own total when it
+//     agrees with the sum, else the sum — the envelope always adds up.
+//   - Exactly ONE direction reported, alongside an EXPLICIT
+//     "total_tokens" in Metadata ⇒ derive the missing direction as
+//     (total − known). This is arithmetic, not invention: the OpenAI
+//     usage schema defines total_tokens = prompt_tokens +
+//     completion_tokens (its own spec notes reasoning and
+//     rejected-prediction tokens are still counted in the completion
+//     total), so with two of three quantities known the third is
+//     determined. Guarded by total >= known so a malformed total can
+//     never produce a negative count.
+//   - Exactly ONE direction reported, with only the struct's
+//     TokensUsed aggregate ⇒ report (0, 0, TokensUsed). The derivation
+//     is deliberately NOT attempted here, because TokensUsed carries no
+//     total-semantics guarantee: the pre-2026-09-03 claude provider set
+//     it to the OUTPUT count, and such rows are persisted and reloaded
+//     (internal/database/response_repository.go). Deriving from one
+//     would yield a wrong-but-plausible split — for a legacy row with
+//     input=7 and TokensUsed=34 (output) it would publish 7/27/34
+//     against a truth of 7/34/41. An explicit "total_tokens" key is
+//     only ever written by a provider that parsed a real usage object,
+//     so it IS a true total by construction; the bare aggregate is not.
+//   - NEITHER reported ⇒ return (0, 0, TokensUsed). Zero means
+//     "provider did not report this direction" and is OpenAI-legal;
+//     it is the honest answer. NEVER a fabricated half.
+//
+// Numeric-type tolerance: Metadata is map[string]interface{}, so a
+// value written as int in-process may arrive as float64 or
+// json.Number after a JSON round-trip. All are accepted; anything
+// unparseable is treated as absent rather than guessed at.
+func (r *LLMResponse) TokenSplit() (prompt, completion, total int) {
+	if r == nil {
+		return 0, 0, 0
+	}
+
+	total = r.TokensUsed
+	promptVal, promptOK := metadataFirstInt(r.Metadata, "prompt_tokens", "input_tokens")
+	completionVal, completionOK := metadataFirstInt(r.Metadata, "completion_tokens", "output_tokens")
+
+	switch {
+	case promptOK && completionOK:
+		prompt, completion = promptVal, completionVal
+		// Parts are authoritative. Honour the provider's own total only
+		// when it agrees with them; otherwise derive it so the emitted
+		// envelope never contradicts itself.
+		if totalVal, ok := metadataFirstInt(r.Metadata, "total_tokens"); ok && totalVal == prompt+completion {
+			return prompt, completion, totalVal
+		}
+		return prompt, completion, prompt + completion
+
+	case promptOK || completionOK:
+		// Partial report. Derive the missing direction ONLY from an
+		// EXPLICIT total_tokens key, never from the bare TokensUsed
+		// aggregate — see the contract above for why the two are not
+		// interchangeable.
+		totalVal, totalOK := metadataFirstInt(r.Metadata, "total_tokens")
+		if !totalOK {
+			return 0, 0, total
+		}
+
+		known := promptVal + completionVal // exactly one is non-zero here
+		if totalVal < known {
+			// A total cannot be smaller than one of its parts, so this
+			// value is malformed and the relationship between these
+			// numbers is unknown. Report neither direction rather than
+			// publishing a figure we cannot justify (§11.4.6).
+			return 0, 0, totalVal
+		}
+
+		// Derive the missing direction exactly: total − known.
+		if promptOK {
+			return promptVal, totalVal - promptVal, totalVal
+		}
+		return totalVal - completionVal, completionVal, totalVal
+
+	default:
+		// Provider reported only an aggregate. Report the directions as
+		// unknown (0) rather than inventing halves.
+		return 0, 0, total
+	}
+}
+
+// metadataFirstInt returns the first of the given keys that carries a
+// usable non-negative integer. Providers in this repo use two naming
+// conventions for the same quantity (OpenAI-shaped `prompt_tokens` and
+// Anthropic-shaped `input_tokens`), so callers pass the aliases in
+// precedence order rather than picking one and silently ignoring data
+// written under the other.
+func metadataFirstInt(md map[string]interface{}, keys ...string) (int, bool) {
+	for _, key := range keys {
+		if n, ok := metadataInt(md, key); ok {
+			return n, true
+		}
+	}
+	return 0, false
+}
+
+// metadataInt reads a non-negative integer out of an
+// interface{}-valued metadata map, tolerating the numeric types a
+// value can take before and after a JSON round-trip. It reports
+// ok=false for a missing key or an unparseable/negative value — the
+// caller then treats the direction as unreported rather than guessing.
+func metadataInt(md map[string]interface{}, key string) (int, bool) {
+	if md == nil {
+		return 0, false
+	}
+	raw, present := md[key]
+	if !present || raw == nil {
+		return 0, false
+	}
+
+	// Every branch below range-checks against MaxInt32 before
+	// converting, matching the float branch. Without this an int64 or
+	// uint64 wider than the platform int silently wraps to a negative
+	// or nonsense value on a 32-bit build, and uint64 can exceed even a
+	// 64-bit int. MaxInt32 sits far above any real token count, so a
+	// value beyond it is malformed rather than large, and is reported
+	// unusable instead of guessed at (§11.4.6).
+	const maxToken = int64(math.MaxInt32)
+
+	var n int
+	switch v := raw.(type) {
+	case int:
+		if int64(v) > maxToken {
+			return 0, false
+		}
+		n = v
+	case int32:
+		n = int(v)
+	case int64:
+		if v > maxToken {
+			return 0, false
+		}
+		n = int(v)
+	case uint:
+		if uint64(v) > uint64(maxToken) {
+			return 0, false
+		}
+		n = int(v)
+	case uint32:
+		if uint64(v) > uint64(maxToken) {
+			return 0, false
+		}
+		n = int(v)
+	case uint64:
+		if v > uint64(maxToken) {
+			return 0, false
+		}
+		n = int(v)
+	case float32:
+		// float32 widens exactly to float64; validate there.
+		parsed, ok := exactNonNegativeIntFromFloat(float64(v))
+		if !ok {
+			return 0, false
+		}
+		n = parsed
+	case float64:
+		// A token count arriving as a float is only usable if it is a
+		// finite, integral, in-range value. Bare int(v) was wrong twice
+		// over: it silently TRUNCATED a fractional value (7.5 became 7,
+		// a guess the doc-comment disclaims) and its out-of-range
+		// behaviour is implementation-defined in the Go spec — amd64
+		// yields MinInt64 while arm64 saturates to MaxInt64, which the
+		// negative check would let through and then overflow on
+		// prompt+completion. Validate before converting so the same
+		// input is rejected identically on every architecture, matching
+		// how json.Number("7.5") is already treated as absent.
+		parsed, ok := exactNonNegativeIntFromFloat(v)
+		if !ok {
+			return 0, false
+		}
+		n = parsed
+	case json.Number:
+		parsed, err := v.Int64()
+		if err != nil {
+			return 0, false
+		}
+		if parsed > maxToken {
+			return 0, false
+		}
+		n = int(parsed)
+	default:
+		return 0, false
+	}
+
+	if n < 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+// exactNonNegativeIntFromFloat converts a float-typed metadata value to
+// an int ONLY when the value is finite, non-negative, integral, and
+// within int32 range (comfortably above any real token count, and safe
+// on 32-bit builds). Anything else is reported unusable so the caller
+// treats the direction as unreported instead of guessing at a
+// truncated or platform-dependent number (§11.4.6).
+func exactNonNegativeIntFromFloat(v float64) (int, bool) {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0, false
+	}
+	if v < 0 || v > float64(math.MaxInt32) {
+		return 0, false
+	}
+	if v != math.Trunc(v) {
+		return 0, false
+	}
+	return int(v), true
 }
 
 // ToolCall represents a tool call requested by the LLM

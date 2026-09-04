@@ -580,13 +580,26 @@ func (p *ClaudeProvider) convertResponse(req *models.LLMRequest, claudeResp *Cla
 		ProviderName: "Claude",
 		Content:      content,
 		Confidence:   confidence,
-		TokensUsed:   claudeResp.Usage.OutputTokens,
+		// TokensUsed is the TOTAL, matching every other provider in
+		// this package (and internal/llm/providers/anthropic, which
+		// reports the same upstream shape correctly). It previously
+		// held only OutputTokens, so downstream consumers that read
+		// TokensUsed as a total — analytics, the DB repository, and the
+		// OpenAI-compatible usage envelope — under-reported every
+		// Claude response by the whole input side.
+		TokensUsed:   claudeResp.Usage.InputTokens + claudeResp.Usage.OutputTokens,
 		ResponseTime: time.Since(startTime).Milliseconds(),
 		FinishReason: finishReason,
 		Metadata: map[string]any{
-			"model":        claudeResp.Model,
-			"input_tokens": claudeResp.Usage.InputTokens,
-			"type":         claudeResp.Type,
+			"model": claudeResp.Model,
+			// BOTH directions. output_tokens was previously omitted, so
+			// the real completion count was discarded even though the
+			// upstream reported it — leaving response shapers to emit
+			// completion_tokens=0 for a value that was measured and
+			// available (LLMResponse.TokenSplit reads these keys).
+			"input_tokens":  claudeResp.Usage.InputTokens,
+			"output_tokens": claudeResp.Usage.OutputTokens,
+			"type":          claudeResp.Type,
 		},
 		Selected:       false,
 		SelectionScore: 0.0,

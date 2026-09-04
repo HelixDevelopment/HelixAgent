@@ -323,11 +323,46 @@ func TestUnifiedHandler_ConvertToOpenAIChatResponse(t *testing.T) {
 	assert.Equal(t, "assistant", response.Choices[0].Message.Role)
 	assert.Equal(t, "This is a test response", response.Choices[0].Message.Content)
 	assert.Equal(t, "stop", response.Choices[0].FinishReason)
+	// RECONCILED 2026-09-03 (§11.4.120). This block previously asserted
+	// PromptTokens == CompletionTokens == 15 with the comment "Half of
+	// 30" — i.e. it CODIFIED the fabricated 50/50 usage split that has
+	// since been removed (see usage_token_split_red_test.go). It was a
+	// stale gate asserting removed-and-wrong behaviour, not a gate
+	// catching a regression: this fixture sets TokensUsed with NO
+	// Metadata, so the provider reported no per-direction split at all
+	// and the only honest answer is 0 / 0 / 30 (§11.4.6 — zero means
+	// "not reported"; a fabricated half claims a measurement that never
+	// happened). The companion sub-case below proves the REAL split
+	// survives when the provider does report one, so this pair still
+	// forms a valid §1.1 mutation pair: reinstating the halving breaks
+	// both.
 	assert.NotNil(t, response.Usage)
-	assert.Equal(t, 15, response.Usage.PromptTokens)     // Half of 30
-	assert.Equal(t, 15, response.Usage.CompletionTokens) // Half of 30
+	assert.Equal(t, 0, response.Usage.PromptTokens,
+		"provider reported no prompt_tokens — must be 0, never an invented half")
+	assert.Equal(t, 0, response.Usage.CompletionTokens,
+		"provider reported no completion_tokens — must be 0, never an invented half")
 	assert.Equal(t, 30, response.Usage.TotalTokens)
 	assert.Equal(t, "fp_helixagent_ensemble", response.SystemFingerprint)
+
+	// Provider-reported split MUST reach the wire verbatim. Asymmetric
+	// and summing to an odd total, so the removed halving cannot
+	// coincidentally satisfy it.
+	ensembleResult.Selected.TokensUsed = 41
+	ensembleResult.Selected.Metadata = map[string]interface{}{
+		"prompt_tokens":     7,
+		"completion_tokens": 34,
+		"total_tokens":      41,
+	}
+	withSplit := handler.convertToOpenAIChatResponse(ensembleResult, openaiReq)
+	assert.NotNil(t, withSplit.Usage)
+	assert.Equal(t, 7, withSplit.Usage.PromptTokens)
+	assert.Equal(t, 34, withSplit.Usage.CompletionTokens)
+	assert.Equal(t, 41, withSplit.Usage.TotalTokens)
+	assert.Equal(t,
+		withSplit.Usage.TotalTokens,
+		withSplit.Usage.PromptTokens+withSplit.Usage.CompletionTokens,
+		"usage envelope must be internally consistent",
+	)
 }
 
 // TestUnifiedHandler_ConvertToOpenAIChatStreamResponse tests stream response conversion

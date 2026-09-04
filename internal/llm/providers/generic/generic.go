@@ -401,8 +401,21 @@ func (p *Provider) convertResponse(req *models.LLMRequest, resp *Response, start
 	}
 
 	var tokensUsed int
+	// Record the REAL per-direction split, not just the total.
+	// models.LLMResponse.TokenSplit reads these keys to build the
+	// OpenAI-compatible `usage` envelope; without them the wire
+	// response reports 0 for both directions even though the upstream
+	// measured and returned them here. Metadata stays nil when the
+	// upstream sent no usage object at all — nil is honestly "not
+	// reported" and TokenSplit handles it.
+	var metadata map[string]any
 	if resp.Usage != nil {
 		tokensUsed = resp.Usage.TotalTokens
+		metadata = map[string]any{
+			"prompt_tokens":     resp.Usage.PromptTokens,
+			"completion_tokens": resp.Usage.CompletionTokens,
+			"total_tokens":      resp.Usage.TotalTokens,
+		}
 	}
 
 	return &models.LLMResponse{
@@ -415,6 +428,7 @@ func (p *Provider) convertResponse(req *models.LLMRequest, resp *Response, start
 		TokensUsed:   tokensUsed,
 		ResponseTime: time.Since(startTime).Milliseconds(),
 		FinishReason: finishReason,
+		Metadata:     metadata,
 		CreatedAt:    time.Now(),
 	}
 }

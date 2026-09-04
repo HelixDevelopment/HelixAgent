@@ -588,7 +588,7 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 		// Process tool results directly - synthesize into final response
 		// This prevents: debate → tool_calls → results → debate → tool_calls... (infinite loop)
 		logrus.Info("Processing tool results - synthesizing without new debate")
-		toolResultResponse, err := h.processToolResultsWithLLM(c.Request.Context(), &req)
+		toolResultResponse, toolResultLLM, err := h.processToolResultsWithLLM(c.Request.Context(), &req)
 		if err != nil {
 			logrus.WithError(err).Warn("Failed to process tool results with LLM")
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -600,6 +600,8 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 			})
 			return
 		}
+
+		toolResultUsage := usageFromResponse(toolResultLLM)
 
 		// Return as OpenAI-compatible response
 		response := OpenAIChatResponse{
@@ -618,11 +620,7 @@ func (h *UnifiedHandler) ChatCompletions(c *gin.Context) {
 					FinishReason: "stop",
 				},
 			},
-			Usage: &OpenAIUsage{
-				PromptTokens:     len(toolResultResponse) / 4,
-				CompletionTokens: len(toolResultResponse) / 4,
-				TotalTokens:      len(toolResultResponse) / 2,
-			},
+			Usage: toolResultUsage,
 		}
 		c.JSON(http.StatusOK, response)
 		return
@@ -1349,7 +1347,9 @@ Respond concisely and helpfully.`, clientName, toolList)
 		// Process tool results directly - synthesize into final response
 		// This prevents: debate → tool_calls → results → debate → tool_calls... (infinite loop)
 		logrus.Info("Streaming tool results - synthesizing without new debate")
-		toolResultResponse, err := h.processToolResultsWithLLM(ctx, req)
+		// Streaming emits no usage object (see sseChunkEnvelope), so the
+		// provider response is intentionally discarded here.
+		toolResultResponse, _, err := h.processToolResultsWithLLM(ctx, req)
 		if err != nil {
 			logrus.WithError(err).Warn("Failed to process tool results with LLM, using fallback response")
 			fallbackResponse := h.generateFallbackToolResultsResponse(req)
@@ -2909,6 +2909,8 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 		msg.ToolCalls = openAIToolCalls
 	}
 
+	promptTokens, completionTokens, totalTokens := resp.TokenSplit()
+
 	return OpenAIChatResponse{
 		ID:                resp.ID,
 		Object:            "chat.completion",
@@ -2922,10 +2924,17 @@ func (h *UnifiedHandler) convertSingleResponseToOpenAI(resp *models.LLMResponse,
 				FinishReason: finishReason,
 			},
 		},
+		// Report the REAL provider-supplied token split. Previously this
+		// synthesised both directions as TokensUsed/2, which discarded
+		// the genuine per-direction counts the provider already handed
+		// us in resp.Metadata and emitted self-contradicting envelopes
+		// on odd totals (measured 2026-09-03: 20 + 20 != 41). See
+		// LLMResponse.TokenSplit — unreported directions come back as 0
+		// (honest "not reported"), never as an invented half.
 		Usage: &OpenAIUsage{
-			PromptTokens:     resp.TokensUsed / 2,
-			CompletionTokens: resp.TokensUsed / 2,
-			TotalTokens:      resp.TokensUsed,
+			PromptTokens:     promptTokens,
+			CompletionTokens: completionTokens,
+			TotalTokens:      totalTokens,
 		},
 	}
 }
@@ -3834,11 +3843,15 @@ func isErrorContent(content string) bool {
 func (h *UnifiedHandler) convertToOpenAIChatResponse(result *services.EnsembleResult, req *OpenAIChatRequest) *OpenAIChatResponse {
 	selected := result.Selected
 
-	// Convert usage information
+	// Convert usage information. Reports the REAL provider-supplied
+	// split via LLMResponse.TokenSplit rather than halving the total
+	// into both directions (which fabricated telemetry and could not
+	// even sum correctly on odd totals). Unreported directions are 0.
+	promptTokens, completionTokens, totalTokens := selected.TokenSplit()
 	usage := &OpenAIUsage{
-		PromptTokens:     selected.TokensUsed / 2, // Estimate
-		CompletionTokens: selected.TokensUsed / 2, // Estimate
-		TotalTokens:      selected.TokensUsed,
+		PromptTokens:     promptTokens,
+		CompletionTokens: completionTokens,
+		TotalTokens:      totalTokens,
 	}
 
 	// Create choice
@@ -7418,7 +7431,15 @@ All notable changes to this project will be documented in this file.
 // processToolResultsWithLLM processes tool results by making a direct LLM call
 // CRITICAL: This enables proper handling of tool results from CLI agents like OpenCode
 // Instead of just acknowledging, it actually generates useful insights from the tool output
-func (h *UnifiedHandler) processToolResultsWithLLM(ctx context.Context, req *OpenAIChatRequest) (string, error) {
+//
+// Returns the synthesised content AND the provider's own *models.LLMResponse.
+// The response is returned (rather than discarded, as it was before
+// 2026-09-03) so callers can report the provider's REAL token usage via
+// LLMResponse.TokenSplit. Previously the caller estimated usage from the
+// length of the reply string — `PromptTokens: len(reply)/4` charged the
+// PROMPT by the RESPONSE size, which is not an approximation of anything.
+// Callers that emit no usage object may discard it with `_`.
+func (h *UnifiedHandler) processToolResultsWithLLM(ctx context.Context, req *OpenAIChatRequest) (string, *models.LLMResponse, error) {
 	// Build system prompt for tool result processing
 	systemPrompt := `You are HelixAgent, an expert AI coding assistant with FULL ACCESS to the user's codebase through tools.
 
@@ -7503,7 +7524,7 @@ When asked to create files like AGENTS.md:
 	// CRITICAL: NO hardcoded fallback chains - all ordering is based on real verification results
 	providers := h.providerRegistry.ListProvidersOrderedByScore()
 	if len(providers) == 0 {
-		return "", fmt.Errorf("no providers available - check your configuration")
+		return "", nil, fmt.Errorf("no providers available - check your configuration")
 	}
 
 	logrus.WithField("providers_ordered", providers).Debug("Using dynamically ordered providers for tool result processing")
@@ -7518,9 +7539,9 @@ When asked to create files like AGENTS.md:
 			logrus.Warn("Parent context cancelled during tool result processing")
 			// Return what we have or a helpful message
 			if lastErr != nil {
-				return "", fmt.Errorf("context cancelled while processing tool results: %w", lastErr)
+				return "", nil, fmt.Errorf("context cancelled while processing tool results: %w", lastErr)
 			}
-			return "", fmt.Errorf("context cancelled before tool results could be processed")
+			return "", nil, fmt.Errorf("context cancelled before tool results could be processed")
 		default:
 		}
 
@@ -7568,7 +7589,7 @@ When asked to create files like AGENTS.md:
 			}).Info("Executed embedded function calls from LLM response")
 		}
 
-		return content, nil
+		return content, resp, nil
 	}
 
 	// If all providers failed, return a helpful error message
@@ -7577,9 +7598,9 @@ When asked to create files like AGENTS.md:
 		"providers_tried":     len(providers),
 	}).Error("All providers failed to process tool results")
 	if lastErr != nil {
-		return "", fmt.Errorf("all %d dynamically-ordered providers failed to process tool results (last error: %w). Check provider API keys and LLMsVerifier scores", len(providers), lastErr)
+		return "", nil, fmt.Errorf("all %d dynamically-ordered providers failed to process tool results (last error: %w). Check provider API keys and LLMsVerifier scores", len(providers), lastErr)
 	}
-	return "", fmt.Errorf("no providers available to process tool results - check your configuration and LLMsVerifier")
+	return "", nil, fmt.Errorf("no providers available to process tool results - check your configuration and LLMsVerifier")
 }
 
 // EmbeddedFunctionCall represents a function call parsed from LLM response text
@@ -8159,4 +8180,31 @@ func truncateString(s string, maxLen int) string {
 		return s[:maxLen]
 	}
 	return s[:maxLen-3] + "..."
+}
+
+// usageFromResponse builds an OpenAI `usage` envelope from a provider
+// response's REAL reported token counts.
+//
+// Extracted as a named function so the tool-result turn's envelope is
+// directly unit-testable (see TestUsageFromResponse). It previously
+// estimated the whole envelope from the reply's STRING LENGTH:
+//
+//	PromptTokens:     len(toolResultResponse) / 4
+//	CompletionTokens: len(toolResultResponse) / 4
+//	TotalTokens:      len(toolResultResponse) / 2
+//
+// which charged the PROMPT by the RESPONSE size — a figure describing
+// neither direction — and made prompt always equal completion.
+//
+// models.LLMResponse.TokenSplit reports what the provider measured, or
+// honest zeros when it reported nothing (§11.4.6). Its nil-receiver
+// branch means a nil response degrades to an all-zero envelope
+// ("not reported"), never to an invented one, and never a panic.
+func usageFromResponse(resp *models.LLMResponse) *OpenAIUsage {
+	promptTokens, completionTokens, totalTokens := resp.TokenSplit()
+	return &OpenAIUsage{
+		PromptTokens:     promptTokens,
+		CompletionTokens: completionTokens,
+		TotalTokens:      totalTokens,
+	}
 }

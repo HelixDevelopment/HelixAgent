@@ -106,6 +106,16 @@ func (p *Provider) Complete(ctx context.Context, req *models.LLMRequest) (*model
 		TokensUsed:   result.Usage.TotalTokens,
 		ProviderID:   "azure-openai",
 		ProviderName: "Azure OpenAI",
+		// Record the REAL per-direction split, not just the total.
+		// models.LLMResponse.TokenSplit reads these keys to build the
+		// OpenAI-compatible `usage` envelope; without them the wire
+		// response reports 0 for both directions even though Azure
+		// measured and returned them here.
+		Metadata: map[string]any{
+			"prompt_tokens":     result.Usage.PromptTokens,
+			"completion_tokens": result.Usage.CompletionTokens,
+			"total_tokens":      result.Usage.TotalTokens,
+		},
 	}, nil
 }
 

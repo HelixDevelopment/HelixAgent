@@ -567,6 +567,17 @@ func (p *GeminiAPIProvider) convertResponse(
 	metadata := map[string]any{
 		"model": p.model,
 	}
+	if geminiResp.UsageMetadata != nil {
+		// Record the REAL per-direction split, not just the total.
+		// Gemini names these promptTokenCount / candidatesTokenCount;
+		// they are mapped onto the canonical prompt_tokens /
+		// completion_tokens keys that models.LLMResponse.TokenSplit
+		// reads, so the OpenAI-compatible `usage` envelope reports what
+		// Gemini actually measured instead of 0 for both directions.
+		metadata["prompt_tokens"] = geminiResp.UsageMetadata.PromptTokenCount
+		metadata["completion_tokens"] = geminiResp.UsageMetadata.CandidatesTokenCount
+		metadata["total_tokens"] = geminiResp.UsageMetadata.TotalTokenCount
+	}
 	if thinkingContent != "" {
 		metadata["thinking"] = thinkingContent
 	}
